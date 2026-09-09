@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  # OmniStudio AI Backend (FastAPI + FFmpeg + Neural Engines)
+  omni-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omnistudio-backend
+    restart: unless-stopped
+    ports:
+      # Isolated Host Port 8050 -> Container Port 8000
+      # (Leaves port 80, 443, 8000 free for existing host projects)
+      - "8050:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Mount outputs directory so videos, images, and database persist on the host
+      - ./backend/outputs:/app/outputs
+    networks:
+      - omnistudio-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # OmniStudio AI Frontend (Next.js 16 Production App)
+  omni-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: omnistudio-frontend
+    restart: unless-stopped
+    ports:
+      # Isolated Host Port 3050 -> Container Port 3000
+      # (Leaves port 80, 443, 3000 free for existing host projects)
+      - "3050:3000"
+    environment:
+      - BACKEND_INTERNAL_URL=http://omni-backend:8000
+      - NODE_ENV=production
+      - PORT=3000
+    depends_on:
+      omni-backend:
+        condition: service_healthy
+    networks:
+      - omnistudio-network
+
+networks:
+  omnistudio-network:
+    name: omnistudio-network
+    driver: bridge
+
