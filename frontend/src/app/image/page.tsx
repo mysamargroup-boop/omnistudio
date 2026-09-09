@@ -714,8 +714,70 @@ export default function ImageStudioPage() {
           </div>
         )}
 
+        {/* State Error: Display clear error feedback if image generation fails */}
+        {!loading && !loadingVariations && result && !result.success && (
+          <div className="w-full max-w-lg my-12 p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-4 animate-in fade-in duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-mono font-bold text-rose-300 uppercase tracking-wider">Generation Failed</h3>
+              <p className="text-xs text-zinc-300 font-mono leading-relaxed max-w-md mx-auto">
+                {result.error || "An error occurred during image generation."}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setResult(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-mono border border-zinc-800 transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={generate}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold transition-colors shadow-lg cursor-pointer"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* State Variations Error: Display clear variations error feedback */}
+        {!loading && !loadingVariations && variationsResult && !variationsResult.success && (
+          <div className="w-full max-w-lg my-12 p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-center space-y-4 animate-in fade-in duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-mono font-bold text-rose-300 uppercase tracking-wider">Variations Failed</h3>
+              <p className="text-xs text-zinc-300 font-mono leading-relaxed max-w-md mx-auto">
+                {variationsResult.error || "An error occurred during variations generation."}
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setVariationsResult(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-mono border border-zinc-800 transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={generateBulkVariations}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold transition-colors shadow-lg cursor-pointer"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* State D: Idle Showcase Hero (Matching Higgsfield Reference Screenshot) */}
-        {!loading && !loadingVariations && !result?.success && !variationsResult?.success && (
+        {!loading && !loadingVariations && !result && !variationsResult && (
           <div className="w-full flex flex-col items-center justify-center text-center space-y-6 py-6 animate-in fade-in duration-300">
             {/* Visual Overlapping Gallery Cards */}
             <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 overflow-hidden max-w-md sm:max-w-xl mx-auto">
@@ -775,7 +837,8 @@ export default function ImageStudioPage() {
       {/* Floating Bottom Studio Dock (The Higgsfield Signature Dock) */}
       <div
         ref={dockRef}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl shadow-2xl p-3 space-y-2.5 transition-all duration-200"
+        data-lenis-prevent="true"
+        className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl shadow-2xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto"
       >
         {/* Row 1: Integrated Prompt Input Bar (Auto-Expanding, Full Prompt Visibility) */}
         <div className="relative flex items-start gap-2">
@@ -898,7 +961,10 @@ export default function ImageStudioPage() {
 
               {/* Model Selector Upward Popover (Exact Higgsfield Menu) */}
               {modelPopoverOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5">
+                <div
+                  data-lenis-prevent="true"
+                  className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5"
+                >
                   {/* Search Bar */}
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
@@ -911,13 +977,23 @@ export default function ImageStudioPage() {
                     />
                   </div>
 
-                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    <span>Featured Models</span>
+                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Featured Models</span>
+                    </div>
+                    <span className="text-[9px] text-zinc-400 font-normal font-mono">
+                      {filteredModels.length} models
+                    </span>
                   </div>
 
                   {/* Scrollable Model List */}
-                  <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
+                  <div
+                    data-lenis-prevent="true"
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    className="max-h-72 sm:max-h-80 overflow-y-auto overscroll-contain space-y-1 pr-1.5 custom-scrollbar"
+                  >
                     {filteredModels.map((m) => {
                       const isSelected = model === m.value;
                       return (

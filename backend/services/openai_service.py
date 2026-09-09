@@ -27,15 +27,13 @@ async def generate_openai_image(
         client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         
         # Determine candidate models to try
-        target_model = model
+        # OpenAI image models: dall-e-3 is the official production flagship
         if model in ["dall-e-3", "openai"]:
-            target_model = "gpt-image-1-mini"
-            
-        candidate_models = [target_model]
-        if target_model != "gpt-image-1":
-            candidate_models.append("gpt-image-1")
-        if "dall-e-3" not in candidate_models:
-            candidate_models.append("dall-e-3")
+            candidate_models = ["dall-e-3", "gpt-image-1-mini", "dall-e-2"]
+        elif model in ["gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]:
+            candidate_models = [model, "dall-e-3", "dall-e-2"]
+        else:
+            candidate_models = [model, "dall-e-3"]
         
         response = None
         used_model = None
@@ -49,18 +47,19 @@ async def generate_openai_image(
                     "prompt": prompt,
                     "n": 1,
                 }
-                if candidate == "dall-e-3":
+                if candidate in ["dall-e-3", "dall-e-2"]:
                     valid_sizes = ["1024x1024", "1792x1024", "1024x1792"]
                     kwargs["size"] = size if size in valid_sizes else "1024x1024"
-                    kwargs["quality"] = quality
+                    if candidate == "dall-e-3":
+                        kwargs["quality"] = quality
                 
                 response = await client.images.generate(**kwargs)
                 used_model = candidate
                 break
             except Exception as candidate_err:
                 last_error = candidate_err
-                err_str = str(candidate_err)
-                if "does not exist" in err_str or "unknown_parameter" in err_str:
+                err_str = str(candidate_err).lower()
+                if any(x in err_str for x in ["does not exist", "unknown_parameter", "not found", "unrecognized", "invalid_model", "model"]):
                     continue
                 else:
                     raise candidate_err

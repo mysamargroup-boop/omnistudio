@@ -30,23 +30,18 @@ code, pre, kbd, .font-mono {
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Page Transition Animation */
+/* Page Transition Animation (Pure opacity fade so position:fixed descendants remain anchored to viewport) */
 @keyframes pageEnter {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.996);
-    filter: blur(2px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
 .animate-page-enter {
-  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: opacity, transform, filter;
+  animation: pageEnter 0.25s ease-out forwards;
 }
 
 @keyframes topProgress {
@@ -82,6 +77,27 @@ code, pre, kbd, .font-mono {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(150, 150, 160, 0.45);
+}
+
+/* Visible custom scrollbar for dropdowns and popovers */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(150, 150, 160, 0.4) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 160, 0.35);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 160, 0.6);
 }
 
 /* Hide scrollbar utility */

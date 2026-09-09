@@ -1,20 +1,29 @@
-function getApiBase(): string {
+export function getApiBase(): string {
+  // 1. Explicit env configuration takes highest priority
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl.trim() !== "") {
+    return envUrl.trim().replace(/\/$/, "");
+  }
+
+  // 2. In browser environment:
   if (typeof window !== "undefined") {
-    // In browser: if remote IP or domain, always use relative path "" so Next.js proxies to backend
-    const envUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
-      return envUrl;
+    const hostname = window.location.hostname;
+    // When running locally on developer machine, communicate directly with FastAPI backend on port 8000
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:8000";
     }
+    // In production on VPS / domain behind Nginx reverse proxy, use relative path ""
     return "";
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+  // 3. Node / SSR environment fallback
+  return "http://127.0.0.1:8000";
 }
 
-const API_BASE = getApiBase();
-
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${API_BASE}${cleanPath}`;
+  const url = `${base}${cleanPath}`;
   const res = await fetch(url, {
     ...options,
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -35,8 +44,9 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T> {
+  const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${API_BASE}${cleanPath}`;
+  const url = `${base}${cleanPath}`;
   const res = await fetch(url, {
     method: "POST",
     body: formData,
@@ -59,7 +69,7 @@ async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T>
 export function getMediaUrl(path: string): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const base = API_BASE ? API_BASE.replace(/\/$/, "") : "";
+  const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${base}${cleanPath}`;
 }
@@ -113,7 +123,8 @@ export const api = {
     data: any,
     onEvent: (event: any) => void
   ): Promise<any> => {
-    const res = await fetch(`${API_BASE}/api/pipeline/run-stream`, {
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/pipeline/run-stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

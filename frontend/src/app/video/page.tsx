@@ -317,6 +317,18 @@ function VideoStudioContent() {
     }
   }, [searchParams]);
 
+  // Close popovers on click outside
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
+        closeAllPopovers();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const closeAllPopovers = () => {
     setModelPopoverOpen(false);
     setRatioPopoverOpen(false);
@@ -572,7 +584,7 @@ function VideoStudioContent() {
   const videoCostInr = Math.round(videoCostUsd * 83.5 * 100) / 100;
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-32 font-jakarta">
+    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-48 font-jakarta">
       {/* Top Bar: Mode Selector Tabs & Studio Guide Trigger */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl">
@@ -1039,183 +1051,199 @@ function VideoStudioContent() {
         )}
       </div>
 
-      {/* Floating Bottom Studio Dock (Matching Image Studio Architecture) */}
-      <div className="fixed bottom-6 inset-x-0 mx-auto max-w-4xl z-40 px-3 pointer-events-auto">
-        <div className="bg-white/90 dark:bg-[#0c0c12]/90 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.12] rounded-3xl p-3 sm:p-3.5 shadow-2xl space-y-2.5 transition-all">
-          {/* Row 1: Integrated Prompt Input Bar & AI Director (Auto-Expanding) */}
-          <div className="relative flex items-start gap-2">
-            <textarea
-              ref={promptTextareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  requestVideoConfirm();
-                }
-              }}
-              placeholder={
-                mode === "text_to_video"
-                  ? "Describe scene cinematography, camera trajectory, lighting, or click 'AI Director'..."
-                  : mode === "first_to_last_frame"
-                  ? "Describe morph transition dynamics, lighting shifts, speed ramps..."
-                  : mode === "motion_transfer"
-                  ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
-                  : "Describe camera motion vector, subject dynamics, or click 'AI Director'..."
+      {/* Floating Bottom Studio Dock (Fixed at bottom of viewport, matching Image Studio) */}
+      <div
+        ref={dockRef}
+        data-lenis-prevent="true"
+        className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
+      >
+        {/* Row 1: Integrated Prompt Input Bar & AI Director (Auto-Expanding) */}
+        <div className="relative flex items-start gap-2">
+          <textarea
+            ref={promptTextareaRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                requestVideoConfirm();
               }
-              className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-3 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-36 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto transition-all"
-            />
+            }}
+            placeholder={
+              mode === "text_to_video"
+                ? "Describe scene cinematography, camera trajectory, lighting, or click 'AI Director'..."
+                : mode === "first_to_last_frame"
+                ? "Describe morph transition dynamics, lighting shifts, speed ramps..."
+                : mode === "motion_transfer"
+                ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
+                : "Describe camera motion vector, subject dynamics, or click 'AI Director'..."
+            }
+            className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-3 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-36 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto transition-all"
+          />
 
-            {/* Quick Actions Inside Prompt Bar */}
-            <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
-              <button
-                type="button"
-                onClick={runDirectorAgent}
-                disabled={directing}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                title="Direct scene with OpenAI GPT-4o Copilot"
-              >
-                <Wand2 className={cn("w-3 h-3 text-amber-500", directing && "animate-spin")} />
-                <span className="hidden sm:inline">AI Director</span>
-              </button>
+          {/* Quick Actions Inside Prompt Bar */}
+          <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
+            <button
+              type="button"
+              onClick={runDirectorAgent}
+              disabled={directing}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              title="Direct scene with OpenAI GPT-4o Copilot"
+            >
+              <Wand2 className={cn("w-3 h-3 text-amber-500", directing && "animate-spin")} />
+              <span className="hidden sm:inline">AI Director</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setShowNegativePrompt((p) => !p)}
-                className={cn(
-                  "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
-                  showNegativePrompt || negativePrompt
-                    ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent"
-                    : "bg-white dark:bg-zinc-800 text-zinc-500 border-black/[0.08] dark:border-white/[0.08]"
-                )}
-                title="Toggle Negative Prompt"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowNegativePrompt((p) => !p)}
+              className={cn(
+                "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
+                showNegativePrompt || negativePrompt
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent"
+                  : "bg-white dark:bg-zinc-800 text-zinc-500 border-black/[0.08] dark:border-white/[0.08]"
+              )}
+              title="Toggle Negative Prompt"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+            </button>
           </div>
+        </div>
 
-          {/* Negative Prompt Expandable Input */}
-          {showNegativePrompt && (
-            <div className="animate-in fade-in slide-in-from-bottom-1 duration-150">
-              <input
-                type="text"
-                value={negativePrompt}
-                onChange={(e) => setNegativePrompt(e.target.value)}
-                placeholder="Negative prompt (e.g. jitter, flickering, blur, morph artifacts, extra limbs)..."
-                className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono"
-              />
-            </div>
-          )}
+        {/* Negative Prompt Expandable Input */}
+        {showNegativePrompt && (
+          <div className="animate-in fade-in slide-in-from-bottom-1 duration-150">
+            <input
+              type="text"
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              placeholder="Negative prompt (e.g. jitter, flickering, blur, morph artifacts, extra limbs)..."
+              className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono"
+            />
+          </div>
+        )}
 
-          {/* Director Notes Badge (if generated) */}
-          {directorNotes && (
-            <div className="p-2.5 rounded-xl bg-zinc-100/80 dark:bg-[#060609] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
-              <span className="truncate max-w-md">
-                DIRECTOR: {directorNotes.notes} ({directorNotes.lighting})
-              </span>
+        {/* Director Notes Badge (if generated) */}
+        {directorNotes && (
+          <div className="p-2.5 rounded-xl bg-zinc-100/80 dark:bg-[#060609] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
+            <span className="truncate max-w-md">
+              DIRECTOR: {directorNotes.notes} ({directorNotes.lighting})
+            </span>
+            <button
+              type="button"
+              onClick={() => setDirectorNotes(null)}
+              className="text-zinc-400 hover:text-black dark:hover:text-white ml-2"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Row 2: Control Pills Strip + Main Render CTA */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
+          {/* Left Controls Group */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {/* 1. Video Engine Selector Pill */}
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => setDirectorNotes(null)}
-                className="text-zinc-400 hover:text-black dark:hover:text-white ml-2"
+                onClick={() => {
+                  closeAllPopovers();
+                  setModelPopoverOpen(!modelPopoverOpen);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-heading font-bold text-zinc-900 dark:text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
               >
-                <X className="w-3 h-3" />
+                <Sparkle className="w-3.5 h-3.5 text-emerald-500" />
+                <span>{activeModel.label}</span>
+                <ChevronUp
+                  className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", modelPopoverOpen && "rotate-180")}
+                />
               </button>
-            </div>
-          )}
 
-          {/* Row 2: Control Pills Strip + Main Render CTA */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
-            {/* Left Controls Group */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              {/* 1. Video Engine Selector Pill */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeAllPopovers();
-                    setModelPopoverOpen(!modelPopoverOpen);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-heading font-bold text-zinc-900 dark:text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              {/* Model Popover */}
+              {modelPopoverOpen && (
+                <div
+                  data-lenis-prevent="true"
+                  className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5"
                 >
-                  <Sparkle className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>{activeModel.label}</span>
-                  <ChevronUp
-                    className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", modelPopoverOpen && "rotate-180")}
-                  />
-                </button>
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={modelSearchQuery}
+                      onChange={(e) => setModelSearchQuery(e.target.value)}
+                      placeholder="Search video engines..."
+                      className="w-full bg-zinc-100 dark:bg-[#14141c] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta"
+                    />
+                  </div>
 
-                {/* Model Popover */}
-                {modelPopoverOpen && (
-                  <div className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5">
-                    {/* Search Bar */}
-                    <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        value={modelSearchQuery}
-                        onChange={(e) => setModelSearchQuery(e.target.value)}
-                        placeholder="Search video engines..."
-                        className="w-full bg-zinc-100 dark:bg-[#14141c] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta"
-                      />
-                    </div>
-
-                    <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center gap-1">
+                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center justify-between">
+                    <div className="flex items-center gap-1">
                       <Film className="w-3 h-3 text-amber-500" />
                       <span>Available Video Engines</span>
                     </div>
-
-                    {/* Scrollable Model List */}
-                    <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
-                      {filteredModels.map((m) => {
-                        const isSelected = model === m.value;
-                        return (
-                          <button
-                            key={m.value}
-                            type="button"
-                            onClick={() => {
-                              setModel(m.value);
-                              setModelPopoverOpen(false);
-                            }}
-                            className={cn(
-                              "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer font-jakarta",
-                              isSelected
-                                ? "bg-zinc-100 dark:bg-[#1a1a26] text-zinc-950 dark:text-white ring-1 ring-black/[0.1] dark:ring-white/[0.1]"
-                                : "hover:bg-zinc-50 dark:hover:bg-[#14141c] text-zinc-700 dark:text-zinc-300"
-                            )}
-                          >
-                            <div className="space-y-0.5 min-w-0 pr-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold font-heading">{m.label}</span>
-                                {m.badge && (
-                                  <span
-                                    className={cn(
-                                      "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider",
-                                      m.badge === "FREE LOCAL"
-                                        ? "bg-emerald-400/20 text-emerald-600 dark:text-emerald-400"
-                                        : m.badge === "ACTIVE"
-                                        ? "bg-blue-400/20 text-blue-600 dark:text-blue-400"
-                                        : m.badge === "CINEMA" || m.badge === "PRO"
-                                        ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
-                                        : "bg-black/10 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
-                                    )}
-                                  >
-                                    {m.badge}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">
-                                {m.description}
-                              </p>
-                            </div>
-                            {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-1" />}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <span className="text-[9px] text-zinc-400 font-normal font-mono">
+                      {filteredModels.length} models
+                    </span>
                   </div>
-                )}
-              </div>
+
+                  {/* Scrollable Model List */}
+                  <div
+                    data-lenis-prevent="true"
+                    onWheel={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    className="max-h-72 sm:max-h-80 overflow-y-auto overscroll-contain space-y-1 pr-1.5 custom-scrollbar"
+                  >
+                    {filteredModels.map((m) => {
+                      const isSelected = model === m.value;
+                      return (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => {
+                            setModel(m.value);
+                            setModelPopoverOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer font-jakarta",
+                            isSelected
+                              ? "bg-zinc-100 dark:bg-[#1a1a26] text-zinc-950 dark:text-white ring-1 ring-black/[0.1] dark:ring-white/[0.1]"
+                              : "hover:bg-zinc-50 dark:hover:bg-[#14141c] text-zinc-700 dark:text-zinc-300"
+                          )}
+                        >
+                          <div className="space-y-0.5 min-w-0 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold font-heading">{m.label}</span>
+                              {m.badge && (
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider",
+                                    m.badge === "FREE LOCAL"
+                                      ? "bg-emerald-400/20 text-emerald-600 dark:text-emerald-400"
+                                      : m.badge === "ACTIVE"
+                                      ? "bg-blue-400/20 text-blue-600 dark:text-blue-400"
+                                      : m.badge === "CINEMA" || m.badge === "PRO"
+                                      ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+                                      : "bg-black/10 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
+                                  )}
+                                >
+                                  {m.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">
+                              {m.description}
+                            </p>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
               {/* 2. Aspect Ratio Pill */}
               <div className="relative">
@@ -1236,7 +1264,10 @@ function VideoStudioContent() {
                 </button>
 
                 {ratioPopoverOpen && (
-                  <div className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                  <div
+                    data-lenis-prevent="true"
+                    className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1"
+                  >
                     <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1 font-semibold">
                       Aspect Ratio
                     </div>
@@ -1287,7 +1318,10 @@ function VideoStudioContent() {
                   </button>
 
                   {motionPopoverOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5">
+                    <div
+                      data-lenis-prevent="true"
+                      className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5"
+                    >
                       <div className="flex items-center justify-between px-1">
                         <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
                           Camera Motion Vector
@@ -1368,7 +1402,10 @@ function VideoStudioContent() {
                 </button>
 
                 {durationPopoverOpen && (
-                  <div className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+                  <div
+                    data-lenis-prevent="true"
+                    className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
                         Clip Duration
@@ -1388,7 +1425,7 @@ function VideoStudioContent() {
                             "flex-1 py-1 rounded text-[10px] border text-center transition-colors cursor-pointer",
                             duration === d
                               ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                              : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                              : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                           )}
                         >
                           {d}s
@@ -1442,7 +1479,10 @@ function VideoStudioContent() {
                 </button>
 
                 {specPopoverOpen && (
-                  <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+                  <div
+                    data-lenis-prevent="true"
+                    className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3"
+                  >
                     {/* Resolution */}
                     <div className="space-y-1">
                       <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
@@ -1542,7 +1582,6 @@ function VideoStudioContent() {
             </button>
           </div>
         </div>
-      </div>
 
       {/* Vault Picker Modal */}
       {vaultOpen && (
@@ -1562,7 +1601,12 @@ function VideoStudioContent() {
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto flex-1">
+            <div
+              data-lenis-prevent="true"
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              className="p-4 overflow-y-auto flex-1 custom-scrollbar"
+            >
               {loadingVault ? (
                 <div className="py-12 text-center text-xs text-zinc-500 font-mono">Loading vault images...</div>
               ) : vaultImages.length === 0 ? (

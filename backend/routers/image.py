@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/image", tags=["Image Generation"])
 
 class ImageRequest(BaseModel):
     prompt: str
+    negative_prompt: Optional[str] = ""
     model: str = "dall-e-3"  # dall-e-3, flux-schnell, gpt-image-1, gpt-image-2
     size: str = "1792x1024"
     quality: str = "hd"  # standard, hd, ultra

@@ -11,6 +11,12 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       gestureOrientation: "vertical",
       smoothWheel: true,
       touchMultiplier: 1.5,
+      prevent: (node) => {
+        if (!node || !(node instanceof HTMLElement)) return false;
+        return !!node.closest(
+          "[data-lenis-prevent], .overflow-y-auto, .overflow-y-scroll, .custom-scrollbar, textarea, [role='dialog']"
+        );
+      },
     });
 
     let rafId: number;
