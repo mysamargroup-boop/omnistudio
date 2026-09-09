@@ -36,8 +36,9 @@ import {
   ChevronUp,
   BookOpen,
   Wand2,
-  Copy,
   CheckCircle2,
+  Paperclip,
+  UploadCloud,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -243,6 +244,19 @@ function VideoStudioContent() {
   const [sourceVideoUrl, setSourceVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
+  // Keyframe Upload State & Drag State
+  const [uploadingStartImage, setUploadingStartImage] = useState(false);
+  const [uploadingEndImage, setUploadingEndImage] = useState(false);
+  const [startDragOver, setStartDragOver] = useState(false);
+  const [endDragOver, setEndDragOver] = useState(false);
+  const [videoDragOver, setVideoDragOver] = useState(false);
+
+  // Hidden File Input Refs for direct native file picking
+  const startFileInputRef = useRef<HTMLInputElement>(null);
+  const endFileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const dockFileInputRef = useRef<HTMLInputElement>(null);
+
   // Prompt & OpenAI Director Agent State
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
@@ -354,22 +368,79 @@ function VideoStudioContent() {
     setLoadingVault(false);
   };
 
-  const handleSourceVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleStartImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingStartImage(true);
+    try {
+      const res = await api.uploadVideoKeyframe(file);
+      const url = typeof res === "string" ? res : res?.url;
+      if (url) {
+        setStartImage(url);
+      }
+    } catch (err) {
+      console.error("Failed to upload start keyframe:", err);
+    } finally {
+      setUploadingStartImage(false);
+    }
+  };
+
+  const handleEndImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingEndImage(true);
+    try {
+      const res = await api.uploadVideoKeyframe(file);
+      const url = typeof res === "string" ? res : res?.url;
+      if (url) {
+        setEndImage(url);
+      }
+    } catch (err) {
+      console.error("Failed to upload end keyframe:", err);
+    } finally {
+      setUploadingEndImage(false);
+    }
+  };
+
+  const handleDockImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingStartImage(true);
+    try {
+      const res = await api.uploadVideoKeyframe(file);
+      const url = typeof res === "string" ? res : res?.url;
+      if (url) {
+        setStartImage(url);
+        if (mode === "text_to_video") {
+          setMode("first_frame");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to upload keyframe from dock:", err);
+    } finally {
+      setUploadingStartImage(false);
+    }
+  };
+
+  const handleVideoFileProcess = async (file: File) => {
     if (!file) return;
     setSourceVideoFile(file);
     setUploadingVideo(true);
     try {
-      const res = await (api as any).uploadSourceVideo(file);
+      const res = await api.uploadSourceVideo(file);
       const url = typeof res === "string" ? res : res?.url;
       if (url) {
         setSourceVideoUrl(url);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to upload source video:", err);
     } finally {
       setUploadingVideo(false);
     }
+  };
+
+  const handleSourceVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await handleVideoFileProcess(file);
+    e.target.value = "";
   };
 
   // Run Parallel OpenAI Director Agent
@@ -782,14 +853,42 @@ function VideoStudioContent() {
                       <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
                         {mode === "motion_transfer" ? "TARGET STILL IMAGE" : "START FRAME (KEYFRAME 01)"}
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => openVaultPicker("start")}
-                        className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                      >
-                        <FolderArchive className="h-3 w-3" />
-                        <span>VAULT</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          ref={startFileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleStartImageUpload(f);
+                            e.target.value = "";
+                          }}
+                          disabled={uploadingStartImage}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => startFileInputRef.current?.click()}
+                          disabled={uploadingStartImage}
+                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 border border-black/[0.12] dark:border-white/[0.12] px-2.5 py-1 rounded-full bg-white dark:bg-[#12121a] hover:bg-zinc-100 dark:hover:bg-[#1a1a26] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                          title="Upload image from computer"
+                        >
+                          {uploadingStartImage ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />
+                          ) : (
+                            <Upload className="h-3 w-3 text-emerald-500" />
+                          )}
+                          <span className="font-semibold">{uploadingStartImage ? "UPLOADING..." : "UPLOAD"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openVaultPicker("start")}
+                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                        >
+                          <FolderArchive className="h-3 w-3" />
+                          <span>VAULT</span>
+                        </button>
+                      </div>
                     </div>
 
                     {startImage ? (
@@ -799,11 +898,20 @@ function VideoStudioContent() {
                           alt="Start Frame"
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startFileInputRef.current?.click()}
+                            className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-xs transition-colors"
+                            title="Replace image with a new upload"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>Replace</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => setStartImage("")}
-                            className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/40 cursor-pointer"
+                            className="p-1.5 rounded-lg bg-red-500/30 text-white hover:bg-red-500/70 cursor-pointer backdrop-blur-xs transition-colors"
                             title="Remove image"
                           >
                             <X className="h-4 w-4" />
@@ -815,16 +923,65 @@ function VideoStudioContent() {
                       </div>
                     ) : (
                       <div
-                        onClick={() => openVaultPicker("start")}
-                        className="border border-dashed border-black/[0.15] dark:border-white/[0.15] rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:border-black/40 dark:hover:border-white/40 transition-colors bg-white/50 dark:bg-black/20"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setStartDragOver(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          setStartDragOver(false);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setStartDragOver(false);
+                          const file = e.dataTransfer.files?.[0];
+                          if (file && file.type.startsWith("image/")) {
+                            handleStartImageUpload(file);
+                          }
+                        }}
+                        onClick={() => startFileInputRef.current?.click()}
+                        className={cn(
+                          "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white/50 dark:bg-black/20 group",
+                          startDragOver
+                            ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                            : "border-black/[0.15] dark:border-white/[0.15] hover:border-emerald-500/60 dark:hover:border-emerald-500/60 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                        )}
                       >
-                        <ImageIcon className="h-7 w-7 text-zinc-400 mb-2" />
-                        <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                          Select {mode === "motion_transfer" ? "Target Image" : "Start Keyframe"}
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                          Pick from vault or paste file path below
-                        </span>
+                        {uploadingStartImage ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                            <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
+                              Uploading Keyframe...
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                              <Upload className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                              Upload {mode === "motion_transfer" ? "Target Image" : "Start Keyframe"}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-500 mt-1">
+                              Drag & drop or click to browse (PNG, JPG, WebP)
+                            </span>
+                            <div className="mt-2.5 flex items-center gap-2">
+                              <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                                Click to Upload
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openVaultPicker("start");
+                                }}
+                                className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 hover:bg-zinc-300 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors"
+                              >
+                                Or Pick Vault
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -844,14 +1001,42 @@ function VideoStudioContent() {
                         <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
                           END FRAME (KEYFRAME 02)
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => openVaultPicker("end")}
-                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                        >
-                          <FolderArchive className="h-3 w-3" />
-                          <span>VAULT</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            ref={endFileInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleEndImageUpload(f);
+                              e.target.value = "";
+                            }}
+                            disabled={uploadingEndImage}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => endFileInputRef.current?.click()}
+                            disabled={uploadingEndImage}
+                            className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 border border-black/[0.12] dark:border-white/[0.12] px-2.5 py-1 rounded-full bg-white dark:bg-[#12121a] hover:bg-zinc-100 dark:hover:bg-[#1a1a26] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                            title="Upload destination keyframe"
+                          >
+                            {uploadingEndImage ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />
+                            ) : (
+                              <Upload className="h-3 w-3 text-emerald-500" />
+                            )}
+                            <span className="font-semibold">{uploadingEndImage ? "UPLOADING..." : "UPLOAD"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openVaultPicker("end")}
+                            className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                          >
+                            <FolderArchive className="h-3 w-3" />
+                            <span>VAULT</span>
+                          </button>
+                        </div>
                       </div>
 
                       {endImage ? (
@@ -861,11 +1046,20 @@ function VideoStudioContent() {
                             alt="End Frame"
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => endFileInputRef.current?.click()}
+                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-xs transition-colors"
+                              title="Replace end frame"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              <span>Replace</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => setEndImage("")}
-                              className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/40 cursor-pointer"
+                              className="p-1.5 rounded-lg bg-red-500/30 text-white hover:bg-red-500/70 cursor-pointer backdrop-blur-xs transition-colors"
                               title="Remove image"
                             >
                               <X className="h-4 w-4" />
@@ -877,16 +1071,65 @@ function VideoStudioContent() {
                         </div>
                       ) : (
                         <div
-                          onClick={() => openVaultPicker("end")}
-                          className="border border-dashed border-black/[0.15] dark:border-white/[0.15] rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:border-black/40 dark:hover:border-white/40 transition-colors bg-white/50 dark:bg-black/20"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setEndDragOver(true);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            setEndDragOver(false);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setEndDragOver(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file && file.type.startsWith("image/")) {
+                              handleEndImageUpload(file);
+                            }
+                          }}
+                          onClick={() => endFileInputRef.current?.click()}
+                          className={cn(
+                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white/50 dark:bg-black/20 group",
+                            endDragOver
+                              ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                              : "border-black/[0.15] dark:border-white/[0.15] hover:border-emerald-500/60 dark:hover:border-emerald-500/60 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                          )}
                         >
-                          <ImageIcon className="h-7 w-7 text-zinc-400 mb-2" />
-                          <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                            Select Destination Keyframe
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                            Destination frame to morph towards
-                          </span>
+                          {uploadingEndImage ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                              <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
+                                Uploading Keyframe...
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Upload className="h-5 w-5" />
+                              </div>
+                              <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                                Upload Destination Keyframe
+                              </span>
+                              <span className="text-[10px] font-mono text-zinc-500 mt-1">
+                                Drag & drop or click to browse (PNG, JPG, WebP)
+                              </span>
+                              <div className="mt-2.5 flex items-center gap-2">
+                                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                                  Click to Upload
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openVaultPicker("end");
+                                  }}
+                                  className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 hover:bg-zinc-300 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors"
+                                >
+                                  Or Pick Vault
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
 
@@ -907,6 +1150,28 @@ function VideoStudioContent() {
                         <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
                           SOURCE MOTION VIDEO (MP4/MOV)
                         </label>
+                        <input
+                          ref={videoFileInputRef}
+                          type="file"
+                          accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+                          className="hidden"
+                          onChange={handleSourceVideoUpload}
+                          disabled={uploadingVideo}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => videoFileInputRef.current?.click()}
+                          disabled={uploadingVideo}
+                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 border border-black/[0.12] dark:border-white/[0.12] px-2.5 py-1 rounded-full bg-white dark:bg-[#12121a] hover:bg-zinc-100 dark:hover:bg-[#1a1a26] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                          title="Upload source video file"
+                        >
+                          {uploadingVideo ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />
+                          ) : (
+                            <Upload className="h-3 w-3 text-emerald-500" />
+                          )}
+                          <span className="font-semibold">{uploadingVideo ? "UPLOADING..." : "UPLOAD VIDEO"}</span>
+                        </button>
                       </div>
 
                       {sourceVideoUrl ? (
@@ -919,14 +1184,23 @@ function VideoStudioContent() {
                             loop
                             muted
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => videoFileInputRef.current?.click()}
+                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-xs transition-colors"
+                              title="Upload new video"
+                            >
+                              <Upload className="h-3.5 w-3.5" />
+                              <span>Replace</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
                                 setSourceVideoUrl("");
                                 setSourceVideoFile(null);
                               }}
-                              className="p-1.5 rounded-full bg-white/20 text-white hover:bg-white/40 cursor-pointer"
+                              className="p-1.5 rounded-lg bg-red-500/30 text-white hover:bg-red-500/70 cursor-pointer backdrop-blur-xs transition-colors"
                               title="Remove video"
                             >
                               <X className="h-4 w-4" />
@@ -937,33 +1211,57 @@ function VideoStudioContent() {
                           </span>
                         </div>
                       ) : (
-                        <label className="border border-dashed border-black/[0.15] dark:border-white/[0.15] rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:border-black/40 dark:hover:border-white/40 transition-colors bg-white/50 dark:bg-black/20 relative">
-                          <input
-                            type="file"
-                            accept="video/*"
-                            className="hidden"
-                            onChange={handleSourceVideoUpload}
-                            disabled={uploadingVideo}
-                          />
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setVideoDragOver(true);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            setVideoDragOver(false);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setVideoDragOver(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file && file.type.startsWith("video/")) {
+                              handleVideoFileProcess(file);
+                            }
+                          }}
+                          onClick={() => videoFileInputRef.current?.click()}
+                          className={cn(
+                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white/50 dark:bg-black/20 group",
+                            videoDragOver
+                              ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                              : "border-black/[0.15] dark:border-white/[0.15] hover:border-emerald-500/60 dark:hover:border-emerald-500/60 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                          )}
+                        >
                           {uploadingVideo ? (
-                            <>
-                              <Loader2 className="h-7 w-7 text-zinc-400 mb-2 animate-spin" />
+                            <div className="flex flex-col items-center gap-2">
+                              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
                               <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
                                 Uploading motion track...
                               </span>
-                            </>
+                            </div>
                           ) : (
                             <>
-                              <Upload className="h-7 w-7 text-zinc-400 mb-2" />
-                              <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
+                              <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Film className="h-5 w-5" />
+                              </div>
+                              <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                                 Upload Source Motion Video
                               </span>
                               <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                                Extract actor motion & camera dynamics
+                                Drag & drop or click to browse (MP4, MOV, WebM)
                               </span>
+                              <div className="mt-2.5">
+                                <span className="text-[9px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                                  Click to Upload Motion Video
+                                </span>
+                              </div>
                             </>
                           )}
-                        </label>
+                        </div>
                       )}
 
                       <input
@@ -1057,56 +1355,114 @@ function VideoStudioContent() {
         data-lenis-prevent="true"
         className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
       >
-        {/* Row 1: Professional Studio Prompt Input Bar (Auto-Expanding, Clean & Minimalist) */}
-        <div className="relative flex items-start rounded-2xl bg-zinc-100/80 dark:bg-[#07070b]/90 border border-black/[0.08] dark:border-white/[0.1] focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-zinc-400/20 dark:focus-within:ring-zinc-500/20 transition-all p-1">
-          <textarea
-            ref={promptTextareaRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                requestVideoConfirm();
-              }
-            }}
-            placeholder={
-              mode === "text_to_video"
-                ? "Describe scene cinematography, camera trajectory, lighting, motion dynamics..."
-                : mode === "first_to_last_frame"
-                ? "Describe morph transition dynamics, lighting shifts, speed ramps..."
-                : mode === "motion_transfer"
-                ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
-                : "Describe camera motion vector, subject dynamics, scene lighting..."
-            }
-            className="w-full bg-transparent border-none px-3.5 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-16 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto"
-          />
+        <input
+          ref={dockFileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleDockImageUpload(f);
+            e.target.value = "";
+          }}
+          disabled={uploadingStartImage}
+        />
 
-          {/* Prompt Bar Actions (Clear & Negative Filter) */}
-          <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
-            {prompt.trim() && (
+        {/* Row 1: Professional Studio Prompt Input Bar (Auto-Expanding, Clean & Minimalist) */}
+        <div className="relative flex flex-col rounded-2xl bg-zinc-100/80 dark:bg-[#07070b]/90 border border-black/[0.08] dark:border-white/[0.1] focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-zinc-400/20 dark:focus-within:ring-zinc-500/20 transition-all p-1">
+          {/* Staged Keyframe Chip in Prompt Bar */}
+          {startImage && (
+            <div className="flex items-center gap-1.5 px-3 pt-2 pb-0.5">
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white dark:bg-[#12121a] text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.1] shadow-xs">
+                <img
+                  src={getMediaUrl(startImage)}
+                  alt="Keyframe preview"
+                  className="w-4 h-4 object-cover rounded"
+                />
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">KEYFRAME:</span>
+                <span className="truncate max-w-[160px]">{startImage.split("/").pop()}</span>
+                <button
+                  type="button"
+                  onClick={() => setStartImage("")}
+                  className="p-0.5 hover:text-red-500 rounded cursor-pointer"
+                  title="Remove keyframe"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="relative flex items-start w-full">
+            <textarea
+              ref={promptTextareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  requestVideoConfirm();
+                }
+              }}
+              placeholder={
+                mode === "text_to_video"
+                  ? "Describe scene cinematography, camera trajectory, lighting, motion dynamics..."
+                  : mode === "first_to_last_frame"
+                  ? "Describe morph transition dynamics, lighting shifts, speed ramps..."
+                  : mode === "motion_transfer"
+                  ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
+                  : "Describe camera motion vector, subject dynamics, scene lighting..."
+              }
+              className="w-full bg-transparent border-none px-3.5 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-24 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto"
+            />
+
+            {/* Prompt Bar Actions (Attach Image, Clear & Negative Filter) */}
+            <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
+              {/* Direct Image Attachment / Upload Keyframe button */}
               <button
                 type="button"
-                onClick={() => setPrompt("")}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                title="Clear prompt"
+                onClick={() => dockFileInputRef.current?.click()}
+                disabled={uploadingStartImage}
+                className={cn(
+                  "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer flex items-center gap-1",
+                  startImage
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-xs"
+                    : "bg-white/80 dark:bg-zinc-800/80 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+                )}
+                title={startImage ? "Change keyframe image" : "Attach image to animate (Image to Video)"}
               >
-                <X className="w-3.5 h-3.5" />
+                {uploadingStartImage ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                ) : (
+                  <Paperclip className="w-3.5 h-3.5" />
+                )}
               </button>
-            )}
 
-            <button
-              type="button"
-              onClick={() => setShowNegativePrompt((p) => !p)}
-              className={cn(
-                "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
-                showNegativePrompt || negativePrompt
-                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
-                  : "bg-white/80 dark:bg-zinc-800/80 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+              {prompt.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setPrompt("")}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Clear prompt"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               )}
-              title="Toggle Negative Prompt (Exclude elements)"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-            </button>
+
+              <button
+                type="button"
+                onClick={() => setShowNegativePrompt((p) => !p)}
+                className={cn(
+                  "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
+                  showNegativePrompt || negativePrompt
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
+                    : "bg-white/80 dark:bg-zinc-800/80 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+                )}
+                title="Toggle Negative Prompt (Exclude elements)"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 

@@ -72,6 +72,15 @@ async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T>
 
 export function getMediaUrl(path: string): string {
   if (!path) return "";
+
+  // If path is a Cloudflare R2 URL, route through backend proxy so it never fails with 401
+  if (path.includes("r2.dev") || path.includes("cloudflarestorage.com")) {
+    const filename = path.split("/").pop();
+    const typeFolder = path.includes("/videos/") ? "videos" : path.includes("/audio/") ? "audio" : "images";
+    const base = getApiBase();
+    return `${base}/outputs/${typeFolder}/${filename}`;
+  }
+
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;

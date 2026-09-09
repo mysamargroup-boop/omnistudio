@@ -39,7 +39,7 @@ import {
   CheckCircle2,
   Share2,
 } from "lucide-react";
-import { api, getMediaUrl } from "@/lib/api";
+import { api, getMediaUrl, getApiBase } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
@@ -325,37 +325,38 @@ export default function ImageStudioPage() {
     setLoading(true);
     setResult(null);
     setSelectedImageIndex(0);
-    setProgress(10);
-    setStageTitle("01 • Text Prompt Conditioning");
-    setStatusMessage(`Encoding CLIP prompt vectors on ${activeModel.label}...`);
+    setProgress(15);
+    setStageTitle("01 • Initializing Synthesis Engine");
+    setStatusMessage(`Dispatching prompt to ${activeModel.label}...`);
     setElapsedSeconds(0);
     const nowTime = new Date().toTimeString().split(" ")[0];
     setTelemetryLogs([
-      { timestamp: nowTime, message: `Dispatched image synthesis on model: ${model} (Batch Count: ${imageCount})` },
+      { timestamp: nowTime, message: `Dispatched synthesis request on model: ${activeModel.label} (Batch Count: ${imageCount})` },
+      { timestamp: nowTime, message: `Configured specs: ${aspectRatio} aspect ratio, ${resolution}, ${quality.toUpperCase()} quality` },
     ]);
 
     const startTimestamp = Date.now();
     const timerInterval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
-      if (elapsed === 1) {
-        setProgress(35);
-        setStageTitle("02 • Sampling Latent Noise Tensor");
-        setStatusMessage(`Denoising ${samplingSteps} steps (CFG: ${cfgScale})...`);
+      if (elapsed === 2) {
+        setProgress(50);
+        setStageTitle("02 • Neural Cloud Diffusion");
+        setStatusMessage(`Rendering scene with optics (${lens || "35mm"}, ${aperture || "f/1.4"})...`);
         setTelemetryLogs((prev) => [
           ...prev,
-          { timestamp: new Date().toTimeString().split(" ")[0], message: `Applying optical preset: ${lens}, ${aperture}, ${lighting}` },
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Applying lighting & style: ${lighting || "Natural Studio"} • ${filmStock || "Cinematic"}` },
         ]);
-      } else if (elapsed === 3) {
-        setProgress(70);
-        setStageTitle("03 • Photoreal Texture Diffusion");
-        setStatusMessage(`Refining ${resolution} micro-textures & film grain...`);
+      } else if (elapsed === 5) {
+        setProgress(80);
+        setStageTitle("03 • Finalizing High-Res Render");
+        setStatusMessage(`Receiving generated frame and saving to secure storage...`);
         setTelemetryLogs((prev) => [
           ...prev,
-          { timestamp: new Date().toTimeString().split(" ")[0], message: `Simulating ${filmStock} emulation color response` },
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Processing render output stream...` },
         ]);
-      } else if (elapsed >= 5 && elapsed < 12) {
-        setProgress((prev) => Math.min(prev + 3, 95));
+      } else if (elapsed >= 7 && elapsed < 25) {
+        setProgress((prev) => Math.min(prev + 2, 96));
       }
     }, 1000);
 
@@ -638,6 +639,14 @@ export default function ImageStudioPage() {
                 src={getMediaUrl(currentDisplayImage.url)}
                 alt="Synthesized Output"
                 className="w-full h-full object-contain max-h-[680px]"
+                onError={(e) => {
+                  const filename = currentDisplayImage.filename || currentDisplayImage.url.split("/").pop();
+                  const target = e.currentTarget;
+                  const fallback = `${getApiBase()}/outputs/images/${filename}`;
+                  if (target.src !== fallback) {
+                    target.src = fallback;
+                  }
+                }}
               />
 
               {/* Floating Top Left Specs Badge */}

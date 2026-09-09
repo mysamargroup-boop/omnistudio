@@ -276,9 +276,10 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
                     asset_type="image",
                     metadata={"prompt": req.prompt, "model": req.model, "quality": req.quality}
                 )
-                if synced.get("url"):
-                    result["url"] = synced["url"]
                 result["asset_id"] = synced.get("asset_id")
+                result["r2_url"] = synced.get("url")
+                # Ensure primary display url is always the reliable local outputs proxy
+                result["url"] = f"/outputs/images/{Path(result['local_path']).name}"
             except Exception:
                 pass
 

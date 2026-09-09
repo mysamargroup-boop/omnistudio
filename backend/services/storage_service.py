@@ -47,7 +47,8 @@ async def upload_file_to_r2(local_path: Path | str, object_name: str, content_ty
                 "success": True,
                 "provider": "Cloudflare R2",
                 "object_name": object_name,
-                "url": public_url,
+                "url": f"/outputs/{local_file.parent.name}/{local_file.name}",
+                "r2_url": public_url,
                 "size_bytes": local_file.stat().st_size
             }
         except Exception as e:

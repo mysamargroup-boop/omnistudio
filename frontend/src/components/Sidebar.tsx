@@ -19,6 +19,7 @@ import {
   Terminal,
   HardDrive,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
