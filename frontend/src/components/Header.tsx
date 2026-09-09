@@ -2,11 +2,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles } from 'lucide-react';
+import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles, BookOpen } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/ThemeProvider';
 import { useAuth } from '@/context/AuthContext';
+import HowItWorksModal from '@/components/ui/HowItWorksModal';
 
 const NAV_TABS = [
   { id: 'image', label: 'Image Studio', path: '/image' },
@@ -53,6 +54,7 @@ export default function Header() {
 
   const { user, profile, signOut } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -230,6 +232,16 @@ export default function Header() {
           </span>
         </div>
 
+        {/* How It Works Guide Trigger */}
+        <button
+          onClick={() => setHowItWorksOpen(true)}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
+          title="Studio Workflow & Model Guide"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+          <span className="hidden md:inline">How It Works</span>
+        </button>
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
@@ -307,6 +319,11 @@ export default function Header() {
           <span>Create</span>
         </button>
       </div>
+
+      <HowItWorksModal
+        isOpen={howItWorksOpen}
+        onClose={() => setHowItWorksOpen(false)}
+      />
     </header>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Image as ImageIcon,
@@ -27,225 +28,423 @@ import {
   FolderArchive,
   X,
   Plus,
+  Minus,
   Play,
   AlertCircle,
   Key,
+  ChevronUp,
+  Search,
+  BookOpen,
+  ZoomIn,
+  CheckCircle2,
+  Share2,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import Dropdown from "@/components/ui/Dropdown";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
+import HowItWorksModal from "@/components/ui/HowItWorksModal";
 
-const DIFFUSION_MODELS = [
-  { value: "gpt-image-1-mini", label: "OpenAI GPT-Image 1 Mini", description: "Fast, High-Precision Photorealism & Semantic Fidelity", badge: "ACTIVE" },
-  { value: "gpt-image-1", label: "OpenAI GPT-Image 1 Pro", description: "Flagship High-Precision Photographic Diffusion Engine", badge: "PRO" },
-  { value: "gpt-image-2", label: "OpenAI GPT-Image 2 (Next-Gen)", description: "Frontier Multimodal Diffusion with Dynamic Light Simulation", badge: "ULTRA" },
-  { value: "imagen_3", label: "Google Imagen 3 (DeepMind)", description: "Hyper-realistic Lighting & Texture Precision", badge: "ACTIVE" },
-  { value: "gemini_flash_image", label: "Google Gemini 2.5 Flash Image", description: "Ultra-Fast Multimodal Photorealism", badge: "FAST" },
-  { value: "dall-e-3", label: "DALL-E 3 HD (OpenAI Auto-Route)", description: "Auto-routes to GPT-Image 1 with 8K Clarity", badge: "PRO" },
-  { value: "flux_pro", label: "Flux.1 Pro (Black Forest Labs)", description: "State-of-the-Art Typography & Photorealism", badge: "SOTA" },
-  { value: "flux_dev", label: "Flux.1 Dev (Open Weights)", description: "High-Fidelity Guidance & Fine Detail", badge: "DEV" },
-  { value: "flux-schnell", label: "Flux.1 Schnell (Fast Latent)", description: "Speed Latent Diffusion & Rapid Generation", badge: "FAST" },
-  { value: "midjourney_v6", label: "Midjourney v6.1 (Photoreal)", description: "Cinematic Lighting, Contrast & Color Grading", badge: "PRO" },
-  { value: "recraft_v3", label: "Recraft V3 (Design & Vector)", description: "Top-Tier Brand Asset & Digital Art Engine", badge: "NEW" },
-  { value: "sd_35_large", label: "Stable Diffusion 3.5 Large", description: "Advanced Multimodal Prompt Adherence", badge: "OPEN" },
-  { value: "ideogram_v2", label: "Ideogram v2 (Typography & Art)", description: "Flawless In-Image Lettering & Graphic Design", badge: "TYPE" },
-  { value: "omni_diffusion", label: "OmniDiffusion 4.0 Pro", description: "Parametric Studio Neural Diffusion Engine", badge: "LOCAL" },
-];
+interface ModelOption {
+  value: string;
+  label: string;
+  description: string;
+  badge?: string;
+  category?: string;
+  iconType?: "openai" | "google" | "flux" | "midjourney" | "bytedance" | "custom";
+}
 
-const RESOLUTIONS = [
-  { id: "720p", label: "720p HD", sub: "1280x720" },
-  { id: "1080p", label: "1080p FHD", sub: "1920x1080" },
-  { id: "2k", label: "2K QHD", sub: "2560x1440" },
-  { id: "4k", label: "4K UHD", sub: "3840x2160" },
-  { id: "8k", label: "8K Master", sub: "7680x4320" },
+const DIFFUSION_MODELS: ModelOption[] = [
+  { value: "gpt-image-2", label: "GPT Image 2", description: "4K Images with near-perfect text rendering & skin textures", badge: "PREMIUM", category: "Featured models", iconType: "openai" },
+  { value: "gpt-image-1", label: "GPT Image 1 Pro", description: "Cinema-grade visual creation & dynamic range", badge: "PRO", category: "Featured models", iconType: "openai" },
+  { value: "gpt-image-1-mini", label: "GPT Image 1 Mini", description: "Stunning everyday images, ultra-fast generation", badge: "FAST", category: "Featured models", iconType: "openai" },
+  { value: "imagen_3", label: "Nano Banana Pro (Imagen 3)", description: "Google's flagship hyper-realistic lighting & micro-textures", badge: "ACTIVE", category: "Featured models", iconType: "google" },
+  { value: "gemini_flash_image", label: "Nano Banana 2 (Gemini Flash)", description: "Pro quality generation at flash speed", badge: "PREMIUM", category: "Google AI", iconType: "google" },
+  { value: "dall-e-3", label: "DALL-E 3 HD", description: "Auto-routes to OpenAI 8K precision pipeline", badge: "PRO", category: "OpenAI", iconType: "openai" },
+  { value: "flux_pro", label: "Flux.1 Pro (BFL)", description: "Next generation ultra-realistic studio typography & lighting", badge: "SOTA", category: "Black Forest Labs", iconType: "flux" },
+  { value: "flux-schnell", label: "Flux.1 Schnell", description: "Speed latent diffusion and rapid concept ideation", badge: "FAST", category: "Black Forest Labs", iconType: "flux" },
+  { value: "midjourney_v6", label: "Midjourney v6.1", description: "Artistic contrast, cinematic mood & editorial aesthetics", badge: "PRO", category: "Midjourney", iconType: "midjourney" },
+  { value: "seedream_pro", label: "Seedream 5.0 Pro", description: "Logically consistent images with intelligent visual reasoning", badge: "PREMIUM", category: "ByteDance", iconType: "bytedance" },
+  { value: "recraft_v3", label: "Recraft V3", description: "Top-tier vector graphics, branding & graphic design", badge: "NEW", category: "Graphic Studio", iconType: "custom" },
+  { value: "sd_35_large", label: "Stable Diffusion 3.5 Large", description: "Open frontier multimodal prompt adherence", badge: "OPEN", category: "Stability AI", iconType: "custom" },
 ];
 
 const RATIOS = [
-  { id: "16:9", label: "16:9", sub: "Landscape", iconClass: "w-6 h-3.5" },
-  { id: "9:16", label: "9:16", sub: "Reels / Story", iconClass: "w-3.5 h-6" },
-  { id: "1:1", label: "1:1", sub: "Square", iconClass: "w-4 h-4" },
-  { id: "4:3", label: "4:3", sub: "Classic / TV", iconClass: "w-5 h-4" },
-  { id: "21:9", label: "21:9", sub: "Cinemascope", iconClass: "w-7 h-3" },
+  { id: "16:9", label: "16:9", sub: "Cinema / YouTube" },
+  { id: "9:16", label: "9:16", sub: "Reels / TikTok" },
+  { id: "1:1", label: "1:1", sub: "Square Social" },
+  { id: "4:3", label: "4:3", sub: "Classic Photography" },
+  { id: "21:9", label: "21:9", sub: "Cinemascope Ultrawide" },
 ];
 
 const QUALITIES = [
-  { id: "standard", label: "Standard", desc: "Fast Draft" },
-  { id: "hd", label: "HD Studio", desc: "High Clarity" },
-  { id: "ultra", label: "Master 8K", desc: "RAW Detail" },
+  { id: "standard", label: "Standard", sub: "Fast Draft" },
+  { id: "hd", label: "High", sub: "Studio Clarity" },
+  { id: "ultra", label: "Master 8K", sub: "RAW Details & Micro-Textures" },
+];
+
+const RESOLUTIONS = [
+  { id: "720p", label: "720p", sub: "1280x720 Draft" },
+  { id: "1080p", label: "1080p", sub: "1920x1080 FHD" },
+  { id: "2k", label: "2K", sub: "2560x1440 QHD" },
+  { id: "4k", label: "4K", sub: "3840x2160 UHD" },
 ];
 
 const LENSES = [
-  { id: "16mm Ultra-Wide", label: "16mm Ultra-Wide" },
-  { id: "24mm Anamorphic", label: "24mm Anamorphic" },
-  { id: "35mm Prime", label: "35mm Prime" },
-  { id: "50mm Natural", label: "50mm Natural" },
-  { id: "85mm Portrait", label: "85mm Portrait" },
-  { id: "100mm Macro", label: "100mm Macro" },
+  { id: "Auto", label: "Auto Optics", sub: "AI Director Framing" },
+  { id: "35mm Prime", label: "35mm Prime", sub: "Natural Street & Environmental" },
+  { id: "85mm Portrait", label: "85mm Portrait", sub: "Glamour Shallow DOF" },
+  { id: "24mm Anamorphic", label: "24mm Anamorphic", sub: "Cinematic Horizontal Flares" },
+  { id: "50mm Natural", label: "50mm Natural", sub: "Standard Eye-Level" },
+  { id: "100mm Macro", label: "100mm Macro", sub: "Extreme Facet Detail" },
 ];
 
 const APERTURES = [
-  { id: "f/1.2", label: "f/1.2", desc: "Ultra Bokeh" },
-  { id: "f/2.8", label: "f/2.8", desc: "Portrait" },
-  { id: "f/8", label: "f/8", desc: "Landscape" },
-  { id: "f/16", label: "f/16", desc: "Deep Field" },
+  { id: "f/1.2", label: "f/1.2 Ultra Bokeh" },
+  { id: "f/2.8", label: "f/2.8 Portrait" },
+  { id: "f/8", label: "f/8 Landscape" },
+  { id: "f/16", label: "f/16 Deep Field" },
 ];
 
 const LIGHTING_PRESETS = [
-  { id: "Golden Hour Sunlight", label: "Golden Hour", desc: "Warm Sun" },
-  { id: "Volumetric God Rays", label: "God Rays", desc: "Atmospheric" },
-  { id: "Studio Softbox Lighting", label: "Studio Softbox", desc: "Clean" },
-  { id: "Cyberpunk Neon Lighting", label: "Cyberpunk Neon", desc: "Dual Tone" },
-  { id: "Moody Low-Key Chiaroscuro", label: "Chiaroscuro", desc: "Dramatic" },
-  { id: "Harsh Direct Sunlight", label: "Direct Sun", desc: "High Contrast" },
+  { id: "Golden Hour Sunlight", label: "Golden Hour", desc: "Warm Low-Angle Sun" },
+  { id: "Volumetric God Rays", label: "God Rays", desc: "Hazy Atmospheric Beams" },
+  { id: "Studio Softbox Lighting", label: "Studio Softbox", desc: "Clean Diffused Fashion" },
+  { id: "Cyberpunk Neon Lighting", label: "Cyberpunk Neon", desc: "Dual-Tone Blue & Magenta" },
+  { id: "Moody Low-Key Chiaroscuro", label: "Chiaroscuro", desc: "High Contrast Rim Light" },
 ];
 
-const FILM_STOCKS = [
-  { id: "Kodak Portra 400", label: "Kodak Portra 400", desc: "Warm Skin" },
-  { id: "Fujifilm Velvia", label: "Fuji Velvia", desc: "Vivid Tone" },
-  { id: "Hollywood Teal & Orange", label: "Teal & Orange", desc: "Blockbuster" },
-  { id: "Monochrome Silver Noir", label: "Silver Noir", desc: "B&W Film" },
-  { id: "Cinematic Bleach Bypass", label: "Bleach Bypass", desc: "Gritty" },
+const INSPIRATION_PROMPTS = [
+  {
+    title: "Cinematic Portrait",
+    prompt: "35mm film portrait of a futuristic cyberpunk traveler in rainy Tokyo, neon reflections on wet jacket, volumetric steam, f/1.4 shallow depth of field, 8k raw detail",
+  },
+  {
+    title: "Classical Sculpture",
+    prompt: "Hyperrealistic marble bust of Apollo emerging from dark liquid glass, fractures inlaid with 24k gold leaf, dramatic chiaroscuro studio rim lighting",
+  },
+  {
+    title: "Architectural Pavilion",
+    prompt: "Minimalist concrete and glass cantilevered pavilion floating over alpine mountain mist at twilight, interior warm glowing lights, architectural photography",
+  },
+  {
+    title: "Emerald Macro Facets",
+    prompt: "Cinematic extreme macro of an uncut Colombian emerald gemstone, internal crystalline refraction, subtle gold flecks, ethereal caustics, master studio lighting",
+  },
 ];
 
-const STEP_PRESETS = [
-  { value: 20, label: "20 Steps", desc: "Fast" },
-  { value: 30, label: "30 Steps", desc: "Balanced" },
-  { value: 50, label: "50 Steps", desc: "Ultra" },
-];
-
-export default function ImageStudio() {
+export default function ImageStudioPage() {
   const router = useRouter();
 
-  // Studio Mode: Single Text-to-Image vs Bulk Image-to-Image Variations
-  const [activeMode, setActiveMode] = useState<"text_to_image" | "image_variations">("text_to_image");
+  // Studio Mode: 'text_to_image' | 'image_variations'
+  const [studioMode, setStudioMode] = useState<"text_to_image" | "image_variations">("text_to_image");
 
-  // Prompt & Model (Text to Image)
+  // Core Prompt & Settings
   const [prompt, setPrompt] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [model, setModel] = useState("dall-e-3");
-  const [enhance, setEnhance] = useState(true);
-
-  // Quality, Resolution & Dimensions
-  const [resolution, setResolution] = useState("1080p");
-  const [aspectRatio, setAspectRatio] = useState("16:9");
+  const [model, setModel] = useState("gpt-image-2");
   const [quality, setQuality] = useState("hd");
-  const [style, setStyle] = useState("cinematic");
-
-  // Camera Optics & Environment
+  const [aspectRatio, setAspectRatio] = useState("16:9");
+  const [resolution, setResolution] = useState("2k");
   const [lens, setLens] = useState("35mm Prime");
-  const [aperture, setAperture] = useState("f/2.8");
-  const [lighting, setLighting] = useState("Volumetric God Rays");
+  const [aperture, setAperture] = useState("f/1.2");
+  const [lighting, setLighting] = useState("Golden Hour Sunlight");
   const [filmStock, setFilmStock] = useState("Kodak Portra 400");
-
-  // Fine-tuning Controls
   const [cfgScale, setCfgScale] = useState(7.5);
   const [samplingSteps, setSamplingSteps] = useState(30);
-  const [seed, setSeed] = useState<string>("");
+  const [seed, setSeed] = useState("");
+  const [imageCount, setImageCount] = useState<number>(1); // 1, 2, 4
+  const [negativePrompt, setNegativePrompt] = useState("");
+  const [showNegativePrompt, setShowNegativePrompt] = useState(false);
+  const [showAdvancedOptics, setShowAdvancedOptics] = useState(false);
+
+  // Popover Toggles for Floating Bottom Dock
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
+  const [ratioPopoverOpen, setRatioPopoverOpen] = useState(false);
+  const [qualityPopoverOpen, setQualityPopoverOpen] = useState(false);
+  const [resolutionPopoverOpen, setResolutionPopoverOpen] = useState(false);
+  const [opticsPopoverOpen, setOpticsPopoverOpen] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+
+  // Guide Modal State
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   // Status & Single/Multi Result
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [imageCount, setImageCount] = useState<number>(1);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
-  // ─── Image-to-Image / Bulk Variations State ───
-  const [refImageUrl, setRefImageUrl] = useState<string>("");
+  // Image-to-Image / Variations State
+  const [refImageFile, setRefImageFile] = useState<File | null>(null);
+  const [refImageUrl, setRefImageUrl] = useState("");
   const [uploadingRef, setUploadingRef] = useState(false);
-  const [varPrompt, setVarPrompt] = useState("");
-  const [batchSize, setBatchSize] = useState<number>(4);
-  const [variationStrength, setVariationStrength] = useState<number>(0.5);
+  const [variationStrength, setVariationStrength] = useState(0.65);
+  const [batchSize, setBatchSize] = useState(4);
+  const [styleExploration, setStyleExploration] = useState(true);
   const [variationsResult, setVariationsResult] = useState<any>(null);
   const [loadingVariations, setLoadingVariations] = useState(false);
-  const [copiedVarId, setCopiedVarId] = useState<number | null>(null);
 
   // Vault Picker Modal State
   const [vaultOpen, setVaultOpen] = useState(false);
-  const [vaultImages, setVaultImages] = useState<any[]>([]);
+  const [vaultImages, setVaultImages] = useState<string[]>([]);
   const [loadingVault, setLoadingVault] = useState(false);
 
-  // Confirmation Modal State (Zero Unintended API Calls)
+  // Safeguard Confirmation Modal State
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmDetails, setConfirmDetails] = useState<GenerationConfirmDetails | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"single" | "variations">("single");
 
-  const requestGenerateConfirm = () => {
-    if (!prompt.trim()) return;
-    setConfirmAction("single");
+  // Real-Time Progress States
+  const [progress, setProgress] = useState(0);
+  const [stageTitle, setStageTitle] = useState("DIFFUSION SAMPLER");
+  const [statusMessage, setStatusMessage] = useState("Conditioning text latents...");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
 
-    let costUsd = 0.030;
-    let provider = "Google AI Studio";
-    let isFree = false;
+  // Close popovers on click outside
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
+        setModelPopoverOpen(false);
+        setRatioPopoverOpen(false);
+        setQualityPopoverOpen(false);
+        setResolutionPopoverOpen(false);
+        setOpticsPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    if (model === "imagen_3" || model === "gemini_flash_image") {
-      costUsd = 0.030;
-      provider = "Google AI Studio";
-    } else if (model === "dall-e-3") {
-      costUsd = quality === "hd" || quality === "ultra" ? 0.080 : 0.040;
-      provider = "OpenAI";
-    } else if (model.includes("schnell")) {
-      costUsd = 0.003;
-      provider = "Replicate / Flux";
-    } else if (model.includes("dev")) {
-      costUsd = 0.025;
-      provider = "Replicate / Flux";
-    } else if (model.includes("pro") || model.includes("midjourney")) {
-      costUsd = 0.050;
-      provider = "Cloud Diffusion";
-    } else if (model === "omni_diffusion") {
-      costUsd = 0.000;
-      provider = "Local Hardware";
-      isFree = true;
-    }
+  const closeAllPopovers = () => {
+    setModelPopoverOpen(false);
+    setRatioPopoverOpen(false);
+    setQualityPopoverOpen(false);
+    setResolutionPopoverOpen(false);
+    setOpticsPopoverOpen(false);
+  };
 
+  // Model details
+  const activeModel = DIFFUSION_MODELS.find((m) => m.value === model) || DIFFUSION_MODELS[0];
+
+  // Batch count stepper handlers
+  const handleBatchIncrement = () => {
+    if (imageCount === 1) setImageCount(2);
+    else if (imageCount === 2) setImageCount(4);
+    else setImageCount(1);
+  };
+
+  const handleBatchDecrement = () => {
+    if (imageCount === 4) setImageCount(2);
+    else if (imageCount === 2) setImageCount(1);
+    else setImageCount(4);
+  };
+
+  // Safeguard Spend Confirmation Modal
+  const requestImageConfirm = () => {
+    if (!prompt.trim() && studioMode === "text_to_image") return;
+    if (!refImageUrl && studioMode === "image_variations") return;
+
+    const isFree = false;
+    const baseUsd = model === "gpt-image-2" ? 0.040 : model === "gpt-image-1" ? 0.035 : 0.020;
+    const costUsd = baseUsd * (studioMode === "text_to_image" ? imageCount : batchSize);
     const costInr = Math.round(costUsd * 83.5 * 100) / 100;
-    const modelObj = DIFFUSION_MODELS.find((m) => m.value === model);
 
     setConfirmDetails({
       serviceType: "image",
-      modelName: modelObj?.label || model,
-      provider,
-      prompt: prompt.trim(),
-      specs: {
-        resolution,
-        aspectRatio,
-        quality,
-        lens,
-        lighting,
-      },
+      modelName: activeModel.label,
+      provider: model.includes("gpt") || model.includes("dall") ? "OpenAI Flagship" : model.includes("imagen") ? "Google DeepMind" : "Replicate Diffusion",
+      isFree,
       costUsd,
       costInr,
-      isFree,
-    });
-    setConfirmModalOpen(true);
-  };
-
-  const requestVariationsConfirm = () => {
-    if (!refImageUrl) return;
-    setConfirmAction("variations");
-    setConfirmDetails({
-      serviceType: "image",
-      modelName: `Neural Variation Engine (${batchSize}x Variations)`,
-      provider: "Local Hardware",
-      prompt: `Generate ${batchSize} multi-angle variations from reference image`,
+      prompt: studioMode === "text_to_image" ? prompt.trim() : `Reference: ${refImageUrl.split("/").pop()}`,
       specs: {
-        batchSize,
-        variationStrength: `${Math.round(variationStrength * 100)}%`,
+        dimensions: aspectRatio,
+        resolution,
+        quality,
+        batchCount: `${studioMode === "text_to_image" ? imageCount : batchSize} variation(s)`,
+        lens,
       },
-      costUsd: 0.000,
-      costInr: 0.00,
-      isFree: true,
     });
     setConfirmModalOpen(true);
   };
 
-  const randomizeSeed = () => {
-    setSeed(Math.floor(Math.random() * 999999999).toString());
+  // AI Prompt Enhancer Copilot
+  const [enhancingPrompt, setEnhancingPrompt] = useState(false);
+  const enhancePromptText = async () => {
+    if (!prompt.trim()) return;
+    setEnhancingPrompt(true);
+    try {
+      const data = await api.enhancePrompt({ prompt, style: "cinematic" });
+      if (data && data.enhanced_prompt) {
+        setPrompt(data.enhanced_prompt);
+      } else {
+        setPrompt(
+          (prev) =>
+            `${prev.trim()}, 8k master photography, raw photo detail, hyper-realistic skin texture, 35mm prime lens at f/1.4, volumetric rim lighting, cinematic color grading, master composition`
+        );
+      }
+    } catch (_) {
+      setPrompt(
+        (prev) =>
+          `${prev.trim()}, 8k master photography, raw photo detail, hyper-realistic skin texture, 35mm prime lens at f/1.4, volumetric rim lighting, cinematic color grading, master composition`
+      );
+    } finally {
+      setEnhancingPrompt(false);
+    }
   };
 
-  // Upload source reference image
+  // Single or Multi-Variation Generation
+  const generate = async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setResult(null);
+    setSelectedImageIndex(0);
+    setProgress(10);
+    setStageTitle("01 • Text Prompt Conditioning");
+    setStatusMessage(`Encoding CLIP prompt vectors on ${activeModel.label}...`);
+    setElapsedSeconds(0);
+    const nowTime = new Date().toTimeString().split(" ")[0];
+    setTelemetryLogs([
+      { timestamp: nowTime, message: `Dispatched image synthesis on model: ${model} (Batch Count: ${imageCount})` },
+    ]);
+
+    const startTimestamp = Date.now();
+    const timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+      setElapsedSeconds(elapsed);
+      if (elapsed === 1) {
+        setProgress(35);
+        setStageTitle("02 • Sampling Latent Noise Tensor");
+        setStatusMessage(`Denoising ${samplingSteps} steps (CFG: ${cfgScale})...`);
+        setTelemetryLogs((prev) => [
+          ...prev,
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Applying optical preset: ${lens}, ${aperture}, ${lighting}` },
+        ]);
+      } else if (elapsed === 3) {
+        setProgress(70);
+        setStageTitle("03 • Photoreal Texture Diffusion");
+        setStatusMessage(`Refining ${resolution} micro-textures & film grain...`);
+        setTelemetryLogs((prev) => [
+          ...prev,
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Simulating ${filmStock} emulation color response` },
+        ]);
+      } else if (elapsed >= 5 && elapsed < 12) {
+        setProgress((prev) => Math.min(prev + 3, 95));
+      }
+    }, 1000);
+
+    try {
+      const sizeMap: Record<string, string> = {
+        "16:9": "1792x1024",
+        "9:16": "1024x1792",
+        "1:1": "1024x1024",
+        "4:3": "1536x1152",
+        "21:9": "1536x640",
+      };
+      const sizeParam = sizeMap[aspectRatio] || "1792x1024";
+
+      const data = await api.generateImage({
+        prompt: prompt.trim(),
+        negative_prompt: negativePrompt.trim(),
+        model,
+        size: sizeParam,
+        aspect_ratio: aspectRatio,
+        resolution,
+        quality,
+        style: "cinematic",
+        enhance_prompt: false,
+        lens,
+        aperture,
+        lighting,
+        film_stock: filmStock,
+        cfg_scale: cfgScale,
+        sampling_steps: samplingSteps,
+        seed: seed ? parseInt(seed, 10) : undefined,
+        count: imageCount,
+      });
+
+      setResult(data);
+      if (data && data.success) {
+        setProgress(100);
+        setStageTitle("CANVAS DIFFUSION COMPLETE");
+        setStatusMessage("Visual canvas synthesized successfully!");
+        setTelemetryLogs((prev) => [
+          ...prev,
+          {
+            timestamp: new Date().toTimeString().split(" ")[0],
+            message: `Render complete: ${data.filename || (data.images && data.images.length + " variations")}`,
+          },
+        ]);
+      }
+    } catch (e: any) {
+      setResult({ success: false, error: e.message });
+      setTelemetryLogs((prev) => [
+        ...prev,
+        { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` },
+      ]);
+    } finally {
+      clearInterval(timerInterval);
+      setLoading(false);
+    }
+  };
+
+  // Image-to-Image Variations Generation
+  const generateBulkVariations = async () => {
+    if (!refImageUrl) return;
+    setLoadingVariations(true);
+    setVariationsResult(null);
+    setProgress(15);
+    setStageTitle("01 • Reference Latent Encoding");
+    setStatusMessage(`Encoding source image features at strength ${variationStrength}...`);
+    setElapsedSeconds(0);
+    const nowTime = new Date().toTimeString().split(" ")[0];
+    setTelemetryLogs([
+      { timestamp: nowTime, message: `Generating ${batchSize}x batch variations from reference...` },
+    ]);
+
+    const startTimestamp = Date.now();
+    const timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+      setElapsedSeconds(elapsed);
+      if (elapsed === 1) {
+        setProgress(40);
+        setStageTitle("02 • Multi-Angle Camera Perturbation");
+        setStatusMessage(`Calculating ${batchSize} alternate perspective vectors...`);
+      } else if (elapsed === 3) {
+        setProgress(75);
+        setStageTitle("03 • Rendering Batch Keyframes");
+        setStatusMessage(`Denoising ${batchSize} distinct variations...`);
+      } else if (elapsed >= 5 && elapsed < 12) {
+        setProgress((prev) => Math.min(prev + 3, 95));
+      }
+    }, 1000);
+
+    try {
+      const data = await api.generateVariations({
+        reference_image_path: refImageUrl,
+        prompt: prompt.trim(),
+        batch_size: batchSize,
+        variation_strength: variationStrength,
+        style_exploration: styleExploration,
+        aspect_ratio: aspectRatio,
+        resolution,
+      });
+      setVariationsResult(data);
+      if (data && data.success) {
+        setProgress(100);
+        setStageTitle("VARIATIONS COMPLETE");
+        setStatusMessage(`Successfully generated ${data.total_generated || data.variations?.length || batchSize} variations!`);
+      }
+    } catch (e: any) {
+      setVariationsResult({ success: false, error: e.message });
+    } finally {
+      clearInterval(timerInterval);
+      setLoadingVariations(false);
+    }
+  };
+
+  // Upload reference image
   const handleRefFileUpload = async (file: File) => {
     setUploadingRef(true);
     try {
@@ -272,1252 +471,760 @@ export default function ImageStudio() {
     setLoadingVault(false);
   };
 
-  const [enhancingPrompt, setEnhancingPrompt] = useState(false);
-  const enhancePromptText = async () => {
-    if (!prompt.trim()) return;
-    setEnhancingPrompt(true);
-    try {
-      const data = await api.enhancePrompt({ prompt, style: "cinematic" });
-      if (data && data.enhanced_prompt) {
-        setPrompt(data.enhanced_prompt);
-      } else {
-        setPrompt(
-          (prev) =>
-            `${prev.trim()}, 8k master photography, raw photo detail, hyper-realistic skin texture, 35mm anamorphic prime lens, volumetric rim lighting, cinematic color grading, master composition`
-        );
-      }
-    } catch (_) {
-      setPrompt(
-        (prev) =>
-          `${prev.trim()}, 8k master photography, raw photo detail, hyper-realistic skin texture, 35mm anamorphic prime lens, volumetric rim lighting, cinematic color grading, master composition`
-      );
-    } finally {
-      setEnhancingPrompt(false);
-    }
+  // Copy prompt helper
+  const handleCopyPrompt = () => {
+    if (!prompt) return;
+    navigator.clipboard.writeText(prompt);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2000);
   };
 
-  // Real-Time Progress States
-  const [progress, setProgress] = useState(0);
-  const [stageTitle, setStageTitle] = useState("DIFFUSION SAMPLER");
-  const [statusMessage, setStatusMessage] = useState("Conditioning text latents...");
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
+  // Filtered models for search in popover
+  const filteredModels = DIFFUSION_MODELS.filter((m) => {
+    if (!modelSearchQuery.trim()) return true;
+    const q = modelSearchQuery.toLowerCase();
+    return (
+      m.label.toLowerCase().includes(q) ||
+      m.description.toLowerCase().includes(q) ||
+      (m.category && m.category.toLowerCase().includes(q))
+    );
+  });
 
-  // Generate Image (Single or Batch)
-  const generate = async () => {
-    if (!prompt.trim()) return;
-    setLoading(true);
-    setResult(null);
-    setSelectedImageIndex(0);
-    setProgress(10);
-    setStageTitle("01 • Text Prompt Conditioning");
-    setStatusMessage(`Encoding CLIP prompt vectors (${style} style)...`);
-    setElapsedSeconds(0);
-    const nowTime = new Date().toTimeString().split(" ")[0];
-    setTelemetryLogs([
-      { timestamp: nowTime, message: `Dispatched image synthesis on model: ${model} (Count: ${imageCount})` }
-    ]);
+  // Current display image from result
+  const displayImages: Array<{ url: string; filename: string }> =
+    result?.images && result.images.length > 0
+      ? result.images
+      : result?.url
+      ? [{ url: result.url, filename: result.filename || "output.png" }]
+      : [];
 
-    const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
-      setElapsedSeconds(elapsed);
-      if (elapsed === 1) {
-        setProgress(35);
-        setStageTitle("02 • Sampling Latent Noise Tensor");
-        setStatusMessage(`Denoising ${samplingSteps} steps (CFG: ${cfgScale})...`);
-        setTelemetryLogs((prev) => [
-          ...prev,
-          { timestamp: new Date().toTimeString().split(" ")[0], message: `Applying optical preset: ${lens}, ${aperture}, ${lighting}` }
-        ]);
-      } else if (elapsed === 3) {
-        setProgress(70);
-        setStageTitle("03 • Photoreal Texture Diffusion");
-        setStatusMessage(`Refining ${resolution} micro-textures & film grain...`);
-        setTelemetryLogs((prev) => [
-          ...prev,
-          { timestamp: new Date().toTimeString().split(" ")[0], message: `Simulating ${filmStock} emulation color response` }
-        ]);
-      } else if (elapsed >= 5 && elapsed < 12) {
-        setProgress((prev) => Math.min(prev + 3, 95));
-      }
-    }, 1000);
-
-    try {
-      const sizeMap: Record<string, string> = {
-        "16:9": "1792x1024",
-        "9:16": "1024x1792",
-        "1:1": "1024x1024",
-        "4:3": "1536x1152",
-        "21:9": "1536x640",
-      };
-      const sizeParam = sizeMap[aspectRatio] || "1792x1024";
-
-      const data = await api.generateImage({
-        prompt: prompt.trim(),
-        negative_prompt: negativePrompt.trim(),
-        model,
-        size: sizeParam,
-        aspect_ratio: aspectRatio,
-        resolution,
-        quality,
-        style,
-        enhance_prompt: enhance,
-        enhance_style: "cinematic",
-        lens,
-        aperture,
-        lighting,
-        film_stock: filmStock,
-        cfg_scale: cfgScale,
-        sampling_steps: samplingSteps,
-        seed: seed ? parseInt(seed, 10) : undefined,
-        count: imageCount,
-      });
-      setResult(data);
-      if (data && data.success) {
-        setProgress(100);
-        setStageTitle("CANVAS DIFFUSION COMPLETE");
-        setStatusMessage("Visual canvas synthesized successfully!");
-        setTelemetryLogs((prev) => [
-          ...prev,
-          { timestamp: new Date().toTimeString().split(" ")[0], message: `Render complete: ${data.filename || (data.images && data.images.length + ' variations')}` }
-        ]);
-      }
-    } catch (e: any) {
-      setResult({ success: false, error: e.message });
-      setTelemetryLogs((prev) => [
-        ...prev,
-        { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` }
-      ]);
-    } finally {
-      clearInterval(timerInterval);
-      setLoading(false);
-    }
-  };
-
-  // Generate Bulk Image Variations
-  const generateBulkVariations = async () => {
-    if (!refImageUrl) return;
-    setLoadingVariations(true);
-    setVariationsResult(null);
-    setProgress(15);
-    setStageTitle("01 • Reference Latent Encoding");
-    setStatusMessage(`Encoding source image features at strength ${variationStrength}...`);
-    setElapsedSeconds(0);
-    const nowTime = new Date().toTimeString().split(" ")[0];
-    setTelemetryLogs([
-      { timestamp: nowTime, message: `Generating ${batchSize}x batch variations from reference...` }
-    ]);
-
-    const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
-      setElapsedSeconds(elapsed);
-      if (elapsed === 1) {
-        setProgress(40);
-        setStageTitle("02 • Multi-Angle Camera Perturbation");
-        setStatusMessage(`Calculating ${batchSize} alternate perspective vectors...`);
-      } else if (elapsed === 3) {
-        setProgress(75);
-        setStageTitle("03 • Rendering Batch Keyframes");
-        setStatusMessage(`Denoising ${batchSize} distinct variations...`);
-      } else if (elapsed >= 5 && elapsed < 12) {
-        setProgress((prev) => Math.min(prev + 3, 95));
-      }
-    }, 1000);
-
-    try {
-      const data = await api.generateVariations({
-        reference_image_path: refImageUrl,
-        prompt: varPrompt.trim(),
-        batch_size: batchSize,
-        variation_strength: variationStrength,
-        model,
-        quality,
-        resolution,
-        aspect_ratio: aspectRatio,
-      });
-      setVariationsResult(data);
-      if (data && data.success) {
-        setProgress(100);
-        setStageTitle("VARIATIONS BATCH READY");
-        setStatusMessage(`Successfully rendered ${data.total || batchSize} variations!`);
-      }
-    } catch (e: any) {
-      setVariationsResult({ success: false, error: e.message });
-    } finally {
-      clearInterval(timerInterval);
-      setLoadingVariations(false);
-    }
-  };
-
-  const copyPath = (path: string, id?: number) => {
-    navigator.clipboard.writeText(path);
-    if (id !== undefined) {
-      setCopiedVarId(id);
-      setTimeout(() => setCopiedVarId(null), 2000);
-    } else {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  const currentDisplayImage = displayImages[selectedImageIndex] || displayImages[0];
 
   return (
-    <div className="space-y-8 pb-12 font-jakarta">
-      {/* Studio Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
-            <span>DIFFUSION LAB 5.0</span>
-            <span>•</span>
-            <span>TEXT-TO-IMAGE & BULK VARIATIONS</span>
+    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-32 font-jakarta">
+      {/* Top Bar: Studio Mode Tabs & Guide Trigger */}
+      <div className="flex items-center justify-between gap-4 pb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-[#09090d] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
+          <button
+            type="button"
+            onClick={() => setStudioMode("text_to_image")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              studioMode === "text_to_image"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            )}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>Text to Image</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStudioMode("image_variations")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              studioMode === "image_variations"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            )}
+          >
+            <Grid className="w-3.5 h-3.5" />
+            <span>Image Variations</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setHowItWorksOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+            <span>Studio Guide</span>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-zinc-500 px-3 py-1 rounded-full bg-zinc-100/60 dark:bg-zinc-900/60 border border-black/[0.06] dark:border-white/[0.06]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>ACTIVE: {activeModel.label}</span>
           </div>
-          <h1 className="text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
-            Image Diffusion Studio
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-700 dark:text-zinc-400 bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] px-3.5 py-1.5 rounded-full shadow-2xs">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>9 DIFFUSION ENGINES + BATCH VARIATION SUITE</span>
         </div>
       </div>
 
-      {/* Mode Selector Tabs */}
-      <div className="flex flex-wrap gap-2 p-1.5 bg-zinc-100 dark:bg-[#09090d] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl max-w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveMode("text_to_image")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer",
-            activeMode === "text_to_image"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-semibold shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-          )}
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>TEXT TO IMAGE</span>
-        </button>
+      {/* Center Canvas Viewport */}
+      <div className="flex-1 flex flex-col justify-center items-center py-6 px-2 w-full max-w-6xl mx-auto">
+        {/* State A: In-Flight Progress Bar */}
+        {(loading || loadingVariations) && (
+          <div className="w-full max-w-2xl py-12 space-y-6 animate-in fade-in duration-200">
+            <LiveProgressBar
+              progress={progress}
+              stageTitle={stageTitle}
+              statusMessage={statusMessage}
+              elapsedSeconds={elapsedSeconds}
+              logs={telemetryLogs}
+              isActive={loading || loadingVariations}
+              showTerminal={true}
+            />
+          </div>
+        )}
 
-        <button
-          type="button"
-          onClick={() => setActiveMode("image_variations")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer",
-            activeMode === "image_variations"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-semibold shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-          )}
-        >
-          <Grid className="h-3.5 w-3.5" />
-          <span>IMAGE-TO-IMAGE / BULK VARIATIONS</span>
-        </button>
-      </div>
-
-      {/* Main Studio Grid: Viewport on Left (lg:col-span-7), Settings on Right (lg:col-span-5) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT PANEL: Master Viewport / Variations Gallery (order-1 on desktop) */}
-        <div className="lg:col-span-7 lg:order-1 space-y-6">
-          {/* ─── VIEW 1: SINGLE TEXT-TO-IMAGE CANVAS ─── */}
-          {activeMode === "text_to_image" && (
-            <div className="hf-card p-6 flex flex-col justify-between min-h-[620px] technical-corner relative">
-              {loading && (
-                <div className="my-auto space-y-6 py-6">
-                  <LiveProgressBar
-                    progress={progress}
-                    stageTitle={stageTitle}
-                    statusMessage={statusMessage}
-                    elapsedSeconds={elapsedSeconds}
-                    logs={telemetryLogs}
-                    isActive={loading}
-                    showTerminal={true}
-                  />
-                </div>
-              )}
-
-              {result && result.success && (() => {
-                const activeImg = (result.images && result.images[selectedImageIndex]) || result;
-                const totalBatch = result.images?.length || 1;
-
-                return (
-                <div className="space-y-5">
-                  {/* Multi-Image Batch Selector Strip */}
-                  {totalBatch > 1 && (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar p-2 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
-                      <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider shrink-0 mr-1 font-semibold">
-                        Batch Sets ({totalBatch}):
-                      </span>
-                      {result.images.map((imgItem: any, idx: number) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setSelectedImageIndex(idx)}
-                          className={cn(
-                            "relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer aspect-video h-12 sm:h-14 shrink-0",
-                            selectedImageIndex === idx
-                              ? "border-emerald-500 ring-2 ring-emerald-500/40 shadow-sm"
-                              : "border-zinc-200 dark:border-zinc-800 opacity-60 hover:opacity-100"
-                          )}
-                        >
-                          <img
-                            src={getMediaUrl(imgItem.url)}
-                            alt={`Variation ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <span className="absolute bottom-0.5 right-1 text-[8px] font-mono font-bold px-1 bg-black/80 text-white rounded">
-                            #{idx + 1}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-2xl group">
-                    <img
-                      src={getMediaUrl(activeImg.url)}
-                      alt="Synthesized Canvas"
-                      className="w-full aspect-video object-contain"
-                    />
-                    <span className="absolute top-3 left-3 text-[9px] font-mono px-2.5 py-1 rounded-md bg-black/80 text-zinc-200 border border-white/10 backdrop-blur-sm">
-                      [ {activeImg.model?.toUpperCase() || model.toUpperCase()} • {resolution.toUpperCase()} • {aspectRatio} ]
-                    </span>
-                    {totalBatch > 1 && (
-                      <span className="absolute top-3 right-3 text-[9px] font-mono px-2.5 py-1 rounded-md bg-emerald-600/90 text-white font-bold backdrop-blur-sm">
-                        VARIATION {selectedImageIndex + 1} OF {totalBatch}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Parameters HUD */}
-                  <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06] grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[10px]">
-                    <div>
-                      <span className="text-zinc-500 block">OPTICS:</span>
-                      <span className="text-zinc-900 dark:text-zinc-200 font-bold truncate block">{lens}</span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block">APERTURE:</span>
-                      <span className="text-zinc-900 dark:text-zinc-200 font-bold block">{aperture}</span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block">ATMOSPHERE:</span>
-                      <span className="text-zinc-900 dark:text-zinc-200 font-bold truncate block">{lighting}</span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block">RESOLUTION:</span>
-                      <span className="text-zinc-900 dark:text-zinc-200 font-bold truncate block">{resolution.toUpperCase()}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions Toolbar */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                    <div className="font-mono text-xs text-zinc-500 space-y-0.5">
-                      <p className="text-zinc-950 dark:text-white font-medium">{activeImg.model || model}</p>
-                      <p className="text-[10px] truncate max-w-xs sm:max-w-sm">{activeImg.filename}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyPath(activeImg.local_path || activeImg.url)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                      >
-                        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                        <span>{copied ? "COPIED" : "COPY PATH"}</span>
-                      </button>
-
-                      <a
-                        href={getMediaUrl(activeImg.url)}
-                        download
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors whitespace-nowrap shrink-0"
-                      >
-                        <Download className="h-3 w-3" />
-                        <span>DOWNLOAD</span>
-                      </a>
-
-                      <button
-                        onClick={() => {
-                          router.push(`/video?image=${encodeURIComponent(activeImg.url)}`);
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                      >
-                        <span>ANIMATE IN VIDEO</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Enhanced Prompt Inspector */}
-                  {result.enhanced_prompt && (
-                    <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#060609] border border-black/[0.06] dark:border-white/[0.06] space-y-1">
-                      <span className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 block font-medium">
-                        HOLLYWOOD ENHANCED PROMPT:
-                      </span>
-                      <p className="text-xs text-zinc-700 dark:text-zinc-300 font-jakarta leading-relaxed">{result.enhanced_prompt}</p>
-                    </div>
-                  )}
-                </div>
-                );
-              })()}
-
-              {result && !result.success && (
-                <div className="my-auto text-center space-y-5 py-16 px-4">
-                  <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500 dark:text-red-400 shadow-sm animate-pulse">
-                    <AlertCircle className="h-8 w-8" />
-                  </div>
-                  
-                  <div className="space-y-2 max-w-md mx-auto">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-mono font-bold tracking-wider uppercase">
-                      <span>{result.error_type || "GENERATION ERROR"}</span>
-                    </div>
-
-                    <h3 className="text-lg font-heading font-extrabold text-zinc-950 dark:text-white">
-                      {result.error_type === "KEY_MISSING" ? "API Key Required" : "Generation Failed"}
-                    </h3>
-
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-jakarta leading-relaxed">
-                      {result.error || "The image generation request could not be completed. Please configure your API key in Settings."}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={() => router.push("/settings")}
-                      className="px-5 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs flex items-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md cursor-pointer"
-                    >
-                      <Key className="h-3.5 w-3.5" />
-                      <span>OPEN SETTINGS TO ADD KEY</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => setResult(null)}
-                      className="px-4 py-2.5 rounded-xl border border-black/[0.1] dark:border-white/[0.1] text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                    >
-                      <span>DISMISS</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!loading && !result && (
-                <div className="my-auto text-center space-y-4 py-24">
-                  <div className="h-14 w-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto text-zinc-500 dark:text-zinc-600">
-                    <ImageIcon className="h-7 w-7" />
-                  </div>
-                  <div className="space-y-1.5 max-w-sm mx-auto">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-200 font-heading tracking-tight">
-                      DIFFUSION CANVAS IDLE
-                    </p>
-                    <p className="text-xs text-zinc-500 font-jakarta leading-relaxed">
-                      Configure your prompt, model engine, resolution, and camera optics on the right, then click Synthesize.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ─── VIEW 2: BULK VARIATIONS GALLERY VIEWPORT ─── */}
-          {activeMode === "image_variations" && (
-            <div className="hf-card p-6 flex flex-col justify-between min-h-[620px] technical-corner relative">
-              {loadingVariations && (
-                <div className="my-auto space-y-6 py-6">
-                  <LiveProgressBar
-                    progress={progress}
-                    stageTitle={stageTitle}
-                    statusMessage={statusMessage}
-                    elapsedSeconds={elapsedSeconds}
-                    logs={telemetryLogs}
-                    isActive={loadingVariations}
-                    showTerminal={true}
-                  />
-                </div>
-              )}
-
-              {variationsResult && variationsResult.success && (
-                <div className="space-y-5">
-                  {/* Gallery Top Bar */}
-                  <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-                    <div className="flex items-center gap-2 font-mono text-xs">
-                      <span className="font-bold text-zinc-950 dark:text-white">
-                        {variationsResult.total} VARIATIONS GENERATED
-                      </span>
-                      <span className="text-zinc-400">•</span>
-                      <span className="text-zinc-500">Strength: {variationsResult.variation_strength}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          if (variationsResult.variations?.[0]) {
-                            router.push(`/video?image=${encodeURIComponent(variationsResult.variations[0].url)}`);
-                          }
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-mono font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer"
-                      >
-                        <Play className="h-3 w-3 fill-current" />
-                        <span>ANIMATE #1</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Variations Grid */}
-                  <div className={cn(
-                    "grid gap-4",
-                    batchSize === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2"
-                  )}>
-                    {variationsResult.variations.map((v: any) => (
-                      <div
-                        key={v.id}
-                        className="group relative rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black shadow-md hover:border-black/30 dark:hover:border-white/30 transition-all"
-                      >
-                        <img
-                          src={getMediaUrl(v.url)}
-                          alt={`Variation ${v.id}`}
-                          className="w-full aspect-video object-cover"
-                        />
-
-                        {/* Top Badge */}
-                        <div className="absolute top-2 left-2 flex items-center gap-1">
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-black/80 text-white border border-white/10 backdrop-blur-xs font-semibold">
-                            #{v.id}
-                          </span>
-                          <span className="text-[8px] font-mono px-1.5 py-0.5 rounded-md bg-white/90 dark:bg-black/90 text-zinc-900 dark:text-zinc-200 border border-black/10 dark:border-white/10">
-                            {v.style?.toUpperCase() || "VARIATION"}
-                          </span>
-                        </div>
-
-                        {/* Hover Overlay with Action Buttons */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
-                          <p className="text-[10px] text-zinc-200 font-mono line-clamp-2">
-                            {v.angle}
-                          </p>
-
-                          <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/20">
-                            <button
-                              onClick={() => copyPath(v.local_path || v.url, v.id)}
-                              className="px-2 py-1 rounded bg-white/20 hover:bg-white/40 text-white text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer"
-                            >
-                              {copiedVarId === v.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                              <span>{copiedVarId === v.id ? "COPIED" : "PATH"}</span>
-                            </button>
-
-                            <a
-                              href={getMediaUrl(v.url)}
-                              download
-                              className="px-2 py-1 rounded bg-white/20 hover:bg-white/40 text-white text-[10px] font-mono flex items-center gap-1 transition-colors"
-                            >
-                              <Download className="w-3 h-3" />
-                              <span>SAVE</span>
-                            </a>
-
-                            <button
-                              onClick={() => {
-                                router.push(`/video?image=${encodeURIComponent(v.url)}`);
-                              }}
-                              className="px-2.5 py-1 rounded bg-white text-black font-heading font-bold text-[10px] flex items-center gap-1 hover:bg-zinc-200 transition-colors cursor-pointer"
-                            >
-                              <span>ANIMATE</span>
-                              <ArrowRight className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {variationsResult && !variationsResult.success && (
-                <div className="my-auto text-center space-y-5 py-16 px-4">
-                  <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500 dark:text-red-400 shadow-sm animate-pulse">
-                    <AlertCircle className="h-8 w-8" />
-                  </div>
-                  
-                  <div className="space-y-2 max-w-md mx-auto">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-mono font-bold tracking-wider uppercase">
-                      <span>{variationsResult.error_type || "VARIATION ERROR"}</span>
-                    </div>
-
-                    <h3 className="text-lg font-heading font-extrabold text-zinc-950 dark:text-white">
-                      {variationsResult.error_type === "KEY_MISSING" ? "API Key Required" : "Variation Synthesis Failed"}
-                    </h3>
-
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-jakarta leading-relaxed">
-                      {variationsResult.error || "Failed to generate variations. Please check your reference image or API credentials in Settings."}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={() => router.push("/settings")}
-                      className="px-5 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs flex items-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md cursor-pointer"
-                    >
-                      <Key className="h-3.5 w-3.5" />
-                      <span>OPEN SETTINGS</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => setVariationsResult(null)}
-                      className="px-4 py-2.5 rounded-xl border border-black/[0.1] dark:border-white/[0.1] text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                    >
-                      <span>DISMISS</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!loadingVariations && !variationsResult && (
-                <div className="my-auto text-center space-y-4 py-24">
-                  <div className="h-14 w-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto text-zinc-500 dark:text-zinc-600">
-                    <Grid className="h-7 w-7" />
-                  </div>
-                  <div className="space-y-1.5 max-w-sm mx-auto">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-200 font-heading tracking-tight">
-                      BULK VARIATIONS GALLERY IDLE
-                    </p>
-                    <p className="text-xs text-zinc-500 font-jakarta leading-relaxed">
-                      Upload a source photo on the right, choose your batch quantity (2, 4, or 8), and click Generate Variations to see multi-angle results.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT PANEL: All Controls & Settings Deck (order-2 on desktop) */}
-        <div className="lg:col-span-5 lg:order-2 space-y-5">
-          {/* Global Alert Banner if Error */}
-          {result && !result.success && (
-            <div className="p-4 rounded-2xl border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 flex items-start justify-between gap-3 font-mono text-xs shadow-sm animate-page-enter">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <span className="font-bold uppercase tracking-wider block text-[11px] text-red-600 dark:text-red-400">
-                    {result.error_type || "GENERATION ERROR"}
+        {/* State B: Result Ready (Single or Multi-Variation Canvas) */}
+        {!loading && !loadingVariations && result && result.success && (
+          <div className="w-full space-y-4 animate-in fade-in duration-200">
+            {/* Batch Variations Selector Strip */}
+            {displayImages.length > 1 && (
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-100/90 dark:bg-[#09090d]/90 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08]">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider font-semibold">
+                    Batch Variations ({displayImages.length})
                   </span>
-                  <p className="text-xs font-jakarta text-zinc-800 dark:text-zinc-200 leading-snug">
-                    {result.error}
-                  </p>
-                  <button
-                    onClick={() => router.push("/settings")}
-                    className="text-[11px] text-zinc-950 dark:text-white font-bold underline hover:opacity-80 pt-1 block cursor-pointer"
-                  >
-                    Go to Settings page to add API Key →
-                  </button>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setResult(null)}
-                className="p-1 rounded-md text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* ─── MODE 1: TEXT TO IMAGE CONTROLS ─── */}
-          {activeMode === "text_to_image" && (
-            <div className="space-y-5">
-              {/* Prompt Section */}
-              <div className="hf-card p-6 space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2 font-mono">
-                    <label className="text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-400 font-medium">
-                      PROMPT DIRECTIVE
-                    </label>
+                <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-hide py-1">
+                  {displayImages.map((img, idx) => (
                     <button
+                      key={idx}
                       type="button"
-                      onClick={enhancePromptText}
-                      className="text-[10px] text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      <Wand2 className="h-3 w-3" />
-                      <span>ENHANCE PROMPT</span>
-                    </button>
-                  </div>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe your subject, environment, lighting, and camera composition in vivid cinematic detail..."
-                    rows={4}
-                    className="w-full bg-zinc-50 dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-950 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-black/30 dark:focus:border-white/30 resize-none font-jakarta leading-relaxed"
-                  />
-                </div>
-
-                {/* Negative Prompt */}
-                <div>
-                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                    NEGATIVE PROMPT
-                  </label>
-                  <input
-                    type="text"
-                    value={negativePrompt}
-                    onChange={(e) => setNegativePrompt(e.target.value)}
-                    placeholder="blurry, distorted, oversaturated, low quality, artifacts"
-                    className="w-full bg-zinc-50 dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs text-zinc-950 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ─── MODE 2: BULK VARIATIONS CONTROLS ─── */}
-          {activeMode === "image_variations" && (
-            <div className="hf-card p-6 space-y-5">
-              <div>
-                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                  SOURCE REFERENCE IMAGE
-                </label>
-
-                {/* Drag-drop upload area or preview */}
-                {refImageUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black group">
-                    <img
-                      src={getMediaUrl(refImageUrl)}
-                      alt="Source Reference"
-                      className="w-full aspect-video object-contain"
-                    />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => setRefImageUrl("")}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-mono text-xs flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        <span>REMOVE</span>
-                      </button>
-                      <button
-                        onClick={openVaultPicker}
-                        className="px-3 py-1.5 rounded-lg bg-white text-black font-mono text-xs flex items-center gap-1 cursor-pointer font-bold whitespace-nowrap shrink-0"
-                      >
-                        <FolderArchive className="h-3.5 w-3.5" />
-                        <span>CHANGE</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-black/[0.12] dark:border-white/[0.12] hover:border-black/30 dark:hover:border-white/30 rounded-xl p-6 text-center cursor-pointer transition-colors bg-zinc-50/50 dark:bg-[#07070a]/50">
-                      {uploadingRef ? (
-                        <Loader2 className="h-8 w-8 animate-spin text-zinc-500 mb-2" />
-                      ) : (
-                        <Upload className="h-8 w-8 text-zinc-400 mb-2" />
-                      )}
-                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-200">
-                        Upload Reference Image
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                        PNG, JPG, WEBP up to 25MB
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) handleRefFileUpload(e.target.files[0]);
-                        }}
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={openVaultPicker}
-                      className="w-full py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0a0a0f] text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center gap-2 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      <FolderArchive className="h-3.5 w-3.5" />
-                      <span>PICK FROM ASSET VAULT</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Variation Directive Prompt */}
-              <div>
-                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                  VARIATION MODIFIER PROMPT (OPTIONAL)
-                </label>
-                <textarea
-                  value={varPrompt}
-                  onChange={(e) => setVarPrompt(e.target.value)}
-                  placeholder="e.g., Switch outfit to emerald royal sherwani, evening twilight lighting, wide lens perspective..."
-                  rows={2}
-                  className="w-full bg-zinc-50 dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-950 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-black/30 dark:focus:border-white/30 resize-none font-jakarta"
-                />
-              </div>
-
-              {/* Batch Quantity Selector (2, 4, 8) */}
-              <div>
-                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                  BATCH QUANTITY
-                </label>
-                <div className="grid grid-cols-3 gap-2 font-mono">
-                  {[2, 4, 8].map((qty) => (
-                    <button
-                      key={qty}
-                      type="button"
-                      onClick={() => setBatchSize(qty)}
+                      onClick={() => setSelectedImageIndex(idx)}
                       className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
-                        batchSize === qty
-                          ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
-                          : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                        "relative rounded-xl overflow-hidden aspect-square w-16 h-16 border-2 transition-all cursor-pointer shrink-0 shadow-sm",
+                        selectedImageIndex === idx
+                          ? "border-zinc-950 dark:border-white ring-2 ring-zinc-950/20 dark:ring-white/20 scale-105"
+                          : "border-black/[0.08] dark:border-white/[0.08] opacity-70 hover:opacity-100"
                       )}
                     >
-                      <span className="text-xs font-bold block">{qty} Variations</span>
-                      <span className="text-[8px] opacity-70 block">
-                        {qty === 2 ? "Dual Look" : qty === 4 ? "Full Matrix" : "Max Diversity"}
+                      <img src={getMediaUrl(img.url)} alt={`Variation ${idx + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0.5 right-1 text-[8px] font-mono bg-black/80 text-white px-1 rounded">
+                        #{idx + 1}
                       </span>
                     </button>
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* Variation Strength Slider */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5 font-mono text-[10px]">
-                  <span className="text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
-                    VARIATION STRENGTH (DIVERGENCE)
+            {/* Master Image Viewport */}
+            <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-2xl group flex items-center justify-center min-h-[460px] max-h-[680px]">
+              <img
+                src={getMediaUrl(currentDisplayImage.url)}
+                alt="Synthesized Output"
+                className="w-full h-full object-contain max-h-[680px]"
+              />
+
+              {/* Floating Top Left Specs Badge */}
+              <div className="absolute top-3 left-3 flex items-center gap-2">
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-black/80 text-zinc-200 border border-white/10 backdrop-blur-sm">
+                  {activeModel.label} • {resolution.toUpperCase()} • {aspectRatio}
+                </span>
+                {result.simulated && (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    SIMULATED
                   </span>
-                  <span className="font-bold text-zinc-950 dark:text-white font-mono">
-                    {variationStrength.toFixed(2)}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0.1}
-                  max={0.9}
-                  step={0.05}
-                  value={variationStrength}
-                  onChange={(e) => setVariationStrength(parseFloat(e.target.value))}
-                  className="w-full accent-zinc-950 dark:accent-white cursor-pointer"
-                />
-                <div className="flex justify-between text-[8px] font-mono text-zinc-500 uppercase mt-0.5">
-                  <span>0.10 (Faithful/Subtle)</span>
-                  <span>0.50 (Balanced)</span>
-                  <span>0.90 (Radical Change)</span>
-                </div>
+                )}
               </div>
 
-              {/* Action Button for Variations */}
+              {/* Floating Actions on Canvas */}
+              <div className="absolute bottom-3 right-3 flex items-center gap-2 opacity-95 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black text-white text-xs font-mono border border-white/20 backdrop-blur-md cursor-pointer transition-colors shadow-md whitespace-nowrap shrink-0"
+                  title="Copy Prompt"
+                >
+                  {copiedPrompt ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedPrompt ? "Copied" : "Prompt"}</span>
+                </button>
+
+                <a
+                  href={getMediaUrl(currentDisplayImage.url)}
+                  download={`omnistudio_${Date.now()}.png`}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-heading font-bold shadow-lg cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Master</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* State C: Variations Mode Output (when Variations mode has run) */}
+        {!loading && !loadingVariations && variationsResult && variationsResult.success && (
+          <div className="w-full space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+              <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-semibold">
+                Generated {variationsResult.variations?.length || 0} Variations
+              </span>
               <button
-                onClick={requestVariationsConfirm}
-                disabled={loadingVariations || !refImageUrl}
-                className="w-full py-3.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 cursor-pointer"
+                type="button"
+                onClick={() => setVariationsResult(null)}
+                className="text-xs font-mono text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1"
               >
-                {loadingVariations ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-current" />
-                    <span>SYNTHESIZING {batchSize} VARIATIONS...</span>
-                  </>
-                ) : (
-                  <>
-                    <Grid className="h-3.5 w-3.5" />
-                    <span>GENERATE {batchSize} VARIATIONS IN BULK</span>
-                  </>
-                )}
+                <X className="w-3.5 h-3.5" />
+                <span>Dismiss</span>
               </button>
             </div>
-          )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {variationsResult.variations?.map((v: any, idx: number) => (
+                <div key={idx} className="hf-card rounded-xl overflow-hidden group relative flex flex-col justify-between">
+                  <img src={getMediaUrl(v.url)} alt={v.description} className="w-full aspect-square object-cover" />
+                  <div className="p-2.5 bg-zinc-50 dark:bg-[#060609] border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <p className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 line-clamp-1">{v.description}</p>
+                    <a
+                      href={getMediaUrl(v.url)}
+                      download
+                      className="mt-2 w-full flex items-center justify-center gap-1 py-1 rounded bg-zinc-950 text-white dark:bg-white dark:text-black text-[10px] font-mono font-bold hover:opacity-90"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Download</span>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* Core Engine & Quality Deck (Always visible in Settings) */}
-          <div className="hf-card p-6 space-y-5">
-            {/* Model Dropdown: All 9 Diffusion Engines */}
-            <Dropdown
-              label="DIFFUSION MODEL ENGINE"
-              options={DIFFUSION_MODELS}
-              value={model}
-              onChange={setModel}
+        {/* State D: Idle Showcase Hero (Matching Higgsfield Reference Screenshot) */}
+        {!loading && !loadingVariations && !result?.success && !variationsResult?.success && (
+          <div className="w-full flex flex-col items-center justify-center text-center space-y-6 py-6 animate-in fade-in duration-300">
+            {/* Visual Overlapping Gallery Cards */}
+            <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 overflow-hidden max-w-md sm:max-w-xl mx-auto">
+              <div className="w-24 sm:w-28 h-36 sm:h-44 rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] shadow-xl transform -rotate-6 transition-transform hover:rotate-0 hover:scale-105">
+                <img
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+                  alt="Fashion Portrait"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-24 sm:w-28 h-36 sm:h-44 rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] shadow-2xl transform -translate-y-2 scale-105">
+                <img
+                  src="https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=400&q=80"
+                  alt="Sculpture Art"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-24 sm:w-28 h-36 sm:h-44 rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] shadow-xl transform rotate-6 transition-transform hover:rotate-0 hover:scale-105">
+                <img
+                  src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=400&q=80"
+                  alt="Neon Architecture"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Hero Headlines */}
+            <div className="space-y-2 max-w-xl">
+              <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-tight text-zinc-950 dark:text-white uppercase">
+                START CREATING WITH{" "}
+                <span className="text-emerald-600 dark:text-emerald-400 underline decoration-emerald-500/30">
+                  {activeModel.label}
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
+                Describe a character, mood, or style — and watch it come to life with studio-grade lighting and precision optics.
+              </p>
+            </div>
+
+            {/* Quick Inspiration Prompt Chips */}
+            <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl pt-2">
+              {INSPIRATION_PROMPTS.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setPrompt(item.prompt)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-[#0c0c12] dark:hover:bg-zinc-800/80 border border-black/[0.07] dark:border-white/[0.08] text-xs font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer hover:scale-102"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>{item.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Bottom Studio Dock (The Higgsfield Signature Dock) */}
+      <div
+        ref={dockRef}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl shadow-2xl p-3 space-y-2.5 transition-all duration-200"
+      >
+        {/* Row 1: Integrated Prompt Input Bar */}
+        <div className="relative flex items-center gap-2">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                requestImageConfirm();
+              }
+            }}
+            placeholder={
+              studioMode === "text_to_image"
+                ? "Describe your scene, subject, camera optics, or click 'Copilot'..."
+                : "Enter prompt directive for reference image variations..."
+            }
+            rows={1}
+            className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-28"
+          />
+
+          {/* Quick Actions Inside Prompt Bar */}
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={enhancePromptText}
+              disabled={enhancingPrompt || !prompt.trim()}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              title="Enhance prompt with OpenAI Copilot"
+            >
+              <Wand2 className={cn("w-3 h-3 text-amber-500", enhancingPrompt && "animate-spin")} />
+              <span className="hidden sm:inline">Copilot</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowNegativePrompt((p) => !p)}
+              className={cn(
+                "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
+                showNegativePrompt || negativePrompt
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent"
+                  : "bg-white dark:bg-zinc-800 text-zinc-500 border-black/[0.08] dark:border-white/[0.08]"
+              )}
+              title="Toggle Negative Prompt"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Negative Prompt Expandable Input */}
+        {showNegativePrompt && (
+          <div className="animate-in fade-in slide-in-from-bottom-1 duration-150">
+            <input
+              type="text"
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              placeholder="Negative prompt (e.g. blurry, extra fingers, low quality, artifacts, watermark)..."
+              className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono"
             />
+          </div>
+        )}
 
-            {/* Resolution Selector (NEW) */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                OUTPUT RESOLUTION
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 font-mono">
-                {RESOLUTIONS.map((res) => (
-                  <button
-                    key={res.id}
-                    type="button"
-                    onClick={() => setResolution(res.id)}
-                    className={cn(
-                      "p-2 rounded-xl border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      resolution === res.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-[11px] font-bold block">{res.label}</span>
-                    <span className="text-[8px] opacity-70 block">{res.sub}</span>
+        {/* Reference Image Bar (In Variations Mode) */}
+        {studioMode === "image_variations" && (
+          <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-100/80 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">REFERENCE IMAGE:</span>
+              {refImageUrl ? (
+                <div className="flex items-center gap-2">
+                  <img src={getMediaUrl(refImageUrl)} alt="Ref" className="w-6 h-6 rounded object-cover border border-white/20" />
+                  <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 truncate max-w-[140px]">
+                    {refImageUrl.split("/").pop()}
+                  </span>
+                  <button onClick={() => setRefImageUrl("")} className="text-zinc-400 hover:text-red-500">
+                    <X className="w-3 h-3" />
                   </button>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-400 italic">No image selected</span>
+              )}
             </div>
 
-            {/* Batch Count Selector (NEW) */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                GENERATION BATCH COUNT
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openVaultPicker}
+                className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 cursor-pointer"
+              >
+                <FolderArchive className="w-3 h-3" />
+                <span>Vault</span>
+              </button>
+              <label className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 cursor-pointer">
+                <Upload className="w-3 h-3" />
+                <span>Upload</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleRefFileUpload(e.target.files[0])} />
               </label>
-              <div className="grid grid-cols-3 gap-2 font-mono">
-                {[
-                  { count: 1, label: "1 Image", sub: "Single Master" },
-                  { count: 2, label: "2 Variations", sub: "Dual Set" },
-                  { count: 4, label: "4 Batch", sub: "Quad Set" },
-                ].map((item) => (
-                  <button
-                    key={item.count}
-                    type="button"
-                    onClick={() => setImageCount(item.count)}
-                    className={cn(
-                      "p-2.5 rounded-xl border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      imageCount === item.count
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-[11px] font-bold block">{item.label}</span>
-                    <span className="text-[8px] opacity-70 block">{item.sub}</span>
-                  </button>
-                ))}
-              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Row 2: Bottom Control Pills Strip + Generate Button */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
+          {/* Left Controls Group */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {/* 1. Model Selector Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setModelPopoverOpen(!modelPopoverOpen);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-heading font-bold text-zinc-900 dark:text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              >
+                <Sparkle className="w-3.5 h-3.5 text-emerald-500" />
+                <span>{activeModel.label}</span>
+                <ChevronUp className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", modelPopoverOpen && "rotate-180")} />
+              </button>
+
+              {/* Model Selector Upward Popover (Exact Higgsfield Menu) */}
+              {modelPopoverOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={modelSearchQuery}
+                      onChange={(e) => setModelSearchQuery(e.target.value)}
+                      placeholder="Search models..."
+                      className="w-full bg-zinc-100 dark:bg-[#14141c] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta"
+                    />
+                  </div>
+
+                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>Featured Models</span>
+                  </div>
+
+                  {/* Scrollable Model List */}
+                  <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
+                    {filteredModels.map((m) => {
+                      const isSelected = model === m.value;
+                      return (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => {
+                            setModel(m.value);
+                            setModelPopoverOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer font-jakarta",
+                            isSelected
+                              ? "bg-zinc-100 dark:bg-[#1a1a26] text-zinc-950 dark:text-white ring-1 ring-black/[0.1] dark:ring-white/[0.1]"
+                              : "hover:bg-zinc-50 dark:hover:bg-[#14141c] text-zinc-700 dark:text-zinc-300"
+                          )}
+                        >
+                          <div className="space-y-0.5 min-w-0 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold font-heading">{m.label}</span>
+                              {m.badge && (
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider",
+                                    m.badge === "PREMIUM"
+                                      ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+                                      : m.badge === "NEW"
+                                      ? "bg-emerald-400/20 text-emerald-600 dark:text-emerald-400"
+                                      : "bg-black/10 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
+                                  )}
+                                >
+                                  {m.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">
+                              {m.description}
+                            </p>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Quality Preset */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                QUALITY PROFILE
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {QUALITIES.map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={() => setQuality(q.id)}
-                    className={cn(
-                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer font-mono whitespace-nowrap shrink-0",
-                      quality === q.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-sm"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-xs font-bold block">{q.label}</span>
-                    <span className="text-[9px] opacity-70 block">{q.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 2. Aspect Ratio Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setRatioPopoverOpen(!ratioPopoverOpen);
+                }}
+                className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                title="Select Aspect Ratio"
+              >
+                <Maximize2 className="w-3 h-3 text-zinc-400" />
+                <span>{aspectRatio}</span>
+              </button>
 
-            {/* Aspect Ratio Matrix */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                ASPECT RATIO MATRIX //
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {RATIOS.map((r) => {
-                  const isSelected = aspectRatio === r.id;
-                  return (
+              {ratioPopoverOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-2 z-50 space-y-1">
+                  <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">
+                    Aspect Ratio
+                  </div>
+                  {RATIOS.map((r) => (
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => setAspectRatio(r.id)}
+                      onClick={() => {
+                        setAspectRatio(r.id);
+                        setRatioPopoverOpen(false);
+                      }}
                       className={cn(
-                        "flex flex-col items-center p-2 rounded-xl border text-center transition-all cursor-pointer",
-                        isSelected
-                          ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-md scale-[1.02]"
-                          : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                        "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer",
+                        aspectRatio === r.id
+                          ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold"
+                          : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
                       )}
                     >
-                      <div
-                        className={cn(
-                          "border rounded-xs mb-1",
-                          r.iconClass,
-                          isSelected
-                            ? "border-current bg-current opacity-20"
-                            : "border-zinc-400 dark:border-zinc-500 bg-zinc-300 dark:bg-zinc-800"
-                        )}
-                      />
-                      <span className="text-[11px] font-bold font-heading">{r.label}</span>
-                      <span className={cn("text-[8px] font-mono", isSelected ? "opacity-80" : "text-zinc-500")}>
-                        {r.sub}
-                      </span>
+                      <span>{r.label}</span>
+                      <span className="text-[10px] opacity-70">{r.sub}</span>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Lens Optics */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                CAMERA LENS (OPTICS)
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono">
-                {LENSES.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => setLens(l.id)}
-                    className={cn(
-                      "p-2 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      lens === l.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-semibold shadow-xs"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-[11px] block truncate">{l.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Aperture / Depth of Field */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                APERTURE (DEPTH OF FIELD)
-              </label>
-              <div className="grid grid-cols-4 gap-1.5 font-mono">
-                {APERTURES.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => setAperture(a.id)}
-                    className={cn(
-                      "p-2 rounded-lg border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      aperture === a.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-xs block">{a.label}</span>
-                    <span className="text-[8px] opacity-70 block">{a.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Lighting Atmosphere */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                LIGHTING ATMOSPHERE
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono">
-                {LIGHTING_PRESETS.map((lp) => (
-                  <button
-                    key={lp.id}
-                    type="button"
-                    onClick={() => setLighting(lp.id)}
-                    className={cn(
-                      "p-2 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      lighting === lp.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-semibold shadow-xs"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-[11px] block truncate">{lp.label}</span>
-                    <span className="text-[8px] opacity-70 block truncate">{lp.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Film Stock & Color Grading */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                FILM STOCK & COLOR EMULATION
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono">
-                {FILM_STOCKS.map((fs) => (
-                  <button
-                    key={fs.id}
-                    type="button"
-                    onClick={() => setFilmStock(fs.id)}
-                    className={cn(
-                      "p-2 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      filmStock === fs.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-semibold shadow-xs"
-                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-[11px] block truncate">{fs.label}</span>
-                    <span className="text-[8px] opacity-70 block truncate">{fs.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Fine Tuning: CFG Scale + Steps + Seed */}
-            <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-4">
-              {/* CFG Scale */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5 font-mono text-[10px]">
-                  <span className="text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
-                    CFG PROMPT GUIDANCE
-                  </span>
-                  <span className="font-bold text-zinc-950 dark:text-white">{cfgScale.toFixed(1)}</span>
+                  ))}
                 </div>
-                <input
-                  type="range"
-                  min={3.0}
-                  max={15.0}
-                  step={0.5}
-                  value={cfgScale}
-                  onChange={(e) => setCfgScale(parseFloat(e.target.value))}
-                  className="w-full accent-zinc-950 dark:accent-white cursor-pointer"
-                />
-                <div className="flex justify-between text-[8px] font-mono text-zinc-500 uppercase mt-0.5">
-                  <span>3.0 (Creative)</span>
-                  <span>7.5 (Standard)</span>
-                  <span>15.0 (Strict)</span>
-                </div>
-              </div>
+              )}
+            </div>
 
-              {/* Sampling Steps & Seed */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                    SAMPLING STEPS
-                  </label>
-                  <div className="grid grid-cols-3 gap-1">
-                    {STEP_PRESETS.map((sp) => (
+            {/* 3. Quality Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setQualityPopoverOpen(!qualityPopoverOpen);
+                }}
+                className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                title="Select Quality Profile"
+              >
+                <Sun className="w-3 h-3 text-zinc-400" />
+                <span className="capitalize">{quality === "ultra" ? "Master 8K" : quality === "hd" ? "High" : "Standard"}</span>
+              </button>
+
+              {qualityPopoverOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-2 z-50 space-y-1">
+                  <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">
+                    Quality Profile
+                  </div>
+                  {QUALITIES.map((q) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => {
+                        setQuality(q.id);
+                        setQualityPopoverOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer",
+                        quality === q.id
+                          ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold"
+                          : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                      )}
+                    >
+                      <span>{q.label}</span>
+                      <span className="text-[10px] opacity-70">{q.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Resolution Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setResolutionPopoverOpen(!resolutionPopoverOpen);
+                }}
+                className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                title="Select Resolution"
+              >
+                <Gauge className="w-3 h-3 text-zinc-400" />
+                <span className="uppercase">{resolution}</span>
+              </button>
+
+              {resolutionPopoverOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-2 z-50 space-y-1">
+                  <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">
+                    Output Resolution
+                  </div>
+                  {RESOLUTIONS.map((res) => (
+                    <button
+                      key={res.id}
+                      type="button"
+                      onClick={() => {
+                        setResolution(res.id);
+                        setResolutionPopoverOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer",
+                        resolution === res.id
+                          ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold"
+                          : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                      )}
+                    >
+                      <span className="uppercase">{res.label}</span>
+                      <span className="text-[10px] opacity-70">{res.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Optics Pill (Lenses / Apertures) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setOpticsPopoverOpen(!opticsPopoverOpen);
+                }}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                title="Camera Optics & Lens"
+              >
+                <Camera className="w-3 h-3 text-zinc-400" />
+                <span>{lens.split(" ")[0] || "Optics"}</span>
+              </button>
+
+              {opticsPopoverOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 space-y-2 font-mono text-xs">
+                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                    Focal Length & Lens
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {LENSES.map((l) => (
                       <button
-                        key={sp.value}
+                        key={l.id}
                         type="button"
-                        onClick={() => setSamplingSteps(sp.value)}
+                        onClick={() => {
+                          setLens(l.id);
+                          setOpticsPopoverOpen(false);
+                        }}
                         className={cn(
-                          "py-1.5 px-1 rounded-lg border text-center font-mono text-[10px] transition-all cursor-pointer whitespace-nowrap shrink-0",
-                          samplingSteps === sp.value
+                          "p-2 rounded-xl text-left border text-[11px] transition-colors cursor-pointer",
+                          lens === l.id
                             ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                            : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                            : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         )}
                       >
-                        {sp.label}
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    Aperture Depth of Field
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {APERTURES.map((ap) => (
+                      <button
+                        key={ap.id}
+                        type="button"
+                        onClick={() => {
+                          setAperture(ap.id);
+                          setOpticsPopoverOpen(false);
+                        }}
+                        className={cn(
+                          "p-1.5 rounded-lg text-center border text-[11px] transition-colors cursor-pointer",
+                          aperture === ap.id
+                            ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
+                            : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
+                        )}
+                      >
+                        {ap.label}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5 font-mono text-[10px]">
-                    <span className="text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
-                      SEED
-                    </span>
-                    <button
-                      type="button"
-                      onClick={randomizeSeed}
-                      className="text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      <Dices className="h-3 w-3" />
-                      <span>RANDOM</span>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={seed}
-                    onChange={(e) => setSeed(e.target.value)}
-                    placeholder="Random (Leave empty)"
-                    className="w-full bg-zinc-50 dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:border-black/30 dark:focus:border-white/30"
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Synthesize Button for Text-to-Image */}
-            {activeMode === "text_to_image" && (
+            {/* 6. Batch Stepper (– 1/4 +) Exactly Matching Higgsfield Screenshot */}
+            <div className="flex items-center bg-zinc-100 dark:bg-[#12121a] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-2 py-1 text-xs font-mono text-zinc-800 dark:text-zinc-200">
               <button
-                onClick={requestGenerateConfirm}
-                disabled={loading || !prompt.trim()}
-                className="w-full py-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 mt-3 cursor-pointer whitespace-nowrap shrink-0"
+                type="button"
+                onClick={handleBatchDecrement}
+                className="px-1.5 py-0.5 hover:text-black dark:hover:text-white cursor-pointer"
+                title="Decrease Batch"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-current" />
-                    <span>DIFFUSING MASTER VISUAL CANVAS...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3.5 w-3.5 fill-current" />
-                    <span>SYNTHESIZE CINEMATIC VISUAL</span>
-                  </>
-                )}
+                <Minus className="w-3 h-3" />
               </button>
-            )}
+              <span className="px-2 font-bold tracking-widest">{imageCount}/4</span>
+              <button
+                type="button"
+                onClick={handleBatchIncrement}
+                className="px-1.5 py-0.5 hover:text-black dark:hover:text-white cursor-pointer"
+                title="Increase Batch"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
           </div>
+
+          {/* Right Generate CTA Action Button */}
+          <button
+            type="button"
+            onClick={requestImageConfirm}
+            disabled={loading || loadingVariations || (!prompt.trim() && studioMode === "text_to_image")}
+            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-lg active:scale-98 whitespace-nowrap shrink-0"
+          >
+            {loading || loadingVariations ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Synthesizing...</span>
+              </>
+            ) : (
+              <>
+                <span>Generate</span>
+                <span className="font-mono text-xs opacity-75">✦ 6.5</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Vault Picker Modal */}
-      {vaultOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0c0c12] border border-black/[0.1] dark:border-white/[0.1] rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-              <div className="flex items-center gap-2">
-                <FolderArchive className="h-4 w-4 text-zinc-950 dark:text-white" />
-                <span className="font-heading font-bold text-sm text-zinc-950 dark:text-white">
-                  Pick Reference Image from Asset Vault
-                </span>
-              </div>
-              <button
-                onClick={() => setVaultOpen(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-black dark:hover:text-white cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {loadingVault ? (
-              <div className="py-12 text-center">
-                <Loader2 className="h-6 w-6 animate-spin text-zinc-500 mx-auto" />
-                <span className="text-xs font-mono text-zinc-500 mt-2 block">Loading Vault Assets...</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-3 overflow-y-auto max-h-[55vh] p-1">
-                {vaultImages.length === 0 ? (
-                  <div className="col-span-3 text-center py-10 text-xs font-mono text-zinc-500">
-                    No images found in Asset Vault. Generate some first!
-                  </div>
-                ) : (
-                  vaultImages.map((img: any, i: number) => (
-                    <div
-                      key={i}
-                      onClick={() => {
-                        setRefImageUrl(img.url);
-                        setVaultOpen(false);
-                      }}
-                      className="group relative rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black aspect-video cursor-pointer hover:border-black/50 dark:hover:border-white/50 transition-all"
-                    >
-                      <img
-                        src={getMediaUrl(img.url)}
-                        alt={img.filename}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="px-2 py-1 rounded bg-white text-black font-mono text-[10px] font-bold">
-                          SELECT
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Generation Confirmation & Spend Authorization Modal */}
+      {/* Spend Safeguard Confirmation Modal */}
       <GenerationConfirmModal
         isOpen={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
         onConfirm={() => {
           setConfirmModalOpen(false);
-          if (confirmAction === "variations") {
-            generateBulkVariations();
-          } else {
+          if (studioMode === "text_to_image") {
             generate();
+          } else {
+            generateBulkVariations();
           }
         }}
         details={confirmDetails}
         loading={loading || loadingVariations}
+      />
+
+      {/* Vault Picker Modal */}
+      {vaultOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-[#09090d] border border-black/[0.1] dark:border-white/[0.1] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">Select From Vault</span>
+              <button onClick={() => setVaultOpen(false)} className="text-zinc-500 hover:text-black dark:hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {vaultImages.map((img, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    setRefImageUrl(img);
+                    setVaultOpen(false);
+                  }}
+                  className="rounded-xl overflow-hidden aspect-square border border-black/[0.08] dark:border-white/[0.08] hover:border-black dark:hover:border-white cursor-pointer"
+                >
+                  <img src={getMediaUrl(img)} alt="Vault item" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* How It Works Studio Guide Modal */}
+      <HowItWorksModal
+        isOpen={howItWorksOpen}
+        onClose={() => setHowItWorksOpen(false)}
       />
     </div>
   );
