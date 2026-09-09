@@ -193,7 +193,7 @@ export default function LoginPage() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 dark:text-zinc-400">
             <ShieldCheck className="w-3 h-3 text-emerald-500" />
-            <span>SUPABASE CLOUD AUTH // RLS ENFORCED</span>
+            <span>Supabase Cloud Auth • RLS Enforced</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-zinc-950 dark:text-white tracking-tight">
@@ -323,7 +323,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 font-heading font-semibold text-xs tracking-wider uppercase transition-all cursor-pointer shadow-lg active:scale-98 mt-2"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 font-heading font-semibold text-xs tracking-wider uppercase transition-all cursor-pointer shadow-lg active:scale-98 mt-2 whitespace-nowrap shrink-0"
           >
             {isSubmitting ? (
               <>

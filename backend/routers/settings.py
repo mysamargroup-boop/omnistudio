@@ -59,25 +59,55 @@ async def update_keys(req: KeysUpdateRequest):
 @router.get("/keys")
 async def get_keys():
     from database import load_settings_into_runtime, db_get_all_settings, is_supabase
+    import os
     load_settings_into_runtime()
     db_keys = db_get_all_settings()
-    masked = {}
-    for k in [
+
+    KEY_NAMES = [
         "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
         "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "DATABASE_URL"
-    ]:
-        val = db_keys.get(k) or getattr(settings, k, "")
-        if val and isinstance(val, str):
+    ]
+
+    masked = {}
+    raw_keys = {}
+    keys_detail = {}
+
+    for k in KEY_NAMES:
+        supabase_val = db_keys.get(k)
+        env_val = os.environ.get(k) or getattr(settings, k, "")
+
+        if supabase_val and isinstance(supabase_val, str) and supabase_val.strip():
+            val = supabase_val.strip()
+            source = "Supabase Database"
+        elif env_val and isinstance(env_val, str) and env_val.strip():
+            val = env_val.strip()
+            source = "Local VPS .env (Fallback)"
+        else:
+            val = ""
+            source = "Not Configured"
+
+        raw_keys[k] = val
+        if val:
             if len(val) > 8:
                 masked[k] = val[:4] + "••••••••" + val[-4:]
             else:
                 masked[k] = "••••••••"
         else:
             masked[k] = ""
+
+        keys_detail[k] = {
+            "value": val,
+            "masked": masked[k],
+            "source": source,
+            "configured": bool(val)
+        }
+
     return {
         "keys": get_key_status(),
         "masked_keys": masked,
-        "source": "Supabase Cloud Database" if is_supabase() else "Local SQLite"
+        "raw_keys": raw_keys,
+        "keys_detail": keys_detail,
+        "source": "Supabase Cloud Database" if is_supabase() else "Local SQLite & VPS .env"
     }
 
 @router.post("/test-db")

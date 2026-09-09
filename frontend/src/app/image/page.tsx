@@ -144,10 +144,12 @@ export default function ImageStudio() {
   const [samplingSteps, setSamplingSteps] = useState(30);
   const [seed, setSeed] = useState<string>("");
 
-  // Status & Single Result
+  // Status & Single/Multi Result
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [imageCount, setImageCount] = useState<number>(1);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
 
   // ─── Image-to-Image / Bulk Variations State ───
   const [refImageUrl, setRefImageUrl] = useState<string>("");
@@ -301,18 +303,19 @@ export default function ImageStudio() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
 
-  // Generate Single Image
+  // Generate Image (Single or Batch)
   const generate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
     setResult(null);
+    setSelectedImageIndex(0);
     setProgress(10);
-    setStageTitle("01 // TEXT PROMPT CONDITIONING");
+    setStageTitle("01 • Text Prompt Conditioning");
     setStatusMessage(`Encoding CLIP prompt vectors (${style} style)...`);
     setElapsedSeconds(0);
     const nowTime = new Date().toTimeString().split(" ")[0];
     setTelemetryLogs([
-      { timestamp: nowTime, message: `Dispatched image synthesis on model: ${model}` }
+      { timestamp: nowTime, message: `Dispatched image synthesis on model: ${model} (Count: ${imageCount})` }
     ]);
 
     const startTimestamp = Date.now();
@@ -321,7 +324,7 @@ export default function ImageStudio() {
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
         setProgress(35);
-        setStageTitle("02 // SAMPLING LATENT NOISE TENSOR");
+        setStageTitle("02 • Sampling Latent Noise Tensor");
         setStatusMessage(`Denoising ${samplingSteps} steps (CFG: ${cfgScale})...`);
         setTelemetryLogs((prev) => [
           ...prev,
@@ -329,7 +332,7 @@ export default function ImageStudio() {
         ]);
       } else if (elapsed === 3) {
         setProgress(70);
-        setStageTitle("03 // PHOTOREAL TEXTURE DIFFUSION");
+        setStageTitle("03 • Photoreal Texture Diffusion");
         setStatusMessage(`Refining ${resolution} micro-textures & film grain...`);
         setTelemetryLogs((prev) => [
           ...prev,
@@ -368,6 +371,7 @@ export default function ImageStudio() {
         cfg_scale: cfgScale,
         sampling_steps: samplingSteps,
         seed: seed ? parseInt(seed, 10) : undefined,
+        count: imageCount,
       });
       setResult(data);
       if (data && data.success) {
@@ -376,7 +380,7 @@ export default function ImageStudio() {
         setStatusMessage("Visual canvas synthesized successfully!");
         setTelemetryLogs((prev) => [
           ...prev,
-          { timestamp: new Date().toTimeString().split(" ")[0], message: `Render complete: ${data.filename}` }
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Render complete: ${data.filename || (data.images && data.images.length + ' variations')}` }
         ]);
       }
     } catch (e: any) {
@@ -397,7 +401,7 @@ export default function ImageStudio() {
     setLoadingVariations(true);
     setVariationsResult(null);
     setProgress(15);
-    setStageTitle("01 // REFERENCE LATENT ENCODING");
+    setStageTitle("01 • Reference Latent Encoding");
     setStatusMessage(`Encoding source image features at strength ${variationStrength}...`);
     setElapsedSeconds(0);
     const nowTime = new Date().toTimeString().split(" ")[0];
@@ -411,11 +415,11 @@ export default function ImageStudio() {
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
         setProgress(40);
-        setStageTitle("02 // MULTI-ANGLE CAMERA PERTURBATION");
+        setStageTitle("02 • Multi-Angle Camera Perturbation");
         setStatusMessage(`Calculating ${batchSize} alternate perspective vectors...`);
       } else if (elapsed === 3) {
         setProgress(75);
-        setStageTitle("03 // RENDERING BATCH KEYFRAMES");
+        setStageTitle("03 • Rendering Batch Keyframes");
         setStatusMessage(`Denoising ${batchSize} distinct variations...`);
       } else if (elapsed >= 5 && elapsed < 12) {
         setProgress((prev) => Math.min(prev + 3, 95));
@@ -465,8 +469,8 @@ export default function ImageStudio() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
             <span>DIFFUSION LAB 5.0</span>
-            <span>//</span>
-            <span>TEXT-TO-IMAGE & BULK IMAGE VARIATIONS</span>
+            <span>•</span>
+            <span>TEXT-TO-IMAGE & BULK VARIATIONS</span>
           </div>
           <h1 className="text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
             Image Diffusion Studio
@@ -531,17 +535,57 @@ export default function ImageStudio() {
                 </div>
               )}
 
-              {result && result.success && (
+              {result && result.success && (() => {
+                const activeImg = (result.images && result.images[selectedImageIndex]) || result;
+                const totalBatch = result.images?.length || 1;
+
+                return (
                 <div className="space-y-5">
+                  {/* Multi-Image Batch Selector Strip */}
+                  {totalBatch > 1 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar p-2 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider shrink-0 mr-1 font-semibold">
+                        Batch Sets ({totalBatch}):
+                      </span>
+                      {result.images.map((imgItem: any, idx: number) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedImageIndex(idx)}
+                          className={cn(
+                            "relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer aspect-video h-12 sm:h-14 shrink-0",
+                            selectedImageIndex === idx
+                              ? "border-emerald-500 ring-2 ring-emerald-500/40 shadow-sm"
+                              : "border-zinc-200 dark:border-zinc-800 opacity-60 hover:opacity-100"
+                          )}
+                        >
+                          <img
+                            src={getMediaUrl(imgItem.url)}
+                            alt={`Variation ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-0.5 right-1 text-[8px] font-mono font-bold px-1 bg-black/80 text-white rounded">
+                            #{idx + 1}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-2xl group">
                     <img
-                      src={getMediaUrl(result.url)}
+                      src={getMediaUrl(activeImg.url)}
                       alt="Synthesized Canvas"
                       className="w-full aspect-video object-contain"
                     />
                     <span className="absolute top-3 left-3 text-[9px] font-mono px-2.5 py-1 rounded-md bg-black/80 text-zinc-200 border border-white/10 backdrop-blur-sm">
-                      [ {result.model?.toUpperCase() || model.toUpperCase()} // {resolution.toUpperCase()} // {aspectRatio} ]
+                      [ {activeImg.model?.toUpperCase() || model.toUpperCase()} • {resolution.toUpperCase()} • {aspectRatio} ]
                     </span>
+                    {totalBatch > 1 && (
+                      <span className="absolute top-3 right-3 text-[9px] font-mono px-2.5 py-1 rounded-md bg-emerald-600/90 text-white font-bold backdrop-blur-sm">
+                        VARIATION {selectedImageIndex + 1} OF {totalBatch}
+                      </span>
+                    )}
                   </div>
 
                   {/* Parameters HUD */}
@@ -567,23 +611,23 @@ export default function ImageStudio() {
                   {/* Actions Toolbar */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                     <div className="font-mono text-xs text-zinc-500 space-y-0.5">
-                      <p className="text-zinc-950 dark:text-white font-medium">{result.model || model}</p>
-                      <p className="text-[10px] truncate max-w-xs sm:max-w-sm">{result.filename}</p>
+                      <p className="text-zinc-950 dark:text-white font-medium">{activeImg.model || model}</p>
+                      <p className="text-[10px] truncate max-w-xs sm:max-w-sm">{activeImg.filename}</p>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => copyPath(result.local_path || result.url)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                        onClick={() => copyPath(activeImg.local_path || activeImg.url)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       >
                         {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                         <span>{copied ? "COPIED" : "COPY PATH"}</span>
                       </button>
 
                       <a
-                        href={getMediaUrl(result.url)}
+                        href={getMediaUrl(activeImg.url)}
                         download
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors whitespace-nowrap shrink-0"
                       >
                         <Download className="h-3 w-3" />
                         <span>DOWNLOAD</span>
@@ -591,9 +635,9 @@ export default function ImageStudio() {
 
                       <button
                         onClick={() => {
-                          router.push(`/video?image=${encodeURIComponent(result.url)}`);
+                          router.push(`/video?image=${encodeURIComponent(activeImg.url)}`);
                         }}
-                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm active:scale-95 cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                       >
                         <span>ANIMATE IN VIDEO</span>
                         <ArrowRight className="h-3 w-3" />
@@ -611,7 +655,8 @@ export default function ImageStudio() {
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               {result && !result.success && (
                 <div className="my-auto text-center space-y-5 py-16 px-4">
@@ -879,12 +924,12 @@ export default function ImageStudio() {
                 <div>
                   <div className="flex items-center justify-between mb-2 font-mono">
                     <label className="text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-400 font-medium">
-                      PROMPT DIRECTIVE //
+                      PROMPT DIRECTIVE
                     </label>
                     <button
                       type="button"
                       onClick={enhancePromptText}
-                      className="text-[10px] text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                      className="text-[10px] text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <Wand2 className="h-3 w-3" />
                       <span>ENHANCE PROMPT</span>
@@ -902,7 +947,7 @@ export default function ImageStudio() {
                 {/* Negative Prompt */}
                 <div>
                   <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                    NEGATIVE PROMPT //
+                    NEGATIVE PROMPT
                   </label>
                   <input
                     type="text"
@@ -921,7 +966,7 @@ export default function ImageStudio() {
             <div className="hf-card p-6 space-y-5">
               <div>
                 <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                  SOURCE REFERENCE IMAGE //
+                  SOURCE REFERENCE IMAGE
                 </label>
 
                 {/* Drag-drop upload area or preview */}
@@ -935,14 +980,14 @@ export default function ImageStudio() {
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button
                         onClick={() => setRefImageUrl("")}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-mono text-xs flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-mono text-xs flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                       >
                         <X className="h-3.5 w-3.5" />
                         <span>REMOVE</span>
                       </button>
                       <button
                         onClick={openVaultPicker}
-                        className="px-3 py-1.5 rounded-lg bg-white text-black font-mono text-xs flex items-center gap-1 cursor-pointer font-bold"
+                        className="px-3 py-1.5 rounded-lg bg-white text-black font-mono text-xs flex items-center gap-1 cursor-pointer font-bold whitespace-nowrap shrink-0"
                       >
                         <FolderArchive className="h-3.5 w-3.5" />
                         <span>CHANGE</span>
@@ -976,7 +1021,7 @@ export default function ImageStudio() {
                     <button
                       type="button"
                       onClick={openVaultPicker}
-                      className="w-full py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0a0a0f] text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center gap-2 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                      className="w-full py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0a0a0f] text-zinc-700 dark:text-zinc-300 font-mono text-xs flex items-center justify-center gap-2 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <FolderArchive className="h-3.5 w-3.5" />
                       <span>PICK FROM ASSET VAULT</span>
@@ -988,7 +1033,7 @@ export default function ImageStudio() {
               {/* Variation Directive Prompt */}
               <div>
                 <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                  VARIATION MODIFIER PROMPT (OPTIONAL) //
+                  VARIATION MODIFIER PROMPT (OPTIONAL)
                 </label>
                 <textarea
                   value={varPrompt}
@@ -1002,7 +1047,7 @@ export default function ImageStudio() {
               {/* Batch Quantity Selector (2, 4, 8) */}
               <div>
                 <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                  BATCH QUANTITY //
+                  BATCH QUANTITY
                 </label>
                 <div className="grid grid-cols-3 gap-2 font-mono">
                   {[2, 4, 8].map((qty) => (
@@ -1011,7 +1056,7 @@ export default function ImageStudio() {
                       type="button"
                       onClick={() => setBatchSize(qty)}
                       className={cn(
-                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer",
+                        "p-2.5 rounded-xl border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
                         batchSize === qty
                           ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
                           : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1030,7 +1075,7 @@ export default function ImageStudio() {
               <div>
                 <div className="flex items-center justify-between mb-1.5 font-mono text-[10px]">
                   <span className="text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
-                    VARIATION STRENGTH (DIVERGENCE) //
+                    VARIATION STRENGTH (DIVERGENCE)
                   </span>
                   <span className="font-bold text-zinc-950 dark:text-white font-mono">
                     {variationStrength.toFixed(2)}
@@ -1086,7 +1131,7 @@ export default function ImageStudio() {
             {/* Resolution Selector (NEW) */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                OUTPUT RESOLUTION //
+                OUTPUT RESOLUTION
               </label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 font-mono">
                 {RESOLUTIONS.map((res) => (
@@ -1095,7 +1140,7 @@ export default function ImageStudio() {
                     type="button"
                     onClick={() => setResolution(res.id)}
                     className={cn(
-                      "p-2 rounded-xl border text-center transition-all cursor-pointer",
+                      "p-2 rounded-xl border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
                       resolution === res.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
                         : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1108,10 +1153,39 @@ export default function ImageStudio() {
               </div>
             </div>
 
+            {/* Batch Count Selector (NEW) */}
+            <div>
+              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
+                GENERATION BATCH COUNT
+              </label>
+              <div className="grid grid-cols-3 gap-2 font-mono">
+                {[
+                  { count: 1, label: "1 Image", sub: "Single Master" },
+                  { count: 2, label: "2 Variations", sub: "Dual Set" },
+                  { count: 4, label: "4 Batch", sub: "Quad Set" },
+                ].map((item) => (
+                  <button
+                    key={item.count}
+                    type="button"
+                    onClick={() => setImageCount(item.count)}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
+                      imageCount === item.count
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold shadow-xs"
+                        : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                    )}
+                  >
+                    <span className="text-[11px] font-bold block">{item.label}</span>
+                    <span className="text-[8px] opacity-70 block">{item.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Quality Preset */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                QUALITY PROFILE //
+                QUALITY PROFILE
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {QUALITIES.map((q) => (
@@ -1120,7 +1194,7 @@ export default function ImageStudio() {
                     type="button"
                     onClick={() => setQuality(q.id)}
                     className={cn(
-                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer font-mono",
+                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer font-mono whitespace-nowrap shrink-0",
                       quality === q.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-sm"
                         : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1175,7 +1249,7 @@ export default function ImageStudio() {
             {/* Lens Optics */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                CAMERA LENS (OPTICS) //
+                CAMERA LENS (OPTICS)
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono">
                 {LENSES.map((l) => (
@@ -1184,7 +1258,7 @@ export default function ImageStudio() {
                     type="button"
                     onClick={() => setLens(l.id)}
                     className={cn(
-                      "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                      "p-2 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
                       lens === l.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-semibold shadow-xs"
                         : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1199,7 +1273,7 @@ export default function ImageStudio() {
             {/* Aperture / Depth of Field */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                APERTURE (DEPTH OF FIELD) //
+                APERTURE (DEPTH OF FIELD)
               </label>
               <div className="grid grid-cols-4 gap-1.5 font-mono">
                 {APERTURES.map((a) => (
@@ -1208,7 +1282,7 @@ export default function ImageStudio() {
                     type="button"
                     onClick={() => setAperture(a.id)}
                     className={cn(
-                      "p-2 rounded-lg border text-center transition-all cursor-pointer",
+                      "p-2 rounded-lg border text-center transition-all cursor-pointer whitespace-nowrap shrink-0",
                       aperture === a.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
                         : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1224,7 +1298,7 @@ export default function ImageStudio() {
             {/* Lighting Atmosphere */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                LIGHTING ATMOSPHERE //
+                LIGHTING ATMOSPHERE
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono">
                 {LIGHTING_PRESETS.map((lp) => (
@@ -1233,7 +1307,7 @@ export default function ImageStudio() {
                     type="button"
                     onClick={() => setLighting(lp.id)}
                     className={cn(
-                      "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                      "p-2 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
                       lighting === lp.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-semibold shadow-xs"
                         : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1249,7 +1323,7 @@ export default function ImageStudio() {
             {/* Film Stock & Color Grading */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                FILM STOCK & COLOR EMULATION //
+                FILM STOCK & COLOR EMULATION
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono">
                 {FILM_STOCKS.map((fs) => (
@@ -1258,7 +1332,7 @@ export default function ImageStudio() {
                     type="button"
                     onClick={() => setFilmStock(fs.id)}
                     className={cn(
-                      "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                      "p-2 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
                       filmStock === fs.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-semibold shadow-xs"
                         : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1277,7 +1351,7 @@ export default function ImageStudio() {
               <div>
                 <div className="flex items-center justify-between mb-1.5 font-mono text-[10px]">
                   <span className="text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
-                    CFG PROMPT GUIDANCE //
+                    CFG PROMPT GUIDANCE
                   </span>
                   <span className="font-bold text-zinc-950 dark:text-white">{cfgScale.toFixed(1)}</span>
                 </div>
@@ -1301,7 +1375,7 @@ export default function ImageStudio() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                    SAMPLING STEPS //
+                    SAMPLING STEPS
                   </label>
                   <div className="grid grid-cols-3 gap-1">
                     {STEP_PRESETS.map((sp) => (
@@ -1310,7 +1384,7 @@ export default function ImageStudio() {
                         type="button"
                         onClick={() => setSamplingSteps(sp.value)}
                         className={cn(
-                          "py-1.5 px-1 rounded-lg border text-center font-mono text-[10px] transition-all cursor-pointer",
+                          "py-1.5 px-1 rounded-lg border text-center font-mono text-[10px] transition-all cursor-pointer whitespace-nowrap shrink-0",
                           samplingSteps === sp.value
                             ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
                             : "bg-zinc-50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -1325,12 +1399,12 @@ export default function ImageStudio() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5 font-mono text-[10px]">
                     <span className="text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
-                      SEED //
+                      SEED
                     </span>
                     <button
                       type="button"
                       onClick={randomizeSeed}
-                      className="text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1 cursor-pointer"
+                      className="text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <Dices className="h-3 w-3" />
                       <span>RANDOM</span>
@@ -1352,7 +1426,7 @@ export default function ImageStudio() {
               <button
                 onClick={requestGenerateConfirm}
                 disabled={loading || !prompt.trim()}
-                className="w-full py-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 mt-3 cursor-pointer"
+                className="w-full py-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 mt-3 cursor-pointer whitespace-nowrap shrink-0"
               >
                 {loading ? (
                   <>

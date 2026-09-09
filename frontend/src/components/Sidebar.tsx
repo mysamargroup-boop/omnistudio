@@ -27,7 +27,6 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   badge?: string;
-  index: string;
 }
 
 interface NavGroup {
@@ -67,7 +66,13 @@ export default function Sidebar() {
         api.getAllAssets(),
       ]);
       if (hData.status === "fulfilled") setHealth(hData.value);
-      if (aData.status === "fulfilled") setAssetCount(aData.value?.total || 0);
+      if (aData.status === "fulfilled" && aData.value) {
+        const val = aData.value;
+        const total = typeof val.total === "number"
+          ? val.total
+          : (val.images?.length || 0) + (val.videos?.length || 0) + (val.audio?.length || 0) + (val.final?.length || 0);
+        setAssetCount(total);
+      }
     } catch {}
     setIsRefreshing(false);
   };
@@ -82,16 +87,16 @@ export default function Sidebar() {
     {
       label: "STUDIO SPACES",
       items: [
-        { href: "/", label: "Overview", icon: LayoutDashboard, index: "01" },
-        { href: "/pipeline", label: "Auto Pipeline", icon: Cpu, badge: "AI AGENT", index: "02" },
+        { href: "/", label: "Overview", icon: LayoutDashboard },
+        { href: "/pipeline", label: "Auto Pipeline", icon: Cpu, badge: "AI AGENT" },
       ],
     },
     {
       label: "CREATIVE ENGINES",
       items: [
-        { href: "/image", label: "Image Studio", icon: ImageIcon, badge: "DIFFUSION", index: "03" },
-        { href: "/video", label: "Video Studio", icon: Video, badge: "MOTION", index: "04" },
-        { href: "/voice", label: "Voice Studio", icon: Mic, badge: "NEURAL", index: "05" },
+        { href: "/image", label: "Image Studio", icon: ImageIcon, badge: "DIFFUSION" },
+        { href: "/video", label: "Video Studio", icon: Video, badge: "MOTION" },
+        { href: "/voice", label: "Voice Studio", icon: Mic, badge: "NEURAL" },
       ],
     },
     {
@@ -102,9 +107,8 @@ export default function Sidebar() {
           label: "Asset Vault",
           icon: FolderArchive,
           badge: assetCount !== null ? `${assetCount}` : undefined,
-          index: "06",
         },
-        { href: "/settings", label: "BYOK & Settings", icon: Sliders, badge: "KEYS", index: "07" },
+        { href: "/settings", label: "BYOK & Settings", icon: Sliders, badge: "KEYS" },
       ],
     },
   ];
@@ -183,24 +187,18 @@ export default function Sidebar() {
                       )}
                     />
                     <span className="truncate">{item.label}</span>
-                    <div className="ml-auto shrink-0 flex items-center gap-1.5">
-                      {item.badge ? (
-                        <span
-                          className={cn(
-                            "text-[8px] font-mono font-bold tracking-wider px-1.5 py-0.2 rounded-full",
-                            isActive
-                              ? "bg-zinc-950 text-white dark:bg-white dark:text-black"
-                              : "bg-zinc-200 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-400 border border-zinc-300 dark:border-white/[0.06]"
-                          )}
-                        >
-                          {item.badge}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-mono text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-600 dark:group-hover:text-zinc-400">
-                          {item.index}
-                        </span>
-                      )}
-                    </div>
+                    {item.badge && (
+                      <span
+                        className={cn(
+                          "text-[9px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-full ml-auto shrink-0",
+                          isActive
+                            ? "bg-zinc-950 text-white dark:bg-white dark:text-black"
+                            : "bg-zinc-200 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-400 border border-zinc-300 dark:border-white/[0.06]"
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

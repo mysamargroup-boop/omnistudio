@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/image", tags=["Image Generation"])
 
 class ImageRequest(BaseModel):
     prompt: str
-    model: str = "dall-e-3"  # dall-e-3, flux-schnell
+    model: str = "dall-e-3"  # dall-e-3, flux-schnell, gpt-image-1, gpt-image-2
     size: str = "1792x1024"
     quality: str = "hd"  # standard, hd, ultra
     style: str = "cinematic"  # cinematic, photoreal, anime, cyberpunk, 3d_pixar
@@ -30,6 +30,7 @@ class ImageRequest(BaseModel):
     cfg_scale: Optional[float] = 7.5
     sampling_steps: Optional[int] = 30
     seed: Optional[int] = None
+    count: Optional[int] = 1  # 1, 2, 4 images batch
 
 class ImageVariationsRequest(BaseModel):
     reference_image_path: str
@@ -198,31 +199,7 @@ async def generate_image_variations(req: ImageVariationsRequest):
         "variations": variations
     }
 
-@router.post("/generate")
-async def generate_image(req: ImageRequest):
-    modifiers = []
-    if req.lens:
-        modifiers.append(f"shot on {req.lens}")
-    if req.aperture:
-        modifiers.append(f"{req.aperture} shallow depth of field")
-    if req.lighting:
-        modifiers.append(f"{req.lighting} lighting")
-    if req.film_stock:
-        modifiers.append(f"{req.film_stock} color grading")
-    if req.quality == "ultra":
-        modifiers.append("8k master photography, raw detail, ultra-sharp focus")
-    elif req.quality == "hd":
-        modifiers.append("high definition, pristine clarity")
-
-    base_prompt = req.prompt.strip()
-    if modifiers:
-        composed_prompt = f"{base_prompt}, {', '.join(modifiers)}"
-    else:
-        composed_prompt = base_prompt
-
-    if req.enhance_prompt:
-        composed_prompt = await enhance_prompt(composed_prompt, req.enhance_style)
-
+async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_offset: int = 0):
     openai_quality = "hd" if req.quality in ["hd", "ultra"] else "standard"
 
     if req.model.startswith("flux"):
@@ -258,7 +235,6 @@ async def generate_image(req: ImageRequest):
             "model": "OmniStudio In-House Neural Diffusion"
         }
     else:
-        # Fallback priority: Gemini -> OpenAI -> Replicate
         from services.gemini_service import get_gemini_key, generate_gemini_image
         if get_gemini_key():
             result = await generate_gemini_image(composed_prompt)
@@ -279,7 +255,7 @@ async def generate_image(req: ImageRequest):
                 "provider": req.model,
                 "required_key": "GEMINI_API_KEY"
             }
-    
+
     if result.get("success"):
         result["enhanced_prompt"] = composed_prompt
         result["quality"] = req.quality
@@ -288,7 +264,7 @@ async def generate_image(req: ImageRequest):
         result["film_stock"] = req.film_stock
         result["cfg_scale"] = req.cfg_scale
         result["sampling_steps"] = req.sampling_steps
-        result["seed"] = req.seed
+        result["seed"] = (req.seed or 42) + seed_offset if req.seed is not None else None
 
         # Sync asset to Cloudflare R2 and Supabase Cloud
         if result.get("local_path"):
@@ -305,6 +281,67 @@ async def generate_image(req: ImageRequest):
             except Exception:
                 pass
 
+    return result
+
+@router.post("/generate")
+async def generate_image(req: ImageRequest):
+    modifiers = []
+    if req.lens:
+        modifiers.append(f"shot on {req.lens}")
+    if req.aperture:
+        modifiers.append(f"{req.aperture} shallow depth of field")
+    if req.lighting:
+        modifiers.append(f"{req.lighting} lighting")
+    if req.film_stock:
+        modifiers.append(f"{req.film_stock} color grading")
+    if req.quality == "ultra":
+        modifiers.append("8k master photography, raw detail, ultra-sharp focus")
+    elif req.quality == "hd":
+        modifiers.append("high definition, pristine clarity")
+
+    base_prompt = req.prompt.strip()
+    if modifiers:
+        composed_prompt = f"{base_prompt}, {', '.join(modifiers)}"
+    else:
+        composed_prompt = base_prompt
+
+    if req.enhance_prompt:
+        composed_prompt = await enhance_prompt(composed_prompt, req.enhance_style)
+
+    batch_count = min(max(req.count or 1, 1), 4)
+
+    if batch_count == 1:
+        result = await _generate_single_pass(req, composed_prompt, seed_offset=0)
+        result["images"] = [result] if result.get("success") else []
+        result["count"] = 1
+    else:
+        # Multi-image generation
+        images = []
+        for i in range(batch_count):
+            sub_res = await _generate_single_pass(req, composed_prompt, seed_offset=i)
+            if sub_res.get("success"):
+                images.append(sub_res)
+            elif not images and i == 0:
+                # If first one failed, return error
+                return sub_res
+
+        if not images:
+            return {"success": False, "error": "Batch generation failed for all variations"}
+
+        result = {
+            "success": True,
+            "count": len(images),
+            "images": images,
+            "url": images[0]["url"],
+            "filename": images[0]["filename"],
+            "local_path": images[0].get("local_path"),
+            "model": images[0].get("model", req.model),
+            "enhanced_prompt": composed_prompt,
+            "quality": req.quality,
+            "aspect_ratio": req.aspect_ratio,
+            "resolution": req.resolution
+        }
+
     try:
         from services.usage_tracker import log_generation
         log_provider = "google" if any(k in req.model.lower() for k in ["imagen", "gemini"]) else ("openai" if "dall-e" in req.model.lower() else "replicate")
@@ -314,7 +351,7 @@ async def generate_image(req: ImageRequest):
             model=result.get("model", req.model),
             prompt=req.prompt,
             status="success" if result.get("success") else "failed",
-            specs={"quality": req.quality, "aspect_ratio": req.aspect_ratio, "resolution": req.resolution},
+            specs={"quality": req.quality, "aspect_ratio": req.aspect_ratio, "resolution": req.resolution, "count": batch_count},
             output_url=result.get("url", ""),
             error=result.get("error") if not result.get("success") else None
         )

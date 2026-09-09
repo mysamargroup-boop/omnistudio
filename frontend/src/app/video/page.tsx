@@ -236,7 +236,7 @@ function VideoStudioContent() {
     setLoading(true);
     setResult(null);
     setProgress(8);
-    setStageTitle("01 // INITIALIZING FRAME BUFFER");
+    setStageTitle("01 • Initializing Frame Buffer");
     setStatusMessage(`Preparing ${resolution} canvas texture...`);
     setElapsedSeconds(0);
     const nowTime = new Date().toTimeString().split(" ")[0];
@@ -250,7 +250,7 @@ function VideoStudioContent() {
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
         setProgress(25);
-        setStageTitle("02 // CALCULATING CAMERA KINEMATICS");
+        setStageTitle("02 • Calculating Camera Kinematics");
         setStatusMessage(`Applying motion vector: ${motion} (${resolution}, ${fps} FPS)...`);
         setTelemetryLogs((prev) => [
           ...prev,
@@ -258,7 +258,7 @@ function VideoStudioContent() {
         ]);
       } else if (elapsed === 3) {
         setProgress(55);
-        setStageTitle("03 // INTERPOLATING SUB-PIXEL FRAMES");
+        setStageTitle("03 • Interpolating Sub-Pixel Frames");
         setStatusMessage("Hardware-accelerated frame interpolation in progress...");
         setTelemetryLogs((prev) => [
           ...prev,
@@ -266,7 +266,7 @@ function VideoStudioContent() {
         ]);
       } else if (elapsed === 6) {
         setProgress(80);
-        setStageTitle("04 // FFMPEG 8.1 PRORES ENCODING");
+        setStageTitle("04 • FFmpeg ProRes Encoding");
         setStatusMessage(`Compressing video with ${quality} CRF profile...`);
         setTelemetryLogs((prev) => [
           ...prev,
@@ -383,9 +383,9 @@ function VideoStudioContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
-            <span>MOTION ENGINE 5.0</span>
-            <span>//</span>
-            <span>KEYFRAME INTERPOLATION & AI DIRECTOR</span>
+            <span>Motion Engine 5.0</span>
+            <span>•</span>
+            <span>Keyframe Interpolation & AI Director</span>
           </div>
           <h1 className="text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
             Video Motion Studio
@@ -471,7 +471,7 @@ function VideoStudioContent() {
               <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
                 <span className="text-[10px] font-mono tracking-widest text-zinc-600 dark:text-zinc-400 uppercase font-semibold flex items-center gap-2">
                   <Layers className="h-3.5 w-3.5 text-zinc-950 dark:text-white" />
-                  <span>KEYFRAME STAGING //</span>
+                  <span>KEYFRAME STAGING</span>
                 </span>
                 <span className="text-[10px] font-mono text-zinc-500">
                   {mode === "first_to_last_frame" ? "DUAL KEYFRAME INTERPOLATION" : mode === "motion_transfer" ? "MOTION TRANSFER" : "SINGLE KEYFRAME"}
@@ -484,12 +484,12 @@ function VideoStudioContent() {
                 <div className="space-y-2 p-3.5 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                      {mode === "motion_transfer" ? "TARGET IMAGE //" : "START FRAME (01) //"}
+                      {mode === "motion_transfer" ? "TARGET IMAGE" : "START FRAME (01)"}
                     </label>
                     <button
                       type="button"
                       onClick={() => openVaultPicker("start")}
-                      className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2 py-0.5 rounded-full bg-white dark:bg-[#09090d] cursor-pointer"
+                      className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2 py-0.5 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <FolderArchive className="h-3 w-3" />
                       <span>VAULT</span>
@@ -538,12 +538,12 @@ function VideoStudioContent() {
                   <div className="space-y-2 p-3.5 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                        END FRAME (02) //
+                        END FRAME (02)
                       </label>
                       <button
                         type="button"
                         onClick={() => openVaultPicker("end")}
-                        className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2 py-0.5 rounded-full bg-white dark:bg-[#09090d] cursor-pointer"
+                        className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2 py-0.5 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0"
                       >
                         <FolderArchive className="h-3 w-3" />
                         <span>VAULT</span>
@@ -593,7 +593,7 @@ function VideoStudioContent() {
                   <div className="space-y-2 p-3.5 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                        SOURCE MOTION VIDEO //
+                        SOURCE MOTION VIDEO
                       </label>
                     </div>
 
@@ -647,7 +647,7 @@ function VideoStudioContent() {
               {mode === "first_to_last_frame" && (
                 <div className="pt-2">
                   <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                    TRANSITION DYNAMICS //
+                    TRANSITION DYNAMICS
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {TRANSITIONS.map((t) => (
@@ -677,13 +677,13 @@ function VideoStudioContent() {
             <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
               <span className="text-[10px] font-mono tracking-widest text-zinc-600 dark:text-zinc-400 uppercase font-semibold flex items-center gap-2">
                 <Sparkle className="h-3.5 w-3.5 text-zinc-950 dark:text-white" />
-                <span>AI DIRECTOR COPILOT (OPENAI GPT-4o) //</span>
+                <span>AI DIRECTOR COPILOT (OPENAI GPT-4o)</span>
               </span>
               <button
                 type="button"
                 onClick={runDirectorAgent}
                 disabled={directing}
-                className="text-[10px] font-mono text-zinc-950 dark:text-white hover:opacity-80 flex items-center gap-1.5 transition-all bg-zinc-100 dark:bg-[#09090d] border border-black/[0.1] dark:border-white/[0.1] px-3 py-1 rounded-full cursor-pointer disabled:opacity-40"
+                className="text-[10px] font-mono text-zinc-950 dark:text-white hover:opacity-80 flex items-center gap-1.5 transition-all bg-zinc-100 dark:bg-[#09090d] border border-black/[0.1] dark:border-white/[0.1] px-3 py-1 rounded-full cursor-pointer disabled:opacity-40 whitespace-nowrap shrink-0"
               >
                 {directing ? (
                   <>
@@ -702,7 +702,7 @@ function VideoStudioContent() {
             {/* Prompt input */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block font-medium">
-                SCENE VISION & MOTION DIRECTIVE //
+                SCENE VISION & MOTION DIRECTIVE
               </label>
               <textarea
                 value={prompt}
@@ -731,7 +731,7 @@ function VideoStudioContent() {
             {/* Negative Prompt Field */}
             <div className="space-y-1">
               <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block">
-                NEGATIVE PROMPT (MOTION DEFECT SUPPRESSION) //
+                NEGATIVE PROMPT (MOTION DEFECT SUPPRESSION)
               </label>
               <input
                 type="text"
@@ -757,7 +757,7 @@ function VideoStudioContent() {
             {mode !== "first_to_last_frame" && mode !== "motion_transfer" && (
               <div>
                 <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-2 font-medium">
-                  CAMERA MOTION VECTOR COMPASS //
+                  CAMERA MOTION VECTOR COMPASS
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {MOTIONS.map((m) => {
@@ -793,7 +793,7 @@ function VideoStudioContent() {
               {/* Aspect Ratio */}
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                  ASPECT RATIO //
+                  ASPECT RATIO
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {ASPECT_RATIOS.map((ar) => (
@@ -817,7 +817,7 @@ function VideoStudioContent() {
               {/* Frame Rate */}
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                  FRAME RATE //
+                  FRAME RATE
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {FPS_PROFILES.map((p) => (
@@ -841,7 +841,7 @@ function VideoStudioContent() {
               {/* Resolution (4 options including 2K) */}
               <div className="sm:col-span-2">
                 <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                  RESOLUTION //
+                  RESOLUTION
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {RESOLUTIONS.map((res) => (
@@ -867,7 +867,7 @@ function VideoStudioContent() {
             {/* Video Quality Bitrate Profile */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                QUALITY BITRATE PROFILE //
+                QUALITY BITRATE PROFILE
               </label>
               <div className="grid grid-cols-3 gap-2 font-mono">
                 {QUALITY_PROFILES.map((qp) => (
@@ -893,7 +893,7 @@ function VideoStudioContent() {
             {mode !== "first_to_last_frame" && mode !== "motion_transfer" && (
               <div>
                 <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-600 dark:text-zinc-400 block mb-1.5 font-medium">
-                  CAMERA MOTION INTENSITY //
+                  CAMERA MOTION INTENSITY
                 </label>
                 <div className="grid grid-cols-4 gap-1.5 font-mono">
                   {SPEED_PROFILES.map((sp) => (
@@ -920,7 +920,7 @@ function VideoStudioContent() {
             <div className="space-y-2">
               <div className="flex items-center justify-between font-mono">
                 <label className="text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-400 block font-medium">
-                  CLIP DURATION //
+                  CLIP DURATION
                 </label>
                 <span className="text-xs font-bold text-zinc-950 dark:text-white font-heading">{duration} SECONDS</span>
               </div>
@@ -984,7 +984,7 @@ function VideoStudioContent() {
               {/* Seed Input */}
               <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06] space-y-1">
                 <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-zinc-600 dark:text-zinc-400 uppercase">SEED //</span>
+                  <span className="text-zinc-600 dark:text-zinc-400 uppercase">SEED</span>
                   <button
                     type="button"
                     onClick={randomizeSeed}
@@ -1008,7 +1008,7 @@ function VideoStudioContent() {
             <button
               onClick={requestVideoConfirm}
               disabled={loading || !isFormValid()}
-              className="w-full py-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 mt-3 cursor-pointer"
+              className="w-full py-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 mt-3 cursor-pointer whitespace-nowrap shrink-0"
             >
               {loading ? (
                 <>
@@ -1053,7 +1053,7 @@ function VideoStudioContent() {
                     className="w-full aspect-video object-contain"
                   />
                   <span className="absolute top-3 left-3 text-[9px] font-mono px-2.5 py-1 rounded-md bg-black/80 text-zinc-200 border border-white/10 backdrop-blur-sm">
-                    [ {result.mode?.toUpperCase() || "MOTION"} // {fps} FPS // {aspectRatio} ]
+                    [ {result.mode?.toUpperCase() || "MOTION"} • {fps} FPS • {aspectRatio} ]
                   </span>
                 </div>
 
@@ -1066,7 +1066,7 @@ function VideoStudioContent() {
                   <a
                     href={getMediaUrl(result.url)}
                     download
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-95"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0"
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>DOWNLOAD MOTION MP4</span>

@@ -323,9 +323,9 @@ export default function VaultPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
-            <span>STORAGE VAULT 5.0</span>
-            <span>//</span>
-            <span>HARDWARE & SUPABASE CLOUD</span>
+            <span>Storage Vault 5.0</span>
+            <span>•</span>
+            <span>Hardware Storage & Supabase Cloud</span>
           </div>
           <h1 className="text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
             Asset Repository
@@ -370,10 +370,10 @@ export default function VaultPage() {
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium capitalize transition-all font-mono cursor-pointer",
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium capitalize transition-all font-mono cursor-pointer whitespace-nowrap shrink-0",
                   tab === t
                     ? isTrashTab
-                      ? "bg-rose-600 text-white border border-transparent font-semibold shadow-md shadow-rose-600/20"
+                    ? "bg-rose-600 text-white border border-transparent font-semibold shadow-md shadow-rose-600/20"
                       : "bg-zinc-950 text-white dark:bg-white dark:text-black border border-transparent font-semibold shadow-sm"
                     : isTrashTab && trashCount > 0
                     ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100"
@@ -404,7 +404,7 @@ export default function VaultPage() {
           {activeFiles.length > 0 && (
             <button
               onClick={selectedKeys.size === activeFiles.length ? clearSelection : selectAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               {selectedKeys.size === activeFiles.length ? (
                 <>
@@ -462,7 +462,7 @@ export default function VaultPage() {
               <button
                 type="button"
                 onClick={handleEmptyTrashClick}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-heading font-medium text-xs tracking-tight transition-all cursor-pointer shadow-md shadow-rose-600/20 active:scale-98"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-heading font-medium text-xs tracking-tight transition-all cursor-pointer shadow-md shadow-rose-600/20 active:scale-98 whitespace-nowrap shrink-0"
               >
                 <Flame className="w-3.5 h-3.5" />
                 <span>EMPTY TRASH</span>
@@ -644,7 +644,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkRestoreClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>RESTORE SELECTED</span>
@@ -652,7 +652,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkPermanentDeleteClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
                 >
                   <Flame className="w-3.5 h-3.5" />
                   <span>DESTROY PERMANENTLY</span>
@@ -663,7 +663,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkTrashClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>MOVE TO TRASH</span>
@@ -671,7 +671,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkPermanentDeleteClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
                 >
                   <Flame className="w-3.5 h-3.5" />
                   <span>PURGE PERMANENTLY</span>

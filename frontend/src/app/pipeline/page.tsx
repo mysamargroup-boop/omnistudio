@@ -31,11 +31,11 @@ import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/u
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 
 const PHASES = [
-  { id: 1, label: "01 // SCRIPT", desc: "Storyboard Director", icon: Layers },
-  { id: 2, label: "02 // DIFFUSION", desc: "Visual Sampler", icon: ImageIcon },
-  { id: 3, label: "03 // DYNAMICS", desc: "Camera Vector Engine", icon: Video },
-  { id: 4, label: "04 // NARRATION", desc: "Neural Speech Sync", icon: Mic },
-  { id: 5, label: "05 // MASTER", desc: "FFmpeg MP4 Compiler", icon: Film },
+  { id: 1, label: "01 • Script", desc: "Storyboard Director", icon: Layers },
+  { id: 2, label: "02 • Diffusion", desc: "Visual Sampler", icon: ImageIcon },
+  { id: 3, label: "03 • Dynamics", desc: "Camera Vector Engine", icon: Video },
+  { id: 4, label: "04 • Narration", desc: "Neural Speech Sync", icon: Mic },
+  { id: 5, label: "05 • Master", desc: "FFmpeg MP4 Compiler", icon: Film },
 ];
 
 const PRESETS = [
@@ -129,7 +129,7 @@ function PipelineContent() {
     setResult(null);
     setProgress(5);
     setCurrentStep(0);
-    setStageTitle("01 // INITIALIZING AUTONOMOUS AGENT");
+    setStageTitle("01 • Initializing Autonomous Agent");
     setStatusText("Drafting screenplay & scene visual compositions...");
     setElapsedSeconds(0);
     const nowTime = new Date().toTimeString().split(" ")[0];
@@ -170,15 +170,15 @@ function PipelineContent() {
           ]);
         }
         if (event.stage) {
-          if (event.stage.includes("storyboard")) setStageTitle("01 // SCREENPLAY DIRECTIVE");
-          else if (event.stage.includes("visual")) setStageTitle(`02 // VISUAL DIFFUSION (SCENE ${event.scene || 1})`);
-          else if (event.stage.includes("motion")) setStageTitle(`03 // CAMERA KINEMATICS (SCENE ${event.scene || 1})`);
-          else if (event.stage.includes("voice")) setStageTitle(`04 // NEURAL NARRATION (SCENE ${event.scene || 1})`);
-          else if (event.stage.includes("merge")) setStageTitle(`05 // AUDIO-VIDEO SYNC (SCENE ${event.scene || 1})`);
-          else if (event.stage.includes("master")) setStageTitle("06 // MASTER FFMPEG COMPILATION");
-          else if (event.stage.includes("subtitles")) setStageTitle("07 // SYNCHRONIZING SUBTITLES");
-          else if (event.stage.includes("cloud_sync")) setStageTitle("08 // SUPABASE & VAULT SYNC");
-          else if (event.stage.includes("complete")) setStageTitle("09 // RENDER COMPLETE");
+          if (event.stage.includes("storyboard")) setStageTitle("01 • Screenplay Directive");
+          else if (event.stage.includes("visual")) setStageTitle(`02 • Visual Diffusion (Scene ${event.scene || 1})`);
+          else if (event.stage.includes("motion")) setStageTitle(`03 • Camera Kinematics (Scene ${event.scene || 1})`);
+          else if (event.stage.includes("voice")) setStageTitle(`04 • Neural Narration (Scene ${event.scene || 1})`);
+          else if (event.stage.includes("merge")) setStageTitle(`05 • Audio-Video Sync (Scene ${event.scene || 1})`);
+          else if (event.stage.includes("master")) setStageTitle("06 • Master FFmpeg Compilation");
+          else if (event.stage.includes("subtitles")) setStageTitle("07 • Synchronizing Subtitles");
+          else if (event.stage.includes("cloud_sync")) setStageTitle("08 • Supabase & Vault Sync");
+          else if (event.stage.includes("complete")) setStageTitle("09 • Render Complete");
         }
       });
 
@@ -209,7 +209,7 @@ function PipelineContent() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
             <span>CINEMA STUDIO 5.0</span>
-            <span>//</span>
+            <span>•</span>
             <span>AUTONOMOUS AGENT DIRECTOR</span>
           </div>
           <h1 className="text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
@@ -217,7 +217,7 @@ function PipelineContent() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-700 dark:text-zinc-400 bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] px-3.5 py-1.5 rounded-full shadow-2xs">
+        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-700 dark:text-zinc-400 bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] px-3.5 py-1.5 rounded-full shadow-2xs whitespace-nowrap shrink-0">
           <Clock className="h-3 w-3 text-zinc-500" />
           <span>EST. RUNTIME: ~20-35 SECONDS</span>
         </div>
@@ -234,13 +234,13 @@ function PipelineContent() {
             <div>
               <div className="flex items-center justify-between mb-2 font-mono">
                 <label className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase tracking-widest block font-medium">
-                  NARRATIVE CONCEPT //
+                  NARRATIVE CONCEPT
                 </label>
                 <button
                   type="button"
                   onClick={enhancePrompt}
                   disabled={enhancing || !topic.trim()}
-                  className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-black/10 dark:border-white/10 px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-[#060609]"
+                  className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-black/10 dark:border-white/10 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-[#060609] whitespace-nowrap shrink-0"
                 >
                   <Wand2 className={cn("h-2.5 w-2.5", enhancing && "animate-spin")} />
                   <span>AI ENHANCE</span>
@@ -304,7 +304,7 @@ function PipelineContent() {
             {/* Aspect Ratio & Format */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 dark:text-zinc-400 block mb-2 font-medium">
-                ASPECT RATIO FORMAT //
+                ASPECT RATIO FORMAT
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -317,7 +317,7 @@ function PipelineContent() {
                     type="button"
                     onClick={() => setAspectRatio(ar.id)}
                     className={cn(
-                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
                       aspectRatio === ar.id
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
                         : "bg-zinc-100 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
@@ -333,7 +333,7 @@ function PipelineContent() {
             {/* Voice Provider Switcher */}
             <div>
               <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 dark:text-zinc-400 block mb-2 font-medium">
-                SPEECH ENGINE //
+                SPEECH ENGINE
               </label>
               <div className="grid grid-cols-2 gap-2 font-jakarta">
                 <button
@@ -438,7 +438,7 @@ function PipelineContent() {
                     )}
                   </video>
                   <span className="absolute top-3 left-3 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-300 border border-white/10 backdrop-blur-sm">
-                    [ MASTER 1080P // 30 FPS ]
+                    [ MASTER 1080P • 30 FPS ]
                   </span>
                 </div>
 
@@ -458,7 +458,7 @@ function PipelineContent() {
                         setCurrentStep(-1);
                         setProgress(0);
                       }}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <RotateCcw className="h-3 w-3" />
                       <span>NEW CUT</span>
@@ -468,7 +468,7 @@ function PipelineContent() {
                       <a
                         href={getMediaUrl(result.final_video.srt_url)}
                         download
-                        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors"
+                        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors whitespace-nowrap shrink-0"
                         title="Download Subtitles (.srt)"
                       >
                         <FileText className="h-3.5 w-3.5" />
@@ -479,7 +479,7 @@ function PipelineContent() {
                     <a
                       href={getMediaUrl(result.final_video.url)}
                       download
-                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-95"
+                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>DOWNLOAD MASTER MP4</span>
@@ -491,7 +491,7 @@ function PipelineContent() {
                 {result.scenes && result.scenes.length > 0 && (
                   <div className="pt-4 border-t border-black/[0.08] dark:border-white/[0.08] space-y-2.5 font-mono">
                     <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
-                      <span>SCENE BREAKDOWN // {result.scenes.length} KEYFRAMES</span>
+                      <span>SCENE BREAKDOWN • {result.scenes.length} KEYFRAMES</span>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

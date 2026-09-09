@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -301,7 +301,7 @@ export default function Header() {
         {/* Primary CTA Button */}
         <button 
           onClick={() => router.push('/pipeline')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:opacity-90 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs active:scale-95"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:opacity-90 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs active:scale-95 whitespace-nowrap shrink-0"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Create</span>

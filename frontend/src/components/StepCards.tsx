@@ -11,11 +11,11 @@ export interface StepCardItem {
 }
 
 export const PIPELINE_STEPS: StepCardItem[] = [
-  { id: 1, label: "01 // SCRIPT", desc: "Storyboard Director", icon: Layers },
-  { id: 2, label: "02 // DIFFUSION", desc: "Visual Sampler", icon: ImageIcon },
-  { id: 3, label: "03 // DYNAMICS", desc: "Camera Vector Engine", icon: Video },
-  { id: 4, label: "04 // NARRATION", desc: "Neural Speech Sync", icon: Mic },
-  { id: 5, label: "05 // MASTER", desc: "FFmpeg MP4 Compiler", icon: Film },
+  { id: 1, label: "01 • Script", desc: "Storyboard Director", icon: Layers },
+  { id: 2, label: "02 • Diffusion", desc: "Visual Sampler", icon: ImageIcon },
+  { id: 3, label: "03 • Dynamics", desc: "Camera Vector Engine", icon: Video },
+  { id: 4, label: "04 • Narration", desc: "Neural Speech Sync", icon: Mic },
+  { id: 5, label: "05 • Master", desc: "FFmpeg MP4 Compiler", icon: Film },
 ];
 
 interface StepCardsProps {

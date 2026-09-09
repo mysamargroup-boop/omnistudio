@@ -210,7 +210,7 @@ export default function VoiceStudioPage() {
     setIsGenerating(true);
     setOutputAudioUrl(null);
     setProgress(15);
-    setStageTitle("01 // TEXT NORMALIZATION & PHONEMES");
+    setStageTitle("01 • Text Normalization & Phonemes");
     setStatusMessage(`Tokenizing ${wordCount} words for ${ttsVoice}...`);
     setElapsedSeconds(0);
     setTelemetryLogs([
@@ -222,7 +222,7 @@ export default function VoiceStudioPage() {
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
         setProgress(50);
-        setStageTitle("02 // NEURAL ACOUSTIC MODELING");
+        setStageTitle("02 • Neural Acoustic Modeling");
         setStatusMessage("Synthesizing human vocal timbre and cadence...");
         setTelemetryLogs((prev) => [
           ...prev,
@@ -230,7 +230,7 @@ export default function VoiceStudioPage() {
         ]);
       } else if (elapsed === 3) {
         setProgress(80);
-        setStageTitle("03 // HIGH-BITRATE MP3 ENCODING");
+        setStageTitle("03 • High-Bitrate MP3 Encoding");
         setStatusMessage("Muxing audio stream & frequency equalization...");
       } else if (elapsed >= 5 && elapsed < 10) {
         setProgress((prev) => Math.min(prev + 4, 95));
@@ -275,7 +275,7 @@ export default function VoiceStudioPage() {
     setIsGenerating(true);
     setOutputAudioUrl(null);
     setProgress(20);
-    setStageTitle("01 // EXTRACTING AUDIO FROM SOURCE");
+    setStageTitle("01 • Extracting Audio From Source");
     setStatusMessage(`Demuxing ${uploadFile.name}...`);
     setElapsedSeconds(0);
     setTelemetryLogs([
@@ -287,11 +287,11 @@ export default function VoiceStudioPage() {
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
         setProgress(55);
-        setStageTitle("02 // ELEVENLABS STS TIMBRE CLONING");
+        setStageTitle("02 • ElevenLabs STS Timbre Cloning");
         setStatusMessage("Transferring speaker identity & pitch contours...");
       } else if (elapsed === 4) {
         setProgress(85);
-        setStageTitle("03 // REMUXING AUDIO TRACK");
+        setStageTitle("03 • Remuxing Audio Track");
         setStatusMessage("Recombining transformed audio track with original master...");
       }
     }, 1000);
@@ -327,7 +327,7 @@ export default function VoiceStudioPage() {
     setOutputAudioUrl(null);
     setTranslatedResultText('');
     setProgress(25);
-    setStageTitle("01 // NEURAL LANGUAGE TRANSLATION");
+    setStageTitle("01 • Neural Language Translation");
     setStatusMessage(`Translating ${sourceLang.toUpperCase()} -> ${targetLang.toUpperCase()}...`);
     setElapsedSeconds(0);
     setTelemetryLogs([
@@ -339,7 +339,7 @@ export default function VoiceStudioPage() {
       setElapsedSeconds(elapsed);
       if (elapsed === 1 && dub) {
         setProgress(65);
-        setStageTitle("02 // NEURAL SPEECH DUBBING");
+        setStageTitle("02 • Neural Speech Dubbing");
         setStatusMessage(`Synthesizing dubbed voiceover in ${targetLang.toUpperCase()}...`);
       }
     }, 1000);
@@ -419,7 +419,7 @@ export default function VoiceStudioPage() {
         <div>
           <div className="flex items-center gap-2 mb-2 text-xs font-mono tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">
             <Mic size={14} className="text-zinc-900 dark:text-zinc-100" />
-            <span>ACOUSTIC SUITE 5.0 // NEURAL SPEECH + VOICE CHANGE + TRANSLATE</span>
+            <span>ACOUSTIC SUITE 5.0 • NEURAL SPEECH + VOICE CHANGE + TRANSLATE</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-heading font-medium tracking-tight">Audio Production Studio</h1>
         </div>
@@ -545,7 +545,7 @@ export default function VoiceStudioPage() {
                   <button 
                     onClick={requestVoiceConfirm}
                     disabled={isGenerating || text.trim().length === 0}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200"
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200 whitespace-nowrap shrink-0"
                   >
                     {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
                     {isGenerating ? 'Synthesizing...' : 'Generate Voice'}
@@ -601,7 +601,7 @@ export default function VoiceStudioPage() {
                   <button 
                     onClick={requestVoiceChangeConfirm}
                     disabled={isGenerating || !uploadFile}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200"
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200 whitespace-nowrap shrink-0"
                   >
                     {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
                     {isGenerating ? 'Processing...' : 'Transform Voice'}
@@ -663,14 +663,14 @@ export default function VoiceStudioPage() {
                   <button 
                     onClick={() => requestTranslateConfirm(false)}
                     disabled={isGenerating || transText.trim().length === 0}
-                    className="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    className="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 whitespace-nowrap shrink-0"
                   >
                     Translate Text
                   </button>
                   <button 
                     onClick={() => requestTranslateConfirm(true)}
                     disabled={isGenerating || transText.trim().length === 0}
-                    className="flex-[2] flex items-center justify-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200"
+                    className="flex-[2] flex items-center justify-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200 whitespace-nowrap shrink-0"
                   >
                     {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Languages size={18} />}
                     {isGenerating ? 'Processing...' : 'Translate & Dub'}
@@ -700,7 +700,7 @@ export default function VoiceStudioPage() {
                 <button 
                   onClick={handleExportAudio}
                   className={cn(
-                    "p-1.5 rounded-md transition-colors flex items-center gap-1.5 text-xs font-mono",
+                    "p-1.5 rounded-md transition-colors flex items-center gap-1.5 text-xs font-mono whitespace-nowrap shrink-0",
                     outputAudioUrl 
                       ? "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer" 
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed"

@@ -95,8 +95,14 @@ export default function OverviewPage() {
         if (healthRes.status === "fulfilled") {
           setHealth(healthRes.value);
         }
-        if (assetsRes.status === "fulfilled" && assetsRes.value && assetsRes.value.assets) {
-          setRecentAssets(assetsRes.value.assets.slice(0, 6));
+        if (assetsRes.status === "fulfilled" && assetsRes.value) {
+          const val = assetsRes.value;
+          const all = [
+            ...(val.images || []),
+            ...(val.videos || []),
+            ...(val.final || [])
+          ].sort((a: any, b: any) => (b.modified || 0) - (a.modified || 0));
+          setRecentAssets(all.slice(0, 6));
         }
       } catch (_) {
       } finally {
@@ -326,32 +332,35 @@ export default function OverviewPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {recentAssets.map((asset, idx) => (
-              <div
-                key={idx}
-                onClick={() => router.push("/vault")}
-                className="group relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#0c0c12] aspect-square cursor-pointer hover:shadow-md transition-all"
-              >
-                {asset.asset_type === "image" ? (
-                  <img
-                    src={getMediaUrl(asset.url)}
-                    alt={asset.filename}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-zinc-100 dark:bg-zinc-900 text-center">
-                    <Video className="w-6 h-6 text-zinc-400 mb-1" />
-                    <span className="text-[10px] text-zinc-500 font-medium truncate max-w-full">
-                      {asset.filename}
-                    </span>
+            {recentAssets.map((asset, idx) => {
+              const isImg = asset.type === "images" || (asset.filename && /\.(png|jpe?g|webp)$/i.test(asset.filename));
+              return (
+                <div
+                  key={idx}
+                  onClick={() => router.push("/vault")}
+                  className="group relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#0c0c12] aspect-square cursor-pointer hover:shadow-md transition-all"
+                >
+                  {isImg ? (
+                    <img
+                      src={getMediaUrl(asset.url)}
+                      alt={asset.filename}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-zinc-100 dark:bg-zinc-900 text-center">
+                      <Video className="w-6 h-6 text-zinc-400 mb-1" />
+                      <span className="text-[10px] text-zinc-500 font-medium truncate max-w-full">
+                        {asset.filename}
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white drop-shadow" />
                   </div>
-                )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Play className="w-6 h-6 text-white drop-shadow" />
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

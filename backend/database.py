@@ -470,18 +470,43 @@ def db_get_all_settings() -> dict:
     return settings_dict
 
 def load_settings_into_runtime():
-    """Sync API keys and configurations from Supabase database into runtime config and environment."""
+    """
+    Sync API keys with resilient hierarchy:
+    1. Supabase Cloud Database (Primary)
+    2. Fallback to local SQLite / VPS .env if Supabase is unavailable or key is unset
+    """
+    ALL_CRITICAL_KEYS = [
+        "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
+        "DATABASE_URL", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN"
+    ]
+    merged_settings = {}
     try:
         db_settings = db_get_all_settings()
-        for k, v in db_settings.items():
-            if v and isinstance(v, str):
+        for k in ALL_CRITICAL_KEYS:
+            db_val = db_settings.get(k)
+            env_val = os.environ.get(k) or getattr(settings, k, "")
+            
+            # Primary: Supabase DB if non-empty
+            if db_val and isinstance(db_val, str) and db_val.strip():
+                final_val = db_val.strip()
+            # Resilient Fallback: Local VPS .env / os.environ
+            elif env_val and isinstance(env_val, str) and env_val.strip():
+                final_val = env_val.strip()
+            else:
+                final_val = ""
+
+            if final_val:
                 if hasattr(settings, k):
-                    setattr(settings, k, v)
-                os.environ[k] = v
-        return db_settings
+                    setattr(settings, k, final_val)
+                os.environ[k] = final_val
+                merged_settings[k] = final_val
+
+        return merged_settings
     except Exception as e:
         print(f"[Settings Runtime Sync Error] {e}")
-        return {}
+        # Even on critical exception, ensure .env is not wiped
+        return merged_settings
 
 # Auto-initialize DB and load settings on import
 try:
