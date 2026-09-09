@@ -17,7 +17,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
   return (
     <div key={pathname} className={cn("relative", transitioning && "animate-page-enter")}>
       {transitioning && (
-        <div className="fixed top-0 left-0 lg:left-64 right-0 h-[2px] bg-gradient-to-r from-transparent via-zinc-950 to-transparent dark:via-white z-50 animate-top-progress pointer-events-none" />
+        <div className="fixed top-0 left-0 lg:left-64 right-0 h-[2px] bg-gradient-to-r from-transparent via-violet-500 to-transparent dark:via-violet-400 z-50 animate-top-progress pointer-events-none" />
       )}
       {children}
     </div>

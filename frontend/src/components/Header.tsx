@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import HowItWorksModal from '@/components/ui/HowItWorksModal';
 
 const NAV_TABS = [
+  { id: 'studio', label: 'Studio', path: '/studio', badge: 'ALL' },
   { id: 'image', label: 'Image', path: '/image' },
   { id: 'video', label: 'Video', path: '/video', hasDropdown: true },
   { id: 'audio', label: 'Voice', path: '/voice', hasDropdown: true },
@@ -86,7 +87,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="mx-auto flex items-center justify-between h-13 bg-white/95 dark:bg-[#0a0a0f]/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl px-3 sm:px-5 shadow-xs w-full max-w-6xl select-none">
+    <header className="mx-auto flex items-center justify-between h-13 glass-dock border border-black/[0.06] dark:border-white/[0.06] rounded-2xl px-3 sm:px-5 shadow-sm w-full max-w-6xl select-none">
       {/* Left: Mobile Trigger & Brand */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
@@ -126,13 +127,13 @@ export default function Header() {
                 className={cn(
                   'flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
                   isActive 
-                    ? 'bg-zinc-100 dark:bg-zinc-800/90 text-zinc-950 dark:text-white' 
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
+                    ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-b-2 border-violet-500' 
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border-b-2 border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400">
                     {tab.badge}
                   </span>
                 )}
@@ -149,28 +150,28 @@ export default function Header() {
 
         {/* Video Dropdown Panel */}
         {activeDropdown === 'video' && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl w-[500px] flex gap-4 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 shadow-xl w-[500px] flex gap-4 animate-scale-in z-50">
             <div className="flex-1 space-y-1.5">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Features</div>
               {VIDEO_FEATURES.map((f) => (
                 <div 
                   key={f.name}
                   onClick={() => { setActiveDropdown(null); router.push('/video'); }}
-                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
                   <div className="text-xs text-zinc-500">{f.desc}</div>
                 </div>
               ))}
             </div>
-            <div className="w-px bg-zinc-200 dark:bg-zinc-800" />
+            <div className="w-px bg-black/[0.08] dark:bg-white/[0.08]" />
             <div className="flex-1 space-y-1.5">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Motion Engines</div>
               {VIDEO_MODELS.map((m) => (
                 <div 
                   key={m.name}
                   onClick={() => { setActiveDropdown(null); router.push('/video'); }}
-                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
                   <div className="text-xs text-zinc-500">{m.desc}</div>
@@ -182,28 +183,28 @@ export default function Header() {
 
         {/* Audio Dropdown Panel */}
         {activeDropdown === 'audio' && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl w-[480px] flex gap-4 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 shadow-xl w-[480px] flex gap-4 animate-scale-in z-50">
             <div className="flex-1 space-y-1.5">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Audio Modes</div>
               {AUDIO_FEATURES.map((f) => (
                 <div 
                   key={f.name}
                   onClick={() => { setActiveDropdown(null); router.push('/voice'); }}
-                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
                   <div className="text-xs text-zinc-500">{f.desc}</div>
                 </div>
               ))}
             </div>
-            <div className="w-px bg-zinc-200 dark:bg-zinc-800" />
+            <div className="w-px bg-black/[0.08] dark:bg-white/[0.08]" />
             <div className="flex-1 space-y-1.5">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Speech Models</div>
               {AUDIO_MODELS.map((m) => (
                 <div 
                   key={m.name}
                   onClick={() => { setActiveDropdown(null); router.push('/voice'); }}
-                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
                   <div className="text-xs text-zinc-500">{m.desc}</div>
@@ -221,11 +222,11 @@ export default function Header() {
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-xs font-medium"
           title={isOnline ? 'All AI backend services running' : 'Backend offline'}
         >
-          <span className="relative flex h-2 w-2">
+          <span className="relative flex h-1.5 w-1.5">
             {isOnline && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             )}
-            <span className={cn('relative inline-flex rounded-full h-2 w-2', isOnline ? 'bg-emerald-500' : 'bg-rose-500')} />
+            <span className={cn('relative inline-flex rounded-full h-1.5 w-1.5', isOnline ? 'bg-emerald-500' : 'bg-rose-500')} />
           </span>
           <span className="text-zinc-600 dark:text-zinc-400 text-xs">
             {isOnline ? 'Online' : 'Offline'}
@@ -245,7 +246,7 @@ export default function Header() {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-xl text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
           title="Toggle Theme"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -270,8 +271,8 @@ export default function Header() {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 p-2 rounded-2xl bg-white dark:bg-[#0d0d14] border border-zinc-200 dark:border-zinc-800 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/80">
+              <div className="absolute right-0 top-full mt-2 w-56 p-1.5 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-xl animate-scale-in z-50">
+                <div className="px-3 py-2 border-b border-black/[0.08] dark:border-white/[0.08]">
                   <div className="font-semibold text-xs text-zinc-900 dark:text-white truncate">
                     {profile?.full_name || user.email?.split('@')[0]}
                   </div>
@@ -281,17 +282,17 @@ export default function Header() {
                 <div className="py-1">
                   <button
                     onClick={() => { setUserMenuOpen(false); router.push('/settings'); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.04] px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-left"
                   >
                     <UserIcon className="w-3.5 h-3.5 text-zinc-400" />
                     <span>Account & BYOK Settings</span>
                   </button>
                 </div>
 
-                <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+                <div className="pt-1 border-t border-black/[0.08] dark:border-white/[0.08]">
                   <button
                     onClick={async () => { setUserMenuOpen(false); await signOut(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 px-3 py-2 text-xs text-rose-600 dark:text-rose-400 transition-colors cursor-pointer text-left"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sign Out</span>
@@ -313,7 +314,7 @@ export default function Header() {
         {/* Primary CTA Button */}
         <button 
           onClick={() => router.push('/pipeline')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:opacity-90 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs active:scale-95 whitespace-nowrap shrink-0"
+          className="flex items-center gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl px-3.5 py-1.5 text-xs font-semibold shadow-sm shadow-violet-500/25 transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Create</span>

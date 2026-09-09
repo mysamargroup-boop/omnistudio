@@ -188,6 +188,8 @@ export default function ImageStudioPage() {
   const [result, setResult] = useState<any>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Image-to-Image / Variations State
   const [refImageFile, setRefImageFile] = useState<File | null>(null);
@@ -526,9 +528,13 @@ export default function ImageStudioPage() {
 
   const currentDisplayImage = displayImages[selectedImageIndex] || displayImages[0];
 
-  // Actual Spend Calculation (Dynamic based on selected model and batch count)
+  // Actual Spend Calculation (Dynamic based on model, resolution, quality, and batch count)
   const activeBatchCount = studioMode === "text_to_image" ? imageCount : batchSize;
-  const currentUnitCost = MODEL_PRICES[model] ?? 0.020;
+  const baseUnitCost = MODEL_PRICES[model] ?? 0.040;
+  // 4K resolution and Ultra/HD quality double the GPU diffusion passes
+  const isHighRes = resolution === "4k" || quality === "ultra" || quality === "hd";
+  const resolutionMultiplier = isHighRes ? 2.0 : resolution === "2k" ? 1.5 : 1.0;
+  const currentUnitCost = baseUnitCost * resolutionMultiplier;
   const currentTotalSpendUsd = currentUnitCost * activeBatchCount;
   const currentTotalSpendInr = Math.round(currentTotalSpendUsd * 83.5 * 100) / 100;
 
@@ -633,12 +639,38 @@ export default function ImageStudioPage() {
               </div>
             )}
 
-            {/* Master Image Viewport */}
-            <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-2xl group flex items-center justify-center min-h-[460px] max-h-[680px]">
+            {/* Master Image Viewport (Ultra-Crisp, Ambient Glow & Fullscreen Zoom) */}
+            <div className="relative rounded-3xl overflow-hidden border border-black/[0.1] dark:border-white/[0.12] bg-black/95 shadow-2xl group flex items-center justify-center min-h-[460px] max-h-[720px] transition-all">
+              {/* Ambient Glow Backdrop */}
+              <div
+                className="absolute inset-0 opacity-25 blur-3xl scale-110 pointer-events-none transition-all duration-700"
+                style={{
+                  backgroundImage: `url(${getMediaUrl(currentDisplayImage.url)})`,
+                  backgroundPosition: "center",
+                  backgroundSize: "cover",
+                }}
+              />
+
+              {/* Smooth Loader while image file is decoding */}
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-950/70 backdrop-blur-md z-10 animate-in fade-in">
+                  <div className="relative w-10 h-10 flex items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/20" />
+                    <Loader2 className="w-7 h-7 animate-spin text-white" />
+                  </div>
+                  <span className="text-xs font-mono text-zinc-300 tracking-wider uppercase">Loading High-Definition Master...</span>
+                </div>
+              )}
+
               <img
                 src={getMediaUrl(currentDisplayImage.url)}
                 alt="Synthesized Output"
-                className="w-full h-full object-contain max-h-[680px]"
+                onLoad={() => setImageLoaded(true)}
+                className={cn(
+                  "w-full h-full object-contain max-h-[720px] z-10 transition-all duration-500 cursor-zoom-in",
+                  imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-98"
+                )}
+                onClick={() => setLightboxOpen(true)}
                 onError={(e) => {
                   const filename = currentDisplayImage.filename || currentDisplayImage.url.split("/").pop();
                   const target = e.currentTarget;
@@ -650,19 +682,31 @@ export default function ImageStudioPage() {
               />
 
               {/* Floating Top Left Specs Badge */}
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-black/80 text-zinc-200 border border-white/10 backdrop-blur-sm">
+              <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+                <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-black/80 text-zinc-100 border border-white/15 backdrop-blur-md shadow-md">
                   {activeModel.label} • {resolution.toUpperCase()} • {aspectRatio}
                 </span>
                 {result.simulated && (
-                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     SIMULATED
                   </span>
                 )}
               </div>
 
-              {/* Floating Actions on Canvas */}
-              <div className="absolute bottom-3 right-3 flex items-center gap-2 opacity-95 group-hover:opacity-100 transition-opacity">
+              {/* Floating Top Right Zoom Trigger */}
+              <div className="absolute top-3 right-3 z-20">
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  className="p-2 rounded-full bg-black/70 hover:bg-black text-white border border-white/15 backdrop-blur-md transition-colors cursor-pointer shadow-md"
+                  title="Fullscreen Zoom"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Floating Actions on Canvas Bottom */}
+              <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-95 group-hover:opacity-100 transition-opacity">
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
@@ -675,7 +719,9 @@ export default function ImageStudioPage() {
 
                 <a
                   href={getMediaUrl(currentDisplayImage.url)}
-                  download={`omnistudio_${Date.now()}.png`}
+                  download={currentDisplayImage.filename || `omnistudio_${Date.now()}.png`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-heading font-bold shadow-lg cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -683,6 +729,44 @@ export default function ImageStudioPage() {
                 </a>
               </div>
             </div>
+
+            {/* Lightbox Modal (Fullscreen 4K Inspector) */}
+            {lightboxOpen && (
+              <div
+                className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
+                onClick={() => setLightboxOpen(false)}
+              >
+                <div className="relative max-w-7xl max-h-[95vh] flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(false)}
+                    className="absolute -top-12 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+
+                  <img
+                    src={getMediaUrl(currentDisplayImage.url)}
+                    alt="Master Preview"
+                    className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+
+                  <div className="mt-3 flex items-center gap-4 text-xs font-mono text-zinc-300">
+                    <span>{activeModel.label} • {resolution.toUpperCase()}</span>
+                    <a
+                      href={getMediaUrl(currentDisplayImage.url)}
+                      download
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-black font-bold hover:bg-zinc-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Download</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

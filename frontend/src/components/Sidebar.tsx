@@ -89,6 +89,7 @@ export default function Sidebar() {
       label: "STUDIO SPACES",
       items: [
         { href: "/", label: "Overview", icon: LayoutDashboard },
+        { href: "/studio", label: "Studio (All-in-One)", icon: Sparkles, badge: "PRO" },
         { href: "/pipeline", label: "Auto Pipeline", icon: Cpu, badge: "AI AGENT" },
       ],
     },
@@ -123,14 +124,14 @@ export default function Sidebar() {
         />
       )}
       <aside className={cn(
-        "fixed left-0 top-0 z-40 h-screen w-64 border-r border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#030304] flex flex-col justify-between select-none transition-transform duration-300",
+        "fixed left-0 top-0 z-40 h-screen w-64 bg-[var(--bg-secondary)] border-r border-black/[0.06] dark:border-white/[0.06] flex flex-col justify-between select-none transition-transform duration-300",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
       <div className="flex flex-col flex-1 min-h-0">
         {/* Brand Header */}
-        <div className="flex items-center justify-between px-6 h-14 border-b border-black/[0.08] dark:border-white/[0.08] shrink-0">
+        <div className="flex items-center justify-between px-6 h-14 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
           <Link href="/" className="flex items-center gap-3">
-            <div className="h-7 w-7 rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-xs shadow-sm">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
               <span className="font-heading tracking-tighter text-[11px] font-bold">OS</span>
             </div>
             <div>
@@ -152,7 +153,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={() => router.push("/pipeline")}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all font-heading font-bold text-xs tracking-tight shadow-md active:scale-98 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl shadow-sm shadow-violet-500/25 transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer"
           >
             <Zap className="h-3.5 w-3.5 fill-current" />
             <span>NEW PRODUCTION</span>
@@ -160,12 +161,13 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation Groups */}
-        <div className="px-3 py-2 space-y-5 overflow-y-auto flex-1 hide-scrollbar">
+        <div className="overflow-y-auto flex-1 hide-scrollbar">
           {navGroups.map((group) => (
-            <div key={group.label} className="space-y-1">
-              <span className="px-3 text-[9px] font-mono uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-600 block mb-1.5 font-medium">
+            <div key={group.label} className="mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-600 px-3 pt-5 pb-1.5 block">
                 {group.label}
               </span>
+              <div className="space-y-1">
               {group.items.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -173,29 +175,24 @@ export default function Sidebar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150 relative font-jakarta",
+                      "group flex items-center gap-3 font-jakarta mx-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 relative",
                       isActive
-                        ? "bg-zinc-100 text-zinc-950 dark:bg-white/[0.08] dark:text-white border border-zinc-300 dark:border-white/[0.12] shadow-sm font-semibold"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100/70 dark:hover:bg-white/[0.03] border border-transparent"
+                        ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20 font-semibold shadow-sm"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
                     )}
                   >
                     <item.icon
                       className={cn(
                         "h-4 w-4 shrink-0 transition-colors",
                         isActive
-                          ? "text-zinc-950 dark:text-white"
+                          ? "text-violet-700 dark:text-violet-300"
                           : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
                       )}
                     />
                     <span className="truncate">{item.label}</span>
                     {item.badge && (
                       <span
-                        className={cn(
-                          "text-[9px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-full ml-auto shrink-0",
-                          isActive
-                            ? "bg-zinc-950 text-white dark:bg-white dark:text-black"
-                            : "bg-zinc-200 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-400 border border-zinc-300 dark:border-white/[0.06]"
-                        )}
+                        className="bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400 rounded-full px-2 py-0.5 text-[9px] font-mono ml-auto shrink-0"
                       >
                         {item.badge}
                       </span>
@@ -203,14 +200,15 @@ export default function Sidebar() {
                   </Link>
                 );
               })}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Advanced Diagnostics HUD Card */}
-      <div className="p-3 border-t border-black/[0.08] dark:border-white/[0.08] shrink-0 bg-white dark:bg-[#030304]">
-        <div className="rounded-xl bg-zinc-50 dark:bg-[#09090d] border border-black/[0.06] dark:border-white/[0.06] p-3 space-y-2 font-mono text-[10px]">
+      <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0">
+        <div className="rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] p-3 space-y-2 font-mono text-[10px]">
           <div className="flex items-center justify-between text-zinc-800 dark:text-zinc-300">
             <span className="flex items-center gap-1.5 font-medium">
               <Radio className="h-3 w-3 text-emerald-500 animate-pulse" />
