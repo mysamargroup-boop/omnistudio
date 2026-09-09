@@ -7,17 +7,21 @@ export function getApiBase(): string {
 
   // 2. In browser environment:
   if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
+    const { hostname, protocol, port } = window.location;
     // When running locally on developer machine, communicate directly with FastAPI backend on port 8000
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:8000";
     }
-    // In production on VPS / domain behind Nginx reverse proxy, use relative path ""
+    // When running on VPS port 3050, backend is exposed on port 8050
+    if (port === "3050") {
+      return `${protocol}//${hostname}:8050`;
+    }
+    // In production on VPS / domain behind Nginx or Traefik reverse proxy (port 80 or 443), use relative path ""
     return "";
   }
 
   // 3. Node / SSR environment fallback
-  return "http://127.0.0.1:8000";
+  return process.env.BACKEND_INTERNAL_URL || "http://omni-backend:8000";
 }
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
@@ -96,6 +100,11 @@ export const api = {
     const formData = new FormData();
     formData.append("file", file);
     return fetchApiFormData<any>("/api/video/upload-source-video", formData);
+  },
+  uploadVideoKeyframe: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApiFormData<any>("/api/video/upload-keyframe", formData);
   },
 
   // Voice — Text to Speech

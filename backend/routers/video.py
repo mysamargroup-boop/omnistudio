@@ -72,6 +72,46 @@ def resolve_path(p: str) -> Path:
         return settings.OUTPUTS_PATH / p.replace("/outputs/", "")
     return Path(p)
 
+@router.post("/upload-keyframe")
+async def upload_keyframe(file: UploadFile = File(...)):
+    """Upload a starting or ending keyframe image for Image-to-Video synthesis."""
+    ext = Path(file.filename).suffix.lower() or ".png"
+    if ext not in [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"]:
+        ext = ".png"
+    filename = f"keyframe_{uuid.uuid4().hex[:8]}{ext}"
+    target_path = settings.IMAGES_PATH / filename
+
+    content = await file.read()
+    with open(target_path, "wb") as f:
+        f.write(content)
+
+    return {
+        "success": True,
+        "filename": filename,
+        "url": f"/outputs/images/{filename}",
+        "local_path": str(target_path)
+    }
+
+@router.post("/upload-source-video")
+async def upload_source_video(file: UploadFile = File(...)):
+    """Upload a source motion video for motion transfer."""
+    ext = Path(file.filename).suffix.lower() or ".mp4"
+    if ext not in [".mp4", ".mov", ".webm", ".avi", ".mkv"]:
+        ext = ".mp4"
+    filename = f"source_{uuid.uuid4().hex[:8]}{ext}"
+    target_path = settings.VIDEOS_PATH / filename
+
+    content = await file.read()
+    with open(target_path, "wb") as f:
+        f.write(content)
+
+    return {
+        "success": True,
+        "filename": filename,
+        "url": f"/outputs/videos/{filename}",
+        "local_path": str(target_path)
+    }
+
 @router.post("/generate")
 async def generate_video(req: VideoRequest):
     start_img = req.start_image_path or req.image_path

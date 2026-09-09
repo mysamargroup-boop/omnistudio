@@ -1057,8 +1057,8 @@ function VideoStudioContent() {
         data-lenis-prevent="true"
         className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
       >
-        {/* Row 1: Integrated Prompt Input Bar & AI Director (Auto-Expanding) */}
-        <div className="relative flex items-start gap-2">
+        {/* Row 1: Professional Studio Prompt Input Bar (Auto-Expanding, Clean & Minimalist) */}
+        <div className="relative flex items-start rounded-2xl bg-zinc-100/80 dark:bg-[#07070b]/90 border border-black/[0.08] dark:border-white/[0.1] focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-zinc-400/20 dark:focus-within:ring-zinc-500/20 transition-all p-1">
           <textarea
             ref={promptTextareaRef}
             value={prompt}
@@ -1071,28 +1071,28 @@ function VideoStudioContent() {
             }}
             placeholder={
               mode === "text_to_video"
-                ? "Describe scene cinematography, camera trajectory, lighting, or click 'AI Director'..."
+                ? "Describe scene cinematography, camera trajectory, lighting, motion dynamics..."
                 : mode === "first_to_last_frame"
                 ? "Describe morph transition dynamics, lighting shifts, speed ramps..."
                 : mode === "motion_transfer"
                 ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
-                : "Describe camera motion vector, subject dynamics, or click 'AI Director'..."
+                : "Describe camera motion vector, subject dynamics, scene lighting..."
             }
-            className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-3 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-36 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto transition-all"
+            className="w-full bg-transparent border-none px-3.5 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-16 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto"
           />
 
-          {/* Quick Actions Inside Prompt Bar */}
+          {/* Prompt Bar Actions (Clear & Negative Filter) */}
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
-            <button
-              type="button"
-              onClick={runDirectorAgent}
-              disabled={directing}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-              title="Direct scene with OpenAI GPT-4o Copilot"
-            >
-              <Wand2 className={cn("w-3 h-3 text-amber-500", directing && "animate-spin")} />
-              <span className="hidden sm:inline">AI Director</span>
-            </button>
+            {prompt.trim() && (
+              <button
+                type="button"
+                onClick={() => setPrompt("")}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title="Clear prompt"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             <button
               type="button"
@@ -1100,10 +1100,10 @@ function VideoStudioContent() {
               className={cn(
                 "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
                 showNegativePrompt || negativePrompt
-                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent"
-                  : "bg-white dark:bg-zinc-800 text-zinc-500 border-black/[0.08] dark:border-white/[0.08]"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
+                  : "bg-white/80 dark:bg-zinc-800/80 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
               )}
-              title="Toggle Negative Prompt"
+              title="Toggle Negative Prompt (Exclude elements)"
             >
               <Sliders className="w-3.5 h-3.5" />
             </button>
