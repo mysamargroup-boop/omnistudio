@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --font-heading: var(--font-outfit), sans-serif;
+  --font-body: var(--font-jakarta), sans-serif;
+  --font-mono: var(--font-mono), monospace;
+  color-scheme: light dark;
+}
+
+body {
+  font-family: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-outfit), sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.font-jakarta {
+  font-family: var(--font-jakarta), sans-serif;
+}
+
+code, pre, kbd, .font-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Page Transition Animation */
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.996);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform, filter;
+}
+
+@keyframes topProgress {
+  0% {
+    width: 0%;
+    opacity: 1;
+  }
+  50% {
+    width: 70%;
+    opacity: 1;
+  }
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
+}
+
+.animate-top-progress {
+  animation: topProgress 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 160, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 160, 0.45);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar,
+.hide-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Adaptive Card Styling (Light & Dark) */
+.hf-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .hf-card {
+  background-color: #09090d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.hf-card:hover {
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.dark .hf-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background-color: #0f0f15;
+  box-shadow: none;
+}
+
+/* Technical Corner Markings */
+.technical-corner {
+  position: relative;
+}
+.technical-corner::before,
+.technical-corner::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-color: rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+.dark .technical-corner::before,
+.dark .technical-corner::after {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.technical-corner::before {
+  top: 9px;
+  left: 9px;
+  border-top: 1.5px solid;
+  border-left: 1.5px solid;
+}
+.technical-corner::after {
+  bottom: 9px;
+  right: 9px;
+  border-bottom: 1.5px solid;
+  border-right: 1.5px solid;
+}
+
+/* Soundwave Animation */
+@keyframes hf-wave {
+  0%, 100% { height: 4px; }
+  50% { height: 24px; }
+}
+
+.hf-wave-bar {
+  display: inline-block;
+  width: 2.5px;
+  background: currentColor;
+  border-radius: 2px;
+  animation: hf-wave 1.1s ease-in-out infinite;
+}
+.hf-wave-bar:nth-child(2) { animation-delay: 0.15s; }
+.hf-wave-bar:nth-child(3) { animation-delay: 0.3s; }
+.hf-wave-bar:nth-child(4) { animation-delay: 0.45s; }
+.hf-wave-bar:nth-child(5) { animation-delay: 0.6s; }
+.hf-wave-bar:nth-child(6) { animation-delay: 0.75s; }
+.hf-wave-bar:nth-child(7) { animation-delay: 0.9s; }
+.hf-wave-bar:nth-child(8) { animation-delay: 1.05s; }
