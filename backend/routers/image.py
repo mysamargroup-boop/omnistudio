@@ -311,8 +311,17 @@ async def generate_image(req: ImageRequest):
     batch_count = min(max(req.count or 1, 1), 4)
 
     if batch_count == 1:
-        result = await _generate_single_pass(req, composed_prompt, seed_offset=0)
-        result["images"] = [result] if result.get("success") else []
+        single_res = await _generate_single_pass(req, composed_prompt, seed_offset=0)
+        if not single_res.get("success"):
+            return single_res
+        result = dict(single_res)
+        result["images"] = [{
+            "url": single_res.get("url"),
+            "filename": single_res.get("filename"),
+            "local_path": single_res.get("local_path"),
+            "model": single_res.get("model", req.model),
+            "seed": single_res.get("seed")
+        }]
         result["count"] = 1
     else:
         # Multi-image generation
@@ -320,7 +329,13 @@ async def generate_image(req: ImageRequest):
         for i in range(batch_count):
             sub_res = await _generate_single_pass(req, composed_prompt, seed_offset=i)
             if sub_res.get("success"):
-                images.append(sub_res)
+                images.append({
+                    "url": sub_res.get("url"),
+                    "filename": sub_res.get("filename"),
+                    "local_path": sub_res.get("local_path"),
+                    "model": sub_res.get("model", req.model),
+                    "seed": sub_res.get("seed")
+                })
             elif not images and i == 0:
                 # If first one failed, return error
                 return sub_res
@@ -344,7 +359,7 @@ async def generate_image(req: ImageRequest):
 
     try:
         from services.usage_tracker import log_generation
-        log_provider = "google" if any(k in req.model.lower() for k in ["imagen", "gemini"]) else ("openai" if "dall-e" in req.model.lower() else "replicate")
+        log_provider = "google" if any(k in req.model.lower() for k in ["imagen", "gemini"]) else ("openai" if ("dall-e" in req.model.lower() or "gpt-image" in req.model.lower()) else "replicate")
         log_generation(
             service_type="image",
             provider=log_provider,
