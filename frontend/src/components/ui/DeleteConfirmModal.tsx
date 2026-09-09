@@ -1,14 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Trash2,
-  AlertTriangle,
   Flame,
   X,
   Loader2,
-  HardDrive,
-  FileQuestion,
   RotateCcw,
 } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
@@ -43,6 +40,17 @@ export default function DeleteConfirmModal({
   title,
   description,
 }: DeleteConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isLoading) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isLoading, onClose]);
+
   if (!isOpen) return null;
 
   const totalBytes = items.reduce((acc, it) => acc + (it.size_bytes || 0), 0);
@@ -61,9 +69,12 @@ export default function DeleteConfirmModal({
     : "Assets will be safely moved to the Trash bin. You can restore them back to your vault anytime or permanently delete them later.";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150 font-jakarta">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 font-jakarta"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#09090d] border border-black/[0.1] dark:border-white/[0.1] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -80,7 +91,7 @@ export default function DeleteConfirmModal({
               )}
             >
               {isRestore ? (
-                <RotateCcw className="w-5 h-5" />
+               <RotateCcw className="w-5 h-5" />
               ) : isPermanent ? (
                 <Flame className="w-5 h-5" />
               ) : (
@@ -131,7 +142,7 @@ export default function DeleteConfirmModal({
           </p>
 
           {/* Items list preview */}
-          <div className="rounded-xl bg-zinc-50 dark:bg-[#030304] border border-black/[0.06] dark:border-white/[0.06] p-3 space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
+          <div className="rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] p-3 space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
             <div className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider flex justify-between">
               <span>TARGET FILE ({items.length})</span>
               <span>SIZE</span>
@@ -141,10 +152,10 @@ export default function DeleteConfirmModal({
               {items.slice(0, 5).map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between text-xs font-mono py-1 px-2 rounded bg-white dark:bg-zinc-900/60 border border-black/[0.04] dark:border-white/[0.04]"
+                  className="flex items-center justify-between text-xs font-mono py-1 px-2 rounded bg-white dark:bg-[#1c1c27] border border-black/[0.04] dark:border-white/[0.04]"
                 >
                   <div className="flex items-center gap-2 truncate max-w-[280px]">
-                    <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400">
+                    <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-[#06060a] text-zinc-700 dark:text-zinc-400">
                       {item.type || "FILE"}
                     </span>
                     <span className="truncate text-zinc-900 dark:text-zinc-200">
@@ -167,12 +178,12 @@ export default function DeleteConfirmModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-zinc-50 dark:bg-[#050507] border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-end gap-3">
+        <div className="p-4 bg-zinc-50 dark:bg-[#16161f] border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 rounded-xl text-xs font-medium font-jakarta text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-medium font-jakarta text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer bg-transparent"
           >
             Cancel
           </button>
@@ -187,7 +198,7 @@ export default function DeleteConfirmModal({
                 ? "bg-emerald-600 hover:bg-emerald-500 text-white"
                 : isPermanent
                 ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20"
-                : "bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200"
+                : "bg-violet-600 hover:bg-violet-500 text-white"
             )}
           >
             {isLoading ? (

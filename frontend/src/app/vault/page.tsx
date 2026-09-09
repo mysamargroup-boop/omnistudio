@@ -323,7 +323,7 @@ export default function VaultPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
-            <span>Storage Vault 5.0</span>
+            <span className="text-violet-500">Storage Vault 5.0</span>
             <span>•</span>
             <span>Hardware Storage & Supabase Cloud</span>
           </div>
@@ -333,8 +333,8 @@ export default function VaultPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-400">
-            <HardDrive className="h-3.5 w-3.5 text-zinc-500" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-400">
+            <HardDrive className="h-3.5 w-3.5 text-violet-500" />
             <span>{assets?.total || 0} ACTIVE</span>
             <span className="text-zinc-400 dark:text-zinc-600">•</span>
             <span>{formatBytes(totalBytes)}</span>
@@ -343,7 +343,7 @@ export default function VaultPage() {
           <button
             onClick={loadData}
             disabled={loading}
-            className="p-2 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/[0.08] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
             title="Refresh Vault & Storage"
           >
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -373,20 +373,22 @@ export default function VaultPage() {
                   "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium capitalize transition-all font-mono cursor-pointer whitespace-nowrap shrink-0",
                   tab === t
                     ? isTrashTab
-                    ? "bg-rose-600 text-white border border-transparent font-semibold shadow-md shadow-rose-600/20"
-                      : "bg-zinc-950 text-white dark:bg-white dark:text-black border border-transparent font-semibold shadow-sm"
+                      ? "bg-rose-600 text-white border border-transparent font-semibold shadow-sm"
+                      : "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-semibold shadow-sm"
                     : isTrashTab && trashCount > 0
                     ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100"
-                    : "bg-zinc-100 dark:bg-[#09090d] text-zinc-700 dark:text-zinc-400 border border-black/[0.07] dark:border-white/[0.07] hover:text-black dark:hover:text-white hover:border-black/20 dark:hover:border-white/[0.18]"
+                    : "bg-zinc-50 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06] hover:text-black dark:hover:text-white hover:border-black/20 dark:hover:border-white/[0.15]"
                 )}
               >
-                <Icon className={cn("h-3.5 w-3.5", isTrashTab && tab !== t && "text-rose-500")} />
+                <Icon className={cn("h-3.5 w-3.5", isTrashTab && tab !== t && "text-rose-500", tab === t && !isTrashTab && "text-violet-600 dark:text-violet-400")} />
                 <span>{t === "final" ? "Masters" : t === "trash" ? "Trash Bin" : t}</span>
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.2 rounded-full font-mono",
                     tab === t
-                      ? "bg-white/20 text-white dark:bg-black/10 dark:text-black"
+                      ? isTrashTab
+                        ? "bg-white/20 text-white"
+                        : "bg-violet-200/50 dark:bg-violet-500/20 text-violet-800 dark:text-violet-200"
                       : isTrashTab && trashCount > 0
                       ? "bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 font-bold"
                       : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
@@ -404,7 +406,7 @@ export default function VaultPage() {
           {activeFiles.length > 0 && (
             <button
               onClick={selectedKeys.size === activeFiles.length ? clearSelection : selectAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               {selectedKeys.size === activeFiles.length ? (
                 <>
@@ -427,7 +429,7 @@ export default function VaultPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search filenames..."
-              className="w-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] rounded-full pl-9 pr-3.5 py-1.5 text-xs text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-hidden focus:border-black/40 dark:focus:border-white/30 font-jakarta"
+              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-full pl-9 pr-3.5 py-1.5 text-xs text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 font-jakarta transition-all"
             />
           </div>
         </div>
@@ -435,16 +437,16 @@ export default function VaultPage() {
 
       {/* Trash Tab Banner Notice */}
       {tab === "trash" && (
-        <div className="p-4 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-400">
+            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
               <Trash2 className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold font-heading text-rose-950 dark:text-rose-200">
                 Recycle Bin ({trashCount} Assets • {formatBytes(trashBytes)})
               </h3>
-              <p className="text-xs text-rose-700/80 dark:text-rose-400 font-jakarta">
+              <p className="text-xs text-rose-700/80 dark:text-rose-400/80 font-jakarta">
                 Files here are preserved safely. You can restore them anytime or empty trash for permanent cleanup.
               </p>
             </div>
@@ -455,14 +457,14 @@ export default function VaultPage() {
               <button
                 type="button"
                 onClick={selectAll}
-                className="px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono hover:bg-zinc-50 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
               >
                 Select All
               </button>
               <button
                 type="button"
                 onClick={handleEmptyTrashClick}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-heading font-medium text-xs tracking-tight transition-all cursor-pointer shadow-md shadow-rose-600/20 active:scale-98 whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-heading font-medium text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
               >
                 <Flame className="w-3.5 h-3.5" />
                 <span>EMPTY TRASH</span>
@@ -481,9 +483,9 @@ export default function VaultPage() {
             <div
               key={`${file.type}-${file.filename}-${i}`}
               className={cn(
-                "hf-card overflow-hidden flex flex-col justify-between group relative transition-all duration-200",
+                "bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-xl shadow-sm overflow-hidden flex flex-col justify-between group relative transition-all duration-200 hover:border-violet-200 dark:hover:border-violet-500/20",
                 selected &&
-                  "ring-2 ring-zinc-950 dark:ring-white border-zinc-950 dark:border-white bg-zinc-50/50 dark:bg-zinc-900/40"
+                  "ring-2 ring-violet-500 border-violet-500 bg-violet-50/50 dark:bg-violet-500/10"
               )}
             >
               {/* Checkbox Trigger Top Right */}
@@ -494,14 +496,14 @@ export default function VaultPage() {
                 title={selected ? "Deselect" : "Select"}
               >
                 {selected ? (
-                  <CheckSquare className="w-4 h-4 text-emerald-400" />
+                  <CheckSquare className="w-4 h-4 text-violet-500" />
                 ) : (
                   <Square className="w-4 h-4 text-zinc-300" />
                 )}
               </button>
 
               {/* Viewport Preview */}
-              <div className="h-44 bg-zinc-950 flex items-center justify-center overflow-hidden relative border-b border-black/[0.06] dark:border-white/[0.06]">
+              <div className="h-44 bg-zinc-100 dark:bg-[#111118] flex items-center justify-center overflow-hidden relative border-b border-black/[0.06] dark:border-white/[0.06]">
                 {file.type === "images" && (
                   <img
                     src={getMediaUrl(file.url)}
@@ -520,7 +522,7 @@ export default function VaultPage() {
 
                 {file.type === "audio" && (
                   <div className="w-full p-4 text-center space-y-2">
-                    <Mic className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
+                    <Mic className="h-8 w-8 text-violet-500/50 mx-auto" />
                     <audio src={getMediaUrl(file.url)} controls className="w-full" />
                   </div>
                 )}
@@ -556,7 +558,7 @@ export default function VaultPage() {
                     <a
                       href={getMediaUrl(file.url)}
                       download
-                      className="flex items-center gap-1 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+                      className="flex items-center gap-1 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                       title="Download Asset"
                     >
                       <Download className="h-3 w-3" />
@@ -567,7 +569,7 @@ export default function VaultPage() {
                       <button
                         type="button"
                         onClick={() => router.push(`/video?image=${encodeURIComponent(file.url)}`)}
-                        className="flex items-center gap-0.5 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                        className="flex items-center gap-0.5 text-[11px] font-mono text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                       >
                         <span>ANIMATE</span>
                         <ArrowUpRight className="h-3 w-3" />
@@ -613,7 +615,11 @@ export default function VaultPage() {
 
         {activeFiles.length === 0 && !loading && (
           <div className="col-span-full text-center py-20 rounded-2xl border border-dashed border-black/[0.1] dark:border-white/[0.08] space-y-2">
-            <FolderArchive className="h-10 w-10 text-zinc-400 dark:text-zinc-700 mx-auto" />
+            {tab === "trash" ? (
+               <Trash2 className="h-10 w-10 text-zinc-400 dark:text-zinc-700 mx-auto" />
+            ) : (
+               <FolderArchive className="h-10 w-10 text-violet-400/50 dark:text-violet-500/30 mx-auto" />
+            )}
             <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-300 font-heading tracking-tight uppercase">
               {tab === "trash" ? "TRASH BIN EMPTY" : "REPOSITORY EMPTY"}
             </p>
@@ -628,9 +634,9 @@ export default function VaultPage() {
 
       {/* Floating Bulk Action Bar (when 1 or more selected) */}
       {selectedKeys.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-[#09090d]/95 backdrop-blur-xl border border-black/[0.12] dark:border-white/[0.12] rounded-full px-5 py-2.5 shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto w-fit z-40 bg-white/90 dark:bg-[#111118]/90 backdrop-blur-xl border border-black/[0.1] dark:border-white/[0.1] rounded-full px-5 py-2.5 shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200">
           <div className="flex items-center gap-2 border-r border-black/[0.08] dark:border-white/[0.08] pr-4">
-            <div className="w-5 h-5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black flex items-center justify-center font-mono text-[10px] font-bold">
+            <div className="w-5 h-5 rounded-full bg-violet-500 text-white flex items-center justify-center font-mono text-[10px] font-bold">
               {selectedKeys.size}
             </div>
             <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-medium">
@@ -644,7 +650,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkRestoreClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>RESTORE SELECTED</span>
@@ -652,7 +658,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkPermanentDeleteClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
                 >
                   <Flame className="w-3.5 h-3.5" />
                   <span>DESTROY PERMANENTLY</span>
@@ -663,7 +669,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkTrashClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>MOVE TO TRASH</span>
@@ -671,7 +677,7 @@ export default function VaultPage() {
                 <button
                   type="button"
                   onClick={handleBulkPermanentDeleteClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-98 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
                 >
                   <Flame className="w-3.5 h-3.5" />
                   <span>PURGE PERMANENTLY</span>
@@ -682,7 +688,7 @@ export default function VaultPage() {
             <button
               type="button"
               onClick={clearSelection}
-              className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
               title="Cancel Selection"
             >
               <X className="w-4 h-4" />

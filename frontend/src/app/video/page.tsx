@@ -655,18 +655,18 @@ function VideoStudioContent() {
   const videoCostInr = Math.round(videoCostUsd * 83.5 * 100) / 100;
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-48 font-jakarta">
+    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-48 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Bar: Mode Selector Tabs & Studio Guide Trigger */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl">
           <button
             type="button"
             onClick={() => setMode("first_frame")}
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "first_frame"
-                ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
             )}
           >
             <ImageIcon className="h-3.5 w-3.5" />
@@ -679,8 +679,8 @@ function VideoStudioContent() {
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "first_to_last_frame"
-                ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
             )}
           >
             <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -696,8 +696,8 @@ function VideoStudioContent() {
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "text_to_video"
-                ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
             )}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -710,8 +710,8 @@ function VideoStudioContent() {
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "motion_transfer"
-                ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
             )}
           >
             <RotateCw className="h-3.5 w-3.5" />
@@ -723,14 +723,14 @@ function VideoStudioContent() {
           <button
             type="button"
             onClick={() => setHowItWorksOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-500" />
             <span>Studio Guide</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-zinc-500 px-3 py-1 rounded-full bg-zinc-100/60 dark:bg-zinc-900/60 border border-black/[0.06] dark:border-white/[0.06]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
             <span>ENGINE: {activeModel.label}</span>
           </div>
         </div>
@@ -756,7 +756,7 @@ function VideoStudioContent() {
         {/* State B: Video Render Completed */}
         {!loading && result && result.success && (
           <div className="w-full space-y-4 animate-in fade-in duration-200">
-            <div className="relative rounded-3xl overflow-hidden border border-black/[0.12] dark:border-white/[0.12] bg-black shadow-2xl group max-w-4xl mx-auto">
+            <div className="relative rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#111118] shadow-sm group max-w-4xl mx-auto">
               <video
                 src={getMediaUrl(result.url)}
                 controls
@@ -765,17 +765,17 @@ function VideoStudioContent() {
                 className="w-full aspect-video object-contain"
               />
               <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="text-[9px] font-mono px-2.5 py-1 rounded-full bg-black/80 text-white border border-white/10 backdrop-blur-md">
+                <span className="text-[9px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
                   {result.mode?.toUpperCase() || "CINEMATIC"} • {fps} FPS • {aspectRatio}
                 </span>
-                <span className="text-[9px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 backdrop-blur-md">
+                <span className="text-[9px] font-mono px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 backdrop-blur-md">
                   RENDERED
                 </span>
               </div>
             </div>
 
             {/* Video Metadata & Action Bar */}
-            <div className="max-w-4xl mx-auto p-4 rounded-2xl bg-zinc-100/90 dark:bg-[#0c0c12]/90 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="max-w-4xl mx-auto p-4 rounded-2xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono font-bold text-zinc-950 dark:text-white">
@@ -792,7 +792,7 @@ function VideoStudioContent() {
                 <a
                   href={getMediaUrl(result.url)}
                   download
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Download MP4</span>
@@ -804,13 +804,13 @@ function VideoStudioContent() {
 
         {/* State C: Error State */}
         {!loading && result && !result.success && (
-          <div className="w-full max-w-md py-12 text-center space-y-3 bg-red-500/5 dark:bg-red-500/10 border border-red-500/20 rounded-3xl p-6">
-            <p className="text-xs text-red-500 dark:text-red-400 font-mono leading-relaxed">
+          <div className="w-full max-w-md py-12 text-center space-y-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl p-6 shadow-sm">
+            <p className="text-xs text-rose-600 dark:text-rose-400 font-mono leading-relaxed">
               {result.error || "Video synthesis encountered an issue."}
             </p>
             <button
               onClick={() => setResult(null)}
-              className="px-4 py-1.5 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-black text-xs font-mono hover:opacity-80"
+              className="px-4 py-1.5 rounded-xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white text-xs font-mono hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-black/[0.08] dark:border-zinc-800 transition-colors shadow-sm"
             >
               Reset Canvas
             </button>
@@ -822,10 +822,10 @@ function VideoStudioContent() {
           <div className="w-full max-w-4xl space-y-6">
             {/* Keyframe Staging Grid (when mode is not pure text-to-video) */}
             {mode !== "text_to_video" ? (
-              <div className="hf-card p-6 space-y-5">
+              <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-sm p-6 space-y-5">
                 <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
                   <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-zinc-950 dark:text-white" />
+                    <Layers className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                     <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
                       Keyframe Staging Canvas
                     </span>
@@ -848,7 +848,7 @@ function VideoStudioContent() {
                   )}
                 >
                   {/* Start Frame / Target Image Card */}
-                  <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
+                  <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
                         {mode === "motion_transfer" ? "TARGET STILL IMAGE" : "START FRAME (KEYFRAME 01)"}
@@ -870,20 +870,20 @@ function VideoStudioContent() {
                           type="button"
                           onClick={() => startFileInputRef.current?.click()}
                           disabled={uploadingStartImage}
-                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 border border-black/[0.12] dark:border-white/[0.12] px-2.5 py-1 rounded-full bg-white dark:bg-[#12121a] hover:bg-zinc-100 dark:hover:bg-[#1a1a26] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1.5 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
                           title="Upload image from computer"
                         >
                           {uploadingStartImage ? (
-                            <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />
+                            <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
                           ) : (
-                            <Upload className="h-3 w-3 text-emerald-500" />
+                            <Upload className="h-3 w-3 text-violet-500" />
                           )}
                           <span className="font-semibold">{uploadingStartImage ? "UPLOADING..." : "UPLOAD"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => openVaultPicker("start")}
-                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
                         >
                           <FolderArchive className="h-3 w-3" />
                           <span>VAULT</span>
@@ -892,7 +892,7 @@ function VideoStudioContent() {
                     </div>
 
                     {startImage ? (
-                      <div className="relative rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] aspect-video bg-black group">
+                      <div className="relative rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] aspect-video bg-zinc-100 dark:bg-[#111118] group shadow-sm">
                         <img
                           src={getMediaUrl(startImage)}
                           alt="Start Frame"
@@ -902,7 +902,7 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => startFileInputRef.current?.click()}
-                            className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-xs transition-colors"
+                            className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-sm transition-colors"
                             title="Replace image with a new upload"
                           >
                             <Upload className="h-3.5 w-3.5" />
@@ -911,13 +911,13 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => setStartImage("")}
-                            className="p-1.5 rounded-lg bg-red-500/30 text-white hover:bg-red-500/70 cursor-pointer backdrop-blur-xs transition-colors"
+                            className="p-1.5 rounded-lg bg-rose-500/60 text-white hover:bg-rose-500 cursor-pointer backdrop-blur-sm transition-colors"
                             title="Remove image"
                           >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%]">
+                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%] shadow-sm">
                           {startImage.split("/").pop()}
                         </span>
                       </div>
@@ -941,22 +941,22 @@ function VideoStudioContent() {
                         }}
                         onClick={() => startFileInputRef.current?.click()}
                         className={cn(
-                          "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white/50 dark:bg-black/20 group",
+                          "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white dark:bg-[#111118] group",
                           startDragOver
-                            ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
-                            : "border-black/[0.15] dark:border-white/[0.15] hover:border-emerald-500/60 dark:hover:border-emerald-500/60 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                            ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10 scale-[1.01]"
+                            : "border-black/[0.1] dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-500/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
                         )}
                       >
                         {uploadingStartImage ? (
                           <div className="flex flex-col items-center gap-2">
-                            <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                            <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
                             <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
                               Uploading Keyframe...
                             </span>
                           </div>
                         ) : (
                           <>
-                            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                               <Upload className="h-5 w-5" />
                             </div>
                             <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
@@ -966,7 +966,7 @@ function VideoStudioContent() {
                               Drag & drop or click to browse (PNG, JPG, WebP)
                             </span>
                             <div className="mt-2.5 flex items-center gap-2">
-                              <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                              <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
                                 Click to Upload
                               </span>
                               <button
@@ -975,7 +975,7 @@ function VideoStudioContent() {
                                   e.stopPropagation();
                                   openVaultPicker("start");
                                 }}
-                                className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 hover:bg-zinc-300 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors"
+                                className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-600 dark:text-zinc-400 transition-colors"
                               >
                                 Or Pick Vault
                               </button>
@@ -990,13 +990,13 @@ function VideoStudioContent() {
                       value={startImage}
                       onChange={(e) => setStartImage(e.target.value)}
                       placeholder="Or enter filepath / URL..."
-                      className="w-full bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none"
+                      className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
                     />
                   </div>
 
                   {/* End Frame Card (In first_to_last_frame mode) */}
                   {mode === "first_to_last_frame" && (
-                    <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
                           END FRAME (KEYFRAME 02)
@@ -1018,20 +1018,20 @@ function VideoStudioContent() {
                             type="button"
                             onClick={() => endFileInputRef.current?.click()}
                             disabled={uploadingEndImage}
-                            className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 border border-black/[0.12] dark:border-white/[0.12] px-2.5 py-1 rounded-full bg-white dark:bg-[#12121a] hover:bg-zinc-100 dark:hover:bg-[#1a1a26] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                            className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1.5 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
                             title="Upload destination keyframe"
                           >
                             {uploadingEndImage ? (
-                              <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />
+                              <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
                             ) : (
-                              <Upload className="h-3 w-3 text-emerald-500" />
+                              <Upload className="h-3 w-3 text-violet-500" />
                             )}
                             <span className="font-semibold">{uploadingEndImage ? "UPLOADING..." : "UPLOAD"}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => openVaultPicker("end")}
-                            className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#09090d] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                            className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
                           >
                             <FolderArchive className="h-3 w-3" />
                             <span>VAULT</span>
@@ -1040,7 +1040,7 @@ function VideoStudioContent() {
                       </div>
 
                       {endImage ? (
-                        <div className="relative rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] aspect-video bg-black group">
+                        <div className="relative rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] aspect-video bg-zinc-100 dark:bg-[#111118] group shadow-sm">
                           <img
                             src={getMediaUrl(endImage)}
                             alt="End Frame"
@@ -1050,7 +1050,7 @@ function VideoStudioContent() {
                             <button
                               type="button"
                               onClick={() => endFileInputRef.current?.click()}
-                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-xs transition-colors"
+                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-sm transition-colors"
                               title="Replace end frame"
                             >
                               <Upload className="h-3.5 w-3.5" />
@@ -1059,13 +1059,13 @@ function VideoStudioContent() {
                             <button
                               type="button"
                               onClick={() => setEndImage("")}
-                              className="p-1.5 rounded-lg bg-red-500/30 text-white hover:bg-red-500/70 cursor-pointer backdrop-blur-xs transition-colors"
+                              className="p-1.5 rounded-lg bg-rose-500/60 text-white hover:bg-rose-500 cursor-pointer backdrop-blur-sm transition-colors"
                               title="Remove image"
                             >
                               <X className="h-4 w-4" />
                             </button>
                           </div>
-                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%]">
+                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%] shadow-sm">
                             {endImage.split("/").pop()}
                           </span>
                         </div>
@@ -1089,22 +1089,22 @@ function VideoStudioContent() {
                           }}
                           onClick={() => endFileInputRef.current?.click()}
                           className={cn(
-                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white/50 dark:bg-black/20 group",
+                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white dark:bg-[#111118] group",
                             endDragOver
-                              ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
-                              : "border-black/[0.15] dark:border-white/[0.15] hover:border-emerald-500/60 dark:hover:border-emerald-500/60 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                              ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10 scale-[1.01]"
+                              : "border-black/[0.1] dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-500/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
                           )}
                         >
                           {uploadingEndImage ? (
                             <div className="flex flex-col items-center gap-2">
-                              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                              <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
                               <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
                                 Uploading Keyframe...
                               </span>
                             </div>
                           ) : (
                             <>
-                              <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                              <div className="w-10 h-10 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                 <Upload className="h-5 w-5" />
                               </div>
                               <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
@@ -1114,7 +1114,7 @@ function VideoStudioContent() {
                                 Drag & drop or click to browse (PNG, JPG, WebP)
                               </span>
                               <div className="mt-2.5 flex items-center gap-2">
-                                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
                                   Click to Upload
                                 </span>
                                 <button
@@ -1123,7 +1123,7 @@ function VideoStudioContent() {
                                     e.stopPropagation();
                                     openVaultPicker("end");
                                   }}
-                                  className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200/70 hover:bg-zinc-300 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 transition-colors"
+                                  className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-600 dark:text-zinc-400 transition-colors"
                                 >
                                   Or Pick Vault
                                 </button>
@@ -1138,14 +1138,14 @@ function VideoStudioContent() {
                         value={endImage}
                         onChange={(e) => setEndImage(e.target.value)}
                         placeholder="Or enter filepath / URL..."
-                        className="w-full bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none"
+                        className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
                       />
                     </div>
                   )}
 
                   {/* Source Motion Video (In motion_transfer mode) */}
                   {mode === "motion_transfer" && (
-                    <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
                           SOURCE MOTION VIDEO (MP4/MOV)
@@ -1162,20 +1162,20 @@ function VideoStudioContent() {
                           type="button"
                           onClick={() => videoFileInputRef.current?.click()}
                           disabled={uploadingVideo}
-                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 border border-black/[0.12] dark:border-white/[0.12] px-2.5 py-1 rounded-full bg-white dark:bg-[#12121a] hover:bg-zinc-100 dark:hover:bg-[#1a1a26] cursor-pointer whitespace-nowrap shrink-0 shadow-xs transition-all"
+                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1.5 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
                           title="Upload source video file"
                         >
                           {uploadingVideo ? (
-                            <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />
+                            <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
                           ) : (
-                            <Upload className="h-3 w-3 text-emerald-500" />
+                            <Upload className="h-3 w-3 text-violet-500" />
                           )}
                           <span className="font-semibold">{uploadingVideo ? "UPLOADING..." : "UPLOAD VIDEO"}</span>
                         </button>
                       </div>
 
                       {sourceVideoUrl ? (
-                        <div className="relative rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] aspect-video bg-black group">
+                        <div className="relative rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] aspect-video bg-zinc-100 dark:bg-[#111118] group shadow-sm">
                           <video
                             src={getMediaUrl(sourceVideoUrl)}
                             className="w-full h-full object-cover"
@@ -1188,7 +1188,7 @@ function VideoStudioContent() {
                             <button
                               type="button"
                               onClick={() => videoFileInputRef.current?.click()}
-                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-xs transition-colors"
+                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-sm transition-colors"
                               title="Upload new video"
                             >
                               <Upload className="h-3.5 w-3.5" />
@@ -1200,13 +1200,13 @@ function VideoStudioContent() {
                                 setSourceVideoUrl("");
                                 setSourceVideoFile(null);
                               }}
-                              className="p-1.5 rounded-lg bg-red-500/30 text-white hover:bg-red-500/70 cursor-pointer backdrop-blur-xs transition-colors"
+                              className="p-1.5 rounded-lg bg-rose-500/60 text-white hover:bg-rose-500 cursor-pointer backdrop-blur-sm transition-colors"
                               title="Remove video"
                             >
                               <X className="h-4 w-4" />
                             </button>
                           </div>
-                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%]">
+                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%] shadow-sm">
                             {sourceVideoUrl.split("/").pop() || "source_video.mp4"}
                           </span>
                         </div>
@@ -1230,22 +1230,22 @@ function VideoStudioContent() {
                           }}
                           onClick={() => videoFileInputRef.current?.click()}
                           className={cn(
-                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white/50 dark:bg-black/20 group",
+                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white dark:bg-[#111118] group",
                             videoDragOver
-                              ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
-                              : "border-black/[0.15] dark:border-white/[0.15] hover:border-emerald-500/60 dark:hover:border-emerald-500/60 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                              ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10 scale-[1.01]"
+                              : "border-black/[0.1] dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-500/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
                           )}
                         >
                           {uploadingVideo ? (
                             <div className="flex flex-col items-center gap-2">
-                              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                              <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
                               <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
                                 Uploading motion track...
                               </span>
                             </div>
                           ) : (
                             <>
-                              <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                              <div className="w-10 h-10 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                 <Film className="h-5 w-5" />
                               </div>
                               <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
@@ -1255,7 +1255,7 @@ function VideoStudioContent() {
                                 Drag & drop or click to browse (MP4, MOV, WebM)
                               </span>
                               <div className="mt-2.5">
-                                <span className="text-[9px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                                <span className="text-[9px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
                                   Click to Upload Motion Video
                                 </span>
                               </div>
@@ -1269,7 +1269,7 @@ function VideoStudioContent() {
                         value={sourceVideoUrl}
                         onChange={(e) => setSourceVideoUrl(e.target.value)}
                         placeholder="Or enter filepath / URL..."
-                        className="w-full bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none"
+                        className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
                       />
                     </div>
                   )}
@@ -1290,8 +1290,8 @@ function VideoStudioContent() {
                           className={cn(
                             "p-2.5 rounded-xl border text-left font-mono transition-all cursor-pointer",
                             transition === t.id
-                              ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-sm"
-                              : "bg-zinc-100/50 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
+                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.08]"
                           )}
                         >
                           <span className="text-xs font-bold block">{t.label}</span>
@@ -1306,7 +1306,7 @@ function VideoStudioContent() {
               /* Text-to-Video Hero Visual Inspiration */
               <div className="space-y-6 text-center py-4">
                 <div className="space-y-2 max-w-lg mx-auto">
-                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono text-zinc-500 uppercase tracking-widest font-semibold">
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-[10px] font-mono text-violet-700 dark:text-violet-300 uppercase tracking-widest font-semibold shadow-sm">
                     <span>Next-Gen Cinema Synthesis</span>
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight uppercase">
@@ -1327,13 +1327,13 @@ function VideoStudioContent() {
                         setPrompt(item.prompt);
                         setMotion(item.motion);
                       }}
-                      className="group p-4 rounded-2xl bg-zinc-50 dark:bg-[#08080c] border border-black/[0.06] dark:border-white/[0.06] hover:border-black/30 dark:hover:border-white/30 transition-all cursor-pointer text-left space-y-1.5"
+                      className="group p-4 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-200 dark:hover:border-violet-500/30 transition-all cursor-pointer text-left space-y-1.5 shadow-sm hover:shadow-md"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white">
+                        <span className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                           {item.title}
                         </span>
-                        <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-wider border border-black/[0.08] dark:border-white/[0.08] px-2 py-0.5 rounded-full">
+                        <span className="text-[9px] font-mono text-violet-500 uppercase tracking-wider border border-violet-100 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 rounded-full">
                           {item.motion}
                         </span>
                       </div>
@@ -1349,11 +1349,11 @@ function VideoStudioContent() {
         )}
       </div>
 
-      {/* Floating Bottom Studio Dock (Fixed at bottom of viewport, matching Image Studio) */}
+      {/* Floating Bottom Studio Dock */}
       <div
         ref={dockRef}
         data-lenis-prevent="true"
-        className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
+        className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl sm:rounded-3xl shadow-xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
       >
         <input
           ref={dockFileInputRef}
@@ -1368,23 +1368,23 @@ function VideoStudioContent() {
           disabled={uploadingStartImage}
         />
 
-        {/* Row 1: Professional Studio Prompt Input Bar (Auto-Expanding, Clean & Minimalist) */}
-        <div className="relative flex flex-col rounded-2xl bg-zinc-100/80 dark:bg-[#07070b]/90 border border-black/[0.08] dark:border-white/[0.1] focus-within:border-zinc-400 dark:focus-within:border-zinc-500 focus-within:ring-2 focus-within:ring-zinc-400/20 dark:focus-within:ring-zinc-500/20 transition-all p-1">
+        {/* Row 1: Professional Studio Prompt Input Bar */}
+        <div className="relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30 transition-all p-1">
           {/* Staged Keyframe Chip in Prompt Bar */}
           {startImage && (
             <div className="flex items-center gap-1.5 px-3 pt-2 pb-0.5">
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white dark:bg-[#12121a] text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.1] shadow-xs">
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white dark:bg-[#16161f] text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] shadow-sm">
                 <img
                   src={getMediaUrl(startImage)}
                   alt="Keyframe preview"
                   className="w-4 h-4 object-cover rounded"
                 />
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">KEYFRAME:</span>
+                <span className="font-semibold text-violet-600 dark:text-violet-400">KEYFRAME:</span>
                 <span className="truncate max-w-[160px]">{startImage.split("/").pop()}</span>
                 <button
                   type="button"
                   onClick={() => setStartImage("")}
-                  className="p-0.5 hover:text-red-500 rounded cursor-pointer"
+                  className="p-0.5 hover:text-red-500 rounded cursor-pointer transition-colors"
                   title="Remove keyframe"
                 >
                   <X className="w-3 h-3" />
@@ -1426,13 +1426,13 @@ function VideoStudioContent() {
                 className={cn(
                   "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer flex items-center gap-1",
                   startImage
-                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-xs"
-                    : "bg-white/80 dark:bg-zinc-800/80 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+                    ? "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300 border-violet-200 dark:border-violet-500/30 shadow-sm"
+                    : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
                 )}
                 title={startImage ? "Change keyframe image" : "Attach image to animate (Image to Video)"}
               >
                 {uploadingStartImage ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
                 ) : (
                   <Paperclip className="w-3.5 h-3.5" />
                 )}
@@ -1455,8 +1455,8 @@ function VideoStudioContent() {
                 className={cn(
                   "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
                   showNegativePrompt || negativePrompt
-                    ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
-                    : "bg-white/80 dark:bg-zinc-800/80 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+                    ? "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300 border-violet-200 dark:border-violet-500/30 shadow-sm"
+                    : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
                 )}
                 title="Toggle Negative Prompt (Exclude elements)"
               >
@@ -1474,21 +1474,21 @@ function VideoStudioContent() {
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
               placeholder="Negative prompt (e.g. jitter, flickering, blur, morph artifacts, extra limbs)..."
-              className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono"
+              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
             />
           </div>
         )}
 
         {/* Director Notes Badge (if generated) */}
         {directorNotes && (
-          <div className="p-2.5 rounded-xl bg-zinc-100/80 dark:bg-[#060609] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
+          <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 flex items-center justify-between text-[10px] font-mono text-violet-700 dark:text-violet-300 shadow-sm">
             <span className="truncate max-w-md">
               DIRECTOR: {directorNotes.notes} ({directorNotes.lighting})
             </span>
             <button
               type="button"
               onClick={() => setDirectorNotes(null)}
-              className="text-zinc-400 hover:text-black dark:hover:text-white ml-2"
+              className="text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 ml-2 transition-colors"
             >
               <X className="w-3 h-3" />
             </button>
@@ -1507,9 +1507,14 @@ function VideoStudioContent() {
                   closeAllPopovers();
                   setModelPopoverOpen(!modelPopoverOpen);
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-heading font-bold text-zinc-900 dark:text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-heading font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  modelPopoverOpen 
+                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300" 
+                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-900 dark:text-white"
+                )}
               >
-                <Sparkle className="w-3.5 h-3.5 text-emerald-500" />
+                <Sparkle className={cn("w-3.5 h-3.5", modelPopoverOpen ? "text-violet-500" : "text-emerald-500")} />
                 <span>{activeModel.label}</span>
                 <ChevronUp
                   className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", modelPopoverOpen && "rotate-180")}
@@ -1520,7 +1525,7 @@ function VideoStudioContent() {
               {modelPopoverOpen && (
                 <div
                   data-lenis-prevent="true"
-                  className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5"
+                  className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
                 >
                   {/* Search Bar */}
                   <div className="relative">
@@ -1530,13 +1535,13 @@ function VideoStudioContent() {
                       value={modelSearchQuery}
                       onChange={(e) => setModelSearchQuery(e.target.value)}
                       placeholder="Search video engines..."
-                      className="w-full bg-zinc-100 dark:bg-[#14141c] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta"
+                      className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
                     />
                   </div>
 
                   <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center justify-between">
                     <div className="flex items-center gap-1">
-                      <Film className="w-3 h-3 text-amber-500" />
+                      <Film className="w-3 h-3 text-violet-500" />
                       <span>Available Video Engines</span>
                     </div>
                     <span className="text-[9px] text-zinc-400 font-normal font-mono">
@@ -1564,8 +1569,8 @@ function VideoStudioContent() {
                           className={cn(
                             "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer font-jakarta",
                             isSelected
-                              ? "bg-zinc-100 dark:bg-[#1a1a26] text-zinc-950 dark:text-white ring-1 ring-black/[0.1] dark:ring-white/[0.1]"
-                              : "hover:bg-zinc-50 dark:hover:bg-[#14141c] text-zinc-700 dark:text-zinc-300"
+                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20"
+                              : "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent"
                           )}
                         >
                           <div className="space-y-0.5 min-w-0 pr-2">
@@ -1575,13 +1580,9 @@ function VideoStudioContent() {
                                 <span
                                   className={cn(
                                     "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider",
-                                    m.badge === "FREE LOCAL"
-                                      ? "bg-emerald-400/20 text-emerald-600 dark:text-emerald-400"
-                                      : m.badge === "ACTIVE"
-                                      ? "bg-blue-400/20 text-blue-600 dark:text-blue-400"
-                                      : m.badge === "CINEMA" || m.badge === "PRO"
-                                      ? "bg-amber-400/20 text-amber-600 dark:text-amber-400"
-                                      : "bg-black/10 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
+                                    m.badge === "FREE LOCAL" || m.badge === "OPEN"
+                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                      : "bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
                                   )}
                                 >
                                   {m.badge}
@@ -1592,7 +1593,7 @@ function VideoStudioContent() {
                               {m.description}
                             </p>
                           </div>
-                          {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-1" />}
+                          {isSelected && <Check className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
                         </button>
                       );
                     })}
@@ -1601,349 +1602,369 @@ function VideoStudioContent() {
               )}
             </div>
 
-              {/* 2. Aspect Ratio Pill */}
+            {/* 2. Aspect Ratio Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setRatioPopoverOpen(!ratioPopoverOpen);
+                }}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  ratioPopoverOpen
+                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
+                )}
+                title="Select Aspect Ratio"
+              >
+                <Maximize2 className={cn("w-3 h-3", ratioPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <span>{aspectRatio}</span>
+                <ChevronUp
+                  className={cn("w-3 h-3 text-zinc-400 transition-transform", ratioPopoverOpen && "rotate-180")}
+                />
+              </button>
+
+              {ratioPopoverOpen && (
+                <div
+                  data-lenis-prevent="true"
+                  className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
+                >
+                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1 font-semibold">
+                    Aspect Ratio
+                  </div>
+                  {ASPECT_RATIOS.map((r) => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => {
+                        setAspectRatio(r.value);
+                        setRatioPopoverOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-mono transition-colors cursor-pointer border",
+                        aspectRatio === r.value
+                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
+                          : "bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-600 dark:text-zinc-400"
+                      )}
+                    >
+                      <div className="text-left">
+                        <span className="block font-bold">{r.label}</span>
+                        <span className="text-[9px] opacity-70 block">{r.desc}</span>
+                      </div>
+                      {aspectRatio === r.value && <Check className="w-3.5 h-3.5 text-violet-500" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. Camera Motion Compass Pill */}
+            {mode !== "first_to_last_frame" && (
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => {
                     closeAllPopovers();
-                    setRatioPopoverOpen(!ratioPopoverOpen);
+                    setMotionPopoverOpen(!motionPopoverOpen);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                  title="Select Aspect Ratio"
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                    motionPopoverOpen
+                      ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                      : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
+                  )}
+                  title="Camera Motion Vector"
                 >
-                  <Maximize2 className="w-3 h-3 text-zinc-400" />
-                  <span>{aspectRatio}</span>
+                  <activeMotion.icon className={cn("w-3.5 h-3.5", motionPopoverOpen ? "text-violet-500" : "text-zinc-500 dark:text-zinc-400")} />
+                  <span className="hidden sm:inline">{activeMotion.label}</span>
+                  <span className="sm:hidden">{activeMotion.label.split(" ")[0]}</span>
                   <ChevronUp
-                    className={cn("w-3 h-3 text-zinc-400 transition-transform", ratioPopoverOpen && "rotate-180")}
+                    className={cn("w-3 h-3 text-zinc-400 transition-transform", motionPopoverOpen && "rotate-180")}
                   />
                 </button>
 
-                {ratioPopoverOpen && (
+                {motionPopoverOpen && (
                   <div
                     data-lenis-prevent="true"
-                    className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1"
+                    className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
                   >
-                    <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1 font-semibold">
-                      Aspect Ratio
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
+                        Camera Motion Vector
+                      </span>
                     </div>
-                    {ASPECT_RATIOS.map((r) => (
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {MOTIONS.map((m) => {
+                        const isSelected = motion === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setMotion(m.id);
+                              setMotionPopoverOpen(false);
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-xl border text-left font-mono text-xs transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
+                                : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
+                            )}
+                          >
+                            <m.icon className="w-3.5 h-3.5 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-bold block truncate">{m.label}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Speed / Intensity */}
+                    <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                      <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-1.5">
+                        Motion Intensity:
+                      </span>
+                      <div className="grid grid-cols-4 gap-1 font-mono">
+                        {SPEED_PROFILES.map((sp) => (
+                          <button
+                            key={sp.value}
+                            type="button"
+                            onClick={() => setMotionIntensity(sp.value)}
+                            className={cn(
+                              "py-1 text-center rounded-lg text-[10px] border transition-colors cursor-pointer",
+                              motionIntensity === sp.value
+                                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
+                                : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                            )}
+                          >
+                            {sp.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4. Duration Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setDurationPopoverOpen(!durationPopoverOpen);
+                }}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  durationPopoverOpen
+                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
+                )}
+                title="Select Duration"
+              >
+                <Clock className={cn("w-3 h-3", durationPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <span>{duration}s</span>
+                <ChevronUp
+                  className={cn("w-3 h-3 text-zinc-400 transition-transform", durationPopoverOpen && "rotate-180")}
+                />
+              </button>
+
+              {durationPopoverOpen && (
+                <div
+                  data-lenis-prevent="true"
+                  className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
+                      Clip Duration
+                    </span>
+                    <span className="text-xs font-bold font-mono text-zinc-950 dark:text-white">
+                      {duration} SECONDS
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 font-mono">
+                    {DURATION_PRESETS.map((d) => (
                       <button
-                        key={r.value}
+                        key={d}
                         type="button"
-                        onClick={() => {
-                          setAspectRatio(r.value);
-                          setRatioPopoverOpen(false);
-                        }}
+                        onClick={() => setDuration(d)}
                         className={cn(
-                          "w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-mono transition-colors cursor-pointer",
-                          aspectRatio === r.value
-                            ? "bg-zinc-100 dark:bg-[#1a1a26] text-zinc-950 dark:text-white font-bold"
-                            : "hover:bg-zinc-50 dark:hover:bg-[#14141c] text-zinc-600 dark:text-zinc-400"
+                          "flex-1 py-1 rounded text-[10px] border text-center transition-colors cursor-pointer",
+                          duration === d
+                            ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
+                            : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                         )}
                       >
-                        <div className="text-left">
-                          <span className="block font-bold">{r.label}</span>
-                          <span className="text-[9px] opacity-70 block">{r.desc}</span>
-                        </div>
-                        {aspectRatio === r.value && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                        {d}s
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
 
-              {/* 3. Camera Motion Compass Pill */}
-              {mode !== "first_to_last_frame" && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      closeAllPopovers();
-                      setMotionPopoverOpen(!motionPopoverOpen);
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                    title="Camera Motion Vector"
-                  >
-                    <activeMotion.icon className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-                    <span className="hidden sm:inline">{activeMotion.label}</span>
-                    <span className="sm:hidden">{activeMotion.label.split(" ")[0]}</span>
-                    <ChevronUp
-                      className={cn("w-3 h-3 text-zinc-400 transition-transform", motionPopoverOpen && "rotate-180")}
-                    />
-                  </button>
+                  <input
+                    type="range"
+                    min={2}
+                    max={30}
+                    step={1}
+                    value={duration}
+                    onChange={(e) => setDuration(parseFloat(e.target.value))}
+                    className="w-full accent-violet-600 cursor-pointer"
+                  />
 
-                  {motionPopoverOpen && (
-                    <div
-                      data-lenis-prevent="true"
-                      className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-2.5"
-                    >
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
-                          Camera Motion Vector
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {MOTIONS.map((m) => {
-                          const isSelected = motion === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => {
-                                setMotion(m.id);
-                                setMotionPopoverOpen(false);
-                              }}
-                              className={cn(
-                                "flex items-center gap-2 p-2 rounded-xl border text-left font-mono text-xs transition-all cursor-pointer",
-                                isSelected
-                                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
-                                  : "bg-zinc-50 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
-                              )}
-                            >
-                              <m.icon className="w-3.5 h-3.5 shrink-0" />
-                              <div className="min-w-0">
-                                <span className="font-bold block truncate">{m.label}</span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Speed / Intensity */}
-                      <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                        <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-1.5">
-                          Motion Intensity:
-                        </span>
-                        <div className="grid grid-cols-4 gap-1 font-mono">
-                          {SPEED_PROFILES.map((sp) => (
-                            <button
-                              key={sp.value}
-                              type="button"
-                              onClick={() => setMotionIntensity(sp.value)}
-                              className={cn(
-                                "py-1 text-center rounded-lg text-[10px] border transition-colors cursor-pointer",
-                                motionIntensity === sp.value
-                                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                                  : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                              )}
-                            >
-                              {sp.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  {/* Seamless Loop Option */}
+                  <div className="flex items-center justify-between pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-800 dark:text-zinc-200">
+                      <Repeat className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Seamless Loop</span>
                     </div>
-                  )}
+                    <input
+                      type="checkbox"
+                      checked={loop}
+                      onChange={(e) => setLoop(e.target.checked)}
+                      className="h-4 w-4 rounded border-black/[0.1] dark:border-white/[0.1] accent-violet-600 cursor-pointer"
+                    />
+                  </div>
                 </div>
               )}
+            </div>
 
-              {/* 4. Duration Pill */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeAllPopovers();
-                    setDurationPopoverOpen(!durationPopoverOpen);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                  title="Select Duration"
+            {/* 5. Resolution & FPS Master Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  closeAllPopovers();
+                  setSpecPopoverOpen(!specPopoverOpen);
+                }}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  specPopoverOpen
+                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
+                )}
+                title="Resolution, FPS, Quality"
+              >
+                <Gauge className={cn("w-3 h-3", specPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <span>{resolution} • {fps}fps</span>
+                <ChevronUp
+                  className={cn("w-3 h-3 text-zinc-400 transition-transform", specPopoverOpen && "rotate-180")}
+                />
+              </button>
+
+              {specPopoverOpen && (
+                <div
+                  data-lenis-prevent="true"
+                  className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
                 >
-                  <Clock className="w-3 h-3 text-zinc-400" />
-                  <span>{duration}s</span>
-                  <ChevronUp
-                    className={cn("w-3 h-3 text-zinc-400 transition-transform", durationPopoverOpen && "rotate-180")}
-                  />
-                </button>
-
-                {durationPopoverOpen && (
-                  <div
-                    data-lenis-prevent="true"
-                    className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
-                        Clip Duration
-                      </span>
-                      <span className="text-xs font-bold font-mono text-zinc-950 dark:text-white">
-                        {duration} SECONDS
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1 font-mono">
-                      {DURATION_PRESETS.map((d) => (
+                  {/* Resolution */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
+                      Resolution
+                    </span>
+                    <div className="grid grid-cols-2 gap-1 font-mono">
+                      {RESOLUTIONS.map((res) => (
                         <button
-                          key={d}
+                          key={res.value}
                           type="button"
-                          onClick={() => setDuration(d)}
+                          onClick={() => setResolution(res.value)}
                           className={cn(
-                            "flex-1 py-1 rounded text-[10px] border text-center transition-colors cursor-pointer",
-                            duration === d
-                              ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                              : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                            "p-1.5 text-center rounded-lg border text-[11px] transition-colors cursor-pointer",
+                            resolution === res.value
+                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
+                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                           )}
                         >
-                          {d}s
+                          <span className="block font-bold">{res.label}</span>
                         </button>
                       ))}
                     </div>
+                  </div>
 
-                    <input
-                      type="range"
-                      min={2}
-                      max={30}
-                      step={1}
-                      value={duration}
-                      onChange={(e) => setDuration(parseFloat(e.target.value))}
-                      className="w-full accent-zinc-950 dark:accent-white cursor-pointer"
-                    />
-
-                    {/* Seamless Loop Option */}
-                    <div className="flex items-center justify-between pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-800 dark:text-zinc-200">
-                        <Repeat className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>Seamless Loop</span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={loop}
-                        onChange={(e) => setLoop(e.target.checked)}
-                        className="h-4 w-4 rounded border-zinc-400 accent-zinc-950 dark:accent-white cursor-pointer"
-                      />
+                  {/* Frame Rate */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
+                      Frame Rate
+                    </span>
+                    <div className="grid grid-cols-3 gap-1 font-mono">
+                      {FPS_PROFILES.map((p) => (
+                        <button
+                          key={p.value}
+                          type="button"
+                          onClick={() => setFps(p.value)}
+                          className={cn(
+                            "p-1.5 text-center rounded-lg border text-[10px] transition-colors cursor-pointer",
+                            fps === p.value
+                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
+                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                          )}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* 5. Resolution & FPS Master Pill */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeAllPopovers();
-                    setSpecPopoverOpen(!specPopoverOpen);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#12121a] dark:hover:bg-[#181824] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-                  title="Resolution, FPS, Quality"
-                >
-                  <Gauge className="w-3 h-3 text-zinc-400" />
-                  <span>{resolution} • {fps}fps</span>
-                  <ChevronUp
-                    className={cn("w-3 h-3 text-zinc-400 transition-transform", specPopoverOpen && "rotate-180")}
-                  />
-                </button>
-
-                {specPopoverOpen && (
-                  <div
-                    data-lenis-prevent="true"
-                    className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#0c0c12] border border-black/[0.12] dark:border-white/[0.12] shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3"
-                  >
-                    {/* Resolution */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
-                        Resolution
-                      </span>
-                      <div className="grid grid-cols-2 gap-1 font-mono">
-                        {RESOLUTIONS.map((res) => (
-                          <button
-                            key={res.value}
-                            type="button"
-                            onClick={() => setResolution(res.value)}
-                            className={cn(
-                              "p-1.5 text-center rounded-lg border text-[11px] transition-colors cursor-pointer",
-                              resolution === res.value
-                                ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                                : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                            )}
-                          >
-                            <span className="block font-bold">{res.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Frame Rate */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
-                        Frame Rate
-                      </span>
-                      <div className="grid grid-cols-3 gap-1 font-mono">
-                        {FPS_PROFILES.map((p) => (
-                          <button
-                            key={p.value}
-                            type="button"
-                            onClick={() => setFps(p.value)}
-                            className={cn(
-                              "p-1.5 text-center rounded-lg border text-[10px] transition-colors cursor-pointer",
-                              fps === p.value
-                                ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                                : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                            )}
-                          >
-                            {p.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Quality */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
-                        Quality Profile
-                      </span>
-                      <div className="grid grid-cols-3 gap-1 font-mono">
-                        {QUALITY_PROFILES.map((qp) => (
-                          <button
-                            key={qp.value}
-                            type="button"
-                            onClick={() => setQuality(qp.value)}
-                            className={cn(
-                              "p-1.5 text-center rounded-lg border text-[10px] transition-colors cursor-pointer",
-                              quality === qp.value
-                                ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent font-bold"
-                                : "bg-zinc-100 dark:bg-[#14141c] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                            )}
-                          >
-                            {qp.label}
-                          </button>
-                        ))}
-                      </div>
+                  {/* Quality */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
+                      Quality Profile
+                    </span>
+                    <div className="grid grid-cols-3 gap-1 font-mono">
+                      {QUALITY_PROFILES.map((qp) => (
+                        <button
+                          key={qp.value}
+                          type="button"
+                          onClick={() => setQuality(qp.value)}
+                          className={cn(
+                            "p-1.5 text-center rounded-lg border text-[10px] transition-colors cursor-pointer",
+                            quality === qp.value
+                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
+                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                          )}
+                        >
+                          {qp.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Action: Render Button (Real Spend, No Star Signs) */}
-            <button
-              type="button"
-              onClick={requestVideoConfirm}
-              disabled={loading || !isFormValid()}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-extrabold text-xs sm:text-sm tracking-tight hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-current" />
-                  <span>Synthesizing...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>
-                    Render {model === "ffmpeg_local" ? "(100% Free)" : `• ₹${videoCostInr.toFixed(2)} ($${videoCostUsd.toFixed(2)})`}
-                  </span>
-                </>
+                </div>
               )}
-            </button>
+            </div>
           </div>
+
+          {/* Right Action: Render Button */}
+          <button
+            type="button"
+            onClick={requestVideoConfirm}
+            disabled={loading || !isFormValid()}
+            className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-extrabold text-xs sm:text-sm tracking-tight disabled:opacity-40 transition-all shadow-md shadow-violet-500/25 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-current" />
+                <span>Synthesizing...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>
+                  Render {model === "ffmpeg_local" ? "(100% Free)" : `• ₹${videoCostInr.toFixed(2)} ($${videoCostUsd.toFixed(2)})`}
+                </span>
+              </>
+            )}
+          </button>
         </div>
+      </div>
 
       {/* Vault Picker Modal */}
       {vaultOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#09090d] border border-black/[0.12] dark:border-white/[0.12] rounded-3xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between">
+          <div className="bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2 font-mono text-xs text-zinc-950 dark:text-white font-semibold">
                 <FolderArchive className="h-4 w-4 text-zinc-500" />
                 <span>SELECT {vaultTarget.toUpperCase()} FRAME FROM VAULT</span>
@@ -1964,7 +1985,10 @@ function VideoStudioContent() {
               className="p-4 overflow-y-auto flex-1 custom-scrollbar"
             >
               {loadingVault ? (
-                <div className="py-12 text-center text-xs text-zinc-500 font-mono">Loading vault images...</div>
+                <div className="py-12 text-center text-xs text-zinc-500 font-mono flex flex-col items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+                  Loading vault images...
+                </div>
               ) : vaultImages.length === 0 ? (
                 <div className="py-12 text-center text-xs text-zinc-500 font-mono">
                   No images found in local vault. Generate an image in Image Studio first!
@@ -1980,12 +2004,12 @@ function VideoStudioContent() {
                         else setEndImage(img.url);
                         setVaultOpen(false);
                       }}
-                      className="group rounded-xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-950 dark:hover:border-white text-left transition-all relative aspect-video bg-black cursor-pointer"
+                      className="group rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-500/50 hover:ring-2 hover:ring-violet-500/20 text-left transition-all relative aspect-video bg-zinc-100 dark:bg-[#0d0d14] cursor-pointer"
                     >
                       <img
                         src={getMediaUrl(img.url)}
                         alt={img.filename}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-2">
                         <p className="text-[10px] font-mono text-white truncate">{img.filename}</p>
@@ -2021,8 +2045,9 @@ export default function VideoStudio() {
   return (
     <Suspense
       fallback={
-        <div className="p-8 text-center text-xs text-zinc-500 font-mono">
-          Loading Video Motion Studio...
+        <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+          <span className="text-xs text-zinc-500 font-mono">Loading Video Motion Studio...</span>
         </div>
       }
     >

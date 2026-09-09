@@ -160,13 +160,13 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-16 font-sans">
+    <div className="max-w-4xl mx-auto space-y-8 pb-16 font-jakarta">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">
+            <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
             <span>Database Synced: {keySource}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
@@ -182,7 +182,7 @@ export default function SettingsPage() {
             type="button"
             onClick={testConnection}
             disabled={testing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-xs font-medium text-zinc-700 dark:text-zinc-300 transition-all duration-200 cursor-pointer border border-transparent"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", testing && "animate-spin")} />
             <span>Test Health</span>
@@ -192,12 +192,12 @@ export default function SettingsPage() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-semibold text-xs hover:opacity-90 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium text-xs transition-all duration-200 cursor-pointer shadow-sm shadow-violet-500/25 active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : saved ? (
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              <Check className="h-3.5 w-3.5 text-white" />
             ) : (
               <Save className="h-3.5 w-3.5" />
             )}
@@ -207,7 +207,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Compute Runtime Telemetry */}
-      <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
+      <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Cpu className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
@@ -215,14 +215,14 @@ export default function SettingsPage() {
               Compute & Engine Runtime
             </h2>
           </div>
-          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             Active
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-[#121218] border border-zinc-200/80 dark:border-zinc-800/80 space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] space-y-1">
             <span className="text-xs text-zinc-500 font-medium">Video Compiler</span>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -231,7 +231,7 @@ export default function SettingsPage() {
             <p className="text-xs text-zinc-400 truncate">Hardware accelerated local engine</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-[#121218] border border-zinc-200/80 dark:border-zinc-800/80 space-y-1">
+          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] space-y-1">
             <span className="text-xs text-zinc-500 font-medium">Database Storage</span>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -242,7 +242,7 @@ export default function SettingsPage() {
             <p className="text-xs text-zinc-400">Synced with studio_settings table</p>
           </div>
 
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-[#121218] border border-zinc-200/80 dark:border-zinc-800/80 space-y-1">
+          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] space-y-1">
             <span className="text-xs text-zinc-500 font-medium">Asset Storage</span>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -256,15 +256,15 @@ export default function SettingsPage() {
       </div>
 
       {/* AI Model API Keys */}
-      <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 space-y-6 shadow-xs">
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+      <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-6 shadow-sm">
+        <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
           <div className="flex items-center gap-2.5">
             <Key className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
             <h2 className="text-sm font-heading font-bold text-zinc-950 dark:text-white uppercase tracking-wider">
               AI Model API Keys (BYOK)
             </h2>
           </div>
-          <span className="text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full border border-zinc-200 dark:border-zinc-700">
+          <span className="text-[10px] font-mono font-medium text-zinc-500 bg-zinc-50 dark:bg-white/[0.04] px-2.5 py-0.5 rounded-full border border-black/[0.06] dark:border-white/[0.06] uppercase tracking-wider">
             Synced from Supabase
           </span>
         </div>
@@ -285,22 +285,22 @@ export default function SettingsPage() {
                   </label>
                   <span
                     className={cn(
-                      "text-xs font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                      "text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 whitespace-nowrap shrink-0 uppercase tracking-wider",
                       isConfigured
                         ? isFromEnv
-                          ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                        : "bg-zinc-100 dark:bg-zinc-900 text-zinc-400 border-zinc-200 dark:border-zinc-800"
+                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                          : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                        : "bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 border-transparent"
                     )}
                   >
                     {isConfigured ? (
                       <>
-                        <CheckCircle2 className={cn("h-3.5 w-3.5", isFromEnv ? "text-sky-500" : "text-emerald-500")} />
-                        <span>{isFromEnv ? "Active: Local VPS .env (Fallback)" : "Active: Supabase Cloud"}</span>
+                        <CheckCircle2 className={cn("h-3 w-3", isFromEnv ? "text-violet-500" : "text-emerald-500")} />
+                        <span>{isFromEnv ? "Active: Local VPS" : "Active: Supabase"}</span>
                       </>
                     ) : (
                       <>
-                        <XCircle className="h-3.5 w-3.5" />
+                        <XCircle className="h-3 w-3" />
                         <span>Not Configured</span>
                       </>
                     )}
@@ -319,12 +319,12 @@ export default function SettingsPage() {
                         ? `${maskedVal} (${source})`
                         : "Enter API key to save..."
                     }
-                    className="w-full bg-zinc-50 dark:bg-[#121218] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 pr-12 text-sm text-zinc-950 dark:text-white font-mono placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-2.5 pr-12 text-sm text-zinc-950 dark:text-white font-mono placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all duration-200"
                   />
                   <button
                     type="button"
                     onClick={() => toggleShow(cfg.key)}
-                    className="absolute right-3 text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 shrink-0"
+                    className="absolute right-3 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors duration-200 cursor-pointer p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] shrink-0"
                     title={showKeys[cfg.key] ? "Hide Key" : "Show Key"}
                   >
                     {showKeys[cfg.key] ? (
@@ -345,8 +345,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Cloud Object Storage (Cloudflare R2) */}
-      <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 space-y-6 shadow-xs">
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+      <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-6 shadow-sm">
+        <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
           <div className="flex items-center gap-2.5">
             <Cloud className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
             <h2 className="text-sm font-heading font-bold text-zinc-950 dark:text-white uppercase tracking-wider">
@@ -358,9 +358,9 @@ export default function SettingsPage() {
             type="button"
             onClick={testR2}
             disabled={testingR2}
-            className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors border border-zinc-200 dark:border-zinc-700 px-3.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer whitespace-nowrap shrink-0"
+            className="text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-all duration-200 px-3.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] cursor-pointer whitespace-nowrap shrink-0"
           >
-            {testingR2 ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5 text-cyan-500" />}
+            {testingR2 ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5 text-violet-500" />}
             <span>Test Storage Bucket</span>
           </button>
         </div>
@@ -373,7 +373,7 @@ export default function SettingsPage() {
               value={keys.R2_ACCOUNT_ID}
               onChange={(e) => setKeys((prev) => ({ ...prev, R2_ACCOUNT_ID: e.target.value }))}
               placeholder={maskedKeys["R2_ACCOUNT_ID"] ? `${maskedKeys["R2_ACCOUNT_ID"]} (from Supabase)` : "e.g. ac890c5c0f39..."}
-              className="w-full bg-zinc-50 dark:bg-[#121218] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all duration-200"
             />
           </div>
 
@@ -384,7 +384,7 @@ export default function SettingsPage() {
               value={keys.R2_BUCKET_NAME}
               onChange={(e) => setKeys((prev) => ({ ...prev, R2_BUCKET_NAME: e.target.value }))}
               placeholder={maskedKeys["R2_BUCKET_NAME"] || "omnistudio-assets"}
-              className="w-full bg-zinc-50 dark:bg-[#121218] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all duration-200"
             />
           </div>
 
@@ -396,12 +396,12 @@ export default function SettingsPage() {
                 value={keys.R2_ACCESS_KEY_ID}
                 onChange={(e) => setKeys((prev) => ({ ...prev, R2_ACCESS_KEY_ID: e.target.value }))}
                 placeholder={maskedKeys["R2_ACCESS_KEY_ID"] ? `${maskedKeys["R2_ACCESS_KEY_ID"]} (from Supabase)` : "Access Key"}
-                className="w-full bg-zinc-50 dark:bg-[#121218] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 pr-10 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none font-mono"
+                className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 pr-10 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 font-mono transition-all duration-200"
               />
               <button
                 type="button"
                 onClick={() => toggleShow("R2_ACCESS_KEY_ID")}
-                className="absolute right-2.5 text-zinc-400 hover:text-black dark:hover:text-white cursor-pointer"
+                className="absolute right-2.5 text-zinc-400 hover:text-black dark:hover:text-white cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors duration-200"
               >
                 {showKeys["R2_ACCESS_KEY_ID"] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -416,12 +416,12 @@ export default function SettingsPage() {
                 value={keys.R2_SECRET_ACCESS_KEY}
                 onChange={(e) => setKeys((prev) => ({ ...prev, R2_SECRET_ACCESS_KEY: e.target.value }))}
                 placeholder={maskedKeys["R2_SECRET_ACCESS_KEY"] ? "•••••••••••••••• (from Supabase)" : "Secret Key"}
-                className="w-full bg-zinc-50 dark:bg-[#121218] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 pr-10 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none font-mono"
+                className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 pr-10 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 font-mono transition-all duration-200"
               />
               <button
                 type="button"
                 onClick={() => toggleShow("R2_SECRET_ACCESS_KEY")}
-                className="absolute right-2.5 text-zinc-400 hover:text-black dark:hover:text-white cursor-pointer"
+                className="absolute right-2.5 text-zinc-400 hover:text-black dark:hover:text-white cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/[0.06] p-1.5 rounded-lg transition-colors duration-200"
               >
                 {showKeys["R2_SECRET_ACCESS_KEY"] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -430,19 +430,19 @@ export default function SettingsPage() {
         </div>
 
         {/* Public Access Status Callout */}
-        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-[#121218] border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs">
+        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] space-y-2 text-xs">
           <div className="flex items-center justify-between font-semibold text-zinc-900 dark:text-zinc-100">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
               Public Media Delivery is 100% Active via Hostinger NVMe SSD
             </span>
-            <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono tracking-wider">
               HTTP 200 OK
             </span>
           </div>
           <p className="text-zinc-500 leading-relaxed">
-            All generated assets (images, videos, audio) are instantly served from the high-speed Hostinger 100GB NVMe SSD at <code className="text-zinc-700 dark:text-zinc-300 font-mono">/outputs/...</code>.
-            To enable direct <code className="text-zinc-700 dark:text-zinc-300 font-mono">r2.dev</code> public CDN urls, open your Cloudflare Dashboard &rarr; R2 &rarr; <code className="text-zinc-700 dark:text-zinc-300 font-mono">omnistudio-assets</code> &rarr; Settings &rarr; Public access &rarr; click <strong>&quot;Allow Access&quot;</strong>.
+            All generated assets (images, videos, audio) are instantly served from the high-speed Hostinger 100GB NVMe SSD at <code className="text-zinc-700 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/[0.06] px-1 rounded">/outputs/...</code>.
+            To enable direct <code className="text-zinc-700 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/[0.06] px-1 rounded">r2.dev</code> public CDN urls, open your Cloudflare Dashboard &rarr; R2 &rarr; <code className="text-zinc-700 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/[0.06] px-1 rounded">omnistudio-assets</code> &rarr; Settings &rarr; Public access &rarr; click <strong>&quot;Allow Access&quot;</strong>.
           </p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Sparkles,
@@ -10,13 +10,6 @@ import {
   HardDrive,
   CheckCircle2,
   ArrowRight,
-  ShieldCheck,
-  Zap,
-  Film,
-  Image as ImageIcon,
-  Sliders,
-  Eye,
-  KeyRound,
   BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -174,21 +167,25 @@ const GUIDE_STEPS = [
 export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: HowItWorksModalProps) {
   const [currentStep, setCurrentStep] = useState(initialStep);
 
+  useEffect(() => {
+    setCurrentStep(initialStep);
+  }, [initialStep]);
+
   if (!isOpen) return null;
 
   const step = GUIDE_STEPS.find((s) => s.id === currentStep) || GUIDE_STEPS[0];
   const StepIcon = step.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-[#09090d] border border-black/[0.1] dark:border-white/[0.1] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta"
+        className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-zinc-50/50 dark:bg-black/30">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
@@ -197,7 +194,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
                   OMNISTUDIO GUIDE
                 </span>
                 <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
+                <span className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase">
                   5-STEP WORKFLOW
                 </span>
               </div>
@@ -217,7 +214,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
         </div>
 
         {/* Step Navigation Pills */}
-        <div className="flex items-center gap-1.5 p-3 px-5 border-b border-black/[0.06] dark:border-white/[0.06] bg-zinc-100/60 dark:bg-[#060609] overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1.5 p-3 px-5 border-b border-black/[0.06] dark:border-white/[0.06] bg-zinc-100/60 dark:bg-[#06060a] overflow-x-auto custom-scrollbar">
           {GUIDE_STEPS.map((s) => (
             <button
               key={s.id}
@@ -225,8 +222,8 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
               className={cn(
                 "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0",
                 currentStep === s.id
-                  ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-bold shadow-sm"
-                  : "bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                  ? "bg-violet-600 text-white font-bold shadow-sm"
+                  : "bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/[0.1]"
               )}
             >
               <span className="w-4 h-4 rounded-full bg-current/20 flex items-center justify-center text-[10px]">
@@ -238,9 +235,9 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
         </div>
 
         {/* Step Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
           {/* Step Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-[#060609] border border-black/[0.06] dark:border-white/[0.06]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-black">
                 <StepIcon className="w-5 h-5" />
@@ -268,10 +265,10 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
             {step.highlights.map((h, idx) => (
               <div
                 key={idx}
-                className="p-4 rounded-xl bg-white dark:bg-[#0c0c12] border border-black/[0.07] dark:border-white/[0.07] space-y-1.5 shadow-sm"
+                className="p-4 rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5 shadow-sm"
               >
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-violet-500 shrink-0" />
                   <h4 className="text-xs font-heading font-bold text-zinc-950 dark:text-white">
                     {h.name}
                   </h4>
@@ -301,7 +298,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
             type="button"
             disabled={currentStep === 1}
             onClick={() => setCurrentStep((p) => Math.max(1, p - 1))}
-            className="px-4 py-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#09090d] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all whitespace-nowrap shrink-0"
+            className="px-4 py-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#06060a] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all whitespace-nowrap shrink-0"
           >
             Previous Step
           </button>
@@ -314,7 +311,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
                 className={cn(
                   "w-2 h-2 rounded-full transition-all cursor-pointer",
                   currentStep === s.id
-                    ? "w-6 bg-zinc-950 dark:bg-white"
+                    ? "w-6 bg-violet-500"
                     : "bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400"
                 )}
                 aria-label={`Go to step ${s.id}`}
@@ -335,7 +332,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
+              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-md shadow-violet-600/20 whitespace-nowrap shrink-0"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Start Creating</span>

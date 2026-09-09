@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Zap,
   Lock,
@@ -114,14 +113,14 @@ export default function LoginPage() {
   // If already logged in, show authenticated state
   if (!loading && user) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full rounded-2xl bg-white/90 dark:bg-[#09090d]/90 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] p-8 shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200">
+      <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 relative">
+        <div className="max-w-md w-full rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] p-8 shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+            <div className="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 block font-semibold">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-violet-600 dark:text-violet-400 block font-semibold">
                 SUPABASE AUTHENTICATED
               </span>
               <h2 className="text-xl font-bold font-heading text-zinc-900 dark:text-white">
@@ -130,7 +129,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-[#030304] border border-black/[0.06] dark:border-white/[0.06] space-y-3 font-mono text-xs">
+          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] space-y-3 font-mono text-xs">
             <div className="flex justify-between items-center pb-2 border-b border-black/[0.04] dark:border-white/[0.04]">
               <span className="text-zinc-500">USER:</span>
               <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[200px]">
@@ -145,7 +144,7 @@ export default function LoginPage() {
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-black/[0.04] dark:border-white/[0.04]">
               <span className="text-zinc-500">ROLE:</span>
-              <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-zinc-950 text-white dark:bg-white dark:text-black">
+              <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
                 {profile?.role || "CREATOR"}
               </span>
             </div>
@@ -160,14 +159,14 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={() => router.push("/")}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 font-heading font-medium text-xs tracking-tight transition-all cursor-pointer shadow-md"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-medium text-xs tracking-tight transition-all duration-200 cursor-pointer shadow-sm shadow-violet-500/25 active:scale-[0.98]"
             >
               <span>DASHBOARD</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => router.push("/pipeline")}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 font-heading font-medium text-xs tracking-tight transition-all cursor-pointer border border-black/[0.06] dark:border-white/[0.06]"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-900 dark:text-white font-heading font-medium text-xs tracking-tight transition-all duration-200 cursor-pointer"
             >
               <Zap className="w-3.5 h-3.5" />
               <span>PIPELINE</span>
@@ -176,7 +175,7 @@ export default function LoginPage() {
 
           <button
             onClick={() => signOut()}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-mono cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs text-rose-600 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors font-mono cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>TERMINATE SUPABASE SESSION</span>
@@ -187,16 +186,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[82vh] flex items-center justify-center py-10 px-4">
-      <div className="max-w-md w-full rounded-2xl bg-white/95 dark:bg-[#09090d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] p-6 sm:p-8 shadow-2xl space-y-6">
+    <div className="min-h-[82vh] flex items-center justify-center py-10 px-4 relative">
+      {/* Background Gradient Effect */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 dark:bg-violet-500/5 blur-[100px] rounded-full" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] p-6 sm:p-8 shadow-2xl space-y-6">
         {/* Header Badge & Brand */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-600 dark:text-zinc-400">
-            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-[10px] font-mono uppercase tracking-[0.2em] text-violet-700 dark:text-violet-300">
+            <ShieldCheck className="w-3 h-3 text-violet-500" />
             <span>Supabase Cloud Auth • RLS Enforced</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-zinc-950 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 tracking-tight pb-1">
             OmniStudio Cloud
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto font-jakarta">
@@ -205,14 +209,14 @@ export default function LoginPage() {
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-zinc-100 dark:bg-[#030304] rounded-xl border border-black/[0.06] dark:border-white/[0.06]">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-zinc-50 dark:bg-white/[0.04] rounded-xl border border-black/[0.06] dark:border-white/[0.06]">
           <button
             type="button"
             onClick={() => switchMode("signin")}
             className={cn(
-              "py-2 text-xs font-medium rounded-lg transition-all cursor-pointer font-jakarta",
+              "py-2 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer font-jakarta",
               mode === "signin"
-                ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm font-semibold"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             )}
           >
@@ -222,9 +226,9 @@ export default function LoginPage() {
             type="button"
             onClick={() => switchMode("signup")}
             className={cn(
-              "py-2 text-xs font-medium rounded-lg transition-all cursor-pointer font-jakarta",
+              "py-2 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer font-jakarta",
               mode === "signup"
-                ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm font-semibold"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             )}
           >
@@ -234,9 +238,9 @@ export default function LoginPage() {
             type="button"
             onClick={() => switchMode("magic")}
             className={cn(
-              "py-2 text-xs font-medium rounded-lg transition-all cursor-pointer font-jakarta",
+              "py-2 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer font-jakarta",
               mode === "magic"
-                ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm font-semibold"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             )}
           >
@@ -246,14 +250,14 @@ export default function LoginPage() {
 
         {/* Feedback Alert Banners */}
         {errorMessage && (
-          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs animate-in fade-in duration-150">
+          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-300 text-xs animate-in fade-in duration-150">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span className="font-medium">{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs animate-in fade-in duration-150">
+          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs animate-in fade-in duration-150">
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
             <span className="font-medium">{successMessage}</span>
           </div>
@@ -272,7 +276,7 @@ export default function LoginPage() {
                 placeholder="e.g. Christopher Nolan"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#030304] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all font-jakarta placeholder:text-zinc-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta placeholder:text-zinc-400"
               />
             </div>
           )}
@@ -288,7 +292,7 @@ export default function LoginPage() {
               placeholder="director@studio.ai"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#030304] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all font-jakarta placeholder:text-zinc-400"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta placeholder:text-zinc-400"
             />
           </div>
 
@@ -303,7 +307,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => switchMode("magic")}
-                    className="text-[11px] text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer font-jakarta"
+                    className="text-[11px] text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors cursor-pointer font-jakarta"
                   >
                     Forgot password?
                   </button>
@@ -315,7 +319,7 @@ export default function LoginPage() {
                 placeholder="••••••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#030304] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all font-jakarta placeholder:text-zinc-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta placeholder:text-zinc-400"
               />
             </div>
           )}
@@ -323,7 +327,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 font-heading font-semibold text-xs tracking-wider uppercase transition-all cursor-pointer shadow-lg active:scale-98 mt-2 whitespace-nowrap shrink-0"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white disabled:opacity-50 font-heading font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-sm shadow-violet-500/25 active:scale-[0.98] mt-2 whitespace-nowrap shrink-0"
           >
             {isSubmitting ? (
               <>
@@ -354,17 +358,17 @@ export default function LoginPage() {
           <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
             CONNECTED PROJECT REF: <span className="text-zinc-700 dark:text-zinc-300">lsttnpynhwtpkzfbfntf</span>
           </p>
-          <div className="flex items-center justify-center gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono uppercase">
-            <span className="flex items-center gap-1">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1 text-[10px] font-mono uppercase bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] px-2 py-0.5 rounded-lg text-zinc-500">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              DATABASE SYNC
+              DB SYNC
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 text-[10px] font-mono uppercase bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] px-2 py-0.5 rounded-lg text-zinc-500">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               JWT SESSIONS
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            <span className="flex items-center gap-1 text-[10px] font-mono uppercase bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] px-2 py-0.5 rounded-lg text-zinc-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
               RLS GUARD
             </span>
           </div>

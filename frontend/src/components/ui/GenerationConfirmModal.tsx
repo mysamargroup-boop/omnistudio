@@ -2,17 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldAlert,
   ShieldCheck,
   Zap,
   Coins,
   X,
   ArrowRight,
   AlertTriangle,
-  Info,
-  Clock,
   Cpu,
-  Layers,
   Sparkles,
   Image as ImageIcon,
   Film,
@@ -22,7 +18,6 @@ import {
   Check,
   Loader2,
   Lock,
-  ChevronRight,
   Server
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -99,19 +94,19 @@ export default function GenerationConfirmModal({
   const ServiceIcon = serviceMeta.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       {/* Background ambient glow halo */}
       <div
         className={cn(
           'absolute w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none transition-all',
           isFree
-            ? 'bg-emerald-500'
-            : 'bg-gradient-to-tr from-rose-500 via-fuchsia-600 to-amber-500'
+            ? 'bg-emerald-500/20'
+            : 'bg-violet-500/20'
         )}
       />
 
       <div
-        className="relative w-full max-w-lg rounded-3xl bg-[#09090e]/95 border border-white/[0.1] shadow-[0_25px_70px_rgba(0,0,0,0.95)] overflow-hidden font-sans text-zinc-100 ring-1 ring-white/5"
+        className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Accent Gradient Rim */}
@@ -120,7 +115,7 @@ export default function GenerationConfirmModal({
             'h-1 w-full',
             isFree
               ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400'
-              : 'bg-gradient-to-r from-amber-400 via-rose-500 to-fuchsia-600'
+              : 'bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500'
           )}
         />
 
@@ -130,7 +125,7 @@ export default function GenerationConfirmModal({
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 {isFree ? (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/25 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/25 shadow-sm">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
@@ -138,10 +133,10 @@ export default function GenerationConfirmModal({
                     <ShieldCheck className="h-3 w-3" /> Zero-Spend Local Compute
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/25 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1 rounded-full border border-violet-500/25 shadow-sm">
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500" />
                     </span>
                     <Lock className="h-3 w-3" /> API Spend Authorization
                   </span>
@@ -152,10 +147,10 @@ export default function GenerationConfirmModal({
                 </span>
               </div>
 
-              <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-xl font-bold text-zinc-950 dark:text-white tracking-tight flex items-center gap-2 font-heading">
                 <span>Confirm Generation Request</span>
               </h2>
-              <p className="text-xs text-zinc-400 font-sans">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">
                 Review model specifications and credit deduction before execution.
               </p>
             </div>
@@ -163,7 +158,7 @@ export default function GenerationConfirmModal({
             <button
               onClick={onClose}
               disabled={loading}
-              className="text-zinc-400 hover:text-white p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] transition-colors cursor-pointer shrink-0"
+              className="text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white p-1.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.06] transition-colors cursor-pointer shrink-0"
               title="Close (Esc)"
             >
               <X className="h-4 w-4" />
@@ -175,43 +170,43 @@ export default function GenerationConfirmModal({
             className={cn(
               'relative rounded-2xl border p-4 sm:p-5 overflow-hidden transition-all shadow-inner',
               isFree
-                ? 'bg-gradient-to-br from-emerald-950/40 via-[#071510]/60 to-[#070b09] border-emerald-500/30'
-                : 'bg-gradient-to-br from-zinc-900/90 via-[#100c14]/80 to-[#0c0c12] border-white/[0.08]'
+                ? 'bg-emerald-50 dark:bg-gradient-to-br dark:from-emerald-950/40 dark:via-[#071510]/60 dark:to-[#070b09] border-emerald-200 dark:border-emerald-500/30'
+                : 'bg-zinc-50 dark:bg-gradient-to-br dark:from-zinc-900/90 dark:via-[#100c14]/80 dark:to-[#0c0c12] border-black/[0.08] dark:border-white/[0.08]'
             )}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div
                   className={cn(
-                    'h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 shadow-lg border',
+                    'h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 shadow-sm border',
                     isFree
-                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 shadow-emerald-500/10'
-                      : 'bg-gradient-to-br from-rose-500/20 to-purple-500/20 text-rose-300 border-rose-500/30 shadow-rose-500/10'
+                      ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-emerald-500/10'
+                      : 'bg-violet-100 dark:bg-gradient-to-br dark:from-violet-500/20 dark:to-indigo-500/20 text-violet-600 dark:text-violet-300 border-violet-200 dark:border-violet-500/30 shadow-violet-500/10'
                   )}
                 >
                   {isFree ? (
-                    <Zap className="h-5 w-5 text-emerald-400" />
+                    <Zap className="h-5 w-5" />
                   ) : (
-                    <Coins className="h-5 w-5 text-rose-400" />
+                    <Coins className="h-5 w-5" />
                   )}
                 </div>
 
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-400">
+                    <p className="text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                       {isFree ? 'Estimated Compute Cost' : 'Estimated Generation Cost'}
                     </p>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                    <span className={cn("text-2xl sm:text-3xl font-black font-mono tracking-tight", isFree ? "text-zinc-900 dark:text-white" : "gradient-text bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400")}>
                       {isFree ? '₹0.00' : `₹${details.costInr.toFixed(2)}`}
                     </span>
                     {!isFree ? (
-                      <span className="text-xs font-mono text-zinc-400">
+                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
                         (~${details.costUsd.toFixed(3)} USD)
                       </span>
                     ) : (
-                      <span className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider">
+                      <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
                         Free Tier
                       </span>
                     )}
@@ -224,8 +219,8 @@ export default function GenerationConfirmModal({
                   className={cn(
                     'text-[10px] font-mono px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider border shadow-sm',
                     isFree
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                      : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
+                      : 'bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/30'
                   )}
                 >
                   {isFree ? 'Zero Cloud Spend' : 'Cloud Credit'}
@@ -238,16 +233,16 @@ export default function GenerationConfirmModal({
           </div>
 
           {/* Model & Technical Specs Details Card */}
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 space-y-3.5">
+          <div className="bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-4 space-y-3.5">
             {/* Model & Provider Header */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
               <div className="space-y-0.5 min-w-0">
                 <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">
                   AI Model
                 </span>
                 <div className="flex items-center gap-2">
                   <Cpu className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-                  <span className="font-semibold text-white truncate text-sm">
+                  <span className="font-semibold text-zinc-900 dark:text-white truncate text-sm">
                     {details.modelName}
                   </span>
                 </div>
@@ -257,8 +252,8 @@ export default function GenerationConfirmModal({
                 <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">
                   Provider
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-[11px] font-mono font-medium text-zinc-300 uppercase">
-                  <Server className="h-3 w-3 text-zinc-400" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] text-[11px] font-mono font-medium text-zinc-700 dark:text-zinc-300 uppercase shadow-sm">
+                  <Server className="h-3 w-3 text-zinc-500 dark:text-zinc-400" />
                   {details.provider}
                 </span>
               </div>
@@ -276,10 +271,10 @@ export default function GenerationConfirmModal({
                     return (
                       <span
                         key={key}
-                        className="inline-flex items-center gap-1 bg-zinc-900/90 hover:bg-zinc-800/90 border border-white/[0.07] px-2.5 py-1 rounded-lg text-[10px] font-mono text-zinc-300 transition-colors"
+                        className="inline-flex items-center gap-1 bg-white dark:bg-zinc-900/90 hover:bg-zinc-50 dark:hover:bg-zinc-800/90 border border-black/[0.07] dark:border-white/[0.07] px-2.5 py-1 rounded-lg text-[10px] font-mono text-zinc-700 dark:text-zinc-300 transition-colors shadow-sm"
                       >
                         <span className="text-zinc-500 capitalize">{key}:</span>
-                        <span className="font-semibold text-zinc-200">{String(val)}</span>
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-200">{String(val)}</span>
                       </span>
                     );
                   })}
@@ -297,12 +292,12 @@ export default function GenerationConfirmModal({
                   <button
                     type="button"
                     onClick={handleCopyPrompt}
-                    className="inline-flex items-center gap-1 text-[10px] font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
                   >
                     {copied ? (
                       <>
-                        <Check className="h-3 w-3 text-emerald-400" />
-                        <span className="text-emerald-400">Copied</span>
+                        <Check className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
+                        <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
                       </>
                     ) : (
                       <>
@@ -313,7 +308,7 @@ export default function GenerationConfirmModal({
                   </button>
                 </div>
 
-                <div className="relative rounded-xl bg-black/50 border border-white/[0.06] p-3 text-xs text-zinc-300 font-sans italic leading-relaxed line-clamp-3">
+                <div className="relative rounded-xl bg-black/[0.03] dark:bg-black/50 border border-black/[0.06] dark:border-white/[0.06] p-3 text-xs text-zinc-700 dark:text-zinc-300 font-sans italic leading-relaxed line-clamp-3">
                   "{details.prompt}"
                 </div>
               </div>
@@ -322,15 +317,15 @@ export default function GenerationConfirmModal({
 
           {/* Security & Billing Notice */}
           {!isFree ? (
-            <div className="flex items-start gap-2.5 text-[11px] text-zinc-400 bg-amber-500/[0.04] border border-amber-500/20 p-3 rounded-2xl leading-relaxed font-mono">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div className="flex items-start gap-2.5 text-[11px] text-zinc-600 dark:text-zinc-400 bg-amber-50 dark:bg-amber-500/[0.04] border border-amber-200 dark:border-amber-500/20 p-3 rounded-2xl leading-relaxed font-mono">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
               <span>
-                Zero platform commission. Clicking <strong className="text-zinc-200">"Confirm & Generate"</strong> will execute this request against your active {details.provider} API account.
+                Zero platform commission. Clicking <strong className="text-zinc-900 dark:text-zinc-200">"Confirm & Generate"</strong> will execute this request against your active {details.provider} API account.
               </span>
             </div>
           ) : (
-            <div className="flex items-start gap-2.5 text-[11px] text-emerald-400/90 bg-emerald-500/[0.04] border border-emerald-500/20 p-3 rounded-2xl leading-relaxed font-mono">
-              <Sparkles className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <div className="flex items-start gap-2.5 text-[11px] text-emerald-700 dark:text-emerald-400/90 bg-emerald-50 dark:bg-emerald-500/[0.04] border border-emerald-200 dark:border-emerald-500/20 p-3 rounded-2xl leading-relaxed font-mono">
+              <Sparkles className="h-4 w-4 shrink-0 text-emerald-500 dark:text-emerald-400 mt-0.5" />
               <span>
                 This generation runs completely on your local machine using hardware-accelerated synthesis. No cloud tokens will be billed.
               </span>
@@ -340,10 +335,10 @@ export default function GenerationConfirmModal({
           {/* Action Footer */}
           <div className="flex items-center justify-between gap-3 pt-2">
             <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
-              <kbd className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-zinc-400">Esc</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-black/10 dark:border-white/10 text-zinc-600 dark:text-zinc-400">Esc</kbd>
               <span>to cancel</span>
               <span className="mx-1">•</span>
-              <kbd className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-zinc-400">Ctrl+↵</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-black/10 dark:border-white/10 text-zinc-600 dark:text-zinc-400">Ctrl+↵</kbd>
               <span>to confirm</span>
             </div>
 
@@ -352,7 +347,7 @@ export default function GenerationConfirmModal({
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="w-1/2 sm:w-auto px-4 py-2.5 text-xs font-mono text-zinc-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all cursor-pointer font-medium disabled:opacity-50"
+                className="w-1/2 sm:w-auto px-4 py-2.5 text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white bg-zinc-100 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.08] rounded-xl transition-all cursor-pointer font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -362,10 +357,10 @@ export default function GenerationConfirmModal({
                 onClick={onConfirm}
                 disabled={loading}
                 className={cn(
-                  'w-1/2 sm:w-auto relative flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-mono font-bold rounded-xl transition-all shadow-xl cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed',
+                  'w-1/2 sm:w-auto relative flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-mono font-bold rounded-xl transition-all shadow-md cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed',
                   isFree
                     ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-500/20'
-                    : 'bg-gradient-to-r from-rose-600 via-rose-500 to-fuchsia-600 hover:from-rose-500 hover:to-fuchsia-500 text-white shadow-rose-500/25'
+                    : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-500/25'
                 )}
               >
                 {loading ? (

@@ -208,7 +208,7 @@ function PipelineContent() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
-            <span>CINEMA STUDIO 5.0</span>
+            <span className="text-violet-500">CINEMA STUDIO 5.0</span>
             <span>•</span>
             <span>AUTONOMOUS AGENT DIRECTOR</span>
           </div>
@@ -217,8 +217,8 @@ function PipelineContent() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-700 dark:text-zinc-400 bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] px-3.5 py-1.5 rounded-full shadow-2xs whitespace-nowrap shrink-0">
-          <Clock className="h-3 w-3 text-zinc-500" />
+        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-700 dark:text-zinc-400 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] px-3.5 py-1.5 rounded-full shadow-sm whitespace-nowrap shrink-0">
+          <Clock className="h-3 w-3 text-violet-500" />
           <span>EST. RUNTIME: ~20-35 SECONDS</span>
         </div>
       </div>
@@ -230,7 +230,7 @@ function PipelineContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Direction Parameters */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="hf-card p-6 space-y-5">
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-6 space-y-5 shadow-sm">
             <div>
               <div className="flex items-center justify-between mb-2 font-mono">
                 <label className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase tracking-widest block font-medium">
@@ -240,7 +240,7 @@ function PipelineContent() {
                   type="button"
                   onClick={enhancePrompt}
                   disabled={enhancing || !topic.trim()}
-                  className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-black/10 dark:border-white/10 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-[#060609] whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-black/[0.06] dark:border-white/[0.06] px-2.5 py-1 rounded-full bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 whitespace-nowrap shrink-0"
                 >
                   <Wand2 className={cn("h-2.5 w-2.5", enhancing && "animate-spin")} />
                   <span>AI ENHANCE</span>
@@ -250,7 +250,7 @@ function PipelineContent() {
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Describe screenplay idea, world-building atmosphere, and visual narrative..."
-                className="w-full h-32 bg-zinc-50/80 dark:bg-[#060609] border border-black/[0.1] dark:border-white/[0.08] rounded-xl p-3.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta leading-relaxed"
+                className="w-full h-32 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta leading-relaxed"
               />
 
               {/* Preset Chips */}
@@ -264,7 +264,7 @@ function PipelineContent() {
                       key={i}
                       type="button"
                       onClick={() => setTopic(p)}
-                      className="text-[10px] px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-[#07070a] border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:border-black/20 dark:hover:border-white/[0.2] truncate max-w-[280px] text-left transition-colors cursor-pointer"
+                      className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-violet-300 hover:border-violet-200 dark:hover:border-violet-500/20 truncate max-w-[280px] text-left transition-colors cursor-pointer"
                     >
                       {p}
                     </button>
@@ -319,8 +319,8 @@ function PipelineContent() {
                     className={cn(
                       "p-2.5 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
                       aspectRatio === ar.id
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
-                        : "bg-zinc-100 dark:bg-[#07070a] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                        ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
+                        : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                     )}
                   >
                     <span className="text-xs font-bold font-heading block">{ar.label}</span>
@@ -342,8 +342,8 @@ function PipelineContent() {
                   className={cn(
                     "p-3 rounded-xl text-left border transition-all cursor-pointer",
                     voiceProvider === "edge"
-                      ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
-                      : "bg-zinc-100 dark:bg-[#07070a] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
+                      : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                   )}
                 >
                   <span className="text-xs font-bold font-heading block">Edge Neural</span>
@@ -355,8 +355,8 @@ function PipelineContent() {
                   className={cn(
                     "p-3 rounded-xl text-left border transition-all cursor-pointer",
                     voiceProvider === "elevenlabs"
-                      ? "bg-zinc-950 text-white dark:bg-white dark:text-black border-transparent shadow-xs"
-                      : "bg-zinc-100 dark:bg-[#07070a] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
+                      : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                   )}
                 >
                   <span className="text-xs font-bold font-heading block">ElevenLabs</span>
@@ -368,7 +368,7 @@ function PipelineContent() {
             <button
               onClick={requestPipelineConfirm}
               disabled={loading || !topic.trim()}
-              className="w-full py-3.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-30 transition-all shadow-xl active:scale-98 mt-3 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-violet-500/25 active:scale-[0.98] mt-3 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -387,7 +387,7 @@ function PipelineContent() {
 
         {/* Right: Master Cinema Viewport */}
         <div className="lg:col-span-7">
-          <div className="hf-card p-6 flex flex-col justify-between min-h-[520px] technical-corner relative">
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-6 flex flex-col justify-between min-h-[520px] relative shadow-sm">
             {loading && (
               <div className="my-auto space-y-6 py-6">
                 <LiveProgressBar
@@ -404,7 +404,7 @@ function PipelineContent() {
 
             {!loading && !result && (
               <div className="my-auto text-center space-y-4 py-20">
-                <div className="h-16 w-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400 dark:text-zinc-600 shadow-inner">
+                <div className="h-16 w-16 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400 dark:text-zinc-600 shadow-inner">
                   <Film className="h-8 w-8" />
                 </div>
                 <div className="space-y-1.5 max-w-sm mx-auto">
@@ -420,7 +420,7 @@ function PipelineContent() {
 
             {result && result.success && result.final_video && (
               <div className="space-y-5">
-                <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-2xl">
+                <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-lg">
                   <video
                     src={getMediaUrl(result.final_video.url)}
                     controls
@@ -458,7 +458,7 @@ function PipelineContent() {
                         setCurrentStep(-1);
                         setProgress(0);
                       }}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <RotateCcw className="h-3 w-3" />
                       <span>NEW CUT</span>
@@ -468,7 +468,7 @@ function PipelineContent() {
                       <a
                         href={getMediaUrl(result.final_video.srt_url)}
                         download
-                        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors whitespace-nowrap shrink-0"
+                        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors whitespace-nowrap shrink-0"
                         title="Download Subtitles (.srt)"
                       >
                         <FileText className="h-3.5 w-3.5" />
@@ -479,7 +479,7 @@ function PipelineContent() {
                     <a
                       href={getMediaUrl(result.final_video.url)}
                       download
-                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-heading font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0"
+                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-heading font-bold transition-all shadow-sm shadow-violet-500/25 active:scale-[0.98] whitespace-nowrap shrink-0"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>DOWNLOAD MASTER MP4</span>
@@ -489,7 +489,7 @@ function PipelineContent() {
 
                 {/* Scene Sequence Breakdown */}
                 {result.scenes && result.scenes.length > 0 && (
-                  <div className="pt-4 border-t border-black/[0.08] dark:border-white/[0.08] space-y-2.5 font-mono">
+                  <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.06] space-y-2.5 font-mono">
                     <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
                       <span>SCENE BREAKDOWN • {result.scenes.length} KEYFRAMES</span>
                     </div>
@@ -498,7 +498,7 @@ function PipelineContent() {
                       {result.scenes.map((s: any, i: number) => (
                         <div
                           key={i}
-                          className="rounded-xl bg-zinc-100 dark:bg-[#07070a] border border-black/[0.07] dark:border-white/[0.07] p-2 space-y-1.5 text-left"
+                          className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] p-2 space-y-1.5 text-left"
                         >
                           {s.image?.url && (
                             <img
@@ -526,22 +526,6 @@ function PipelineContent() {
             {result && !result.success && (
               <div className="my-auto text-center space-y-2 py-12">
                 <p className="text-xs text-red-500 dark:text-red-400 font-mono">{result.error}</p>
-              </div>
-            )}
-
-            {!loading && !result && (
-              <div className="my-auto text-center space-y-3 py-20">
-                <div className="h-12 w-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400 dark:text-zinc-600">
-                  <Film className="h-6 w-6" />
-                </div>
-                <div className="space-y-1 max-w-sm mx-auto">
-                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-300 font-heading tracking-tight">
-                    CINEMA STAGE IDLE
-                  </p>
-                  <p className="text-[11px] text-zinc-500 font-jakarta">
-                    Configure a narrative concept on the left and execute the pipeline to generate a master movie.
-                  </p>
-                </div>
               </div>
             )}
           </div>

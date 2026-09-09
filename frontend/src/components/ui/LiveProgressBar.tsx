@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Clock, CheckCircle2, ChevronDown, ChevronUp, Cpu, Aperture, Sparkles, Wand2, ShieldCheck } from "lucide-react";
+import { Clock, ChevronDown, ChevronUp, Cpu, Aperture, Wand2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface LogEntry {
@@ -78,7 +78,7 @@ export default function LiveProgressBar({
   return (
     <div
       className={cn(
-        "w-full rounded-3xl border border-black/[0.08] dark:border-white/[0.1] bg-white/95 dark:bg-[#08080c]/95 backdrop-blur-2xl p-6 sm:p-7 space-y-6 shadow-2xl font-jakarta transition-all",
+        "w-full rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white/90 dark:bg-[#0d0d14]/90 backdrop-blur-xl p-5 sm:p-6 space-y-4 font-jakarta transition-all shadow-sm",
         className
       )}
     >
@@ -87,12 +87,12 @@ export default function LiveProgressBar({
         <div className="flex items-center gap-3">
           <div className="relative flex h-3 w-3">
             {isActive && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-40" />
             )}
             <span
               className={cn(
                 "relative inline-flex rounded-full h-3 w-3",
-                isActive ? "bg-emerald-500" : "bg-zinc-400"
+                isActive ? "bg-violet-500" : "bg-zinc-400"
               )}
             />
           </div>
@@ -131,7 +131,7 @@ export default function LiveProgressBar({
               className={cn(
                 "p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col justify-between space-y-2",
                 step.done
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  ? "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-400"
                   : step.active
                   ? "bg-zinc-100 dark:bg-white/[0.08] border-black/20 dark:border-white/20 text-zinc-950 dark:text-white shadow-sm"
                   : "bg-zinc-50/50 dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] text-zinc-400 dark:text-zinc-600"
@@ -142,7 +142,7 @@ export default function LiveProgressBar({
                   className={cn(
                     "w-7 h-7 rounded-xl flex items-center justify-center transition-colors",
                     step.done
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-violet-500 text-white"
                       : step.active
                       ? "bg-zinc-950 text-white dark:bg-white dark:text-black"
                       : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
@@ -170,7 +170,7 @@ export default function LiveProgressBar({
               "h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden",
               clampedProgress === 100
                 ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                : "bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-700 dark:from-white dark:via-zinc-200 dark:to-zinc-400 shadow-[0_0_12px_rgba(255,255,255,0.2)]"
+                : "bg-gradient-to-r from-violet-600 via-indigo-500 to-blue-500 shadow-[0_0_12px_rgba(139,92,246,0.5)]"
             )}
             style={{ width: `${clampedProgress}%` }}
           >
@@ -186,13 +186,13 @@ export default function LiveProgressBar({
           <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">
             {statusMessage}
           </span>
-          <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 shrink-0 uppercase tracking-wider ml-2">
+          <span className={cn("text-[11px] font-mono shrink-0 uppercase tracking-wider ml-2", clampedProgress === 100 ? "text-emerald-500" : "text-violet-500 dark:text-violet-400")}>
             {clampedProgress === 100 ? "Ready in Vault" : "Rendering Frame"}
           </span>
         </div>
       </div>
 
-      {/* 4. Elegant Live Activity Feed (Collapsible, no raw terminal look) */}
+      {/* 4. Elegant Live Activity Feed */}
       {showTerminal && logs.length > 0 && (
         <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
           <button
@@ -208,11 +208,11 @@ export default function LiveProgressBar({
           </button>
 
           {logsOpen && (
-            <div className="mt-2 p-3.5 rounded-2xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] max-h-36 overflow-y-auto space-y-1.5 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 animate-in fade-in duration-150">
+            <div className="mt-2 p-3.5 rounded-xl bg-zinc-950 dark:bg-[#06060a] border border-black/[0.1] dark:border-white/[0.06] max-h-36 overflow-y-auto space-y-1.5 font-mono text-[11px] text-zinc-400 animate-in fade-in duration-150 custom-scrollbar">
               {logs.map((log, index) => (
                 <div key={index} className="flex items-start gap-2">
-                  <span className="text-zinc-400 dark:text-zinc-600 shrink-0">[{log.timestamp}]</span>
-                  <span className="text-zinc-900 dark:text-zinc-200">{log.message}</span>
+                  <span className="text-violet-400 shrink-0">[{log.timestamp}]</span>
+                  <span className="text-zinc-200">{log.message}</span>
                 </div>
               ))}
               <div ref={terminalEndRef} />
