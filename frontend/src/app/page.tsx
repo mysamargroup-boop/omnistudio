@@ -1,487 +1,361 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Cpu,
   Image as ImageIcon,
   Video,
   Mic,
   ArrowRight,
-  ArrowUpRight,
-  HardDrive,
   Sparkles,
   Zap,
-  Play,
   Film,
   Layers,
   Radio,
-  Sliders,
-  Wand2,
-  ChevronLeft,
+  HardDrive,
+  Cpu,
+  Play,
+  CheckCircle2,
   ChevronRight,
-  AlertCircle,
-  X,
   RefreshCw,
+  FolderArchive
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import StepCards from "@/components/StepCards";
 
-const studios = [
+const STUDIO_CARDS = [
   {
-    href: "/pipeline",
-    number: "01",
-    code: "AGENT-PIPELINE",
-    title: "Autonomous Cinema Agent",
-    tag: "END-TO-END",
-    desc: "Single-prompt director. AI writes the screenplay, breaks into cinematic scenes, diffuses visuals, choreographs camera motions, synthesizes neural voiceover, and compiles a final 1080p MP4.",
-    specs: ["STORYBOARD DIRECTOR", "KEN BURNS INTERPOLATION", "FFMPEG 8.1 MASTER"],
-    cta: "Launch Cinema Studio",
+    href: "/video",
+    title: "Video Studio",
+    tag: "Motion & Camera",
+    desc: "Generate cinematic scenes from prompts, transform photos into motion, or morph keyframes with precision camera controls.",
+    icon: Video,
+    accent: "from-blue-500/20 to-indigo-500/10",
+    border: "hover:border-blue-500/40",
+    badge: "Runway • Kling • Luma",
+    cta: "Create Video"
   },
   {
     href: "/image",
-    number: "02",
-    code: "DIFFUSION-LAB",
-    title: "Multi-Model Diffusion Lab",
-    tag: "STILL PHOTOGRAPHY",
-    desc: "Direct integration with OpenAI DALL-E 3 and Black Forest Labs Flux Schnell. Features intelligent Hollywood prompt expansion and aspect ratio formatting.",
-    specs: ["DALL-E 3 & FLUX", "16:9 / 1:1 / 9:16", "DIRECT VIDEO DISPATCH"],
-    cta: "Open Diffusion Lab",
-  },
-  {
-    href: "/video",
-    number: "03",
-    code: "CAMERA-MOTION",
-    title: "Camera Choreography Engine",
-    tag: "MOTION DYNAMICS",
-    desc: "Transforms still photography into cinematic camera moves. Features First + Last Frame morphing, parallel OpenAI Director Agent, and multi-model cloud video synthesis.",
-    specs: ["KEYFRAME MORPHING", "OPENAI PROMPT DIRECTOR", "MULTI-MODEL ENGINES"],
-    cta: "Open Motion Studio",
+    title: "Image Studio",
+    tag: "Visual Diffusion",
+    desc: "Create photorealistic visuals with OpenAI GPT-Image advance models, Google Imagen 3, and Flux. Features camera lens and lighting simulation.",
+    icon: ImageIcon,
+    accent: "from-purple-500/20 to-pink-500/10",
+    border: "hover:border-purple-500/40",
+    badge: "OpenAI GPT-Image • Imagen 3",
+    cta: "Generate Image"
   },
   {
     href: "/voice",
-    number: "04",
-    code: "NEURAL-AUDIO",
-    title: "Neural Audio & Speech Studio",
-    tag: "ACOUSTIC SUITE",
-    desc: "Studio voiceover booth with ElevenLabs, OpenAI TTS, and free built-in Edge Neural TTS offering 100+ natural human voices in English and Hindi.",
-    specs: ["ELEVENLABS + EDGE NEURAL", "ENGLISH & HINDI NARRATORS", "WAVEFORM VISUALIZER"],
-    cta: "Open Audio Booth",
+    title: "Voice Studio",
+    tag: "Speech & Audio",
+    desc: "Studio-grade voiceovers with free Edge Neural TTS, ElevenLabs voice cloning, voice changer, and instant dubbing across 20+ languages.",
+    icon: Mic,
+    accent: "from-emerald-500/20 to-teal-500/10",
+    border: "hover:border-emerald-500/40",
+    badge: "Edge Neural • ElevenLabs",
+    cta: "Open Voice Booth"
+  },
+  {
+    href: "/pipeline",
+    title: "Autonomous Cinema Agent",
+    tag: "Full AI Director",
+    desc: "Give a single prompt. The AI Director writes the screenplay, creates visual storyboards, choreographs camera motions, and renders a complete 1080p MP4 film.",
+    icon: Film,
+    accent: "from-amber-500/20 to-orange-500/10",
+    border: "hover:border-amber-500/40",
+    badge: "End-to-End Pipeline",
+    cta: "Launch Director"
   },
 ];
 
-const TRENDING_TAGS = [
-  "Cyberpunk Detective in Neo-Tokyo",
-  "Deep Space Monolith Expedition",
-  "Samurai Cherry Blossom Duel",
-  "Hypercar Racing Neon Track",
-  "Ancient Mayan Sun Temple at Twilight",
-  "Bioluminescent Deep Sea Leviathan",
-  "Quantum Core Gravitational Distortion",
-  "Post-Apocalyptic Desert Convoy",
-  "Steampunk Floating Airship Armada",
-  "Alpine Peak Storm Drone Chase",
+const PROMPT_SUGGESTIONS = [
+  "Cyberpunk detective walking through rainy Neo-Tokyo alley, neon reflections",
+  "Majestic ancient temple hidden inside emerald mist jungle at sunrise",
+  "Futuristic hypercar speeding across glowing solar highway at dusk",
+  "Close-up portrait of wise astronaut looking at spiral galaxy in helmet visor",
+  "Deep sea bioluminescent creature pulsing with turquoise light"
 ];
 
-export default function Dashboard() {
+export default function OverviewPage() {
   const router = useRouter();
-  const [quickPrompt, setQuickPrompt] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [assets, setAssets] = useState<any>(null);
+  const [prompt, setPrompt] = useState("");
   const [health, setHealth] = useState<any>(null);
-  const [loadingHealth, setLoadingHealth] = useState(true);
-
-  // Horizontal Scroll References
-  const trendingScrollRef = useRef<HTMLDivElement>(null);
-  const filmstripScrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  const checkScroll = () => {
-    if (trendingScrollRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = trendingScrollRef.current;
-      setCanScrollLeft(scrollLeft > 5);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
-    }
-  };
-
-  const scrollTrending = (direction: "left" | "right") => {
-    if (trendingScrollRef.current) {
-      const amount = direction === "left" ? -280 : 280;
-      trendingScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
-      setTimeout(checkScroll, 300);
-    }
-  };
-
-  const scrollFilmstrip = (direction: "left" | "right") => {
-    if (filmstripScrollRef.current) {
-      const amount = direction === "left" ? -340 : 340;
-      filmstripScrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
-    }
-  };
+  const [recentAssets, setRecentAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoadingHealth(true);
-    api.health()
-      .then((data) => {
-        setHealth(data);
-        setLoadingHealth(false);
-      })
-      .catch((err) => {
-        setErrorMessage("BACKEND_OFFLINE // Hardware acceleration engine at http://localhost:8000 is not responding. Please verify the backend service is running.");
-        setLoadingHealth(false);
-      });
-
-    api.getAllAssets()
-      .then(setAssets)
-      .catch(() => {});
+    async function loadData() {
+      try {
+        const [healthRes, assetsRes] = await Promise.allSettled([
+          api.health(),
+          api.getAllAssets()
+        ]);
+        if (healthRes.status === "fulfilled") {
+          setHealth(healthRes.value);
+        }
+        if (assetsRes.status === "fulfilled" && assetsRes.value && assetsRes.value.assets) {
+          setRecentAssets(assetsRes.value.assets.slice(0, 6));
+        }
+      } catch (_) {
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
-  const handleExecute = (promptText: string) => {
-    const clean = promptText.trim();
-    if (!clean) {
-      setErrorMessage("PROMPT_REQUIRED // Please specify a cinematic scene concept or click one of the trending suggestions below to launch the autonomous pipeline.");
-      return;
-    }
-    setErrorMessage(null);
-    router.push(`/pipeline?topic=${encodeURIComponent(clean)}`);
+  const handleLaunchPrompt = (text: string) => {
+    if (!text.trim()) return;
+    router.push(`/pipeline?prompt=${encodeURIComponent(text.trim())}`);
   };
 
   return (
-    <div className="space-y-10 pb-12 font-jakarta">
-      {/* Editorial Hero */}
-      <div className="relative pt-4 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white dark:bg-[#0a0a0f] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono tracking-widest text-zinc-700 dark:text-zinc-300 uppercase shadow-2xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-950 dark:bg-white" />
-            <span>AI-NATIVE CREATIVE SUITE // PERSONAL WORKSTATION v6.0</span>
-          </div>
-
-          {health && (
-            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#0a0a0f] border border-black/[0.08] dark:border-white/[0.08] px-3 py-1 rounded-full">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>COMPILER: FFMPEG 8.1 ONLINE</span>
-            </div>
-          )}
+    <div className="w-full space-y-10 pb-16 animate-in fade-in duration-300">
+      
+      {/* Hero Section */}
+      <section className="relative pt-4 pb-2 text-center space-y-5 max-w-4xl mx-auto">
+        {/* Status Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>OmniStudio Production Workstation</span>
+          <span className="text-zinc-400">•</span>
+          <span className="text-zinc-500">v5.0 Enterprise</span>
         </div>
 
-        <div className="space-y-3 max-w-4xl">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight leading-[1.06]">
-            One platform. Every model. Zero subscriptions.
-          </h1>
-          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 font-jakarta max-w-3xl leading-relaxed">
-            Autonomous multi-model video generation, keyframe morphing, visual diffusion, and neural voiceover. Bring-your-own-keys architecture with 100% local hard drive vault.
-          </p>
-        </div>
+        {/* Hero Title */}
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white leading-[1.15]">
+          One Platform. Every Model. <br className="hidden sm:inline" />
+          <span className="bg-gradient-to-r from-zinc-950 via-zinc-600 to-zinc-800 dark:from-white dark:via-zinc-300 dark:to-zinc-500 bg-clip-text text-transparent">
+            Zero Subscription Limits.
+          </span>
+        </h1>
 
-        {/* Global Error Banner */}
-        {errorMessage && (
-          <div className="w-full flex items-start justify-between gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 font-mono text-xs animate-page-enter">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-              <span className="leading-snug">{errorMessage}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setErrorMessage(null)}
-              className="p-1 rounded-md text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors cursor-pointer shrink-0"
-              title="Dismiss error"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        {/* Hero Subtitle */}
+        <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto font-sans leading-relaxed">
+          Create photorealistic AI imagery, choreograph cinema videos, synthesize multi-lingual neural voiceover, and direct complete films with your own API keys.
+        </p>
 
-        {/* Full-Width Flagship Command Bar */}
-        <div className="w-full space-y-3">
+        {/* Universal Studio Command Bar */}
+        <div className="pt-3 max-w-3xl mx-auto w-full">
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleExecute(quickPrompt);
+              handleLaunchPrompt(prompt);
             }}
-            className="w-full flex items-center bg-white dark:bg-[#0a0a0f] border border-black/[0.1] dark:border-white/[0.12] rounded-2xl p-2.5 shadow-lg dark:shadow-2xl focus-within:border-black/50 dark:focus-within:border-white/50 transition-all"
+            className="flex items-center bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 sm:p-2.5 shadow-lg focus-within:border-zinc-400 dark:focus-within:border-zinc-600 transition-all gap-2"
           >
-            <div className="pl-3 pr-2 text-zinc-400 dark:text-zinc-500 font-mono text-xs hidden sm:flex items-center gap-1.5 shrink-0 select-none">
-              <Sparkles className="h-3.5 w-3.5 text-zinc-500" />
-              <span>PROMPT //</span>
+            <div className="pl-3 text-zinc-400 hidden sm:flex items-center">
+              <Sparkles className="w-5 h-5 text-zinc-500" />
             </div>
 
             <input
               type="text"
-              value={quickPrompt}
-              onChange={(e) => {
-                setQuickPrompt(e.target.value);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              placeholder="Describe a cinematic narrative, screenplay, or scene to launch the autonomous pipeline..."
-              className="flex-1 bg-transparent px-3 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none font-jakarta"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe any film idea, visual scene, or character prompt to create..."
+              className="flex-1 bg-transparent px-2 sm:px-3 py-2 text-sm sm:text-base text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none font-sans"
             />
 
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black text-xs font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shrink-0 font-heading tracking-tight active:scale-95 cursor-pointer shadow-md"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-950 text-white dark:bg-white dark:text-black font-semibold text-sm hover:opacity-90 transition-all cursor-pointer shrink-0 shadow-sm active:scale-95"
             >
-              <span>EXECUTE</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <span>Generate</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* Smooth Horizontal Scroll Trending Tags Bar */}
-          <div className="relative w-full flex items-center gap-2 pt-1">
-            {/* Left Scroll Trigger Button */}
-            <button
-              type="button"
-              onClick={() => scrollTrending("left")}
-              disabled={!canScrollLeft}
-              className={cn(
-                "p-1.5 rounded-full bg-white dark:bg-[#0a0a0f] border border-black/[0.1] dark:border-white/[0.1] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs disabled:opacity-20 disabled:cursor-default",
-                !canScrollLeft && "opacity-20"
-              )}
-              title="Scroll Left"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-
-            {/* Scrolling Track */}
-            <div
-              ref={trendingScrollRef}
-              onScroll={checkScroll}
-              className="flex-1 flex items-center gap-2 overflow-x-auto hide-scrollbar scroll-smooth py-1"
-            >
-              <span className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold pl-1 select-none">
-                TRENDING:
-              </span>
-
-              {TRENDING_TAGS.map((tag, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    setQuickPrompt(tag);
-                    handleExecute(tag);
-                  }}
-                  className="px-3.5 py-1.5 rounded-full bg-white dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-black/30 dark:hover:border-white/30 whitespace-nowrap text-[11px] font-mono transition-all cursor-pointer shadow-2xs active:scale-96 shrink-0"
-                  title={`Run prompt: "${tag}"`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-
-            {/* Right Scroll Trigger Button */}
-            <button
-              type="button"
-              onClick={() => scrollTrending("right")}
-              disabled={!canScrollRight}
-              className={cn(
-                "p-1.5 rounded-full bg-white dark:bg-[#0a0a0f] border border-black/[0.1] dark:border-white/[0.1] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-all shrink-0 cursor-pointer shadow-xs disabled:opacity-20 disabled:cursor-default",
-                !canScrollRight && "opacity-20"
-              )}
-              title="Scroll Right"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+          {/* Prompt Suggestions */}
+          <div className="flex items-center gap-2 pt-3 overflow-x-auto hide-scrollbar pb-1 text-xs">
+            <span className="text-zinc-400 font-medium shrink-0">Ideas:</span>
+            {PROMPT_SUGGESTIONS.map((idea, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  setPrompt(idea);
+                  handleLaunchPrompt(idea);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors whitespace-nowrap cursor-pointer text-xs font-medium border border-zinc-200/50 dark:border-zinc-800/50"
+              >
+                {idea}
+              </button>
+            ))}
           </div>
         </div>
+      </section>
 
-        {/* 5-Step Pipeline Architecture Ribbon */}
-        <div className="w-full pt-2">
-          <StepCards />
-        </div>
-      </div>
-
-      {/* Telemetry Metric Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
-        <div className="rounded-2xl bg-white dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-1 shadow-xs">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 block">COMPILER ENGINE</span>
-          <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-zinc-950 dark:text-white font-heading">FFmpeg 8.1</span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">ONLINE</span>
-          </div>
-          <span className="text-[10px] text-zinc-500 dark:text-zinc-600 block">HARDWARE ACCELERATED</span>
-        </div>
-
-        <div className="rounded-2xl bg-white dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-1 shadow-xs">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 block">AI VIDEO & DIFFUSION</span>
-          <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-zinc-950 dark:text-white font-heading">Kling + Flux</span>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">5 ENGINES</span>
-          </div>
-          <span className="text-[10px] text-zinc-500 dark:text-zinc-600 block">MULTI-MODEL SUITE</span>
-        </div>
-
-        <div className="rounded-2xl bg-white dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-1 shadow-xs">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 block">LOCAL ASSET VAULT</span>
-          <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-zinc-950 dark:text-white font-heading">{assets?.total || 0} ASSETS</span>
-            <HardDrive className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
-          </div>
-          <span className="text-[10px] text-zinc-500 dark:text-zinc-600 block">OUTPUTS DIRECTORY</span>
-        </div>
-
-        <div className="rounded-2xl bg-white dark:bg-[#07070a] border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-1 shadow-xs">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 block">DATABASE & STORAGE</span>
-          <div className="flex items-center justify-between">
-            <span className="text-base font-bold text-zinc-950 dark:text-white font-heading">PostgreSQL</span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">ACTIVE</span>
-          </div>
-          <span className="text-[10px] text-zinc-500 dark:text-zinc-600 block">NEON / SQLITE DUAL</span>
-        </div>
-      </div>
-
-      {/* Studio Workstations Grid */}
-      <div className="space-y-4">
+      {/* 4 Creative Studios Grid */}
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-heading font-bold text-zinc-950 dark:text-white tracking-tight">Studio Workspaces</h2>
-            <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">Generative Production Engines</p>
+            <h2 className="text-xl sm:text-2xl font-heading font-bold text-zinc-950 dark:text-white">
+              Creative Production Studios
+            </h2>
+            <p className="text-sm text-zinc-500">
+              Select a dedicated creative engine or direct autonomous multi-scene cinema.
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {studios.map((s) => (
-            <div
-              key={s.href}
-              className="hf-card p-6 flex flex-col justify-between group technical-corner relative transition-all duration-200"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-zinc-400 dark:text-zinc-500">{s.number} //</span>
-                    <span className="text-[10px] font-mono tracking-widest uppercase px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-300">
-                      {s.tag}
-                    </span>
-                  </div>
-                  <span className="text-[9px] font-mono uppercase text-zinc-400 dark:text-zinc-600">{s.code}</span>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-heading font-bold text-zinc-950 dark:text-white tracking-tight">
-                    {s.title}
-                  </h3>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-jakarta leading-relaxed mt-1.5">{s.desc}</p>
-                </div>
-
-                <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex flex-wrap gap-1.5 font-mono text-[9px] text-zinc-500 dark:text-zinc-400">
-                  {s.specs.map((spec, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-[#101015] border border-black/[0.05] dark:border-white/[0.05] text-zinc-700 dark:text-zinc-400"
-                    >
-                      {spec}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-6 mt-4 border-t border-black/[0.05] dark:border-white/[0.05]">
-                <button
-                  type="button"
-                  onClick={() => router.push(s.href)}
-                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-[#0e0e13] border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-transparent text-xs font-semibold text-zinc-900 dark:text-white transition-all font-heading tracking-tight group/btn cursor-pointer"
-                >
-                  <span>{s.cta}</span>
-                  <ArrowUpRight className="h-4 w-4 text-zinc-500 group-hover/btn:text-current transition-colors" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent Studio Outputs Horizontal Filmstrip */}
-      {assets && assets.total > 0 && (
-        <div className="space-y-4 pt-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-heading font-bold text-zinc-950 dark:text-white tracking-tight">Local Productions</h2>
-              <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">
-                Media Generated on Local File System ({assets.total} Assets)
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => scrollFilmstrip("left")}
-                className="p-1.5 rounded-full bg-white dark:bg-[#0a0a0f] border border-black/[0.1] dark:border-white/[0.1] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-all cursor-pointer shadow-xs"
-                title="Scroll Left"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollFilmstrip("right")}
-                className="p-1.5 rounded-full bg-white dark:bg-[#0a0a0f] border border-black/[0.1] dark:border-white/[0.1] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-all cursor-pointer shadow-xs"
-                title="Scroll Right"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          {STUDIO_CARDS.map((card) => {
+            const Icon = card.icon;
+            return (
               <Link
-                href="/vault"
-                className="text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white flex items-center gap-1.5 transition-colors ml-2"
+                key={card.title}
+                href={card.href}
+                className={cn(
+                  "group relative rounded-2xl p-6 sm:p-7 border border-zinc-200 dark:border-zinc-800/90 bg-white dark:bg-[#0c0c12] hover:shadow-xl transition-all duration-200 flex flex-col justify-between cursor-pointer",
+                  card.border
+                )}
               >
-                <span>OPEN VAULT</span>
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Smooth Horizontal Scrolling Filmstrip */}
-          <div
-            ref={filmstripScrollRef}
-            className="flex items-center gap-3.5 overflow-x-auto hide-scrollbar scroll-smooth py-1"
-          >
-            {[...(assets.final || []), ...(assets.videos || []), ...(assets.images || [])]
-              .map((file: any, i: number) => (
-                <div
-                  key={i}
-                  className="hf-card overflow-hidden p-2 space-y-2 group flex flex-col justify-between shrink-0 w-[240px]"
-                >
-                  <div className="h-32 rounded-lg bg-black flex items-center justify-center overflow-hidden relative border border-black/[0.06] dark:border-white/[0.06]">
-                    {file.type === "images" ? (
-                      <img
-                        src={getMediaUrl(file.url)}
-                        alt={file.filename}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <video src={getMediaUrl(file.url)} className="w-full h-full object-cover" />
-                    )}
-                    <span className="absolute bottom-2 left-2 text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-black/80 text-zinc-300 border border-white/10 backdrop-blur-sm">
-                      [ {file.type.toUpperCase()} ]
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-950 dark:text-white group-hover:scale-110 transition-transform">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-heading font-bold text-zinc-900 dark:text-white group-hover:text-black dark:group-hover:text-white">
+                          {card.title}
+                        </h3>
+                        <span className="text-xs font-medium text-zinc-500">
+                          {card.tag}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-800/60">
+                      {card.badge}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between px-1">
-                    <p className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 truncate max-w-[130px]" title={file.filename}>
-                      {file.filename}
-                    </p>
-                    {file.type === "images" ? (
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/video?image=${encodeURIComponent(file.url)}`)}
-                        className="text-[9px] font-mono text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white flex items-center gap-0.5 cursor-pointer"
-                        title="Animate in Video"
-                      >
-                        <span>ANIMATE</span>
-                        <ArrowUpRight className="h-2.5 w-2.5" />
-                      </button>
-                    ) : (
-                      <Link
-                        href="/vault"
-                        className="text-[9px] font-mono text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white flex items-center gap-0.5"
-                      >
-                        <span>VIEW</span>
-                        <ArrowUpRight className="h-2.5 w-2.5" />
-                      </Link>
-                    )}
+
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans">
+                    {card.desc}
+                  </p>
+                </div>
+
+                <div className="pt-6 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/60 mt-4">
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-white group-hover:underline flex items-center gap-1.5">
+                    <span>{card.cta}</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/60 flex items-center justify-center text-zinc-500 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-black transition-colors">
+                    <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-              ))}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Production Infrastructure Telemetry */}
+      <section className="rounded-2xl p-5 sm:p-6 border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-[#08080d] space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <Cpu className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+            <h3 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
+              Studio Infrastructure Status
+            </h3>
+          </div>
+          <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            All Production Engines Active
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#0f0f16] border border-zinc-200 dark:border-zinc-800 space-y-1">
+            <span className="text-xs text-zinc-500 font-medium">Video Compiler</span>
+            <div className="text-base font-bold text-zinc-900 dark:text-white flex items-center justify-between">
+              <span>FFmpeg 5.1 / 8.1</span>
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">1080p Master</span>
+            </div>
+            <span className="text-[11px] text-zinc-400 block">Local hardware acceleration</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white dark:bg-[#0f0f16] border border-zinc-200 dark:border-zinc-800 space-y-1">
+            <span className="text-xs text-zinc-500 font-medium">Visual AI Engine</span>
+            <div className="text-base font-bold text-zinc-900 dark:text-white flex items-center justify-between">
+              <span>OpenAI + Gemini</span>
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Connected</span>
+            </div>
+            <span className="text-[11px] text-zinc-400 block">GPT-Image 1 & Imagen 3</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white dark:bg-[#0f0f16] border border-zinc-200 dark:border-zinc-800 space-y-1">
+            <span className="text-xs text-zinc-500 font-medium">Acoustic Engine</span>
+            <div className="text-base font-bold text-zinc-900 dark:text-white flex items-center justify-between">
+              <span>Edge + Eleven</span>
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">20+ Languages</span>
+            </div>
+            <span className="text-[11px] text-zinc-400 block">Neural narration & dubbing</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white dark:bg-[#0f0f16] border border-zinc-200 dark:border-zinc-800 space-y-1">
+            <span className="text-xs text-zinc-500 font-medium">Storage & Vault</span>
+            <div className="text-base font-bold text-zinc-900 dark:text-white flex items-center justify-between">
+              <span>VPS NVMe + R2</span>
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">100GB SSD</span>
+            </div>
+            <span className="text-[11px] text-zinc-400 block">Dual persistent storage</span>
           </div>
         </div>
+      </section>
+
+      {/* Recent Vault Creations Showcase */}
+      {recentAssets.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FolderArchive className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+              <h2 className="text-lg font-heading font-bold text-zinc-950 dark:text-white">
+                Recent Studio Vault Creations
+              </h2>
+            </div>
+            <Link
+              href="/vault"
+              className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white flex items-center gap-1"
+            >
+              <span>View All Vault</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {recentAssets.map((asset, idx) => (
+              <div
+                key={idx}
+                onClick={() => router.push("/vault")}
+                className="group relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#0c0c12] aspect-square cursor-pointer hover:shadow-md transition-all"
+              >
+                {asset.asset_type === "image" ? (
+                  <img
+                    src={getMediaUrl(asset.url)}
+                    alt={asset.filename}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-zinc-100 dark:bg-zinc-900 text-center">
+                    <Video className="w-6 h-6 text-zinc-400 mb-1" />
+                    <span className="text-[10px] text-zinc-500 font-medium truncate max-w-full">
+                      {asset.filename}
+                    </span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Play className="w-6 h-6 text-white drop-shadow" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
+
     </div>
   );
 }

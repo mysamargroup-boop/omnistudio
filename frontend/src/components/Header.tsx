@@ -1,55 +1,46 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, Sun, Moon, Radio, ChevronDown, Menu, Image as ImageIcon, Video, Mic, Layers, Settings, FolderArchive, Cpu, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/ThemeProvider';
 import { useAuth } from '@/context/AuthContext';
 
 const NAV_TABS = [
-  { id: 'overview', label: 'Overview', path: '/' },
-  { id: 'pipeline', label: 'Pipeline', path: '/pipeline', badge: 'Agent' },
-  { id: 'image', label: 'Image', path: '/image' },
-  { id: 'video', label: 'Video', path: '/video', hasDropdown: true },
-  { id: 'audio', label: 'Audio', path: '/voice', hasDropdown: true },
+  { id: 'image', label: 'Image Studio', path: '/image' },
+  { id: 'video', label: 'Video Studio', path: '/video', hasDropdown: true },
+  { id: 'audio', label: 'Voice Studio', path: '/voice', hasDropdown: true },
+  { id: 'pipeline', label: 'Cinema Agent', path: '/pipeline', badge: 'AI' },
   { id: 'vault', label: 'Vault', path: '/vault' },
-  { id: 'usage', label: 'Usage & Costs', path: '/usage', badge: 'Live' },
-  { id: 'config', label: 'Config', path: '/settings' },
+  { id: 'settings', label: 'Settings', path: '/settings' },
 ];
 
 const VIDEO_FEATURES = [
-  { name: 'First Frame', desc: 'Img-to-Video' },
-  { name: 'First + Last Frame', desc: 'Morph' },
-  { name: 'Text-to-Video', desc: 'Generate from prompt' },
-  { name: 'Motion Transfer', desc: 'Copy motion from source' },
+  { name: 'First Frame', desc: 'Image to motion video' },
+  { name: 'First + Last Frame', desc: 'Morphing between two keyframes' },
+  { name: 'Text to Video', desc: 'Generate cinema from text prompt' },
+  { name: 'Motion Transfer', desc: 'Transfer motion from source video' },
 ];
 
 const VIDEO_MODELS = [
-  { name: 'FFmpeg Local', desc: 'Free / Fast' },
-  { name: 'Kling AI 2.0', desc: 'Photoreal' },
-  { name: 'Seedance ByteDance', desc: 'New Choreography' },
-  { name: 'OmniMotion 3.0', desc: 'Native 3D' },
-  { name: 'Runway Gen-3 Alpha', desc: 'Studio Cinema' },
-  { name: 'OpenAI Sora', desc: 'World Sim' },
-  { name: 'Luma Dream 1.5', desc: 'Parallax' },
-  { name: 'Minimax Video-01', desc: 'Hailuo Natural' },
-  { name: 'Google Veo 2', desc: '4K Multimodal' },
+  { name: 'FFmpeg Local', desc: 'Fast local renderer' },
+  { name: 'Kling AI 2.0', desc: 'Photorealistic motion' },
+  { name: 'Runway Gen-3', desc: 'Studio cinematic realism' },
+  { name: 'Luma Dream Machine', desc: 'Fluid camera moves' },
 ];
 
 const AUDIO_FEATURES = [
-  { name: 'Text to Speech', desc: 'Generate speech from text' },
-  { name: 'Voice Change', desc: 'Swap voices in any audio/video' },
-  { name: 'Translate / Lip-sync', desc: 'Auto-dub in 20+ languages' },
+  { name: 'Text to Speech', desc: 'Synthesize speech from scripts' },
+  { name: 'Voice Change', desc: 'Swap audio or video voiceover' },
+  { name: 'Translate and Dub', desc: 'Auto-dubbing across 20+ languages' },
 ];
 
 const AUDIO_MODELS = [
-  { name: 'Edge Neural', desc: 'Free' },
-  { name: 'ElevenLabs v3', desc: 'Premium' },
-  { name: 'OpenAI TTS', desc: 'Standard' },
-  { name: 'Seed Audio 1.0', desc: 'New' },
-  { name: 'MiniMax Speech 2.8 HD', desc: 'Pro' },
+  { name: 'Edge Neural', desc: 'Free high-fidelity voice' },
+  { name: 'ElevenLabs v3', desc: 'Studio voice cloning' },
+  { name: 'OpenAI TTS HD', desc: 'Standard studio narration' },
 ];
 
 export default function Header() {
@@ -75,158 +66,166 @@ export default function Header() {
   }, []);
   
   useEffect(() => {
+    let mounted = true;
     const checkStatus = async () => {
       try {
         await api.health();
-        setIsOnline(true);
+        if (mounted) setIsOnline(true);
       } catch (e) {
-        setIsOnline(false);
+        if (mounted) setIsOnline(false);
       }
     };
     checkStatus();
-    const interval = setInterval(checkStatus, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkStatus, 25000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  let dropdownContent = null;
-  if (activeDropdown === 'video') {
-    dropdownContent = (
-      <div className="flex p-4 w-[600px] gap-6">
-        <div className="flex-1">
-          <h3 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-3">Features</h3>
-          <div className="flex flex-col gap-1">
-            {VIDEO_FEATURES.map((feat) => (
-              <div key={feat.name} className="px-3 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer transition-colors" onClick={() => router.push('/video')}>
-                <div className="font-heading text-sm font-medium">{feat.name}</div>
-                <div className="text-xs text-zinc-500">{feat.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="w-px bg-zinc-200 dark:bg-zinc-800" />
-        <div className="flex-1">
-          <h3 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-3">Models</h3>
-          <div className="grid grid-cols-2 gap-1">
-            {VIDEO_MODELS.map((model) => (
-              <div key={model.name} className="px-3 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer transition-colors" onClick={() => router.push('/video')}>
-                <div className="font-heading text-sm font-medium truncate">{model.name}</div>
-                <div className="text-xs text-zinc-500">{model.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  } else if (activeDropdown === 'audio') {
-    dropdownContent = (
-      <div className="flex p-4 w-[600px] gap-6">
-        <div className="flex-1">
-          <h3 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-3">Features</h3>
-          <div className="flex flex-col gap-1">
-            {AUDIO_FEATURES.map((feat) => (
-              <div key={feat.name} className="px-3 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer transition-colors" onClick={() => router.push('/voice')}>
-                <div className="font-heading text-sm font-medium">{feat.name}</div>
-                <div className="text-xs text-zinc-500">{feat.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="w-px bg-zinc-200 dark:bg-zinc-800" />
-        <div className="flex-1">
-          <h3 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-3">Models</h3>
-          <div className="grid grid-cols-2 gap-1">
-            {AUDIO_MODELS.map((model) => (
-              <div key={model.name} className="px-3 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer transition-colors" onClick={() => router.push('/voice')}>
-                <div className="font-heading text-sm font-medium truncate">{model.name}</div>
-                <div className="text-xs text-zinc-500">{model.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <header className="sticky top-4 z-40 mx-auto my-3 flex items-center h-14 bg-white/90 dark:bg-[#09090d]/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-800/50 rounded-full px-3 sm:px-4 shadow-md w-max max-w-[calc(100vw-2rem)] lg:max-w-[calc(100vw-18rem)] select-none">
-      {/* Mobile Drawer Trigger */}
-      <button
-        type="button"
-        onClick={() => window.dispatchEvent(new Event("toggle-mobile-sidebar"))}
-        className="lg:hidden mr-2 p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
-        title="Open Navigation"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+    <header className="sticky top-3 z-40 mx-auto my-2 flex items-center justify-between h-14 bg-white/95 dark:bg-[#0a0a0f]/95 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl px-4 sm:px-6 shadow-xs w-full max-w-6xl select-none">
+      {/* Left: Mobile Trigger & Brand */}
+      <div className="flex items-center gap-3 shrink-0">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
+          className="lg:hidden p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+          title="Open Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
 
-      {/* Brand */}
-      <div className="flex items-center gap-2 mr-3 sm:mr-6 shrink-0 cursor-pointer" onClick={() => router.push('/')}>
-        <div className="w-8 h-8 rounded-full bg-zinc-950 dark:bg-white flex items-center justify-center">
-          <Zap className="w-4 h-4 text-white dark:text-zinc-950" />
-        </div>
-        <span className="font-heading font-semibold text-lg hidden sm:block">OmniStudio</span>
+        <Link href="/" className="flex items-center gap-2.5 cursor-pointer group">
+          <div className="w-7 h-7 rounded-lg bg-zinc-950 dark:bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+            <Zap className="w-4 h-4 text-white dark:text-zinc-950" />
+          </div>
+          <span className="font-heading font-bold text-base tracking-tight text-zinc-900 dark:text-white">
+            OmniStudio
+          </span>
+        </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex items-center h-full relative" onMouseLeave={() => setActiveDropdown(null)}>
-        <div className="flex items-center gap-1 sm:gap-2 mr-4">
-          {NAV_TABS.map((tab) => {
-            const isActive = pathname === tab.path || pathname.startsWith(`${tab.path}/`);
-            return (
-              <div 
-                key={tab.id}
-                className="relative flex items-center h-full"
-                onMouseEnter={() => tab.hasDropdown ? setActiveDropdown(tab.id) : setActiveDropdown(null)}
+      {/* Middle: Clean Navigation Tabs with Dropdowns */}
+      <nav 
+        className="hidden md:flex items-center h-full relative gap-1"
+        onMouseLeave={() => setActiveDropdown(null)}
+      >
+        {NAV_TABS.map((tab) => {
+          const isActive = pathname === tab.path || (tab.path !== '/' && pathname.startsWith(tab.path));
+          return (
+            <div 
+              key={tab.id}
+              className="relative flex items-center h-full"
+              onMouseEnter={() => tab.hasDropdown ? setActiveDropdown(tab.id) : setActiveDropdown(null)}
+            >
+              <Link
+                href={tab.path}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer',
+                  isActive 
+                    ? 'bg-zinc-100 dark:bg-zinc-800/90 text-zinc-950 dark:text-white font-semibold' 
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
+                )}
               >
-                <Link
-                  href={tab.path}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-jakarta font-medium transition-colors cursor-pointer",
-                    isActive 
-                      ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-white" 
-                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
-                  )}
-                >
-                  {tab.label}
-                  {tab.badge && (
-                    <span className="text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
-                      {tab.badge}
-                    </span>
-                  )}
-                  {tab.hasDropdown && (
-                    <ChevronDown className={cn(
-                      "w-3 h-3 opacity-50 transition-transform",
-                      activeDropdown === tab.id && "rotate-180"
-                    )} />
-                  )}
-                </Link>
-              </div>
-            );
-          })}
-        </div>
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                    {tab.badge}
+                  </span>
+                )}
+                {tab.hasDropdown && (
+                  <ChevronDown className={cn(
+                    'w-3.5 h-3.5 text-zinc-400 transition-transform duration-200',
+                    activeDropdown === tab.id && 'rotate-180 text-zinc-900 dark:text-white'
+                  )} />
+                )}
+              </Link>
+            </div>
+          );
+        })}
 
-        {/* Dropdown Panel */}
-        {activeDropdown && dropdownContent && (
-          <div className="absolute top-[calc(100%+12px)] left-1/2 -translate-x-1/2 bg-white dark:bg-[#09090d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-            {dropdownContent}
+        {/* Video Dropdown Panel */}
+        {activeDropdown === 'video' && (
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl w-[500px] flex gap-4 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+            <div className="flex-1 space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Features</div>
+              {VIDEO_FEATURES.map((f) => (
+                <div 
+                  key={f.name}
+                  onClick={() => { setActiveDropdown(null); router.push('/video'); }}
+                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                >
+                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
+                  <div className="text-xs text-zinc-500">{f.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div className="w-px bg-zinc-200 dark:bg-zinc-800" />
+            <div className="flex-1 space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Motion Engines</div>
+              {VIDEO_MODELS.map((m) => (
+                <div 
+                  key={m.name}
+                  onClick={() => { setActiveDropdown(null); router.push('/video'); }}
+                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                >
+                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
+                  <div className="text-xs text-zinc-500">{m.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Audio Dropdown Panel */}
+        {activeDropdown === 'audio' && (
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl w-[480px] flex gap-4 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+            <div className="flex-1 space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Audio Modes</div>
+              {AUDIO_FEATURES.map((f) => (
+                <div 
+                  key={f.name}
+                  onClick={() => { setActiveDropdown(null); router.push('/voice'); }}
+                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                >
+                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
+                  <div className="text-xs text-zinc-500">{f.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div className="w-px bg-zinc-200 dark:bg-zinc-800" />
+            <div className="flex-1 space-y-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Speech Models</div>
+              {AUDIO_MODELS.map((m) => (
+                <div 
+                  key={m.name}
+                  onClick={() => { setActiveDropdown(null); router.push('/voice'); }}
+                  className="px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors"
+                >
+                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
+                  <div className="text-xs text-zinc-500">{m.desc}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </nav>
 
-      {/* Right Controls */}
-      <div className="flex items-center gap-3 shrink-0 border-l border-zinc-200 dark:border-zinc-800 pl-4 ml-auto">
-        {/* Status */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-          <div className="relative flex h-2 w-2">
+      {/* Right Controls: Online Status + Theme + Auth + Create CTA */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {/* Live Engine Status */}
+        <div 
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-xs font-medium"
+          title={isOnline ? 'All AI backend services running' : 'Backend offline'}
+        >
+          <span className="relative flex h-2 w-2">
             {isOnline && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             )}
-            <span className={cn(
-              "relative inline-flex rounded-full h-2 w-2",
-              isOnline ? "bg-green-500" : "bg-red-500"
-            )}></span>
-          </div>
-          <span className="text-xs font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+            <span className={cn('relative inline-flex rounded-full h-2 w-2', isOnline ? 'bg-emerald-500' : 'bg-rose-500')} />
+          </span>
+          <span className="text-zinc-600 dark:text-zinc-400 text-xs">
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -234,71 +233,53 @@ export default function Header() {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-full text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          className="p-2 rounded-xl text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors cursor-pointer"
+          title="Toggle Theme"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Supabase User Account / Sign In */}
+        {/* Auth / Profile */}
         {user ? (
           <div className="relative" ref={userMenuRef}>
             <button
               type="button"
               onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-jakarta transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
-              title="Account Menu"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
+              title="User Menu"
             >
               <div className="w-5 h-5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-[10px]">
                 {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U')}
               </div>
-              <span className="hidden sm:inline-block max-w-[85px] truncate font-medium text-zinc-900 dark:text-zinc-100">
+              <span className="hidden sm:inline-block max-w-[80px] truncate font-medium text-zinc-900 dark:text-zinc-100">
                 {profile?.full_name || user.email?.split('@')[0]}
               </span>
-              <ChevronDown className={cn("w-3 h-3 text-zinc-400 transition-transform", userMenuOpen && "rotate-180")} />
+              <ChevronDown className={cn('w-3 h-3 text-zinc-400 transition-transform', userMenuOpen && 'rotate-180')} />
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 top-[calc(100%+8px)] w-56 p-2 rounded-xl bg-white dark:bg-[#09090d] border border-zinc-200 dark:border-zinc-800 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 font-jakarta">
+              <div className="absolute right-0 top-full mt-2 w-56 p-2 rounded-2xl bg-white dark:bg-[#0d0d14] border border-zinc-200 dark:border-zinc-800 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/80">
                   <div className="font-semibold text-xs text-zinc-900 dark:text-white truncate">
                     {profile?.full_name || user.email?.split('@')[0]}
                   </div>
-                  <div className="text-[10px] text-zinc-400 truncate">{user.email}</div>
-                  <div className="mt-1 inline-block text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                    {profile?.role || 'CREATOR'}
-                  </div>
+                  <div className="text-[11px] text-zinc-400 truncate">{user.email}</div>
                 </div>
 
                 <div className="py-1">
                   <button
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      router.push('/login');
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-left"
+                    onClick={() => { setUserMenuOpen(false); router.push('/settings'); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-left"
                   >
                     <UserIcon className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Manage Account</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      router.push('/settings');
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-left"
-                  >
-                    <Settings className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Studio Config</span>
+                    <span>Account & BYOK Settings</span>
                   </button>
                 </div>
 
                 <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
                   <button
-                    onClick={async () => {
-                      setUserMenuOpen(false);
-                      await signOut();
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer text-left"
+                    onClick={async () => { setUserMenuOpen(false); await signOut(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer text-left"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sign Out</span>
@@ -310,19 +291,19 @@ export default function Header() {
         ) : (
           <Link
             href="/login"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-jakarta font-medium text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
           >
             <LogIn className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Sign In</span>
           </Link>
         )}
 
-        {/* CTA */}
+        {/* Primary CTA Button */}
         <button 
-          onClick={() => router.push('/video')}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-sm font-jakarta font-medium cursor-pointer"
+          onClick={() => router.push('/pipeline')}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:opacity-90 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs active:scale-95"
         >
-          <Zap className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5" />
           <span>Create</span>
         </button>
       </div>

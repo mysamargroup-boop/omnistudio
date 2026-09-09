@@ -1,7 +1,16 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL !== undefined && process.env.NEXT_PUBLIC_API_URL !== ""
-    ? process.env.NEXT_PUBLIC_API_URL
-    : (typeof window !== "undefined" ? "" : "http://127.0.0.1:8000");
+function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    // In browser: if remote IP or domain, always use relative path "" so Next.js proxies to backend
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+      return envUrl;
+    }
+    return "";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+}
+
+const API_BASE = getApiBase();
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
@@ -164,6 +173,7 @@ export const api = {
 
   // Settings
   getStatus: () => fetchApi<any>("/api/settings/status"),
+  getKeys: () => fetchApi<any>("/api/settings/keys"),
   updateKeys: (data: any) => fetchApi<any>("/api/settings/keys", { method: "POST", body: JSON.stringify(data) }),
   testDatabase: (url?: string) => fetchApi<any>("/api/settings/test-db", { method: "POST", body: JSON.stringify({ database_url: url }) }),
   testStorage: () => fetchApi<any>("/api/settings/test-r2", { method: "POST" }),

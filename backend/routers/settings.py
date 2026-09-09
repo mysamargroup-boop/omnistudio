@@ -38,14 +38,16 @@ async def get_status():
 
 @router.post("/keys")
 async def update_keys(req: KeysUpdateRequest):
+    from database import db_save_setting, load_settings_into_runtime, init_database
     keys = {k: v.strip() for k, v in req.model_dump().items() if v is not None}
     result = save_api_keys(keys)
-    # Dual-write settings to database
+    # Save settings to Supabase database
     for k, v in keys.items():
         try:
             db_save_setting(k, v)
         except Exception:
             pass
+    load_settings_into_runtime()
     # If database url updated, try re-initializing
     if "DATABASE_URL" in keys:
         try:
@@ -56,7 +58,27 @@ async def update_keys(req: KeysUpdateRequest):
 
 @router.get("/keys")
 async def get_keys():
-    return {"keys": get_key_status()}
+    from database import load_settings_into_runtime, db_get_all_settings, is_supabase
+    load_settings_into_runtime()
+    db_keys = db_get_all_settings()
+    masked = {}
+    for k in [
+        "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
+        "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "DATABASE_URL"
+    ]:
+        val = db_keys.get(k) or getattr(settings, k, "")
+        if val and isinstance(val, str):
+            if len(val) > 8:
+                masked[k] = val[:4] + "••••••••" + val[-4:]
+            else:
+                masked[k] = "••••••••"
+        else:
+            masked[k] = ""
+    return {
+        "keys": get_key_status(),
+        "masked_keys": masked,
+        "source": "Supabase Cloud Database" if is_supabase() else "Local SQLite"
+    }
 
 @router.post("/test-db")
 async def test_database(req: TestDbRequest):

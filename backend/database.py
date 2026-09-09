@@ -438,9 +438,56 @@ def db_save_setting(key: str, value: str):
     except Exception as e:
         print(f"[SQLite Error] Save setting: {e}")
 
-# Auto-initialize DB on import
+def db_get_all_settings() -> dict:
+    """Fetch all studio settings from Supabase Cloud or fallback SQLite."""
+    settings_dict = {}
+    if is_supabase():
+        try:
+            res = supabase_rest_request("studio_settings?select=setting_key,setting_value")
+            if res.get("success") and isinstance(res.get("data"), list):
+                for row in res["data"]:
+                    val = row.get("setting_value")
+                    if isinstance(val, str) and ((val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'"))):
+                        try:
+                            val = json.loads(val)
+                        except Exception:
+                            val = val.strip("\"'")
+                    settings_dict[row["setting_key"]] = val
+                if settings_dict:
+                    return settings_dict
+        except Exception as e:
+            print(f"[Supabase Settings Fetch Warning] {e}")
+
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT setting_key, setting_value FROM studio_settings")
+        for row in cur.fetchall():
+            settings_dict[row[0]] = row[1]
+        conn.close()
+    except Exception as e:
+        print(f"[SQLite Settings Fetch Error] {e}")
+    return settings_dict
+
+def load_settings_into_runtime():
+    """Sync API keys and configurations from Supabase database into runtime config and environment."""
+    try:
+        db_settings = db_get_all_settings()
+        for k, v in db_settings.items():
+            if v and isinstance(v, str):
+                if hasattr(settings, k):
+                    setattr(settings, k, v)
+                os.environ[k] = v
+        return db_settings
+    except Exception as e:
+        print(f"[Settings Runtime Sync Error] {e}")
+        return {}
+
+# Auto-initialize DB and load settings on import
 try:
     init_database()
+    load_settings_into_runtime()
 except Exception:
     pass
+
 

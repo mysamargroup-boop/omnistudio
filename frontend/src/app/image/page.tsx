@@ -38,12 +38,15 @@ import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/u
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 
 const DIFFUSION_MODELS = [
+  { value: "gpt-image-1-mini", label: "OpenAI GPT-Image 1 Mini", description: "Fast, High-Precision Photorealism & Semantic Fidelity", badge: "ACTIVE" },
+  { value: "gpt-image-1", label: "OpenAI GPT-Image 1 Pro", description: "Flagship High-Precision Photographic Diffusion Engine", badge: "PRO" },
+  { value: "gpt-image-2", label: "OpenAI GPT-Image 2 (Next-Gen)", description: "Frontier Multimodal Diffusion with Dynamic Light Simulation", badge: "ULTRA" },
   { value: "imagen_3", label: "Google Imagen 3 (DeepMind)", description: "Hyper-realistic Lighting & Texture Precision", badge: "ACTIVE" },
   { value: "gemini_flash_image", label: "Google Gemini 2.5 Flash Image", description: "Ultra-Fast Multimodal Photorealism", badge: "FAST" },
-  { value: "dall-e-3", label: "DALL-E 3 HD (OpenAI)", description: "High Composition Precision & Semantic Fidelity", badge: "PRO" },
+  { value: "dall-e-3", label: "DALL-E 3 HD (OpenAI Auto-Route)", description: "Auto-routes to GPT-Image 1 with 8K Clarity", badge: "PRO" },
   { value: "flux_pro", label: "Flux.1 Pro (Black Forest Labs)", description: "State-of-the-Art Typography & Photorealism", badge: "SOTA" },
   { value: "flux_dev", label: "Flux.1 Dev (Open Weights)", description: "High-Fidelity Guidance & Fine Detail", badge: "DEV" },
-  { value: "flux-schnell", label: "Flux.1 Schnell (Fast Latent)", description: "Speed Latent Diffusion & Rapid 4-Step Generation", badge: "25p" },
+  { value: "flux-schnell", label: "Flux.1 Schnell (Fast Latent)", description: "Speed Latent Diffusion & Rapid Generation", badge: "FAST" },
   { value: "midjourney_v6", label: "Midjourney v6.1 (Photoreal)", description: "Cinematic Lighting, Contrast & Color Grading", badge: "PRO" },
   { value: "recraft_v3", label: "Recraft V3 (Design & Vector)", description: "Top-Tier Brand Asset & Digital Art Engine", badge: "NEW" },
   { value: "sd_35_large", label: "Stable Diffusion 3.5 Large", description: "Advanced Multimodal Prompt Adherence", badge: "OPEN" },
