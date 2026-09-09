@@ -69,6 +69,21 @@ const DIFFUSION_MODELS: ModelOption[] = [
   { value: "sd_35_large", label: "Stable Diffusion 3.5 Large", description: "Open frontier multimodal prompt adherence", badge: "OPEN", category: "Stability AI", iconType: "custom" },
 ];
 
+const MODEL_PRICES: Record<string, number> = {
+  "gpt-image-2": 0.040,
+  "gpt-image-1": 0.035,
+  "gpt-image-1-mini": 0.020,
+  "dall-e-3": 0.040,
+  "imagen_3": 0.030,
+  "gemini_flash_image": 0.025,
+  "flux_pro": 0.050,
+  "flux-schnell": 0.010,
+  "midjourney_v6": 0.045,
+  "seedream_pro": 0.035,
+  "recraft_v3": 0.025,
+  "sd_35_large": 0.030,
+};
+
 const RATIOS = [
   { id: "16:9", label: "16:9", sub: "Cinema / YouTube" },
   { id: "9:16", label: "9:16", sub: "Reels / TikTok" },
@@ -223,6 +238,16 @@ export default function ImageStudioPage() {
     setResolutionPopoverOpen(false);
     setOpticsPopoverOpen(false);
   };
+
+  // Auto-resize prompt textarea so the full prompt is visible without clipping
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.style.height = "auto";
+      const scrollH = promptTextareaRef.current.scrollHeight;
+      promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 46), 140)}px`;
+    }
+  }, [prompt]);
 
   // Model details
   const activeModel = DIFFUSION_MODELS.find((m) => m.value === model) || DIFFUSION_MODELS[0];
@@ -500,6 +525,12 @@ export default function ImageStudioPage() {
 
   const currentDisplayImage = displayImages[selectedImageIndex] || displayImages[0];
 
+  // Actual Spend Calculation (Dynamic based on selected model and batch count)
+  const activeBatchCount = studioMode === "text_to_image" ? imageCount : batchSize;
+  const currentUnitCost = MODEL_PRICES[model] ?? 0.020;
+  const currentTotalSpendUsd = currentUnitCost * activeBatchCount;
+  const currentTotalSpendInr = Math.round(currentTotalSpendUsd * 83.5 * 100) / 100;
+
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-32 font-jakarta">
       {/* Top Bar: Studio Mode Tabs & Guide Trigger */}
@@ -724,16 +755,15 @@ export default function ImageStudioPage() {
               </p>
             </div>
 
-            {/* Quick Inspiration Prompt Chips */}
+            {/* Quick Inspiration Prompt Chips (Clean, No Star Signs) */}
             <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl pt-2">
               {INSPIRATION_PROMPTS.map((item, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setPrompt(item.prompt)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-[#0c0c12] dark:hover:bg-zinc-800/80 border border-black/[0.07] dark:border-white/[0.08] text-xs font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer hover:scale-102"
+                  className="flex items-center px-3.5 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-[#0c0c12] dark:hover:bg-zinc-800/80 border border-black/[0.07] dark:border-white/[0.08] text-xs font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer hover:scale-102 font-medium"
                 >
-                  <Sparkles className="w-3 h-3 text-amber-500" />
                   <span>{item.title}</span>
                 </button>
               ))}
@@ -747,9 +777,10 @@ export default function ImageStudioPage() {
         ref={dockRef}
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#0b0b10]/95 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.14] rounded-2xl shadow-2xl p-3 space-y-2.5 transition-all duration-200"
       >
-        {/* Row 1: Integrated Prompt Input Bar */}
-        <div className="relative flex items-center gap-2">
+        {/* Row 1: Integrated Prompt Input Bar (Auto-Expanding, Full Prompt Visibility) */}
+        <div className="relative flex items-start gap-2">
           <textarea
+            ref={promptTextareaRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -763,17 +794,16 @@ export default function ImageStudioPage() {
                 ? "Describe your scene, subject, camera optics, or click 'Copilot'..."
                 : "Enter prompt directive for reference image variations..."
             }
-            rows={1}
-            className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-28"
+            className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-3 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-32 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto transition-all"
           />
 
           {/* Quick Actions Inside Prompt Bar */}
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+          <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
             <button
               type="button"
               onClick={enhancePromptText}
               disabled={enhancingPrompt || !prompt.trim()}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
               title="Enhance prompt with OpenAI Copilot"
             >
               <Wand2 className={cn("w-3 h-3 text-amber-500", enhancingPrompt && "animate-spin")} />
@@ -1155,7 +1185,7 @@ export default function ImageStudioPage() {
             </div>
           </div>
 
-          {/* Right Generate CTA Action Button */}
+          {/* Right Generate CTA Action Button (Actual Spend, No Star Signs) */}
           <button
             type="button"
             onClick={requestImageConfirm}
@@ -1170,7 +1200,9 @@ export default function ImageStudioPage() {
             ) : (
               <>
                 <span>Generate</span>
-                <span className="font-mono text-xs opacity-75">✦ 6.5</span>
+                <span className="font-mono text-xs font-semibold opacity-90 border-l border-current/25 pl-2">
+                  ₹{currentTotalSpendInr.toFixed(2)} (${currentTotalSpendUsd.toFixed(3)})
+                </span>
               </>
             )}
           </button>

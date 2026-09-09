@@ -38,14 +38,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${outfit.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="antialiased bg-[#f8f9fa] dark:bg-[#030304] text-zinc-900 dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-hidden w-full">
+      <body className="antialiased bg-[#f8f9fa] dark:bg-[#030304] text-zinc-900 dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-x-clip w-full">
         <ThemeProvider>
           <AuthProvider>
             <SmoothScroll>
               <Sidebar />
-              <div className="lg:ml-64 ml-0 min-h-screen flex flex-col bg-[#f8f9fa] dark:bg-[#030304] text-zinc-900 dark:text-white transition-colors duration-200 max-w-full overflow-x-hidden">
-                <Header />
-                <main className="flex-1 px-4 sm:px-8 py-4 max-w-7xl mx-auto w-full overflow-x-hidden">
+              <div className="lg:ml-64 ml-0 min-h-screen flex flex-col bg-[#f8f9fa] dark:bg-[#030304] text-zinc-900 dark:text-white transition-colors duration-200 max-w-full overflow-x-clip">
+                <div className="sticky top-0 z-40 w-full py-2 px-3 sm:px-6 bg-[#f8f9fa]/85 dark:bg-[#030304]/85 backdrop-blur-md transition-all">
+                  <Header />
+                </div>
+                <main className="flex-1 px-4 sm:px-8 py-4 max-w-7xl mx-auto w-full overflow-x-clip">
                   <PageTransition>{children}</PageTransition>
                 </main>
               </div>

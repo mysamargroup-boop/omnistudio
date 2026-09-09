@@ -10,10 +10,10 @@ import { useAuth } from '@/context/AuthContext';
 import HowItWorksModal from '@/components/ui/HowItWorksModal';
 
 const NAV_TABS = [
-  { id: 'image', label: 'Image Studio', path: '/image' },
-  { id: 'video', label: 'Video Studio', path: '/video', hasDropdown: true },
-  { id: 'audio', label: 'Voice Studio', path: '/voice', hasDropdown: true },
-  { id: 'pipeline', label: 'Cinema Agent', path: '/pipeline', badge: 'AI' },
+  { id: 'image', label: 'Image', path: '/image' },
+  { id: 'video', label: 'Video', path: '/video', hasDropdown: true },
+  { id: 'audio', label: 'Voice', path: '/voice', hasDropdown: true },
+  { id: 'pipeline', label: 'Agent', path: '/pipeline', badge: 'AI' },
   { id: 'vault', label: 'Vault', path: '/vault' },
   { id: 'settings', label: 'Settings', path: '/settings' },
 ];
@@ -86,9 +86,9 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-3 z-40 mx-auto my-2 flex items-center justify-between h-14 bg-white/95 dark:bg-[#0a0a0f]/95 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl px-4 sm:px-6 shadow-xs w-full max-w-6xl select-none">
+    <header className="mx-auto flex items-center justify-between h-13 bg-white/95 dark:bg-[#0a0a0f]/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl px-3 sm:px-5 shadow-xs w-full max-w-6xl select-none">
       {/* Left: Mobile Trigger & Brand */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
@@ -98,11 +98,11 @@ export default function Header() {
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/" className="flex items-center gap-2.5 cursor-pointer group">
-          <div className="w-7 h-7 rounded-lg bg-zinc-950 dark:bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-            <Zap className="w-4 h-4 text-white dark:text-zinc-950" />
+        <Link href="/" className="flex items-center gap-2 cursor-pointer group whitespace-nowrap shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-zinc-950 dark:bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+            <Zap className="w-3.5 h-3.5 text-white dark:text-zinc-950" />
           </div>
-          <span className="font-heading font-bold text-base tracking-tight text-zinc-900 dark:text-white">
+          <span className="font-heading font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
             OmniStudio
           </span>
         </Link>
@@ -110,7 +110,7 @@ export default function Header() {
 
       {/* Middle: Clean Navigation Tabs with Dropdowns */}
       <nav 
-        className="hidden md:flex items-center h-full relative gap-1"
+        className="hidden md:flex items-center h-full relative gap-0.5"
         onMouseLeave={() => setActiveDropdown(null)}
       >
         {NAV_TABS.map((tab) => {
@@ -124,21 +124,21 @@ export default function Header() {
               <Link
                 href={tab.path}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer',
+                  'flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
                   isActive 
-                    ? 'bg-zinc-100 dark:bg-zinc-800/90 text-zinc-950 dark:text-white font-semibold' 
+                    ? 'bg-zinc-100 dark:bg-zinc-800/90 text-zinc-950 dark:text-white' 
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
                     {tab.badge}
                   </span>
                 )}
                 {tab.hasDropdown && (
                   <ChevronDown className={cn(
-                    'w-3.5 h-3.5 text-zinc-400 transition-transform duration-200',
+                    'w-3 h-3 text-zinc-400 transition-transform duration-200',
                     activeDropdown === tab.id && 'rotate-180 text-zinc-900 dark:text-white'
                   )} />
                 )}

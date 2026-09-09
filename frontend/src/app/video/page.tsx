@@ -250,6 +250,16 @@ function VideoStudioContent() {
   const [directing, setDirecting] = useState(false);
   const [directorNotes, setDirectorNotes] = useState<any>(null);
 
+  // Auto-resize prompt textarea so the full prompt is visible without clipping
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.style.height = "auto";
+      const scrollH = promptTextareaRef.current.scrollHeight;
+      promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 48), 140)}px`;
+    }
+  }, [prompt]);
+
   // Video Settings
   const [model, setModel] = useState("ffmpeg_local");
   const [motion, setMotion] = useState("zoom_in");
@@ -556,6 +566,10 @@ function VideoStudioContent() {
       (m.category && m.category.toLowerCase().includes(q))
     );
   });
+
+  // Live Actual Spend Calculation for Video
+  const videoCostUsd = model === "ffmpeg_local" ? 0 : duration * 0.15;
+  const videoCostInr = Math.round(videoCostUsd * 83.5 * 100) / 100;
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-32 font-jakarta">
@@ -982,8 +996,7 @@ function VideoStudioContent() {
               /* Text-to-Video Hero Visual Inspiration */
               <div className="space-y-6 text-center py-4">
                 <div className="space-y-2 max-w-lg mx-auto">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
-                    <Sparkles className="w-3 h-3 text-amber-500" />
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-zinc-100 dark:bg-[#09090d] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono text-zinc-500 uppercase tracking-widest font-semibold">
                     <span>Next-Gen Cinema Synthesis</span>
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight uppercase">
@@ -1029,9 +1042,10 @@ function VideoStudioContent() {
       {/* Floating Bottom Studio Dock (Matching Image Studio Architecture) */}
       <div className="fixed bottom-6 inset-x-0 mx-auto max-w-4xl z-40 px-3 pointer-events-auto">
         <div className="bg-white/90 dark:bg-[#0c0c12]/90 backdrop-blur-2xl border border-black/[0.12] dark:border-white/[0.12] rounded-3xl p-3 sm:p-3.5 shadow-2xl space-y-2.5 transition-all">
-          {/* Row 1: Integrated Prompt Input Bar & AI Director */}
-          <div className="relative flex items-center gap-2">
+          {/* Row 1: Integrated Prompt Input Bar & AI Director (Auto-Expanding) */}
+          <div className="relative flex items-start gap-2">
             <textarea
+              ref={promptTextareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => {
@@ -1049,17 +1063,16 @@ function VideoStudioContent() {
                   ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
                   : "Describe camera motion vector, subject dynamics, or click 'AI Director'..."
               }
-              rows={1}
-              className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-32"
+              className="w-full bg-zinc-100/70 dark:bg-[#060609] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-3 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-black/30 dark:focus:border-white/30 font-jakarta resize-none pr-36 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto transition-all"
             />
 
             {/* Quick Actions Inside Prompt Bar */}
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
               <button
                 type="button"
                 onClick={runDirectorAgent}
                 disabled={directing}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
                 title="Direct scene with OpenAI GPT-4o Copilot"
               >
                 <Wand2 className={cn("w-3 h-3 text-amber-500", directing && "animate-spin")} />
@@ -1506,7 +1519,7 @@ function VideoStudioContent() {
               </div>
             </div>
 
-            {/* Right Action: Render Button */}
+            {/* Right Action: Render Button (Real Spend, No Star Signs) */}
             <button
               type="button"
               onClick={requestVideoConfirm}
@@ -1522,7 +1535,7 @@ function VideoStudioContent() {
                 <>
                   <Play className="w-3.5 h-3.5 fill-current" />
                   <span>
-                    Render {model === "ffmpeg_local" ? "✦ Free" : `✦ $${(duration * 0.15).toFixed(2)}`}
+                    Render {model === "ffmpeg_local" ? "(100% Free)" : `• ₹${videoCostInr.toFixed(2)} ($${videoCostUsd.toFixed(2)})`}
                   </span>
                 </>
               )}
