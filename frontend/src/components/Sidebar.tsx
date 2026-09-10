@@ -131,7 +131,7 @@ export default function Sidebar() {
         {/* Brand Header */}
         <div className="flex items-center justify-between px-6 h-14 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0">
           <Link href="/" className="flex items-center gap-3">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+            <div className="h-7 w-7 rounded-lg bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center font-bold text-xs shadow-sm border border-black/10 dark:border-white/20">
               <span className="font-heading tracking-tighter text-[11px] font-bold">OS</span>
             </div>
             <div>
@@ -153,7 +153,7 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={() => router.push("/pipeline")}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl shadow-sm shadow-violet-500/25 transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer"
           >
             <Zap className="h-3.5 w-3.5 fill-current" />
             <span>NEW PRODUCTION</span>
@@ -177,7 +177,7 @@ export default function Sidebar() {
                     className={cn(
                       "group flex items-center gap-3 font-jakarta mx-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 relative",
                       isActive
-                        ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20 font-semibold shadow-sm"
+                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
                         : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
                     )}
                   >
@@ -185,14 +185,19 @@ export default function Sidebar() {
                       className={cn(
                         "h-4 w-4 shrink-0 transition-colors",
                         isActive
-                          ? "text-violet-700 dark:text-violet-300"
+                          ? "text-white dark:text-zinc-950"
                           : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
                       )}
                     />
                     <span className="truncate">{item.label}</span>
                     {item.badge && (
                       <span
-                        className="bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400 rounded-full px-2 py-0.5 text-[9px] font-mono ml-auto shrink-0"
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[9px] font-mono ml-auto shrink-0",
+                          isActive
+                            ? "bg-white/20 dark:bg-zinc-900/20 text-white dark:text-zinc-950 font-bold"
+                            : "bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400"
+                        )}
                       >
                         {item.badge}
                       </span>

@@ -43,9 +43,9 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
               className={cn(
                 "group relative rounded-xl border p-4 sm:p-4.5 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-default",
                 isCurrent
-                  ? "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20 scale-[1.02] ring-1 ring-violet-400/30"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-lg scale-[1.02] ring-1 ring-black/20 dark:ring-white/30"
                   : isDone
-                  ? "bg-zinc-50 dark:bg-[#111118] border-violet-200 dark:border-violet-500/20 text-zinc-900 dark:text-zinc-100"
+                  ? "bg-zinc-50 dark:bg-[#111118] border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
                   : "bg-zinc-50 dark:bg-white/[0.02] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-black/[0.1] dark:hover:border-white/[0.1]"
               )}
             >
@@ -54,9 +54,9 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
                 className={cn(
                   "p-2 rounded-lg mb-2.5 transition-colors",
                   isCurrent
-                    ? "text-white bg-white/20"
+                    ? "text-white dark:text-zinc-950 bg-white/20 dark:bg-zinc-900/20"
                     : isDone
-                    ? "text-violet-500 bg-violet-100 dark:bg-violet-500/10"
+                    ? "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
                     : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 bg-zinc-200/60 dark:bg-white/[0.04]"
                 )}
               >

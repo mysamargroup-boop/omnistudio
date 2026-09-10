@@ -332,7 +332,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-md shadow-violet-600/20 whitespace-nowrap shrink-0"
+              className="flex items-center gap-2 px-6 py-2 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-md whitespace-nowrap shrink-0"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Start Creating</span>

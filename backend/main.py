@@ -41,6 +41,7 @@ async def root():
     return {"name": "OmniStudio AI", "version": "1.0.0", "status": "running"}
 
 @app.get("/api/health")
+@app.get("/health")
 async def health_check():
     from config import get_key_status
     ffmpeg = check_ffmpeg()

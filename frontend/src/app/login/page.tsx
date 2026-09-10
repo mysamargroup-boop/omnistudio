@@ -159,7 +159,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={() => router.push("/")}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-medium text-xs tracking-tight transition-all duration-200 cursor-pointer shadow-sm shadow-violet-500/25 active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
             >
               <span>DASHBOARD</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -189,18 +189,18 @@ export default function LoginPage() {
     <div className="min-h-[82vh] flex items-center justify-center py-10 px-4 relative">
       {/* Background Gradient Effect */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 dark:bg-violet-500/5 blur-[100px] rounded-full" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-zinc-500/5 dark:bg-zinc-800/10 blur-[100px] rounded-full" />
       </div>
 
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] p-6 sm:p-8 shadow-2xl space-y-6">
         {/* Header Badge & Brand */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-[10px] font-mono uppercase tracking-[0.2em] text-violet-700 dark:text-violet-300">
-            <ShieldCheck className="w-3 h-3 text-violet-500" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-700 dark:text-zinc-300">
+            <ShieldCheck className="w-3 h-3 text-emerald-500" />
             <span>Supabase Cloud Auth • RLS Enforced</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 tracking-tight pb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-zinc-950 dark:text-white tracking-tight pb-1">
             OmniStudio Cloud
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto font-jakarta">
@@ -216,7 +216,7 @@ export default function LoginPage() {
             className={cn(
               "py-2 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer font-jakarta",
               mode === "signin"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             )}
           >
@@ -228,7 +228,7 @@ export default function LoginPage() {
             className={cn(
               "py-2 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer font-jakarta",
               mode === "signup"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             )}
           >
@@ -240,7 +240,7 @@ export default function LoginPage() {
             className={cn(
               "py-2 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer font-jakarta",
               mode === "magic"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm font-semibold"
                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
             )}
           >
@@ -319,7 +319,7 @@ export default function LoginPage() {
                 placeholder="••••••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta placeholder:text-zinc-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-zinc-500 transition-all font-jakarta placeholder:text-zinc-400"
               />
             </div>
           )}
@@ -327,7 +327,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white disabled:opacity-50 font-heading font-semibold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-sm shadow-violet-500/25 active:scale-[0.98] mt-2 whitespace-nowrap shrink-0"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 disabled:opacity-50 font-heading font-bold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98] mt-2 whitespace-nowrap shrink-0"
           >
             {isSubmitting ? (
               <>

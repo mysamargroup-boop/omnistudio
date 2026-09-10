@@ -545,7 +545,7 @@ export default function VoiceStudioPage() {
                   <button 
                     onClick={requestVoiceConfirm}
                     disabled={isGenerating || text.trim().length === 0}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-sm shadow-violet-500/25 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0"
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-3 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
                     {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
                     {isGenerating ? 'Synthesizing...' : 'Generate Voice'}
@@ -601,7 +601,7 @@ export default function VoiceStudioPage() {
                   <button 
                     onClick={requestVoiceChangeConfirm}
                     disabled={isGenerating || !uploadFile}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-sm shadow-violet-500/25 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0"
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-3 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
                     {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
                     {isGenerating ? 'Processing...' : 'Transform Voice'}
@@ -670,7 +670,7 @@ export default function VoiceStudioPage() {
                   <button 
                     onClick={() => requestTranslateConfirm(true)}
                     disabled={isGenerating || transText.trim().length === 0}
-                    className="flex-[2] flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-sm shadow-violet-500/25 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0"
+                    className="flex-[2] flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-3 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
                     {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Languages size={18} />}
                     {isGenerating ? 'Processing...' : 'Translate & Dub'}
@@ -702,7 +702,7 @@ export default function VoiceStudioPage() {
                   className={cn(
                     "p-1.5 px-3 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-mono whitespace-nowrap shrink-0",
                     outputAudioUrl 
-                      ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/20 cursor-pointer" 
+                      ? "bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] cursor-pointer" 
                       : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-400 dark:text-zinc-500 cursor-not-allowed"
                   )}
                   disabled={!outputAudioUrl}
@@ -735,9 +735,9 @@ export default function VoiceStudioPage() {
                     </div>
                   )}
                   
-                  <div className="relative group/play cursor-pointer w-24 h-24 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/25 transition-transform hover:scale-105 active:scale-95" onClick={togglePlayback}>
+                  <div className="relative group/play cursor-pointer w-24 h-24 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-2xl transition-transform hover:scale-105 active:scale-95" onClick={togglePlayback}>
                     <div className={cn(
-                      "absolute inset-0 rounded-full border-2 border-violet-400 opacity-30",
+                      "absolute inset-0 rounded-full border-2 border-zinc-400 dark:border-zinc-600 opacity-30",
                       isPlaying && "animate-ping"
                     )} />
                     {isPlaying ? <Pause size={32} /> : <Play size={32} className="ml-2" />}
@@ -752,7 +752,7 @@ export default function VoiceStudioPage() {
                       return (
                         <div 
                           key={i} 
-                          className="w-1.5 rounded-full bg-violet-500 transition-all duration-75"
+                          className="w-1.5 rounded-full bg-zinc-950 dark:bg-white transition-all duration-75"
                           style={{ height: `${h}%` }}
                         />
                       );

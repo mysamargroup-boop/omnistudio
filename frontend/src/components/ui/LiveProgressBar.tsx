@@ -87,12 +87,12 @@ export default function LiveProgressBar({
         <div className="flex items-center gap-3">
           <div className="relative flex h-3 w-3">
             {isActive && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-40" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
             )}
             <span
               className={cn(
                 "relative inline-flex rounded-full h-3 w-3",
-                isActive ? "bg-violet-500" : "bg-zinc-400"
+                isActive ? "bg-emerald-500" : "bg-zinc-400"
               )}
             />
           </div>
@@ -131,7 +131,7 @@ export default function LiveProgressBar({
               className={cn(
                 "p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col justify-between space-y-2",
                 step.done
-                  ? "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-400"
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                   : step.active
                   ? "bg-zinc-100 dark:bg-white/[0.08] border-black/20 dark:border-white/20 text-zinc-950 dark:text-white shadow-sm"
                   : "bg-zinc-50/50 dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] text-zinc-400 dark:text-zinc-600"
@@ -142,7 +142,7 @@ export default function LiveProgressBar({
                   className={cn(
                     "w-7 h-7 rounded-xl flex items-center justify-center transition-colors",
                     step.done
-                      ? "bg-violet-500 text-white"
+                      ? "bg-emerald-500 text-white"
                       : step.active
                       ? "bg-zinc-950 text-white dark:bg-white dark:text-black"
                       : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
@@ -162,7 +162,7 @@ export default function LiveProgressBar({
         })}
       </div>
 
-      {/* 3. Smooth Glowing Animated Progress Bar */}
+      {/* 3. Smooth Animated Progress Bar */}
       <div className="space-y-2">
         <div className="relative w-full h-2.5 sm:h-3 bg-zinc-100 dark:bg-white/[0.06] rounded-full overflow-hidden border border-black/[0.06] dark:border-white/[0.08] shadow-inner">
           <div
@@ -170,13 +170,13 @@ export default function LiveProgressBar({
               "h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden",
               clampedProgress === 100
                 ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                : "bg-gradient-to-r from-violet-600 via-indigo-500 to-blue-500 shadow-[0_0_12px_rgba(139,92,246,0.5)]"
+                : "bg-zinc-950 dark:bg-white shadow-sm"
             )}
             style={{ width: `${clampedProgress}%` }}
           >
             {/* Smooth moving light sweep */}
             {isActive && clampedProgress < 100 && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
             )}
           </div>
         </div>
@@ -186,7 +186,7 @@ export default function LiveProgressBar({
           <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">
             {statusMessage}
           </span>
-          <span className={cn("text-[11px] font-mono shrink-0 uppercase tracking-wider ml-2", clampedProgress === 100 ? "text-emerald-500" : "text-violet-500 dark:text-violet-400")}>
+          <span className={cn("text-[11px] font-mono shrink-0 uppercase tracking-wider ml-2", clampedProgress === 100 ? "text-emerald-500 font-bold" : "text-zinc-500 dark:text-zinc-400 font-medium")}>
             {clampedProgress === 100 ? "Ready in Vault" : "Rendering Frame"}
           </span>
         </div>

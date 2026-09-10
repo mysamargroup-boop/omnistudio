@@ -27,7 +27,8 @@ import {
   SlidersHorizontal,
   FileSpreadsheet,
   Coins,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import { api, getMediaUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -221,16 +222,16 @@ export default function UsagePage() {
         {/* KPI Cards Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Spend */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-violet-500/40 transition-all duration-200 shadow-sm">
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-zinc-400 dark:hover:border-zinc-700 transition-all duration-200 shadow-sm">
             <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2">
               <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Coins className="h-4 w-4 text-violet-500" /> Total Spend
+                <Coins className="h-4 w-4 text-zinc-700 dark:text-zinc-300" /> Total Spend
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold border border-zinc-200 dark:border-zinc-700">
                 ACTIVE
               </span>
             </div>
-            <div className="text-3xl font-heading font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 tracking-tight mt-1">
+            <div className="text-3xl font-heading font-black text-zinc-950 dark:text-white tracking-tight mt-1">
               {summary ? formatCost(summary.total_spend_usd, summary.total_spend_inr) : '₹0.00'}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-2">
@@ -708,9 +709,10 @@ export default function UsagePage() {
               </h3>
               <button
                 onClick={() => setSelectedPromptModal(null)}
-                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-xs font-mono font-medium transition-colors cursor-pointer bg-zinc-100 dark:bg-white/[0.06] px-2 py-1 rounded-md"
+                className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-xs font-mono font-medium transition-colors cursor-pointer bg-zinc-100 dark:bg-white/[0.06] px-2.5 py-1 rounded-md"
               >
-                ✕ Close
+                <X className="w-3.5 h-3.5" />
+                <span>Close</span>
               </button>
             </div>
             <div className="bg-zinc-50 dark:bg-white/[0.02] p-4 rounded-xl border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap custom-scrollbar">

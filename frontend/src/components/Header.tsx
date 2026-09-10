@@ -125,15 +125,20 @@ export default function Header() {
               <Link
                 href={tab.path}
                 className={cn(
-                  'flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
+                  'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
                   isActive 
-                    ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-b-2 border-violet-500' 
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border-b-2 border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
+                    ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs' 
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                  <span className={cn(
+                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded",
+                    isActive
+                      ? "bg-white/20 dark:bg-zinc-900/20 text-white dark:text-zinc-950"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
+                  )}>
                     {tab.badge}
                   </span>
                 )}
@@ -314,7 +319,7 @@ export default function Header() {
         {/* Primary CTA Button */}
         <button 
           onClick={() => router.push('/pipeline')}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl px-3.5 py-1.5 text-xs font-semibold shadow-sm shadow-violet-500/25 transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
+          className="flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Create</span>

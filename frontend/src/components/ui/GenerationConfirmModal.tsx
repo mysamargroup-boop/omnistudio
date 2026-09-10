@@ -78,15 +78,15 @@ export default function GenerationConfirmModal({
   const getServiceMeta = (type: string) => {
     switch (type) {
       case 'image':
-        return { label: 'Visual Diffusion Studio', icon: ImageIcon, accent: 'from-fuchsia-500 to-rose-500' };
+        return { label: 'Visual Diffusion Studio', icon: ImageIcon, accent: 'text-zinc-900 dark:text-zinc-100' };
       case 'video':
-        return { label: 'Motion Cinema Studio', icon: Film, accent: 'from-sky-500 to-indigo-500' };
+        return { label: 'Motion Cinema Studio', icon: Film, accent: 'text-zinc-900 dark:text-zinc-100' };
       case 'voice':
-        return { label: 'Neural Voice Workstation', icon: Mic, accent: 'from-amber-500 to-orange-500' };
+        return { label: 'Neural Voice Workstation', icon: Mic, accent: 'text-zinc-900 dark:text-zinc-100' };
       case 'pipeline':
-        return { label: 'Autonomous AI Pipeline', icon: Workflow, accent: 'from-rose-500 via-purple-500 to-cyan-500' };
+        return { label: 'Autonomous AI Pipeline', icon: Workflow, accent: 'text-zinc-900 dark:text-zinc-100' };
       default:
-        return { label: 'OmniStudio Creative', icon: Sparkles, accent: 'from-zinc-500 to-zinc-400' };
+        return { label: 'OmniStudio Creative', icon: Sparkles, accent: 'text-zinc-900 dark:text-zinc-100' };
     }
   };
 
@@ -109,13 +109,13 @@ export default function GenerationConfirmModal({
         className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Accent Gradient Rim */}
+        {/* Top Accent Rim */}
         <div
           className={cn(
             'h-1 w-full',
             isFree
-              ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400'
-              : 'bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500'
+              ? 'bg-emerald-500'
+              : 'bg-zinc-950 dark:bg-white'
           )}
         />
 
@@ -133,10 +133,10 @@ export default function GenerationConfirmModal({
                     <ShieldCheck className="h-3 w-3" /> Zero-Spend Local Compute
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1 rounded-full border border-violet-500/25 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full border border-zinc-200 dark:border-zinc-700 shadow-sm">
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-zinc-950 dark:bg-white" />
                     </span>
                     <Lock className="h-3 w-3" /> API Spend Authorization
                   </span>
@@ -170,8 +170,8 @@ export default function GenerationConfirmModal({
             className={cn(
               'relative rounded-2xl border p-4 sm:p-5 overflow-hidden transition-all shadow-inner',
               isFree
-                ? 'bg-emerald-50 dark:bg-gradient-to-br dark:from-emerald-950/40 dark:via-[#071510]/60 dark:to-[#070b09] border-emerald-200 dark:border-emerald-500/30'
-                : 'bg-zinc-50 dark:bg-gradient-to-br dark:from-zinc-900/90 dark:via-[#100c14]/80 dark:to-[#0c0c12] border-black/[0.08] dark:border-white/[0.08]'
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30'
+                : 'bg-zinc-50 dark:bg-zinc-900/80 border-zinc-200 dark:border-zinc-800'
             )}
           >
             <div className="flex items-center justify-between gap-4">
@@ -181,7 +181,7 @@ export default function GenerationConfirmModal({
                     'h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 shadow-sm border',
                     isFree
                       ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-emerald-500/10'
-                      : 'bg-violet-100 dark:bg-gradient-to-br dark:from-violet-500/20 dark:to-indigo-500/20 text-violet-600 dark:text-violet-300 border-violet-200 dark:border-violet-500/30 shadow-violet-500/10'
+                      : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700'
                   )}
                 >
                   {isFree ? (
@@ -198,7 +198,7 @@ export default function GenerationConfirmModal({
                     </p>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className={cn("text-2xl sm:text-3xl font-black font-mono tracking-tight", isFree ? "text-zinc-900 dark:text-white" : "gradient-text bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400")}>
+                    <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-zinc-950 dark:text-white">
                       {isFree ? '₹0.00' : `₹${details.costInr.toFixed(2)}`}
                     </span>
                     {!isFree ? (
@@ -359,8 +359,8 @@ export default function GenerationConfirmModal({
                 className={cn(
                   'w-1/2 sm:w-auto relative flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-mono font-bold rounded-xl transition-all shadow-md cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed',
                   isFree
-                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-500/20'
-                    : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-500/25'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                    : 'bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950'
                 )}
               >
                 {loading ? (

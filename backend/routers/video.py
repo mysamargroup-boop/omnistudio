@@ -12,7 +12,8 @@ from services.director_agent import direct_video_prompt
 router = APIRouter(prefix="/api/video", tags=["Video Generation"])
 
 class DirectorAgentRequest(BaseModel):
-    idea: str
+    idea: Optional[str] = None
+    prompt: Optional[str] = None
     generation_mode: str = "first_frame"  # text_to_video, first_frame, first_to_last_frame
     target_video_model: str = "ffmpeg_local"
     style: str = "cinematic"
@@ -56,13 +57,16 @@ async def video_director_agent(req: DirectorAgentRequest):
     Parallel AI Director Agent using OpenAI (gpt-4o-mini / gpt-4o).
     Enhances prompt, camera vectors, negative prompt, and lighting for video generation.
     """
+    user_idea = req.idea or req.prompt or "cinematic motion visual"
     result = await direct_video_prompt(
-        idea=req.idea,
+        idea=user_idea,
         generation_mode=req.generation_mode,
         target_video_model=req.target_video_model,
         style=req.style,
         aspect_ratio=req.aspect_ratio
     )
+    if isinstance(result, dict):
+        result["cinematic_prompt"] = result.get("enhanced_prompt", user_idea)
     return result
 
 def resolve_path(p: str) -> Path:
@@ -186,10 +190,27 @@ async def generate_video(req: VideoRequest):
     if req.mode == "text_to_video" or (not start_img and req.prompt):
         if settings.REPLICATE_API_TOKEN:
             img_res = await generate_flux_image(req.prompt, aspect_ratio=req.aspect_ratio)
-        else:
+        elif settings.OPENAI_API_KEY:
             img_res = await generate_openai_image(req.prompt, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024")
+        else:
+            return {
+                "success": False,
+                "error": "Text-to-Video from scratch requires an OpenAI or Replicate API key in Settings. Alternatively, select an image from your Vault or upload a keyframe to render with 100% free Local FFmpeg acceleration."
+            }
             
+        if not img_res or not img_res.get("success", True) or img_res.get("error"):
+            err_msg = img_res.get("error") if isinstance(img_res, dict) else "Failed to generate initial keyframe"
+            return {
+                "success": False,
+                "error": f"Initial keyframe generation failed: {err_msg}"
+            }
+
         start_img = img_res.get("local_path") or img_res.get("url")
+        if not start_img:
+            return {
+                "success": False,
+                "error": "Failed to obtain valid initial frame for text-to-video synthesis."
+            }
 
     # ─── Mode: First Frame + Last Frame Interpolation ───
     if req.mode == "first_to_last_frame" and req.end_image_path:

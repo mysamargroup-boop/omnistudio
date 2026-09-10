@@ -1941,7 +1941,7 @@ function VideoStudioContent() {
             type="button"
             onClick={requestVideoConfirm}
             disabled={loading || !isFormValid()}
-            className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-extrabold text-xs sm:text-sm tracking-tight disabled:opacity-40 transition-all shadow-md shadow-violet-500/25 active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+            className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-extrabold text-xs sm:text-sm tracking-tight disabled:opacity-40 transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
           >
             {loading ? (
               <>

@@ -103,7 +103,11 @@ export const api = {
 
   // Video
   generateVideo: (data: any) => fetchApi<any>("/api/video/generate", { method: "POST", body: JSON.stringify(data) }),
-  directVideoPrompt: (data: any) => fetchApi<any>("/api/video/director-agent", { method: "POST", body: JSON.stringify(data) }),
+  directVideoPrompt: (data: any) =>
+    fetchApi<any>("/api/video/director-agent", {
+      method: "POST",
+      body: JSON.stringify({ idea: data.idea || data.prompt || "", prompt: data.prompt || data.idea || "", ...data }),
+    }),
   getMotions: () => fetchApi<any>("/api/video/motions"),
   uploadSourceVideo: (file: File) => {
     const formData = new FormData();

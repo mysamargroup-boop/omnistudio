@@ -1384,7 +1384,7 @@ export default function ImageStudioPage() {
             type="button"
             onClick={requestImageConfirm}
             disabled={loading || loadingVariations || (!prompt.trim() && studioMode === "text_to_image")}
-            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white disabled:opacity-40 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm shadow-violet-500/25 active:scale-95 whitespace-nowrap shrink-0"
+            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 disabled:opacity-40 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0"
           >
             {loading || loadingVariations ? (
               <>

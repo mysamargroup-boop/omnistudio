@@ -198,7 +198,7 @@ export default function DeleteConfirmModal({
                 ? "bg-emerald-600 hover:bg-emerald-500 text-white"
                 : isPermanent
                 ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20"
-                : "bg-violet-600 hover:bg-violet-500 text-white"
+                : "bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950"
             )}
           >
             {isLoading ? (

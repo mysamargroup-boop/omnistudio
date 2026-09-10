@@ -368,7 +368,7 @@ function PipelineContent() {
             <button
               onClick={requestPipelineConfirm}
               disabled={loading || !topic.trim()}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm shadow-violet-500/25 active:scale-[0.98] mt-3 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm active:scale-[0.98] mt-3 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -479,7 +479,7 @@ function PipelineContent() {
                     <a
                       href={getMediaUrl(result.final_video.url)}
                       download
-                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-heading font-bold transition-all shadow-sm shadow-violet-500/25 active:scale-[0.98] whitespace-nowrap shrink-0"
+                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-heading font-bold transition-all shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>DOWNLOAD MASTER MP4</span>
