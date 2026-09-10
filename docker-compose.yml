@@ -15,11 +15,11 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      - STUDIO_PASSCODE=${STUDIO_PASSCODE:-omnistudio_secure_passcode_2026}
-      - JWT_SECRET=${JWT_SECRET:-omnistudio_jwt_secret_key_production_32char}
-      - BACKEND_API_TOKEN=${BACKEND_API_TOKEN:-omnistudio_internal_backend_token_99}
-      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:-omnistudio_admin_secure_token_2026}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3050,http://31.97.231.218:3050}
+      - STUDIO_PASSCODE=${STUDIO_PASSCODE}
+      - JWT_SECRET=${JWT_SECRET}
+      - BACKEND_API_TOKEN=${BACKEND_API_TOKEN}
+      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN}
+      - CORS_ORIGINS=${CORS_ORIGINS}
     volumes:
       # Mount outputs directory so videos, images, and database persist on the host
       - ./backend/outputs:/app/outputs
@@ -63,7 +63,7 @@ services:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3
