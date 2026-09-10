@@ -3,6 +3,9 @@ version: "3.8"
 services:
   # OmniStudio AI Backend (FastAPI + FFmpeg + Neural Engines)
   omni-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ghcr.io/mysamargroup-boop/omnistudio-backend:latest
     container_name: omnistudio-backend
     restart: unless-stopped
@@ -37,6 +40,9 @@ services:
 
   # OmniStudio AI Frontend (Next.js 16 Production App)
   omni-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     image: ghcr.io/mysamargroup-boop/omnistudio-frontend:latest
     container_name: omnistudio-frontend
     restart: unless-stopped
