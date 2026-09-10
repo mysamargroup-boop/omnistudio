@@ -69,6 +69,8 @@ async def get_current_user_or_token(
         raise _unauthorized(request, "missing_bearer_token")
     if settings.BACKEND_API_TOKEN and hmac.compare_digest(token, settings.BACKEND_API_TOKEN):
         return {"auth_type": "service_token", "user_id": None}
+    if settings.STUDIO_PASSCODE and hmac.compare_digest(token, settings.STUDIO_PASSCODE):
+        return {"auth_type": "studio_pin", "user_id": "studio-passcode"}
     claims = _verify_studio_jwt(token)
     if claims:
         return {"auth_type": "studio_pin", "user_id": claims["sub"]}
@@ -88,6 +90,8 @@ async def require_admin_token(request: Request, authorization: str | None = Head
     if settings.ADMIN_API_TOKEN and hmac.compare_digest(token, settings.ADMIN_API_TOKEN):
         return
     if settings.BACKEND_API_TOKEN and hmac.compare_digest(token, settings.BACKEND_API_TOKEN):
+        return
+    if settings.STUDIO_PASSCODE and hmac.compare_digest(token, settings.STUDIO_PASSCODE):
         return
     claims = _verify_studio_jwt(token)
     if claims:
