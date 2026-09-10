@@ -230,7 +230,7 @@ function PipelineContent() {
   };
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-8 tab-content-enter">
       {/* Studio Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-1">
@@ -239,7 +239,7 @@ function PipelineContent() {
             <span>•</span>
             <span>AUTONOMOUS AGENT DIRECTOR</span>
           </div>
-          <h1 className="text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
             Autonomous Cinema Agent
           </h1>
         </div>
@@ -254,12 +254,12 @@ function PipelineContent() {
       <StepCards currentStep={currentStep} />
 
       {/* Studio Console Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Direction Parameters */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-6 space-y-5 shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left: Direction Parameters (Sticky & Compact) */}
+        <div className="lg:col-span-5 lg:sticky lg:top-4 self-start max-h-[calc(100vh-5.5rem)] overflow-y-auto custom-scrollbar">
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
             <div>
-              <div className="flex items-center justify-between mb-2 font-mono">
+              <div className="flex items-center justify-between mb-1.5 font-mono">
                 <label className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase tracking-widest block font-medium">
                   NARRATIVE CONCEPT
                 </label>
@@ -277,7 +277,7 @@ function PipelineContent() {
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Describe screenplay idea, world-building atmosphere, and visual narrative..."
-                className="w-full h-32 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta leading-relaxed"
+                className="w-full h-24 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta leading-relaxed"
               />
 
               {/* Preset Chips */}

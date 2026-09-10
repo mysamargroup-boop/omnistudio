@@ -12,6 +12,8 @@ from config import settings
 from services.openai_service import generate_openai_image
 from services.replicate_service import generate_flux_image
 from services.prompt_enhancer import enhance_prompt
+from services.security_service import sanitize_filename
+from database import db_save_asset
 import logging
 
 logger = logging.getLogger("omnistudio.image")
@@ -524,3 +526,172 @@ async def list_image_models(request: Request):
             {"id": "bleach_bypass", "name": "Cinematic Bleach Bypass"}
         ]
     }
+
+
+class ImageEditRequest(BaseModel):
+    filename: str
+    brightness: Optional[float] = 1.0
+    contrast: Optional[float] = 1.0
+    saturation: Optional[float] = 1.0
+    sharpness: Optional[float] = 1.0
+    upscale_factor: Optional[int] = 1
+    filter: Optional[str] = "none"
+    aspect_ratio: Optional[str] = None
+
+
+@router.post("/upload")
+@limiter.limit("30/minute")
+async def upload_image(request: Request, file: UploadFile = File(...)):
+    """Upload an image file preserving original filename and registering in Vault"""
+    allowed_exts = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+    raw_name = file.filename or "uploaded_image.png"
+    clean_name = sanitize_filename(raw_name)
+    ext = Path(clean_name).suffix.lower()
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail=f"Unsupported image format. Allowed: {sorted(allowed_exts)}")
+
+    dest_dir = settings.IMAGES_PATH
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    # Preserve original filename without overwriting existing files
+    base_stem = Path(clean_name).stem
+    target_filename = clean_name
+    counter = 1
+    while (dest_dir / target_filename).exists():
+        target_filename = f"{base_stem}_{counter}{ext}"
+        counter += 1
+
+    dest_path = dest_dir / target_filename
+    with open(dest_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    stat = dest_path.stat()
+    asset_id = str(uuid.uuid4())
+    url = f"/outputs/images/{target_filename}"
+
+    db_save_asset(
+        asset_id=asset_id,
+        project_id=None,
+        asset_type="images",
+        filename=target_filename,
+        url=url,
+        local_path=str(dest_path),
+        storage_provider="local",
+        size_bytes=stat.st_size,
+        mime_type=file.content_type or f"image/{ext.lstrip('.')}",
+        metadata={"original_name": raw_name, "uploaded": True}
+    )
+
+    return {
+        "success": True,
+        "filename": target_filename,
+        "original_name": raw_name,
+        "url": url,
+        "size_bytes": stat.st_size,
+        "size_mb": round(stat.st_size / (1024 * 1024), 2)
+    }
+
+
+@router.post("/edit")
+@limiter.limit("20/minute")
+async def edit_image(req: ImageEditRequest, request: Request):
+    """Edit an existing image with filters, adjustments, upscaling, and aspect ratio crop"""
+    clean_name = sanitize_filename(req.filename)
+    src_file = settings.IMAGES_PATH / clean_name
+    if not src_file.exists():
+        raise HTTPException(status_code=404, detail="Source image not found")
+
+    try:
+        img = Image.open(src_file).convert("RGB")
+
+        # 1. Adjustments
+        if req.brightness is not None and req.brightness != 1.0:
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(max(0.2, min(req.brightness, 2.5)))
+
+        if req.contrast is not None and req.contrast != 1.0:
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(max(0.2, min(req.contrast, 2.5)))
+
+        if req.saturation is not None and req.saturation != 1.0:
+            enhancer = ImageEnhance.Color(img)
+            img = enhancer.enhance(max(0.0, min(req.saturation, 2.5)))
+
+        if req.sharpness is not None and req.sharpness != 1.0:
+            enhancer = ImageEnhance.Sharpness(img)
+            img = enhancer.enhance(max(0.0, min(req.sharpness, 3.0)))
+
+        # 2. Cinematic Filters
+        if req.filter == "black_white":
+            img = ImageOps.grayscale(img).convert("RGB")
+        elif req.filter == "sepia":
+            gray = ImageOps.grayscale(img)
+            img = ImageOps.colorize(gray, "#2e1c0c", "#ffebd2")
+        elif req.filter == "cyberpunk":
+            r, g, b = img.split()
+            r = r.point(lambda i: min(255, int(i * 1.2 + 20)))
+            b = b.point(lambda i: min(255, int(i * 1.3 + 30)))
+            img = Image.merge("RGB", (r, g, b))
+        elif req.filter == "cinematic":
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(1.15)
+            r, g, b = img.split()
+            g = g.point(lambda i: min(255, int(i * 1.05)))
+            b = b.point(lambda i: min(255, int(i * 0.95)))
+            img = Image.merge("RGB", (r, g, b))
+
+        # 3. Aspect Ratio Crop
+        if req.aspect_ratio:
+            ratio_map = {"16:9": (16, 9), "9:16": (9, 16), "1:1": (1, 1), "4:3": (4, 3)}
+            if req.aspect_ratio in ratio_map:
+                target_w, target_h = ratio_map[req.aspect_ratio]
+                w, h = img.size
+                current_ratio = w / h
+                target_ratio = target_w / target_h
+                if current_ratio > target_ratio:
+                    new_w = int(h * target_ratio)
+                    offset = (w - new_w) // 2
+                    img = img.crop((offset, 0, offset + new_w, h))
+                else:
+                    new_h = int(w / target_ratio)
+                    offset = (h - new_h) // 2
+                    img = img.crop((0, offset, w, offset + new_h))
+
+        # 4. Upscaling
+        if req.upscale_factor and req.upscale_factor in {2, 4}:
+            new_size = (img.width * req.upscale_factor, img.height * req.upscale_factor)
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+        # Output filename preserving original identity
+        stem = Path(clean_name).stem
+        new_filename = f"{stem}_edited_{uuid.uuid4().hex[:6]}.png"
+        out_path = settings.IMAGES_PATH / new_filename
+        img.save(out_path, "PNG", quality=95)
+
+        stat = out_path.stat()
+        asset_id = str(uuid.uuid4())
+        url = f"/outputs/images/{new_filename}"
+
+        db_save_asset(
+            asset_id=asset_id,
+            project_id=None,
+            asset_type="images",
+            filename=new_filename,
+            url=url,
+            local_path=str(out_path),
+            storage_provider="local",
+            size_bytes=stat.st_size,
+            mime_type="image/png",
+            metadata={"source_file": clean_name, "edited": True}
+        )
+
+        return {
+            "success": True,
+            "filename": new_filename,
+            "url": url,
+            "size_bytes": stat.st_size,
+            "size_mb": round(stat.st_size / (1024 * 1024), 2)
+        }
+    except Exception as e:
+        logger.error("Image edit error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Image edit failed: {e}")

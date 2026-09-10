@@ -27,12 +27,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  Sparkles,
-  ExternalLink,
   Star,
   Share2,
   FolderPlus,
   Layers,
+  Heart,
+  MoreVertical,
+  Edit3,
+  Plus,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
@@ -90,6 +94,20 @@ export default function VaultPage() {
   const [lightboxCopied, setLightboxCopied] = useState<boolean>(false);
   const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
+  // Context Menu & Rename states matching Reference Images
+  const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
+  const [renameModalAsset, setRenameModalAsset] = useState<VaultAsset | null>(null);
+  const [renameNewName, setRenameNewName] = useState<string>("");
+  const [renaming, setRenaming] = useState<boolean>(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleWindowClick = () => setActiveMenuKey(null);
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -128,6 +146,33 @@ export default function VaultPage() {
       console.error("Failed to toggle favorite", err);
     }
   };
+
+  const handleRename = async () => {
+    if (!renameModalAsset || !renameNewName.trim()) return;
+    setRenaming(true);
+    setRenameError(null);
+    try {
+      const res = await api.renameAsset(renameModalAsset.type, renameModalAsset.filename, renameNewName.trim());
+      if (res.success) {
+        setRenameModalAsset(null);
+        await loadData();
+      } else {
+        setRenameError(res.error || "Failed to rename asset");
+      }
+    } catch (e: any) {
+      setRenameError(e.message || "Failed to rename asset");
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const copyAssetToClipboard = (file: VaultAsset) => {
+    const fullUrl = `${window.location.origin}${getMediaUrl(file.url)}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedKey(file.filename);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
 
   // Sync collection items when a collection is selected
   useEffect(() => {
@@ -497,7 +542,7 @@ export default function VaultPage() {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-nowrap whitespace-nowrap">
           {(["all", "favorites", "final", "videos", "images", "audio", "trash"] as Tab[]).map((t) => {
             const Icon = tabIcon[t];
             const count =
@@ -682,212 +727,276 @@ export default function VaultPage() {
         {activeFiles.map((file, i) => {
           const selected = isSelected(file.type, file.filename);
           const isImage = file.type === "images";
+          const isVideo = file.type === "videos" || file.type === "final";
+          const isAudio = file.type === "audio";
+          const isMenuOpen = activeMenuKey === file.filename;
 
           return (
             <div
               key={`${file.type}-${file.filename}-${i}`}
+              onMouseEnter={(e) => {
+                const v = e.currentTarget.querySelector("video");
+                if (v) {
+                  v.muted = false;
+                  v.volume = 0.8;
+                  v.play().catch(() => {});
+                }
+              }}
+              onMouseLeave={(e) => {
+                const v = e.currentTarget.querySelector("video");
+                if (v) {
+                  v.pause();
+                  v.currentTime = 0;
+                }
+              }}
               className={cn(
-                "bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between group relative transition-all duration-200 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md",
-                selected &&
-                  "ring-2 ring-zinc-950 dark:ring-white border-zinc-950 dark:border-white bg-zinc-50 dark:bg-zinc-800/40"
+                "group relative rounded-2xl overflow-hidden bg-zinc-950 border border-black/[0.08] dark:border-white/[0.08] shadow-sm hover:shadow-2xl transition-all duration-300 flex flex-col justify-between aspect-square select-none",
+                selected && "ring-2 ring-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               )}
             >
-              {/* Favorite Star Button Top Right */}
-              {tab !== "trash" && (
-                <button
-                  type="button"
-                  onClick={(e) => handleToggleFavorite(e, file.filename)}
-                  className={cn(
-                    "absolute top-2.5 right-11 z-20 p-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer border",
-                    favorites.has(file.filename)
-                      ? "bg-amber-400 text-zinc-950 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.4)]"
-                      : "bg-black/60 text-white/70 hover:text-white border-white/20 hover:bg-black/90"
-                  )}
-                  title={favorites.has(file.filename) ? "Remove from Favorites" : "Add to Favorites"}
-                >
-                  <Star className={cn("w-4 h-4", favorites.has(file.filename) && "fill-current")} />
-                </button>
-              )}
+              {/* Media Display */}
+              <div
+                onClick={() => {
+                  if (isImage) openLightbox(file);
+                }}
+                className={cn("w-full h-full relative overflow-hidden", isImage && "cursor-zoom-in")}
+              >
+                {isImage && (
+                  <LazyImage
+                    src={getMediaUrl(file.url)}
+                    alt={file.filename}
+                    aspectRatio="h-full w-full"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                )}
 
-              {/* Checkbox Trigger Top Right */}
+                {isVideo && (
+                  <video
+                    src={getMediaUrl(file.url)}
+                    playsInline
+                    loop
+                    preload="metadata"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                  />
+                )}
+
+                {isAudio && (
+                  <div className="w-full h-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-4">
+                    <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
+                      <Mic className="w-7 h-7" />
+                    </div>
+                    <audio src={getMediaUrl(file.url)} controls className="w-full max-w-[200px]" />
+                  </div>
+                )}
+
+                {/* Subtle gradient vignette at bottom */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+              </div>
+
+              {/* Multi-Select Trigger (Top Left) */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleSelect(file.type, file.filename);
                 }}
-                className="absolute top-2.5 right-2.5 z-20 p-1.5 rounded-md bg-black/60 hover:bg-black/90 backdrop-blur-md text-white transition-all cursor-pointer border border-white/20"
+                className={cn(
+                  "absolute top-3 left-3 z-30 p-1.5 rounded-lg backdrop-blur-md border transition-all cursor-pointer",
+                  selected
+                    ? "bg-emerald-500 text-white border-emerald-400 opacity-100"
+                    : "bg-black/50 text-white/70 border-white/10 opacity-0 group-hover:opacity-100 hover:bg-black/80"
+                )}
                 title={selected ? "Deselect" : "Select"}
               >
-                {selected ? (
-                  <CheckSquare className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <Square className="w-4 h-4 text-zinc-300" />
-                )}
+                {selected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Viewport Preview */}
+              {/* Top Right Floating Capsule: Heart (Favorite) + Three-Dots (Options) */}
               <div
-                onClick={() => {
-                  if (isImage) openLightbox(file);
-                }}
-                className={cn(
-                  "h-48 bg-zinc-100 dark:bg-zinc-950 flex items-center justify-center overflow-hidden relative border-b border-zinc-200 dark:border-zinc-800/80",
-                  isImage && "cursor-zoom-in"
-                )}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-3 right-3 z-30 flex items-center gap-1 bg-black/60 hover:bg-black/80 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 text-white transition-all shadow-lg"
               >
-                {isImage && (
-                  <>
-                    <LazyImage
-                      src={getMediaUrl(file.url)}
-                      alt={file.filename}
-                      aspectRatio="h-full w-full"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                {tab !== "trash" && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleToggleFavorite(e, file.filename)}
+                    className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                    title={favorites.has(file.filename) ? "Remove Favorite" : "Favorite"}
+                  >
+                    <Heart
+                      className={cn(
+                        "w-3.5 h-3.5 transition-colors",
+                        favorites.has(file.filename) ? "text-rose-500 fill-current" : "text-white/80 hover:text-white"
+                      )}
                     />
-                    {/* Hover Full View Indicator */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
-                      <span className="px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-[11px] font-mono flex items-center gap-1.5 border border-white/20 shadow-xl">
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>FULL VIEW</span>
-                      </span>
-                    </div>
-                  </>
+                  </button>
                 )}
 
-                {(file.type === "videos" || file.type === "final") && (
-                  <video
-                    src={getMediaUrl(file.url)}
-                    controls
-                    className="w-full h-full object-cover"
-                  />
-                )}
-
-                {file.type === "audio" && (
-                  <div className="w-full p-4 text-center space-y-2">
-                    <Mic className="h-8 w-8 text-zinc-400 mx-auto" />
-                    <audio src={getMediaUrl(file.url)} controls className="w-full" />
-                  </div>
-                )}
-
-                <span
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveMenuKey(isMenuOpen ? null : file.filename);
+                  }}
                   className={cn(
-                    "absolute top-2.5 left-2.5 text-[9px] font-mono uppercase px-2 py-0.5 rounded backdrop-blur-md border",
-                    tab === "trash"
-                      ? "bg-rose-950/80 text-rose-300 border-rose-800/40"
-                      : "bg-black/80 text-zinc-300 border-white/10"
+                    "p-1 hover:scale-110 transition-transform cursor-pointer",
+                    isMenuOpen ? "text-white" : "text-white/80 hover:text-white"
                   )}
+                  title="More Options"
                 >
-                  {tab === "trash" ? `TRASH / ${file.type}` : file.type.toUpperCase()}
-                </span>
+                  <MoreVertical className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              {/* Metadata & Actions */}
-              <div className="p-3.5 space-y-2.5">
-                <div className="min-w-0 pr-6">
-                  <p
-                    className="text-xs font-mono font-medium text-zinc-950 dark:text-white truncate"
-                    title={file.filename}
-                  >
-                    {file.filename}
-                  </p>
-                  <p className="text-[10px] font-mono text-zinc-500">
-                    {formatBytes(file.size_bytes)}
-                  </p>
+              {/* Bottom Left Floating Label: Media Icon + Original Filename */}
+              <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
+                <div
+                  className="flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-white max-w-[85%] pointer-events-auto shadow-md"
+                  title={file.filename}
+                >
+                  {isImage && <ImageIcon className="w-3.5 h-3.5 text-zinc-300 shrink-0" />}
+                  {isVideo && <Video className="w-3.5 h-3.5 text-cyan-300 shrink-0" />}
+                  {isAudio && <Mic className="w-3.5 h-3.5 text-rose-300 shrink-0" />}
+                  <span className="text-[11px] font-mono truncate">{file.filename}</span>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={getMediaUrl(file.url)}
-                      download
-                      className="flex items-center gap-1 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
-                      title="Download Asset"
-                    >
-                      <Download className="h-3 w-3" />
-                      <span>DL</span>
-                    </a>
-
-                    {tab !== "trash" && (
-                      <button
-                        type="button"
-                        onClick={() => setShareModalAsset(file)}
-                        className="flex items-center gap-1 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                        title="Send & Share Asset"
-                      >
-                        <Share2 className="h-3 w-3" />
-                        <span>SHARE</span>
-                      </button>
-                    )}
-
-                    {(file.type === "videos" || file.type === "final") && tab !== "trash" && (
-                      <button
-                        type="button"
-                        onClick={() => setEditVideoAsset(file)}
-                        className="flex items-center gap-1 text-[11px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-400/10 hover:bg-amber-100 dark:hover:bg-amber-400/20 px-2 py-0.5 rounded transition-colors cursor-pointer"
-                        title="Open Video Editor"
-                      >
-                        <Film className="h-3 w-3" />
-                        <span>EDIT</span>
-                      </button>
-                    )}
-
-                    {isImage && (
-                      <button
-                        type="button"
-                        onClick={() => openLightbox(file)}
-                        className="flex items-center gap-1 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                        title="Open Full View"
-                      >
-                        <Eye className="h-3 w-3" />
-                        <span>VIEW</span>
-                      </button>
-                    )}
-
-                    {isImage && tab !== "trash" && (
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/studio?mode=image_to_video&image=${encodeURIComponent(file.url)}`)}
-                        className="flex items-center gap-1 text-[11px] font-mono text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-0.5 rounded transition-colors cursor-pointer"
-                        title="Send to Studio to Animate"
-                      >
-                        <span>STUDIO</span>
-                        <ArrowUpRight className="h-3 w-3" />
-                      </button>
-                    )}
+                {isVideo && (
+                  <div className="bg-black/70 backdrop-blur-md p-1.5 rounded-lg border border-white/10 text-white pointer-events-auto shadow-md">
+                    <Volume2 className="w-3 h-3 text-emerald-400" />
                   </div>
+                )}
+              </div>
 
-                  {/* Right Action: Trash/Restore/Permanent Delete */}
-                  {tab === "trash" ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleSingleRestore(file)}
-                        className="p-1 rounded text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer"
-                        title="Restore to Active Vault"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSinglePermanentDeleteClick(file)}
-                        className="p-1 rounded text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                        title="Delete Forever"
-                      >
-                        <Flame className="h-3.5 w-3.5" />
-                      </button>
+              {/* Floating Context Menu matching Reference Image 2 */}
+              {isMenuOpen && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-11 right-3 z-50 w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none"
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      handleToggleFavorite(e, file.filename);
+                      setActiveMenuKey(null);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Heart className={cn("w-4 h-4", favorites.has(file.filename) ? "text-rose-500 fill-current" : "text-zinc-400")} />
+                    <span>{favorites.has(file.filename) ? "Unfavorite" : "Favorite"}</span>
+                  </button>
+
+                  {(isImage || isVideo) && tab !== "trash" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        router.push(`/video?image=${encodeURIComponent(file.url)}`);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                    >
+                      <Film className="w-4 h-4 text-cyan-400" />
+                      <span>Animate</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMenuKey(null);
+                      navigator.clipboard.writeText(file.filename);
+                      setCopiedKey(file.filename);
+                      setTimeout(() => setCopiedKey(null), 2000);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-zinc-400" />
+                    <span>Add to prompt</span>
+                  </button>
+
+                  <a
+                    href={getMediaUrl(file.url)}
+                    download={file.filename}
+                    onClick={() => setActiveMenuKey(null)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Download className="w-4 h-4 text-zinc-400" />
+                      <span>Download</span>
                     </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      copyAssetToClipboard(file);
+                      setActiveMenuKey(null);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Copy className="w-4 h-4 text-zinc-400" />
+                    <span>{copiedKey === file.filename ? "Copied!" : "Copy URL"}</span>
+                  </button>
+
+                  {tab !== "trash" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        setRenameModalAsset(file);
+                        setRenameNewName(file.filename);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                    >
+                      <Edit3 className="w-4 h-4 text-zinc-400" />
+                      <span>Rename</span>
+                    </button>
+                  )}
+
+                  {isImage && tab !== "trash" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        setCopiedKey(file.filename);
+                        setTimeout(() => setCopiedKey(null), 2000);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                    >
+                      <ImageIcon className="w-4 h-4 text-zinc-400" />
+                      <span>Set project cover</span>
+                    </button>
+                  )}
+
+                  <div className="border-t border-white/10 my-1" />
+
+                  {tab === "trash" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        handleSingleRestore(file);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-emerald-400 transition-colors text-left cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4 text-emerald-400" />
+                      <span>Restore from trash</span>
+                    </button>
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleSingleTrashClick(file)}
-                      className="p-1 rounded text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                      title="Move to Trash"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        handleSingleTrashClick(file);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-400 transition-colors text-left cursor-pointer"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="w-4 h-4 text-rose-400" />
+                      <span>Move to trash</span>
                     </button>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
@@ -1277,6 +1386,71 @@ export default function VaultPage() {
         title={modalTitle}
         description={modalDesc}
       />
+
+      {/* Rename Asset Modal */}
+      {renameModalAsset && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full rounded-2xl bg-white dark:bg-[#121218] border border-black/10 dark:border-white/10 p-6 shadow-2xl space-y-4 font-jakarta animate-in fade-in zoom-in-95 duration-200"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-violet-500" />
+                <h3 className="text-base font-bold font-heading text-zinc-950 dark:text-white">Rename Asset</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRenameModalAsset(null)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-black dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Enter a new name for this asset. The file extension is preserved automatically.
+            </p>
+
+            <div>
+              <input
+                type="text"
+                value={renameNewName}
+                onChange={(e) => setRenameNewName(e.target.value)}
+                placeholder="New filename..."
+                className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/10 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-zinc-950 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename();
+                  if (e.key === "Escape") setRenameModalAsset(null);
+                }}
+              />
+              {renameError && (
+                <p className="text-[11px] text-rose-500 mt-1 font-mono">{renameError}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRenameModalAsset(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRename}
+                disabled={renaming || !renameNewName.trim()}
+                className="px-4 py-2 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-xs font-mono font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {renaming && <RefreshCw className="w-3 h-3 animate-spin" />}
+                <span>Save Changes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -43,6 +43,19 @@ export default function Sidebar() {
   const [showDetails, setShowDetails] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      setCurrentDateTime(`${dateStr} • ${timeStr}`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleToggle = () => setMobileOpen((prev) => !prev);
@@ -264,7 +277,7 @@ export default function Sidebar() {
               </div>
               <div className="pt-1 flex items-center justify-between border-t border-black/[0.04] dark:border-white/[0.04]">
                 <a
-                  href="http://localhost:8000/docs"
+                  href="/docs"
                   target="_blank"
                   rel="noreferrer"
                   className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white flex items-center gap-1 transition-colors"
@@ -276,6 +289,22 @@ export default function Sidebar() {
               </div>
             </div>
           )}
+
+          {/* Real-time date and time display without seconds */}
+          {currentDateTime && (
+            <div className="pt-1 border-t border-black/[0.04] dark:border-white/[0.04] text-[9px] font-mono text-zinc-500 dark:text-zinc-400 text-center tracking-wider">
+              {currentDateTime}
+            </div>
+          )}
+        </div>
+
+        {/* Studio footer meta links */}
+        <div className="flex items-center justify-center gap-3 pt-2 pb-1 text-[9px] font-mono text-zinc-400 dark:text-zinc-500">
+          <Link href="/how-it-works" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Guide</Link>
+          <span>•</span>
+          <Link href="/privacy" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Privacy</Link>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Terms</Link>
         </div>
       </div>
     </aside>

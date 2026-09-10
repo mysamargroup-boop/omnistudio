@@ -46,13 +46,17 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${cleanPath}`;
   const authHeaders = getAuthHeaders();
+  const isFormData = typeof FormData !== "undefined" && options?.body instanceof FormData;
+  const headers: Record<string, string> = {
+    ...authHeaders,
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  if (!isFormData && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   const res = await fetch(url, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-      ...options?.headers,
-    },
+    headers,
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -236,6 +240,7 @@ export const api = {
   bulkDeleteAssets: (items: { media_type: string; filename: string }[], permanent: boolean = false, fromTrash: boolean = false) =>
     fetchApi<any>("/api/assets/bulk-delete", { method: "POST", body: JSON.stringify({ items, permanent, from_trash: fromTrash }) }),
   emptyTrash: () => fetchApi<any>("/api/assets/trash/empty", { method: "DELETE" }),
+  testTrashSystem: () => fetchApi<any>("/api/assets/trash/test", { method: "POST" }),
 
   // Favorites & Collections
   getFavorites: () => fetchApi<{ success: boolean; favorites: string[] }>("/api/assets/favorites"),
@@ -251,8 +256,24 @@ export const api = {
   removeFromCollection: (id: string, filename: string) =>
     fetchApi<any>(`/api/assets/collections/${id}/items/${encodeURIComponent(filename)}`, { method: "DELETE" }),
 
-  // Video Editing Tools
+  // Video & Image Upload / Edit Tools
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<any>("/api/image/upload", { method: "POST", body: formData });
+  },
+  editImage: (data: any) => fetchApi<any>("/api/image/edit", { method: "POST", body: JSON.stringify(data) }),
+  uploadVideo: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<any>("/api/video/upload", { method: "POST", body: formData });
+  },
   editVideo: (data: any) => fetchApi<any>("/api/video/edit", { method: "POST", body: JSON.stringify(data) }),
+  renameAsset: (media_type: string, old_filename: string, new_filename: string) =>
+    fetchApi<any>("/api/assets/rename", {
+      method: "POST",
+      body: JSON.stringify({ media_type, old_filename, new_filename }),
+    }),
 
   // Settings
   getStatus: () => fetchApi<any>("/api/settings/status"),

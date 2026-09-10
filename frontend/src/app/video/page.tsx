@@ -42,6 +42,9 @@ import {
   PanelRightOpen,
   Eye,
   SlidersHorizontal,
+  User,
+  UserCheck,
+  Scissors,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -49,8 +52,10 @@ import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/u
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
+import CharacterStudioModal, { CharacterData } from "@/components/video/CharacterStudioModal";
+import VideoEditorModal from "@/components/video/VideoEditorModal";
 
-type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer";
+type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
 interface VideoModelOption {
   value: string;
@@ -213,6 +218,17 @@ function VideoStudioContent() {
   // Motion Transfer State
   const [sourceVideoUrl, setSourceVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
+
+  // Character Lock State (Reference Image 1)
+  const [characterModalOpen, setCharacterModalOpen] = useState(false);
+  const [activeCharacter, setActiveCharacter] = useState<CharacterData | null>(null);
+
+  // Video Editor & Upload Mode State
+  const [editorVideoFile, setEditorVideoFile] = useState<File | null>(null);
+  const [editorVideoUrl, setEditorVideoUrl] = useState("");
+  const [editorModalOpen, setEditorModalOpen] = useState(false);
+  const [uploadingEditorVideo, setUploadingEditorVideo] = useState(false);
+  const editorUploadInputRef = useRef<HTMLInputElement>(null);
 
   // Upload States
   const [uploadingStartImage, setUploadingStartImage] = useState(false);
@@ -415,6 +431,23 @@ function VideoStudioContent() {
       console.error("Failed to upload source video:", err);
     } finally {
       setUploadingVideo(false);
+    }
+  };
+
+  const handleEditorVideoUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingEditorVideo(true);
+    try {
+      const res = await api.uploadVideo(file);
+      const url = res?.url || (typeof res === "string" ? res : "");
+      if (url) {
+        setEditorVideoUrl(url);
+        setEditorVideoFile(file);
+      }
+    } catch (err) {
+      console.error("Failed to upload video for editor:", err);
+    } finally {
+      setUploadingEditorVideo(false);
     }
   };
 
@@ -696,9 +729,52 @@ function VideoStudioContent() {
             <RotateCw className="h-3.5 w-3.5" />
             <span>Motion Transfer</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setMode("video_editor")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              mode === "video_editor"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            )}
+          >
+            <Scissors className="h-3.5 w-3.5 text-amber-500" />
+            <span>Video Editor</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold">
+              RECUT
+            </span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Character Lock Button (Reference Image 1) */}
+          <button
+            type="button"
+            onClick={() => setCharacterModalOpen(true)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 border",
+              activeCharacter?.isLocked
+                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-sm"
+                : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/40"
+            )}
+          >
+            {activeCharacter?.imageUrl ? (
+              <img
+                src={getMediaUrl(activeCharacter.imageUrl)}
+                alt={activeCharacter.name}
+                className="w-4 h-4 rounded-full object-cover border border-emerald-500"
+              />
+            ) : (
+              <User className="w-3.5 h-3.5 text-emerald-500" />
+            )}
+            <span>{activeCharacter?.isLocked ? `Locked: ${activeCharacter.name}` : "Character Lock"}</span>
+            {activeCharacter?.isLocked && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+          </button>
+
           {/* Active Model Indicator in GREEN */}
           <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
@@ -763,6 +839,18 @@ function VideoStudioContent() {
                     autoPlay
                     loop={loop}
                     className="w-full aspect-video object-contain bg-black"
+                    onMouseEnter={(e) => {
+                      try {
+                        e.currentTarget.muted = false;
+                        e.currentTarget.volume = 0.8;
+                        e.currentTarget.play().catch(() => {});
+                      } catch {}
+                    }}
+                    onMouseLeave={(e) => {
+                      try {
+                        e.currentTarget.pause();
+                      } catch {}
+                    }}
                   />
                   <div className="absolute top-3 left-3 flex items-center gap-2">
                     <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
@@ -792,9 +880,17 @@ function VideoStudioContent() {
                     <button
                       type="button"
                       onClick={() => setResult(null)}
-                      className="px-4 py-2 rounded-xl text-xs font-mono border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                      className="px-4 py-2 rounded-xl text-xs font-mono border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       New Generation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorModalOpen(true)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-mono font-bold transition-colors cursor-pointer"
+                    >
+                      <Scissors className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Edit Video</span>
                     </button>
                     <a
                       href={getMediaUrl(result.url)}
@@ -1176,6 +1272,102 @@ function VideoStudioContent() {
                     </div>
                   </div>
                 )}
+
+                {/* Mode: Video Editor Upload & Precision Studio */}
+                {mode === "video_editor" && (
+                  <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-sm p-6 space-y-5 max-w-2xl mx-auto">
+                    <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+                      <div className="flex items-center gap-2">
+                        <Scissors className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                          Video Upload & Precision Editor
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        Trim • Speed • Aspect • Filters
+                      </span>
+                    </div>
+
+                    <input
+                      ref={editorUploadInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleEditorVideoUpload(f);
+                        e.target.value = "";
+                      }}
+                      disabled={uploadingEditorVideo}
+                    />
+
+                    {editorVideoUrl ? (
+                      <div className="space-y-4">
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-zinc-200 dark:border-zinc-800 bg-black">
+                          <video
+                            src={getMediaUrl(editorVideoUrl)}
+                            controls
+                            className="w-full h-full object-contain"
+                            onMouseEnter={(e) => {
+                              try {
+                                e.currentTarget.muted = false;
+                                e.currentTarget.volume = 0.8;
+                                e.currentTarget.play().catch(() => {});
+                              } catch {}
+                            }}
+                            onMouseLeave={(e) => {
+                              try {
+                                e.currentTarget.pause();
+                              } catch {}
+                            }}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="space-y-0.5 font-mono text-xs">
+                            <p className="font-semibold text-zinc-900 dark:text-white truncate max-w-xs">
+                              {editorVideoFile?.name || "Uploaded Video"}
+                            </p>
+                            <p className="text-[10px] text-zinc-500">Ready for editing and adjustments</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => editorUploadInputRef.current?.click()}
+                              className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                            >
+                              Replace Video
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditorModalOpen(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold shadow-md transition-all active:scale-95 cursor-pointer"
+                            >
+                              <Scissors className="w-3.5 h-3.5" />
+                              <span>Launch Precision Editor</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => editorUploadInputRef.current?.click()}
+                        className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl aspect-video flex flex-col items-center justify-center gap-2.5 p-6 cursor-pointer transition-colors bg-zinc-50/50 dark:bg-zinc-900/50"
+                      >
+                        {uploadingEditorVideo ? (
+                          <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                        ) : (
+                          <Upload className="h-6 w-6 text-emerald-500" />
+                        )}
+                        <div className="text-center">
+                          <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+                            {uploadingEditorVideo ? "Uploading Video..." : "Click or drag video file to edit"}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 font-mono mt-0.5">MP4, WEBM, MOV up to 200MB</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1183,6 +1375,44 @@ function VideoStudioContent() {
           {/* Prompt Control Bar Pinned at Bottom of Canvas */}
           <div className="max-w-4xl w-full mx-auto mt-4 pt-2">
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-lg space-y-3">
+              {/* Active Character Lock Pill (Reference Image 1) */}
+              {activeCharacter?.isLocked && (
+                <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in">
+                  <div className="flex items-center gap-2.5">
+                    {activeCharacter.imageUrl && (
+                      <img
+                        src={getMediaUrl(activeCharacter.imageUrl)}
+                        alt={activeCharacter.name}
+                        className="w-7 h-7 rounded-lg object-cover border border-emerald-500 shadow-xs"
+                      />
+                    )}
+                    <div>
+                      <span className="font-bold font-heading text-xs block">{activeCharacter.name}</span>
+                      <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80">
+                        Character identity locked for consistent generations
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCharacterModalOpen(true)}
+                      className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 transition-colors cursor-pointer"
+                    >
+                      Change
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveCharacter(null)}
+                      className="p-1 rounded-md hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer"
+                      title="Unlock Character"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1750,6 +1980,29 @@ function VideoStudioContent() {
 
       {/* Interactive 5-Step Visual Studio Guide */}
       <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
+
+      {/* Consistent Character Studio Modal (Reference Image 1) */}
+      <CharacterStudioModal
+        isOpen={characterModalOpen}
+        onClose={() => setCharacterModalOpen(false)}
+        activeCharacter={activeCharacter}
+        onSelectCharacter={(char) => setActiveCharacter(char)}
+        onUnlockCharacter={() => setActiveCharacter(null)}
+      />
+
+      {/* Video Precision Editor Modal */}
+      {editorModalOpen && (
+        <VideoEditorModal
+          isOpen={editorModalOpen}
+          onClose={() => setEditorModalOpen(false)}
+          videoUrl={editorVideoUrl || (result?.url ? getMediaUrl(result.url) : "")}
+          filename={editorVideoFile?.name || result?.filename || "video.mp4"}
+          onSaved={(newAsset) => {
+            setResult(newAsset);
+            setEditorModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

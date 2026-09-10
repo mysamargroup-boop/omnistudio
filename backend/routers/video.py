@@ -5,13 +5,16 @@ from pathlib import Path
 from limiter import limiter
 import uuid
 import asyncio
+import shutil
 import logging
 from config import settings
 from services.replicate_service import generate_video_from_image, generate_flux_image
 from services.openai_service import generate_openai_image
-from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion
+from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion, get_media_duration
 from services.director_agent import direct_video_prompt
 from services.video_editor_service import edit_video
+from services.security_service import sanitize_filename
+from database import db_save_asset
 
 logger = logging.getLogger("omnistudio.video")
 
@@ -66,6 +69,9 @@ class VideoRequest(BaseModel):
     loop: bool = False
     seed: Optional[int] = None
     model: str = "ffmpeg_local"
+    character_prompt: Optional[str] = None
+    character_image: Optional[str] = None
+    character_name: Optional[str] = None
 
     @field_validator("duration")
     @classmethod
@@ -754,3 +760,60 @@ async def edit_video_endpoint(req: EditVideoRequest, request: Request):
         chroma_bg_path=req.chroma_bg_path
     )
     return res
+
+
+@router.post("/upload")
+@limiter.limit("20/minute")
+async def upload_video(request: Request, file: UploadFile = File(...)):
+    """Upload an existing video file, preserving original name and registering in Vault"""
+    allowed_exts = {".mp4", ".webm", ".mov", ".mkv"}
+    raw_name = file.filename or "uploaded_video.mp4"
+    clean_name = sanitize_filename(raw_name)
+    ext = Path(clean_name).suffix.lower()
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail=f"Unsupported video format. Allowed: {sorted(allowed_exts)}")
+
+    dest_dir = settings.VIDEOS_PATH
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    base_stem = Path(clean_name).stem
+    target_filename = clean_name
+    counter = 1
+    while (dest_dir / target_filename).exists():
+        target_filename = f"{base_stem}_{counter}{ext}"
+        counter += 1
+
+    dest_path = dest_dir / target_filename
+    with open(dest_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    stat = dest_path.stat()
+    asset_id = f"asset_{uuid.uuid4().hex[:12]}"
+    url = f"/outputs/videos/{target_filename}"
+
+    # Calculate duration
+    duration = await asyncio.to_thread(get_media_duration, dest_path)
+
+    db_save_asset(
+        asset_id=asset_id,
+        project_id=None,
+        asset_type="videos",
+        filename=target_filename,
+        url=url,
+        local_path=str(dest_path),
+        storage_provider="local",
+        size_bytes=stat.st_size,
+        mime_type=file.content_type or f"video/{ext.lstrip('.')}",
+        metadata={"original_name": raw_name, "duration": duration, "uploaded": True}
+    )
+
+    return {
+        "success": True,
+        "filename": target_filename,
+        "original_name": raw_name,
+        "url": url,
+        "duration": duration,
+        "size_bytes": stat.st_size,
+        "size_mb": round(stat.st_size / (1024 * 1024), 2)
+    }
+

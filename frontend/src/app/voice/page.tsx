@@ -440,18 +440,18 @@ export default function VoiceStudioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#06060a] text-zinc-950 dark:text-zinc-50 flex flex-col p-6 font-jakarta">
+    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#06060a] text-zinc-950 dark:text-zinc-50 flex flex-col p-4 sm:p-6 font-jakarta">
       
       {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-2 text-xs font-mono tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">
+          <div className="flex items-center gap-2 mb-1 text-xs font-mono tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">
             <Mic size={14} className="text-violet-500" />
             <span>ACOUSTIC SUITE 5.0 • NEURAL SPEECH + VOICE CHANGE + TRANSLATE</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-heading font-medium tracking-tight">Audio Production Studio</h1>
+          <h1 className="text-2xl sm:text-3xl font-heading font-medium tracking-tight">Audio Production Studio</h1>
         </div>
-        <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] px-3 py-1.5 rounded-full shadow-sm text-xs font-mono tracking-widest text-zinc-500">
+        <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] px-3 py-1.5 rounded-full shadow-sm text-xs font-mono tracking-widest text-zinc-500 whitespace-nowrap shrink-0">
           <Sparkles size={12} className="text-violet-500" />
           <span>ENGINES: ELEVENLABS + EDGE NEURAL + OPENAI + SEED AUDIO</span>
         </div>
@@ -459,11 +459,11 @@ export default function VoiceStudioPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         
-        {/* LEFT PANEL: CONTROLS */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
+        {/* LEFT PANEL: CONTROLS (Compact & Fixed - No Scroll Needed) */}
+        <div className="lg:col-span-5 flex flex-col gap-3 lg:sticky lg:top-4 self-start max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar">
           
-          {/* Tabs */}
-          <div className="bg-zinc-100 dark:bg-[#0d0d14] p-1 rounded-xl flex gap-1 w-full max-w-md border border-black/[0.06] dark:border-white/[0.06]">
+          {/* Tabs - Single Line Non-Wrapping */}
+          <div className="bg-zinc-100 dark:bg-[#0d0d14] p-1 rounded-xl flex flex-nowrap whitespace-nowrap gap-1 w-full border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto scrollbar-hide">
             {[
               { id: 'tts', label: 'Text to Speech', icon: FileText },
               { id: 'voice_change', label: 'Voice Change', icon: RefreshCw },
@@ -473,24 +473,24 @@ export default function VoiceStudioPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as Mode)}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ease-out cursor-pointer",
+                  "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                   activeTab === tab.id
-                    ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm"
+                    ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-xs font-bold border border-violet-200 dark:border-violet-500/20"
                     : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04]"
                 )}
               >
-                <tab.icon size={16} />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <tab.icon size={14} />
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
 
-          <div className="rounded-2xl p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] shadow-sm flex-1">
+          <div className="rounded-2xl p-4 sm:p-5 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] shadow-sm flex-1">
             
             {/* TAB 1: TEXT TO SPEECH */}
             {activeTab === 'tts' && (
-              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-end">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Script Content</label>
                     <div className="flex items-center gap-3 text-[10px] text-zinc-400 font-mono">
@@ -502,14 +502,14 @@ export default function VoiceStudioPage() {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Enter the text you want to synthesize into speech..."
-                    className="w-full h-40 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-4 text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all"
+                    className="w-full h-24 sm:h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs sm:text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all leading-relaxed"
                   />
-                  <div className="flex gap-2 mt-1 overflow-x-auto pb-2 scrollbar-hide custom-scrollbar">
+                  <div className="flex gap-1.5 mt-0.5 overflow-x-auto pb-1 scrollbar-hide custom-scrollbar">
                     {SAMPLE_SCRIPTS.map((script, idx) => (
                       <button 
                         key={idx}
                         onClick={() => setText(script)}
-                        className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-xs text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer"
+                        className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer"
                       >
                         Sample {idx + 1}
                       </button>
@@ -517,8 +517,8 @@ export default function VoiceStudioPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Provider</label>
                     <Dropdown 
                       options={PROVIDERS} 
@@ -527,7 +527,7 @@ export default function VoiceStudioPage() {
                       className="w-full"
                     />
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Model Engine</label>
                     <Dropdown 
                       options={MODELS} 
@@ -538,8 +538,8 @@ export default function VoiceStudioPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Voice Persona</label>
                     <Dropdown 
                       options={VOICES[ttsProvider as keyof typeof VOICES] || VOICES.elevenlabs} 
@@ -548,9 +548,9 @@ export default function VoiceStudioPage() {
                       className="w-full"
                     />
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Pacing</label>
-                    <div className="flex bg-zinc-50 dark:bg-white/[0.04] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08] h-10">
+                    <div className="flex bg-zinc-50 dark:bg-white/[0.04] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08] h-9">
                       {['0.8', '1.0', '1.2', '1.5'].map(speed => (
                         <button
                           key={speed}
@@ -558,7 +558,7 @@ export default function VoiceStudioPage() {
                           className={cn(
                             "flex-1 rounded-lg text-xs font-mono font-medium transition-colors cursor-pointer",
                             pacing === speed 
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm" 
+                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-xs font-bold" 
                               : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
                           )}
                         >
@@ -569,14 +569,14 @@ export default function VoiceStudioPage() {
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4">
+                <div className="pt-2">
                   <button 
                     onClick={requestVoiceConfirm}
                     disabled={isGenerating || text.trim().length === 0}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-3 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-2.5 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
-                    {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                    {isGenerating ? 'Synthesizing...' : 'Generate Voice'}
+                    {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                    <span>{isGenerating ? 'Synthesizing...' : 'Generate Voice'}</span>
                   </button>
                 </div>
               </div>
@@ -584,25 +584,25 @@ export default function VoiceStudioPage() {
 
             {/* TAB 2: VOICE CHANGE */}
             {activeTab === 'voice_change' && (
-              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Source Audio/Video</label>
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-300 dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-400 rounded-xl transition-colors cursor-pointer bg-zinc-50/50 dark:bg-white/[0.02]">
-                    <Upload size={24} className="text-zinc-400 mb-2 group-hover:text-violet-500" />
-                    <span className="text-sm text-zinc-600 dark:text-zinc-300">Click to upload or drag and drop</span>
-                    <span className="text-xs text-zinc-400 font-mono mt-1">MP3, WAV, MP4 up to 50MB</span>
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-300 dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-400 rounded-xl transition-colors cursor-pointer bg-zinc-50/50 dark:bg-white/[0.02] p-2">
+                    <Upload size={18} className="text-zinc-400 mb-1" />
+                    <span className="text-xs text-zinc-600 dark:text-zinc-300 font-medium">Click to upload or drag and drop</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">MP3, WAV, MP4 up to 50MB</span>
                     <input type="file" className="hidden" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
                   </label>
                   {uploadFile && (
-                    <div className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-white/[0.04] p-3 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
+                    <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-white/[0.04] p-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
                       <Music size={14} className="text-violet-500" />
-                      <span className="truncate flex-1">{uploadFile.name}</span>
+                      <span className="truncate flex-1 font-mono">{uploadFile.name}</span>
                       <Check size={14} className="text-green-500" />
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Target Voice</label>
                   <Dropdown 
                     options={VOICES.elevenlabs} 
@@ -612,27 +612,27 @@ export default function VoiceStudioPage() {
                   />
                 </div>
 
-                <label className="flex items-center gap-3 p-4 border border-black/[0.08] dark:border-white/[0.08] rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors">
+                <label className="flex items-center gap-2.5 p-2.5 border border-black/[0.08] dark:border-white/[0.08] rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors">
                   <input 
                     type="checkbox" 
                     checked={vcIsVideo}
                     onChange={(e) => setVcIsVideo(e.target.checked)}
-                    className="w-4 h-4 text-violet-600 bg-zinc-50 border-zinc-300 rounded focus:ring-violet-500/30 dark:focus:ring-violet-500/30 focus:ring-2 dark:bg-white/[0.04] dark:border-white/[0.1]"
+                    className="w-4 h-4 text-violet-600 bg-zinc-50 border-zinc-300 rounded focus:ring-violet-500/30"
                   />
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Input is video file</span>
-                    <span className="text-xs text-zinc-500">Extracts audio, processes, and remuxes back to video</span>
+                    <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100 font-heading">Input is video file</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">Extracts audio, processes, and remuxes back to video</span>
                   </div>
                 </label>
 
-                <div className="mt-auto pt-4">
+                <div className="pt-2">
                   <button 
                     onClick={requestVoiceChangeConfirm}
                     disabled={isGenerating || !uploadFile}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-3 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-2.5 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
-                    {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                    {isGenerating ? 'Processing...' : 'Transform Voice'}
+                    {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                    <span>{isGenerating ? 'Processing...' : 'Transform Voice'}</span>
                   </button>
                 </div>
               </div>
@@ -640,68 +640,67 @@ export default function VoiceStudioPage() {
 
             {/* TAB 3: TRANSLATE / LIP-SYNC */}
             {activeTab === 'translate' && (
-              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-2">
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Source</label>
                     <Dropdown options={LANGUAGES} value={sourceLang} onChange={setSourceLang} />
                   </div>
-                  <div className="mt-6 flex items-center justify-center text-zinc-400 w-8 h-8 rounded-full bg-zinc-50 dark:bg-white/[0.04]">
-                    <ArrowRightLeft size={14} />
+                  <div className="mt-4 flex items-center justify-center text-zinc-400 w-7 h-7 rounded-full bg-zinc-50 dark:bg-white/[0.04]">
+                    <ArrowRightLeft size={13} />
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Target</label>
                     <Dropdown options={LANGUAGES} value={targetLang} onChange={setTargetLang} />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Original Text</label>
                   <textarea 
                     value={transText}
                     onChange={(e) => setTransText(e.target.value)}
                     placeholder="Enter text to translate and dub..."
-                    className="w-full h-24 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-4 text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all"
+                    className="w-full h-20 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all leading-relaxed"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">TTS Provider</label>
                     <Dropdown options={PROVIDERS} value={transTtsProvider} onChange={setTransTtsProvider} />
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Output Voice</label>
                     <Dropdown options={VOICES[transTtsProvider as keyof typeof VOICES] || VOICES.openai} value={transVoice} onChange={setTransVoice} />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Video Path (Optional for Lip-sync)</label>
                   <input 
                     type="text"
                     value={videoPath}
                     onChange={(e) => setVideoPath(e.target.value)}
                     placeholder="/path/to/local/video.mp4"
-                    className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
+                    className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/30 font-mono transition-all"
                   />
                 </div>
 
-                <div className="mt-auto pt-4 flex gap-3">
+                <div className="pt-2 flex gap-2">
                   <button 
                     onClick={() => requestTranslateConfirm(false)}
                     disabled={isGenerating || transText.trim().length === 0}
-                    className="flex-1 bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-900 dark:text-zinc-100 py-3 rounded-xl font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0"
+                    className="flex-1 bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-900 dark:text-zinc-100 py-2.5 rounded-xl text-xs font-mono font-medium transition-transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0"
                   >
                     Translate Text
                   </button>
                   <button 
                     onClick={() => requestTranslateConfirm(true)}
                     disabled={isGenerating || transText.trim().length === 0}
-                    className="flex-[2] flex items-center justify-center gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-3 rounded-xl font-bold font-heading text-xs tracking-tight transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
+                    className="flex-1 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 py-2.5 rounded-xl font-bold font-heading text-xs transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
                   >
-                    {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Languages size={18} />}
-                    {isGenerating ? 'Processing...' : 'Translate & Dub'}
+                    Translate & Dub
                   </button>
                 </div>
               </div>

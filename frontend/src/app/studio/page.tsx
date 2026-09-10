@@ -496,15 +496,15 @@ function StudioContent() {
       <div className="space-y-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Engine Master Switch Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] rounded-xl">
+          <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100/90 dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl overflow-x-auto custom-scrollbar flex-nowrap whitespace-nowrap">
             <button
               type="button"
               onClick={() => setMasterMode("video")}
               className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                 masterMode === "video"
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs border border-transparent font-bold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-transparent font-bold"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
               )}
             >
               <Video className="w-3.5 h-3.5" />
@@ -515,10 +515,10 @@ function StudioContent() {
               type="button"
               onClick={() => setMasterMode("image")}
               className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                 masterMode === "image"
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs border border-transparent font-bold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-transparent font-bold"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
               )}
             >
               <ImageIcon className="w-3.5 h-3.5" />
@@ -529,14 +529,23 @@ function StudioContent() {
               type="button"
               onClick={() => setMasterMode("voice")}
               className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                 masterMode === "voice"
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs border border-transparent font-bold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-transparent font-bold"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
               )}
             >
               <Mic className="w-3.5 h-3.5" />
               <span>Voice Studio</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/pipeline")}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            >
+              <Film className="w-3.5 h-3.5 text-violet-500" />
+              <span>Cinema Agent</span>
             </button>
           </div>
 
@@ -674,8 +683,8 @@ function StudioContent() {
         </div>
       </div>
 
-      {/* Center Viewport / Canvas (Adapts dynamically to Mode) */}
-      <div className="flex-1 flex flex-col justify-center items-center py-6 px-4 w-full max-w-5xl mx-auto">
+      {/* Center Viewport / Canvas (Adapts dynamically to Mode with Smooth Transition) */}
+      <div key={masterMode} className="flex-1 flex flex-col justify-center items-center py-6 px-4 w-full max-w-5xl mx-auto tab-content-enter">
         {/* Loading Progress State */}
         {loading && (
           <div className="w-full max-w-2xl py-12 space-y-6 animate-in fade-in duration-200">

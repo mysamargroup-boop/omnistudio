@@ -152,8 +152,8 @@ const INSPIRATION_PROMPTS = [
 export default function ImageStudioPage() {
   const router = useRouter();
 
-  // Studio Mode: 'text_to_image' | 'image_variations'
-  const [studioMode, setStudioMode] = useState<"text_to_image" | "image_variations">("text_to_image");
+  // Studio Mode: 'text_to_image' | 'image_variations' | 'image_editor'
+  const [studioMode, setStudioMode] = useState<"text_to_image" | "image_variations" | "image_editor">("text_to_image");
 
   // Core Prompt & Settings
   const [prompt, setPrompt] = useState("");
@@ -202,9 +202,24 @@ export default function ImageStudioPage() {
   const [variationsResult, setVariationsResult] = useState<any>(null);
   const [loadingVariations, setLoadingVariations] = useState(false);
 
+  // Image Precision Editor State
+  const [editorImageFile, setEditorImageFile] = useState<File | null>(null);
+  const [editorImageUrl, setEditorImageUrl] = useState<string>("");
+  const [editorBrightness, setEditorBrightness] = useState<number>(0); // -50 to 50
+  const [editorContrast, setEditorContrast] = useState<number>(0); // -50 to 50
+  const [editorSaturation, setEditorSaturation] = useState<number>(0); // -50 to 50
+  const [editorSharpness, setEditorSharpness] = useState<number>(0); // 0 to 100
+  const [editorFilter, setEditorFilter] = useState<string>("none"); // none, cinematic, noir, cyberpunk, vintage, editorial
+  const [editorCropRatio, setEditorCropRatio] = useState<string>("original"); // original, 16:9, 9:16, 1:1, 4:3
+  const [editorUpscale, setEditorUpscale] = useState<boolean>(false);
+  const [uploadingEditorImage, setUploadingEditorImage] = useState<boolean>(false);
+  const [processingImageEdit, setProcessingImageEdit] = useState<boolean>(false);
+  const editorFileInputRef = useRef<HTMLInputElement>(null);
+  const quickUploadInputRef = useRef<HTMLInputElement>(null);
+
   // Vault Picker Modal State
   const [vaultOpen, setVaultOpen] = useState(false);
-  const [vaultImages, setVaultImages] = useState<string[]>([]);
+  const [vaultImages, setVaultImages] = useState<any[]>([]);
   const [loadingVault, setLoadingVault] = useState(false);
 
   // Safeguard Confirmation Modal State
@@ -528,6 +543,53 @@ export default function ImageStudioPage() {
     setUploadingRef(false);
   };
 
+  // Upload image for precision editing
+  const handleEditorImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingEditorImage(true);
+    try {
+      const res = await api.uploadImage(file);
+      const url = res?.url || (typeof res === "string" ? res : "");
+      if (url) {
+        setEditorImageUrl(url);
+        setEditorImageFile(file);
+        setStudioMode("image_editor");
+      }
+    } catch (err) {
+      console.error("Failed to upload image for editing:", err);
+    } finally {
+      setUploadingEditorImage(false);
+    }
+  };
+
+  // Apply edits to image
+  const handleApplyImageEdit = async () => {
+    if (!editorImageUrl) return;
+    setProcessingImageEdit(true);
+    try {
+      const res = await api.editImage({
+        image_path: editorImageUrl,
+        brightness: editorBrightness,
+        contrast: editorContrast,
+        saturation: editorSaturation,
+        sharpness: editorSharpness,
+        filter: editorFilter,
+        aspect_ratio: editorCropRatio !== "original" ? editorCropRatio : undefined,
+        upscale: editorUpscale,
+      });
+      if (res && res.success) {
+        setResult(res);
+        setEditorImageUrl(res.url);
+      } else {
+        alert(res?.error || "Image edit failed");
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to process image edit");
+    } finally {
+      setProcessingImageEdit(false);
+    }
+  };
+
   // Open Vault Picker Modal
   const openVaultPicker = async () => {
     setVaultOpen(true);
@@ -611,9 +673,51 @@ export default function ImageStudioPage() {
             <Grid className="w-3.5 h-3.5" />
             <span>Image Variations</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setStudioMode("image_editor")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              studioMode === "image_editor"
+                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+            )}
+          >
+            <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Image Editor</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+              STUDIO
+            </span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick Image Upload Button */}
+          <input
+            ref={quickUploadInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleEditorImageUpload(f);
+              e.target.value = "";
+            }}
+            disabled={uploadingEditorImage}
+          />
+          <button
+            type="button"
+            onClick={() => quickUploadInputRef.current?.click()}
+            disabled={uploadingEditorImage}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+          >
+            {uploadingEditorImage ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+            ) : (
+              <Upload className="w-3.5 h-3.5 text-emerald-500" />
+            )}
+            <span>{uploadingEditorImage ? "Uploading..." : "Upload Image"}</span>
+          </button>
           <button
             type="button"
             onClick={() => setHowItWorksOpen(true)}
@@ -749,6 +853,19 @@ export default function ImageStudioPage() {
 
               {/* Floating Actions on Canvas Bottom */}
               <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-95 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditorImageUrl(currentDisplayImage.url);
+                    setStudioMode("image_editor");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                  title="Open in Precision Image Editor"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Edit Image</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
@@ -911,8 +1028,283 @@ export default function ImageStudioPage() {
           </div>
         )}
 
+        {/* State E: Image Precision Editor */}
+        {studioMode === "image_editor" && (
+          <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-emerald-500" />
+                <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                  Precision Image Editor & Enhancer
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={editorFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleEditorImageUpload(f);
+                    e.target.value = "";
+                  }}
+                  disabled={uploadingEditorImage}
+                />
+                <button
+                  type="button"
+                  onClick={() => editorFileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  Upload New
+                </button>
+                <button
+                  type="button"
+                  onClick={openVaultPicker}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  Pick from Vault
+                </button>
+              </div>
+            </div>
+
+            {editorImageUrl ? (
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                {/* Image Live Viewport */}
+                <div className="md:col-span-7 space-y-3">
+                  <div className="relative rounded-2xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black shadow-lg flex items-center justify-center min-h-[380px] max-h-[500px]">
+                    <img
+                      src={getMediaUrl(editorImageUrl)}
+                      alt="Editor Preview"
+                      style={{
+                        filter: `brightness(${100 + editorBrightness}%) contrast(${100 + editorContrast}%) saturate(${100 + editorSaturation}%) ${
+                          editorFilter === "noir"
+                            ? "grayscale(100%) contrast(120%)"
+                            : editorFilter === "vintage"
+                            ? "sepia(70%) contrast(90%)"
+                            : editorFilter === "cyberpunk"
+                            ? "hue-rotate(280deg) saturate(180%)"
+                            : editorFilter === "cinematic"
+                            ? "contrast(115%) saturate(125%)"
+                            : ""
+                        }`,
+                      }}
+                      className="w-full h-full object-contain max-h-[500px] transition-all duration-150"
+                    />
+                    <div className="absolute top-3 left-3 text-[10px] font-mono px-2 py-0.5 rounded bg-black/80 text-white backdrop-blur-sm">
+                      {editorFilter.toUpperCase()} • B:{editorBrightness > 0 ? `+${editorBrightness}` : editorBrightness}% • C:{editorContrast > 0 ? `+${editorContrast}` : editorContrast}%
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-1 font-mono text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorBrightness(0);
+                        setEditorContrast(0);
+                        setEditorSaturation(0);
+                        setEditorSharpness(0);
+                        setEditorFilter("none");
+                        setEditorCropRatio("original");
+                      }}
+                      className="text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                    >
+                      Reset Adjustments
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/video?image=${encodeURIComponent(editorImageUrl)}`)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer font-bold"
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      <span>Animate to Video</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Editor Adjustments Sidebar */}
+                <div className="md:col-span-5 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-5 space-y-4 shadow-sm font-jakarta">
+                  {/* Preset Filters */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                      Color Filter LUT
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { id: "none", label: "Original" },
+                        { id: "cinematic", label: "Cinematic" },
+                        { id: "noir", label: "B&W Noir" },
+                        { id: "cyberpunk", label: "Cyberpunk" },
+                        { id: "vintage", label: "Vintage" },
+                        { id: "editorial", label: "Editorial" },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setEditorFilter(f.id)}
+                          className={cn(
+                            "px-2.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer truncate",
+                            editorFilter === f.id
+                              ? "bg-emerald-500 text-zinc-950 font-bold shadow-xs"
+                              : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200"
+                          )}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sliders */}
+                  <div className="space-y-3 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <span>Brightness</span>
+                        <span>{editorBrightness > 0 ? `+${editorBrightness}` : editorBrightness}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={editorBrightness}
+                        onChange={(e) => setEditorBrightness(Number(e.target.value))}
+                        className="w-full accent-emerald-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <span>Contrast</span>
+                        <span>{editorContrast > 0 ? `+${editorContrast}` : editorContrast}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={editorContrast}
+                        onChange={(e) => setEditorContrast(Number(e.target.value))}
+                        className="w-full accent-emerald-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <span>Saturation</span>
+                        <span>{editorSaturation > 0 ? `+${editorSaturation}` : editorSaturation}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-50"
+                        max="50"
+                        value={editorSaturation}
+                        onChange={(e) => setEditorSaturation(Number(e.target.value))}
+                        className="w-full accent-emerald-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <span>Sharpness</span>
+                        <span>{editorSharpness}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={editorSharpness}
+                        onChange={(e) => setEditorSharpness(Number(e.target.value))}
+                        className="w-full accent-emerald-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Crop / Reformat Aspect Ratio */}
+                  <div className="space-y-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                      Reformat Canvas
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5 text-xs font-mono">
+                      {["original", "16:9", "9:16", "1:1"].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setEditorCropRatio(r)}
+                          className={cn(
+                            "py-1.5 rounded-lg border text-center transition-all cursor-pointer uppercase",
+                            editorCropRatio === r
+                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold border-transparent"
+                              : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                          )}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Upscale Toggle */}
+                  <div className="flex items-center justify-between pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div>
+                      <span className="text-xs font-bold text-zinc-900 dark:text-white block font-heading">
+                        AI Super-Resolution 4K
+                      </span>
+                      <span className="text-[10px] font-mono text-zinc-500">Sharpen micro-textures & skin details</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={editorUpscale}
+                      onChange={(e) => setEditorUpscale(e.target.checked)}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="button"
+                    onClick={handleApplyImageEdit}
+                    disabled={processingImageEdit}
+                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs tracking-tight shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {processingImageEdit ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Rendering Edits...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Save & Export to Vault</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => editorFileInputRef.current?.click()}
+                className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl aspect-video flex flex-col items-center justify-center gap-3 p-10 cursor-pointer transition-colors bg-zinc-50/50 dark:bg-zinc-900/50 max-w-xl mx-auto"
+              >
+                {uploadingEditorImage ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                ) : (
+                  <Upload className="h-8 w-8 text-emerald-500" />
+                )}
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                    {uploadingEditorImage ? "Uploading Image..." : "Click or drag an image here to edit"}
+                  </p>
+                  <p className="text-xs text-zinc-400 font-mono">
+                    PNG, JPG, WEBP • Adjust lighting, apply film LUTs & upscale
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* State D: Idle Showcase Hero */}
-        {!loading && !loadingVariations && !result && !variationsResult && (
+        {!loading && !loadingVariations && !result && !variationsResult && studioMode !== "image_editor" && (
           <div className="w-full flex flex-col items-center justify-center text-center space-y-6 py-6 animate-in fade-in duration-300">
             {/* Visual Overlapping Gallery Cards */}
             <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 overflow-hidden max-w-md sm:max-w-xl mx-auto">

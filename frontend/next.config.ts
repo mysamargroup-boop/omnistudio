@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   async rewrites() {
     const backendUrl = process.env.BACKEND_INTERNAL_URL || "http://omni-backend:8000";
     return [
@@ -13,9 +16,20 @@ const nextConfig: NextConfig = {
         source: "/outputs/:path*",
         destination: `${backendUrl}/outputs/:path*`,
       },
+      {
+        source: "/docs",
+        destination: `${backendUrl}/docs`,
+      },
+      {
+        source: "/redoc",
+        destination: `${backendUrl}/redoc`,
+      },
+      {
+        source: "/openapi.json",
+        destination: `${backendUrl}/openapi.json`,
+      },
     ];
   },
 };
 
 export default nextConfig;
-

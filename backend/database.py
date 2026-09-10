@@ -721,6 +721,40 @@ def db_get_api_keys() -> dict[str, str]:
         db_logger.error("[SQLite api_keys Fetch Error] %s", e)
     return keys_dict
 
+def db_rename_asset(old_filename: str, new_filename: str, media_type: str = "images") -> bool:
+    """Rename an asset record across local SQLite and Supabase Cloud"""
+    # 1. Supabase Cloud Sync
+    if is_supabase():
+        try:
+            encoded_old = urllib.parse.quote(old_filename)
+            new_url = f"/outputs/{media_type}/{new_filename}"
+            supabase_rest_request(f"assets?filename=eq.{encoded_old}", method="PATCH", data={
+                "filename": new_filename,
+                "url": new_url
+            })
+        except Exception as e:
+            db_logger.warning("[Supabase Warning] Asset rename sync: %s", e)
+
+    # 2. Local SQLite Sync
+    try:
+        with db_session() as conn:
+            cur = conn.cursor()
+            new_url = f"/outputs/{media_type}/{new_filename}"
+            cur.execute("UPDATE assets SET filename = ?, url = ? WHERE filename = ?", (new_filename, new_url, old_filename))
+            try:
+                cur.execute("UPDATE asset_favorites SET filename = ? WHERE filename = ?", (new_filename, old_filename))
+            except Exception:
+                pass
+            try:
+                cur.execute("UPDATE asset_collection_items SET filename = ? WHERE filename = ?", (new_filename, old_filename))
+            except Exception:
+                pass
+            conn.commit()
+            return True
+    except Exception as e:
+        db_logger.error("[SQLite Error] Rename asset: %s", e)
+        return False
+
 def load_settings_into_runtime():
     """
     Sync API keys with resilient hierarchy:

@@ -23,8 +23,8 @@ def sanitize_filename(filename: str) -> str:
     base = base.replace("\x00", "")
     # Remove traversal sequences
     base = base.replace("..", "")
-    # Whitelist characters: a-zA-Z0-9, dot, underscore, dash
-    clean = re.sub(r'[^a-zA-Z0-9._-]', '_', base)
+    # Whitelist characters: a-zA-Z0-9, dot, underscore, dash, spaces, parentheses, comma
+    clean = re.sub(r'[^a-zA-Z0-9._\-\s\(\),]', '_', base)
     # Ensure not starting with a dot (hidden file) or empty
     clean = clean.lstrip(".")
     if not clean:

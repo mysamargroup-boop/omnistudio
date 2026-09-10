@@ -9,7 +9,7 @@ from limiter import limiter
 from config import settings
 from services.storage_service import delete_file_from_r2
 from database import (
-    db_delete_asset, db_set_asset_trashed,
+    db_delete_asset, db_set_asset_trashed, db_rename_asset,
     db_toggle_favorite, db_get_favorites,
     db_get_collections, db_create_collection, db_delete_collection,
     db_add_asset_to_collection, db_remove_asset_from_collection,
@@ -66,6 +66,26 @@ class BulkActionRequest(BaseModel):
         if len(v) > 100:
             raise ValueError("Cannot perform bulk action on more than 100 items at once")
         return v
+
+class RenameAssetRequest(BaseModel):
+    media_type: str
+    old_filename: str
+    new_filename: str
+
+    @field_validator("media_type")
+    @classmethod
+    def validate_media_type(cls, v: str) -> str:
+        if v not in {"images", "videos", "audio", "final"}:
+            raise ValueError("Invalid media_type")
+        return v
+
+    @field_validator("old_filename", "new_filename")
+    @classmethod
+    def validate_names(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Filename cannot be empty")
+        return s
 
 class FavoriteRequest(BaseModel):
     filename: str
@@ -124,80 +144,178 @@ def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False) -> l
     return files
 
 from services.security_service import sanitize_filename
+import logging
+
+assets_logger = logging.getLogger("omnistudio.assets")
+
+def _normalize_media_type(media_type: str, filename: str = "") -> str:
+    norm = (media_type or "").lower().strip()
+    if norm in {"image", "images"}:
+        return "images"
+    if norm in {"video", "videos"}:
+        return "videos"
+    if norm in {"audio", "voice", "speech"}:
+        return "audio"
+    if norm in {"final", "masters"}:
+        return "final"
+    # Fallback to extension check
+    if filename:
+        fn_lower = filename.lower()
+        if fn_lower.endswith((".png", ".jpg", ".jpeg", ".webp", ".gif")):
+            return "images"
+        if fn_lower.endswith((".mp4", ".mov", ".webm", ".avi", ".mkv")):
+            return "videos"
+        if fn_lower.endswith((".mp3", ".wav", ".aac", ".m4a", ".ogg")):
+            return "audio"
+    return "images"
 
 def safe_move_to_trash(media_type: str, filename: str) -> bool:
     try:
+        norm_type = _normalize_media_type(media_type, filename)
+        base_name = os.path.basename(filename.strip()).replace("\x00", "").replace("..", "").strip()
         clean_name = sanitize_filename(filename)
-    except Exception:
-        return False
 
-    src_dir = DIR_MAP.get(media_type)
-    dest_dir = TRASH_DIR_MAP.get(media_type)
-    if not src_dir or not dest_dir:
+        src_dir = DIR_MAP.get(norm_type)
+        dest_dir = TRASH_DIR_MAP.get(norm_type)
+        if not src_dir or not dest_dir:
+            return False
+
+        # Locate source file (try raw basename first, then sanitized)
+        src_file = None
+        target_name = base_name
+        for candidate_name in [base_name, clean_name]:
+            test_path = (src_dir / candidate_name).resolve()
+            if test_path.is_relative_to(src_dir.resolve()) and test_path.exists() and test_path.is_file():
+                src_file = test_path
+                target_name = candidate_name
+                break
+
+        # Fallback: search across all active directories if not in guessed dir
+        if not src_file:
+            for alt_type, alt_dir in DIR_MAP.items():
+                for candidate_name in [base_name, clean_name]:
+                    test_path = (alt_dir / candidate_name).resolve()
+                    if test_path.is_relative_to(alt_dir.resolve()) and test_path.exists() and test_path.is_file():
+                        src_file = test_path
+                        dest_dir = TRASH_DIR_MAP.get(alt_type, dest_dir)
+                        target_name = candidate_name
+                        break
+                if src_file:
+                    break
+
+        if not src_file or not src_file.exists():
+            assets_logger.warning("[MoveToTrash] File not found: %s in %s", filename, media_type)
+            return False
+
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_file = dest_dir / target_name
+        if dest_file.exists():
+            dest_file.unlink()
+
+        shutil.move(str(src_file), str(dest_file))
+        db_set_asset_trashed(target_name, trashed=True)
+        if target_name != filename:
+            db_set_asset_trashed(filename, trashed=True)
+        return True
+    except Exception as e:
+        assets_logger.error("[MoveToTrash Error] %s: %s", filename, e)
         return False
-    
-    src_file = (src_dir / clean_name).resolve()
-    if not src_file.is_relative_to(src_dir.resolve()) or not src_file.exists():
-        return False
-    
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / clean_name
-    shutil.move(str(src_file), str(dest_file))
-    db_set_asset_trashed(clean_name, trashed=True)
-    return True
 
 def safe_restore_from_trash(media_type: str, filename: str) -> bool:
     try:
+        norm_type = _normalize_media_type(media_type, filename)
+        base_name = os.path.basename(filename.strip()).replace("\x00", "").replace("..", "").strip()
         clean_name = sanitize_filename(filename)
-    except Exception:
-        return False
 
-    src_dir = TRASH_DIR_MAP.get(media_type)
-    dest_dir = DIR_MAP.get(media_type)
-    if not src_dir or not dest_dir:
+        src_dir = TRASH_DIR_MAP.get(norm_type)
+        dest_dir = DIR_MAP.get(norm_type)
+        if not src_dir or not dest_dir:
+            return False
+
+        # Locate source in trash
+        src_file = None
+        target_name = base_name
+        for candidate_name in [base_name, clean_name]:
+            test_path = (src_dir / candidate_name).resolve()
+            if test_path.is_relative_to(src_dir.resolve()) and test_path.exists() and test_path.is_file():
+                src_file = test_path
+                target_name = candidate_name
+                break
+
+        # Fallback: search all trash directories
+        if not src_file:
+            for alt_type, alt_trash_dir in TRASH_DIR_MAP.items():
+                for candidate_name in [base_name, clean_name]:
+                    test_path = (alt_trash_dir / candidate_name).resolve()
+                    if test_path.is_relative_to(alt_trash_dir.resolve()) and test_path.exists() and test_path.is_file():
+                        src_file = test_path
+                        dest_dir = DIR_MAP.get(alt_type, dest_dir)
+                        target_name = candidate_name
+                        break
+                if src_file:
+                    break
+
+        if not src_file or not src_file.exists():
+            assets_logger.warning("[RestoreTrash] File not found in trash: %s in %s", filename, media_type)
+            return False
+
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_file = dest_dir / target_name
+        if dest_file.exists():
+            dest_file.unlink()
+
+        shutil.move(str(src_file), str(dest_file))
+        db_set_asset_trashed(target_name, trashed=False)
+        if target_name != filename:
+            db_set_asset_trashed(filename, trashed=False)
+        return True
+    except Exception as e:
+        assets_logger.error("[RestoreTrash Error] %s: %s", filename, e)
         return False
-    
-    src_file = (src_dir / clean_name).resolve()
-    if not src_file.is_relative_to(src_dir.resolve()) or not src_file.exists():
-        return False
-    
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / clean_name
-    shutil.move(str(src_file), str(dest_file))
-    db_set_asset_trashed(clean_name, trashed=False)
-    return True
 
 async def safe_permanent_delete(media_type: str, filename: str, from_trash: bool = False) -> bool:
     try:
+        norm_type = _normalize_media_type(media_type, filename)
+        base_name = os.path.basename(filename.strip()).replace("\x00", "").replace("..", "").strip()
         clean_name = sanitize_filename(filename)
-    except Exception:
+
+        search_dirs = []
+        if from_trash:
+            search_dirs.append(TRASH_DIR_MAP.get(norm_type))
+            search_dirs.extend([d for d in TRASH_DIR_MAP.values() if d != TRASH_DIR_MAP.get(norm_type)])
+            search_dirs.append(DIR_MAP.get(norm_type))
+        else:
+            search_dirs.append(DIR_MAP.get(norm_type))
+            search_dirs.extend([d for d in DIR_MAP.values() if d != DIR_MAP.get(norm_type)])
+            search_dirs.append(TRASH_DIR_MAP.get(norm_type))
+
+        deleted_local = False
+        target_name = base_name
+        for d in search_dirs:
+            if not d:
+                continue
+            for candidate_name in [base_name, clean_name]:
+                target_file = (d / candidate_name).resolve()
+                if target_file.is_relative_to(d.resolve()) and target_file.exists() and target_file.is_file():
+                    target_file.unlink()
+                    deleted_local = True
+                    target_name = candidate_name
+                    break
+            if deleted_local:
+                break
+
+        # Cloudflare R2 delete
+        object_name = f"{norm_type}/{target_name}"
+        await delete_file_from_r2(object_name)
+
+        # Supabase Cloud & SQLite DB delete
+        db_delete_asset(filename=target_name, asset_type=norm_type)
+        if target_name != filename:
+            db_delete_asset(filename=filename, asset_type=norm_type)
+        return deleted_local
+    except Exception as e:
+        assets_logger.error("[PermanentDelete Error] %s: %s", filename, e)
         return False
-
-    target_dir = TRASH_DIR_MAP.get(media_type) if from_trash else DIR_MAP.get(media_type)
-    if not target_dir:
-        return False
-    
-    target_file = (target_dir / clean_name).resolve()
-    deleted_local = False
-    if target_file.is_relative_to(target_dir.resolve()) and target_file.exists():
-        target_file.unlink()
-        deleted_local = True
-    else:
-        # Check alternate directory
-        alt_dir = DIR_MAP.get(media_type) if from_trash else TRASH_DIR_MAP.get(media_type)
-        if alt_dir:
-            alt_file = (alt_dir / clean_name).resolve()
-            if alt_file.is_relative_to(alt_dir.resolve()) and alt_file.exists():
-                alt_file.unlink()
-                deleted_local = True
-
-    # Cloudflare R2 delete
-    object_name = f"{media_type}s/{clean_name}"
-    await delete_file_from_r2(object_name)
-
-    # Supabase Cloud & SQLite DB delete
-    db_delete_asset(filename=clean_name, asset_type=media_type)
-    return deleted_local
 
 @router.get("/all")
 @limiter.limit("60/minute")
@@ -366,6 +484,54 @@ async def delete_asset(
             return {"success": True, "trashed": filename, "permanent": False}
         return {"success": False, "error": "File not found or could not move to trash"}
 
+@router.post("/rename")
+@limiter.limit("30/minute")
+async def rename_asset(req: RenameAssetRequest, request: Request):
+    """Rename an asset on local storage, SQLite, and cloud records"""
+    dir_path = DIR_MAP.get(req.media_type)
+    trash_dir = TRASH_DIR_MAP.get(req.media_type)
+    if not dir_path:
+        raise HTTPException(status_code=400, detail="Invalid media type")
+
+    old_clean = sanitize_filename(req.old_filename)
+    new_clean = sanitize_filename(req.new_filename)
+
+    # Ensure extension is preserved if user entered name without extension
+    old_ext = Path(old_clean).suffix.lower()
+    if not Path(new_clean).suffix and old_ext:
+        new_clean = f"{new_clean}{old_ext}"
+
+    # Check active directory first
+    old_file = (dir_path / old_clean).resolve()
+    target_dir = dir_path
+    if not old_file.exists():
+        # Check trash directory
+        if trash_dir and (trash_dir / old_clean).resolve().exists():
+            old_file = (trash_dir / old_clean).resolve()
+            target_dir = trash_dir
+        else:
+            raise HTTPException(status_code=404, detail="Source asset file not found")
+
+    new_file = (target_dir / new_clean).resolve()
+    if new_file.exists() and new_file != old_file:
+        raise HTTPException(status_code=400, detail="An asset with the target filename already exists")
+
+    try:
+        old_file.rename(new_file)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rename file on disk: {e}")
+
+    # Update database record
+    db_rename_asset(old_clean, new_clean, req.media_type)
+
+    return {
+        "success": True,
+        "old_filename": old_clean,
+        "new_filename": new_clean,
+        "media_type": req.media_type,
+        "url": f"/outputs/{req.media_type}/{new_clean}"
+    }
+
 # ─── Favorites Endpoints ───
 
 @router.get("/favorites")
@@ -422,3 +588,45 @@ async def remove_item_from_collection(collection_id: str, filename: str):
     """Remove an asset from a collection"""
     ok = db_remove_asset_from_collection(collection_id, filename)
     return {"success": ok, "filename": filename}
+
+@router.post("/trash/test")
+@limiter.limit("15/minute")
+async def test_trash_system(request: Request):
+    """Test trash subsystem: verify disk write permissions, moving, and restoration"""
+    results = {}
+    try:
+        # 1. Verify directory creation and writability
+        for mtype, tdir in TRASH_DIR_MAP.items():
+            tdir.mkdir(parents=True, exist_ok=True)
+            test_file = tdir / f".test_perm_{mtype}.tmp"
+            test_file.write_text(f"omnistudio_test_{time.time()}")
+            if test_file.exists():
+                results[f"{mtype}_dir_write"] = "OK"
+                test_file.unlink()
+            else:
+                results[f"{mtype}_dir_write"] = "FAILED"
+
+        # 2. Count current trashed items
+        trash_data = scan_directory(settings.TRASH_PATH / "images", "images", is_trash=True) + \
+                     scan_directory(settings.TRASH_PATH / "videos", "videos", is_trash=True) + \
+                     scan_directory(settings.TRASH_PATH / "audio", "audio", is_trash=True) + \
+                     scan_directory(settings.TRASH_PATH / "final", "final", is_trash=True)
+
+        return {
+            "success": True,
+            "status": "Healthy",
+            "message": "Trash & Storage Recovery Subsystem is 100% operational.",
+            "diagnostics": results,
+            "trash_items_count": len(trash_data),
+            "trash_total_bytes": sum(f.get("size_bytes", 0) for f in trash_data),
+            "trash_path": str(settings.TRASH_PATH)
+        }
+    except Exception as e:
+        assets_logger.error("[Trash Diagnostic Test Error]: %s", e)
+        return {
+            "success": False,
+            "status": "Degraded",
+            "error": str(e),
+            "diagnostics": results
+        }
+

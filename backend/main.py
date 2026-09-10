@@ -27,10 +27,53 @@ setup_structured_logging()
 app = FastAPI(
     title="OmniStudio AI",
     description="Advanced Multi-Model AI Creative Studio — Personal Edition",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    schema = get_openapi(
+        title="OmniStudio AI API",
+        version="1.0.0",
+        description="OmniStudio AI High-End Generative Studio Engine",
+        routes=app.routes,
+    )
+    schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your Studio JWT token (obtained via /api/auth/verify-pin)"
+        },
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-API-Key",
+            "description": "Enter your BACKEND_API_TOKEN or ADMIN_API_TOKEN"
+        }
+    }
+    schema["security"] = [{"BearerAuth": []}, {"ApiKeyAuth": []}]
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+@app.on_event("startup")
+async def on_startup():
+    from database import init_database, load_settings_into_runtime
+    try:
+        init_database()
+        load_settings_into_runtime()
+    except Exception as e:
+        import logging
+        logging.getLogger("omnistudio").warning("Startup DB init: %s", e)
 
 # CORS: Origin whitelist + explicit methods + explicit headers (no wildcard)
 SAFE_CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
@@ -102,6 +145,7 @@ class PinVerificationRequest(BaseModel):
 
 
 @app.post("/api/auth/verify-pin")
+@app.post("/api/auth/login-passcode")
 @limiter.limit("5/minute")
 async def verify_pin(payload: PinVerificationRequest, request: Request):
     if not settings.STUDIO_PASSCODE or not settings.JWT_SECRET:
@@ -110,6 +154,20 @@ async def verify_pin(payload: PinVerificationRequest, request: Request):
         audit_log("auth.pin_failed", ip=request.client.host if request.client else "unknown")
         raise HTTPException(status_code=401, detail="Invalid passcode")
     return {"access_token": create_studio_jwt(), "token_type": "bearer", "expires_in": settings.JWT_EXPIRY_HOURS * 3600}
+
+@app.get("/api/docs", include_in_schema=False)
+async def api_docs_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
+
+@app.get("/api/redoc", include_in_schema=False)
+async def api_redoc_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/redoc")
+
+@app.get("/api/openapi.json", include_in_schema=False)
+async def api_openapi_proxy():
+    return app.openapi()
 
 @app.get("/api/health")
 @app.get("/health")

@@ -24,7 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Ensure outputs directory exists
-RUN mkdir -p outputs/images outputs/videos outputs/audio outputs/final
+RUN mkdir -p outputs/images outputs/videos outputs/audio outputs/final outputs/trash
+RUN chmod +x /app/entrypoint.sh
 
 # Create non-root user and set permissions
 RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser \
@@ -45,5 +46,8 @@ ENV WEB_CONCURRENCY=2
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/api/health || exit 1
 
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Launch uvicorn
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
