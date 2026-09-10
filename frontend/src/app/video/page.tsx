@@ -310,21 +310,13 @@ function VideoStudioContent() {
   const [availableModels, setAvailableModels] = useState<VideoModelOption[]>(VIDEO_MODELS);
 
   useEffect(() => {
-    api.getMotions()
+    api.getVideoModels()
       .then((data: any) => {
         if (data && data.models && Array.isArray(data.models)) {
-          const activeMap = new Map<string, boolean>(
-            data.models.map((m: { id: string; active?: boolean }) => [m.id, Boolean(m.active)])
-          );
-          setAvailableModels((prev) =>
-            prev.map((m) => ({
-              ...m,
-              active: activeMap.has(m.value) ? Boolean(activeMap.get(m.value)) : m.value === "ffmpeg_local",
-            }))
-          );
+          setAvailableModels(data.models);
         }
       })
-      .catch((err) => console.warn("Could not fetch video motions/models:", err));
+      .catch((err) => console.warn("Could not fetch video models:", err));
   }, []);
 
   const filteredModels = availableModels.filter((m) => {
@@ -337,8 +329,8 @@ function VideoStudioContent() {
     );
   });
 
-  // Right Sidebar & Stacked Accordions State (Default Open)
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Right Sidebar & Stacked Accordions State (Default Collapsed)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
     character: true,
     model: true,
@@ -632,7 +624,11 @@ function VideoStudioContent() {
     }
 
     const costInr = Math.round(costUsd * 83.5 * 100) / 100;
-    const modelObj = VIDEO_MODELS.find((m) => m.value === model);
+    const modelObj = availableModels.find((m) => m.value === model) || VIDEO_MODELS.find((m) => m.value === model);
+    const isConfigured = modelObj ? (modelObj.active !== false) : true;
+    const keyMissingMessage = !isConfigured
+      ? `API Key for ${modelObj?.label || model} is missing. Configure it in Settings or switch to Local Ken Burns (100% Free).`
+      : undefined;
     const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
     const characterContext = activeCharacter?.isLocked && activeCharacter?.prompt ? `[Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ` : "";
     const displayPrompt = (characterContext + prompt).trim() || `Motion: ${motion} on keyframe`;
@@ -653,6 +649,8 @@ function VideoStudioContent() {
       costUsd,
       costInr,
       isFree,
+      isKeyConfigured: isConfigured,
+      keyMissingMessage,
     });
 
     let shouldSkipModal = false;
@@ -661,7 +659,8 @@ function VideoStudioContent() {
       if (savedPrefs && JSON.parse(savedPrefs).skipConfirmModal) shouldSkipModal = true;
     } catch {}
 
-    if (shouldSkipModal) {
+    // Never skip confirmation modal if key is missing so user receives explicit warning
+    if (shouldSkipModal && isConfigured) {
       generate();
       return;
     }
@@ -869,6 +868,15 @@ function VideoStudioContent() {
               RECUT
             </span>
           </button>
+
+          {/* Engine & Ken Burns Indicator Right Next to Mode Tabs */}
+          <div className="flex items-center gap-2 text-xs font-mono font-bold px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shadow-xs shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+            <span>ENGINE: {activeModel.label}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
+              {activeModel.value === "ffmpeg_local" ? "100% FREE" : activeModel.active ? "ACTIVE" : "KEY REQ"}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -900,12 +908,6 @@ function VideoStudioContent() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             )}
           </button>
-
-          {/* Active Model Indicator in GREEN */}
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-            <span className="truncate max-w-[180px]">ENGINE: {activeModel.label}</span>
-          </div>
 
           <button
             type="button"
@@ -960,7 +962,7 @@ function VideoStudioContent() {
         ) : (
           <>
         {/* Left Workspace / Canvas */}
-        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-4 sm:p-6 custom-scrollbar relative">
+        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-4 sm:p-6 pb-64 custom-scrollbar relative">
           <div className="max-w-4xl w-full mx-auto space-y-6">
             {/* 1. Progress Telemetry */}
             {loading && (
@@ -1573,9 +1575,14 @@ function VideoStudioContent() {
             )}
           </div>
 
-          {/* Prompt Control Bar Pinned at Bottom of Canvas */}
-          <div className="max-w-4xl w-full mx-auto mt-3 pt-2 pb-8 mb-4">
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-lg space-y-3">
+          {/* Prompt Control Bar Fixed at Bottom of Canvas */}
+          <div className={cn(
+            "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4",
+            sidebarOpen
+              ? "left-0 lg:left-64 right-0 lg:right-96 max-w-4xl mx-auto"
+              : "left-0 lg:left-64 right-0 max-w-4xl mx-auto"
+          )}>
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3">
               {/* Active Character Lock Pill (Reference Image 1) */}
               {activeCharacter?.isLocked && (
                 <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in">
@@ -1779,18 +1786,13 @@ function VideoStudioContent() {
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-xs font-bold font-heading">{m.label}</span>
                                     {isInactive ? (
-                                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700">
                                         INACTIVE
                                       </span>
-                                    ) : m.badge && (
-                                      <span className={cn(
-                                        "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider",
-                                        m.badge === "FREE LOCAL" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" :
-                                        m.badge === "ACTIVE" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" :
-                                        m.badge === "PRO" ? "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400" :
-                                        "bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
-                                      )}>
-                                        {m.badge}
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        {m.badge || (m.value === "ffmpeg_local" ? "FREE LOCAL" : "ACTIVE")}
                                       </span>
                                     )}
                                   </div>
@@ -2294,8 +2296,13 @@ function VideoStudioContent() {
                     <span>AI VIDEO MODEL</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold truncate max-w-[110px]">
-                      {activeModel.badge || "ACTIVE"}
+                    <span className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-bold truncate max-w-[110px]",
+                      activeModel.active === false
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700"
+                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    )}>
+                      {activeModel.active === false ? "KEY REQ" : activeModel.badge || (activeModel.value === "ffmpeg_local" ? "100% FREE" : "ACTIVE")}
                     </span>
                     <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.model && "rotate-180")} />
                   </div>
@@ -2317,32 +2324,44 @@ function VideoStudioContent() {
                     <div className="max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
                       {filteredModels.map((m) => {
                         const isSelected = model === m.value;
+                        const isInactive = m.active === false;
                         return (
                           <button
                             key={m.value}
                             type="button"
-                            onClick={() => setModel(m.value)}
+                            disabled={isInactive}
+                            onClick={() => {
+                              if (!isInactive) setModel(m.value);
+                            }}
                             className={cn(
-                              "w-full p-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer flex items-start justify-between gap-2",
-                              isSelected
+                              "w-full p-2.5 rounded-xl text-left transition-all duration-150 flex items-start justify-between gap-2",
+                              isInactive ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                              isSelected && !isInactive
                                 ? "border border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
-                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-transparent"
+                                : (!isInactive && "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-transparent")
                             )}
                           >
                             <div className="space-y-0.5 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className={cn("text-xs font-bold font-heading truncate", isSelected && "text-emerald-700 dark:text-emerald-400")}>
+                                <span className={cn("text-xs font-bold font-heading truncate", isSelected && !isInactive && "text-emerald-700 dark:text-emerald-400")}>
                                   {m.label}
                                 </span>
-                                {m.badge && (
-                                  <span className={cn("text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase", isSelected ? "bg-emerald-500 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}>
-                                    {m.badge}
+                                {isInactive ? (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700">
+                                    INACTIVE
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                    {m.badge || (m.value === "ffmpeg_local" ? "FREE LOCAL" : "ACTIVE")}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] text-zinc-400 truncate">{m.description}</p>
+                              <p className="text-[10px] text-zinc-400 truncate">
+                                {isInactive ? "API key not configured in Settings" : m.description}
+                              </p>
                             </div>
-                            {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
+                            {isSelected && !isInactive && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
                           </button>
                         );
                       })}
@@ -2626,8 +2645,13 @@ function VideoStudioContent() {
                   )}
                 </div>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold">
-                {activeModel.badge || "ACTIVE"}
+              <span className={cn(
+                "text-[10px] px-2 py-0.5 rounded font-bold",
+                activeModel.active === false
+                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+              )}>
+                {activeModel.active === false ? "INACTIVE" : activeModel.badge || (activeModel.value === "ffmpeg_local" ? "FREE LOCAL" : "ACTIVE")}
               </span>
             </div>
           </aside>

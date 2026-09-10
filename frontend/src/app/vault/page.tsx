@@ -753,11 +753,11 @@ export default function VaultPage() {
           return (
             <div
               key={`${file.type}-${file.filename}-${i}`}
+              onClick={() => openLightbox(file)}
               onMouseEnter={(e) => {
                 const v = e.currentTarget.querySelector("video");
                 if (v) {
-                  v.muted = false;
-                  v.volume = 0.8;
+                  v.muted = true;
                   v.play().catch(() => {});
                 }
               }}
@@ -775,7 +775,6 @@ export default function VaultPage() {
             >
               {/* Media Display */}
               <div
-                onClick={() => openLightbox(file)}
                 className="w-full relative overflow-hidden"
               >
                 {isImage && (
@@ -1137,9 +1136,10 @@ export default function VaultPage() {
 
       {/* Interactive Universal Media Lightbox Modal */}
       {lightboxAsset && (() => {
-        const isLbImage = lightboxAsset.type === "images" || Boolean(lightboxAsset.filename.match(/\.(png|jpg|jpeg|webp|gif)$/i));
-        const isLbVideo = lightboxAsset.type === "videos" || lightboxAsset.type === "final" || Boolean(lightboxAsset.filename.match(/\.(mp4|mov|webm)$/i));
-        const isLbAudio = lightboxAsset.type === "audio" || Boolean(lightboxAsset.filename.match(/\.(mp3|wav|ogg|aac|m4a)$/i));
+        const fname = lightboxAsset.filename || "";
+        const isLbImage = lightboxAsset.type === "images" || Boolean(fname.match(/\.(png|jpg|jpeg|webp|gif)$/i));
+        const isLbVideo = lightboxAsset.type === "videos" || lightboxAsset.type === "final" || Boolean(fname.match(/\.(mp4|mov|webm)$/i));
+        const isLbAudio = lightboxAsset.type === "audio" || Boolean(fname.match(/\.(mp3|wav|ogg|aac|m4a)$/i));
 
         return (
           <div
