@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
+import LazyImage from "@/components/ui/LazyImage";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "text_to_video" | "motion_transfer";
 
@@ -658,15 +659,15 @@ function VideoStudioContent() {
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-48 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Bar: Mode Selector Tabs & Studio Guide Trigger */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4">
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
           <button
             type="button"
             onClick={() => setMode("first_frame")}
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "first_frame"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
             )}
           >
             <ImageIcon className="h-3.5 w-3.5" />
@@ -679,8 +680,8 @@ function VideoStudioContent() {
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "first_to_last_frame"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
             )}
           >
             <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -696,8 +697,8 @@ function VideoStudioContent() {
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "text_to_video"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
             )}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -710,8 +711,8 @@ function VideoStudioContent() {
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "motion_transfer"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
             )}
           >
             <RotateCw className="h-3.5 w-3.5" />
@@ -723,14 +724,14 @@ function VideoStudioContent() {
           <button
             type="button"
             onClick={() => setHowItWorksOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-500" />
             <span>Studio Guide</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-zinc-800 dark:text-zinc-200 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>ENGINE: {activeModel.label}</span>
           </div>
         </div>
@@ -892,10 +893,11 @@ function VideoStudioContent() {
                     </div>
 
                     {startImage ? (
-                      <div className="relative rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] aspect-video bg-zinc-100 dark:bg-[#111118] group shadow-sm">
-                        <img
+                      <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 aspect-video bg-zinc-100 dark:bg-zinc-900 group shadow-sm">
+                        <LazyImage
                           src={getMediaUrl(startImage)}
                           alt="Start Frame"
+                          aspectRatio="aspect-video"
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -1040,10 +1042,11 @@ function VideoStudioContent() {
                       </div>
 
                       {endImage ? (
-                        <div className="relative rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] aspect-video bg-zinc-100 dark:bg-[#111118] group shadow-sm">
-                          <img
+                        <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 aspect-video bg-zinc-100 dark:bg-zinc-900 group shadow-sm">
+                          <LazyImage
                             src={getMediaUrl(endImage)}
                             alt="End Frame"
+                            aspectRatio="aspect-video"
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -2004,11 +2007,12 @@ function VideoStudioContent() {
                         else setEndImage(img.url);
                         setVaultOpen(false);
                       }}
-                      className="group rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-500/50 hover:ring-2 hover:ring-violet-500/20 text-left transition-all relative aspect-video bg-zinc-100 dark:bg-[#0d0d14] cursor-pointer"
+                      className="group rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md text-left transition-all relative aspect-video bg-zinc-100 dark:bg-zinc-900 cursor-pointer"
                     >
-                      <img
+                      <LazyImage
                         src={getMediaUrl(img.url)}
                         alt={img.filename}
+                        aspectRatio="aspect-video"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-2">

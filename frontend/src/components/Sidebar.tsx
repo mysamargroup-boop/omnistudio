@@ -88,7 +88,7 @@ export default function Sidebar() {
     {
       label: "STUDIO SPACES",
       items: [
-        { href: "/", label: "Overview", icon: LayoutDashboard },
+        { href: "/", label: "Dashboard", icon: LayoutDashboard },
         { href: "/studio", label: "Studio (All-in-One)", icon: Sparkles, badge: "PRO" },
         { href: "/pipeline", label: "Auto Pipeline", icon: Cpu, badge: "AI AGENT" },
       ],

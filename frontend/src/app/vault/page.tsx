@@ -33,6 +33,7 @@ import {
 import { api, getMediaUrl } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
 import DeleteConfirmModal, { DeleteModalItem } from "@/components/ui/DeleteConfirmModal";
+import LazyImage from "@/components/ui/LazyImage";
 
 type Tab = "all" | "final" | "videos" | "images" | "audio" | "trash";
 
@@ -596,9 +597,10 @@ export default function VaultPage() {
               >
                 {isImage && (
                   <>
-                    <img
+                    <LazyImage
                       src={getMediaUrl(file.url)}
                       alt={file.filename}
+                      aspectRatio="h-full w-full"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     {/* Hover Full View Indicator */}
