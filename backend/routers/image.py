@@ -480,19 +480,39 @@ async def advanced_edit_endpoint(req: AdvancedEditRequest, request: Request):
 @router.get("/models")
 @limiter.limit("60/minute")
 async def list_image_models(request: Request):
-    openai_active = bool(settings.OPENAI_API_KEY)
-    replicate_active = bool(settings.REPLICATE_API_TOKEN)
-    google_active = bool(getattr(settings, 'GEMINI_API_KEY', None))
+    try:
+        from database import load_settings_into_runtime
+        load_settings_into_runtime()
+    except Exception:
+        pass
+
+    openai_key = os.environ.get("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "")
+    replicate_token = os.environ.get("REPLICATE_API_TOKEN") or getattr(settings, "REPLICATE_API_TOKEN", "")
+    try:
+        from services.gemini_service import get_gemini_key
+        gemini_key = get_gemini_key()
+    except Exception:
+        gemini_key = os.environ.get("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
+
+    openai_active = bool(openai_key and str(openai_key).strip())
+    replicate_active = bool(replicate_token and str(replicate_token).strip())
+    google_active = bool(gemini_key and str(gemini_key).strip())
     
     return {
         "models": [
+            {"id": "gpt-image-2", "name": "GPT Image 2", "provider": "openai", "badge": "PREMIUM", "active": openai_active, "description": "4K Images with near-perfect text rendering & skin textures"},
+            {"id": "gpt-image-1", "name": "GPT Image 1 Pro", "provider": "openai", "badge": "PRO", "active": openai_active, "description": "Cinema-grade visual creation & dynamic range"},
+            {"id": "gpt-image-1-mini", "name": "GPT Image 1 Mini", "provider": "openai", "badge": "FAST", "active": openai_active, "description": "Stunning everyday images, ultra-fast generation"},
+            {"id": "imagen_3", "name": "Nano Banana Pro (Imagen 3)", "provider": "google", "badge": "ACTIVE", "active": google_active, "description": "Google's flagship hyper-realistic lighting & micro-textures"},
+            {"id": "gemini_flash_image", "name": "Nano Banana 2 (Gemini Flash)", "provider": "google", "badge": "PREMIUM", "active": google_active, "description": "Pro quality generation at flash speed"},
             {"id": "dall-e-3", "name": "DALL-E 3 HD (OpenAI)", "provider": "openai", "badge": "PRO", "active": openai_active, "description": "High Composition Precision & Semantic Fidelity"},
-            {"id": "flux_pro", "name": "Flux.1 Pro (Black Forest Labs)", "provider": "replicate", "badge": "PRO", "active": replicate_active, "description": "State-of-the-Art Typography & Photorealism"},
+            {"id": "flux_pro", "name": "Flux.1 Pro (Black Forest Labs)", "provider": "replicate", "badge": "SOTA", "active": replicate_active, "description": "State-of-the-Art Typography & Photorealism"},
             {"id": "flux_dev", "name": "Flux.1 Dev (Open Weights)", "provider": "replicate", "badge": "DEV", "active": replicate_active, "description": "High-Fidelity Fine-Tuned Guidance"},
             {"id": "flux-schnell", "name": "Flux.1 Schnell (Fast Latent)", "provider": "replicate", "badge": "FAST", "active": replicate_active, "description": "Speed Latent Diffusion & Rapid Generation"},
+            {"id": "seedream_pro", "name": "Seedream 5.0 Pro", "provider": "replicate", "badge": "PREMIUM", "active": replicate_active, "description": "Logically consistent images with intelligent visual reasoning"},
+            {"id": "recraft_v3", "name": "Recraft V3", "provider": "replicate", "badge": "NEW", "active": replicate_active, "description": "Top-tier vector graphics, branding & graphic design"},
+            {"id": "sd_35_large", "name": "Stable Diffusion 3.5 Large", "provider": "replicate", "badge": "OPEN", "active": replicate_active, "description": "Advanced Multimodal Prompt Adherence"},
             {"id": "midjourney_v6", "name": "Midjourney v6.1 (Photoreal)", "provider": "cloud", "badge": "PRO", "active": False, "description": "World-class Cinematic Lighting & Color Grading"},
-            {"id": "sd_35_large", "name": "Stable Diffusion 3.5 Large", "provider": "stability", "badge": "OPEN", "active": False, "description": "Advanced Multimodal Prompt Adherence"},
-            {"id": "imagen_3", "name": "Google Imagen 3 (DeepMind)", "provider": "google", "badge": "GOOGLE", "active": google_active, "description": "Hyper-realistic Lighting & Texture Precision"},
             {"id": "ideogram_v2", "name": "Ideogram v2 (Graphics & Type)", "provider": "ideogram", "badge": "TYPE", "active": False, "description": "Flawless In-Image Lettering & Graphic Design"},
             {"id": "omni_diffusion", "name": "OmniDiffusion 4.0 Pro", "provider": "local", "badge": "LOCAL", "active": False, "description": "Local GPU-Accelerated Stable Diffusion (Requires RTX 3090+)"},
         ],

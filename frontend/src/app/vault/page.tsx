@@ -37,6 +37,8 @@ import {
   Plus,
   Volume2,
   VolumeX,
+  Scissors,
+  Sparkles,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
@@ -257,15 +259,15 @@ export default function VaultPage() {
     return list;
   }, [tab, assets, trashAssets, search, favorites, selectedCollectionId, collectionFilenames]);
 
-  // All image assets in current active list for lightbox carousel
-  const imageFiles = useMemo(() => {
-    return activeFiles.filter((f) => f.type === "images");
+  // All media assets in current active list for lightbox carousel
+  const lightboxFiles = useMemo(() => {
+    return activeFiles;
   }, [activeFiles]);
 
   const currentLightboxIndex = useMemo(() => {
     if (!lightboxAsset) return -1;
-    return imageFiles.findIndex((f) => f.filename === lightboxAsset.filename);
-  }, [lightboxAsset, imageFiles]);
+    return lightboxFiles.findIndex((f) => f.filename === lightboxAsset.filename);
+  }, [lightboxAsset, lightboxFiles]);
 
   // Lightbox keyboard navigation (Esc, Arrow keys, Zoom shortcuts)
   useEffect(() => {
@@ -277,14 +279,14 @@ export default function VaultPage() {
         setLightboxZoom(1);
         setImgNaturalSize(null);
       } else if (e.key === "ArrowRight") {
-        if (currentLightboxIndex >= 0 && currentLightboxIndex < imageFiles.length - 1) {
-          setLightboxAsset(imageFiles[currentLightboxIndex + 1]);
+        if (currentLightboxIndex >= 0 && currentLightboxIndex < lightboxFiles.length - 1) {
+          setLightboxAsset(lightboxFiles[currentLightboxIndex + 1]);
           setLightboxZoom(1);
           setImgNaturalSize(null);
         }
       } else if (e.key === "ArrowLeft") {
         if (currentLightboxIndex > 0) {
-          setLightboxAsset(imageFiles[currentLightboxIndex - 1]);
+          setLightboxAsset(lightboxFiles[currentLightboxIndex - 1]);
           setLightboxZoom(1);
           setImgNaturalSize(null);
         }
@@ -299,7 +301,7 @@ export default function VaultPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxAsset, currentLightboxIndex, imageFiles]);
+  }, [lightboxAsset, currentLightboxIndex, lightboxFiles]);
 
   // Open Lightbox
   const openLightbox = (file: VaultAsset) => {
@@ -739,8 +741,8 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Media Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {/* Media Masonry Grid */}
+      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
         {activeFiles.map((file, i) => {
           const selected = isSelected(file.type, file.filename);
           const isImage = file.type === "images";
@@ -767,42 +769,47 @@ export default function VaultPage() {
                 }
               }}
               className={cn(
-                "group relative rounded-2xl overflow-hidden bg-zinc-950 border border-black/[0.08] dark:border-white/[0.08] shadow-sm hover:shadow-2xl transition-all duration-300 flex flex-col justify-between aspect-square select-none",
+                "group relative rounded-2xl overflow-hidden bg-zinc-950 border border-black/[0.08] dark:border-white/[0.08] shadow-sm hover:shadow-2xl transition-all duration-300 break-inside-avoid mb-4 select-none cursor-pointer",
                 selected && "ring-2 ring-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               )}
             >
               {/* Media Display */}
               <div
-                onClick={() => {
-                  if (isImage) openLightbox(file);
-                }}
-                className={cn("w-full h-full relative overflow-hidden", isImage && "cursor-zoom-in")}
+                onClick={() => openLightbox(file)}
+                className="w-full relative overflow-hidden"
               >
                 {isImage && (
-                  <LazyImage
+                  <img
                     src={getMediaUrl(file.url)}
                     alt={file.filename}
-                    aspectRatio="h-full w-full"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 )}
 
                 {isVideo && (
-                  <video
-                    src={getMediaUrl(file.url)}
-                    playsInline
-                    loop
-                    preload="metadata"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
-                  />
+                  <div className="relative w-full">
+                    <video
+                      src={getMediaUrl(file.url)}
+                      playsInline
+                      loop
+                      preload="none"
+                      className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                    />
+                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 text-[9px] font-mono text-cyan-300 flex items-center gap-1 pointer-events-none z-10">
+                      <Film className="w-2.5 h-2.5" />
+                      <span>VIDEO</span>
+                    </div>
+                  </div>
                 )}
 
                 {isAudio && (
-                  <div className="w-full h-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-4">
-                    <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
-                      <Mic className="w-7 h-7" />
+                  <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[140px]">
+                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
+                      <Mic className="w-6 h-6" />
                     </div>
-                    <audio src={getMediaUrl(file.url)} controls className="w-full max-w-[200px]" />
+                    <audio src={getMediaUrl(file.url)} controls className="w-full max-w-[200px]" onClick={(e) => e.stopPropagation()} />
                   </div>
                 )}
 
@@ -915,6 +922,32 @@ export default function VaultPage() {
                       <span>Animate</span>
                     </button>
                   )}
+
+                  {isVideo && tab !== "trash" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        setEditVideoAsset(file);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 text-emerald-400 transition-colors text-left cursor-pointer"
+                    >
+                      <Scissors className="w-4 h-4 text-emerald-400" />
+                      <span>Video Editor</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMenuKey(null);
+                      setShareModalAsset(file);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4 text-zinc-400" />
+                    <span>Share</span>
+                  </button>
 
                   <button
                     type="button"
@@ -1102,219 +1135,272 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Interactive Full View Lightbox Modal */}
-      {lightboxAsset && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl animate-in fade-in duration-200"
-          onClick={() => setLightboxAsset(null)}
-        >
-          {/* Lightbox Top Control Bar */}
+      {/* Interactive Universal Media Lightbox Modal */}
+      {lightboxAsset && (() => {
+        const isLbImage = lightboxAsset.type === "images" || Boolean(lightboxAsset.filename.match(/\.(png|jpg|jpeg|webp|gif)$/i));
+        const isLbVideo = lightboxAsset.type === "videos" || lightboxAsset.type === "final" || Boolean(lightboxAsset.filename.match(/\.(mp4|mov|webm)$/i));
+        const isLbAudio = lightboxAsset.type === "audio" || Boolean(lightboxAsset.filename.match(/\.(mp3|wav|ogg|aac|m4a)$/i));
+
+        return (
           <div
-            className="flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-black/60 backdrop-blur-md z-10 shrink-0"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl animate-in fade-in duration-200"
+            onClick={() => setLightboxAsset(null)}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px] tracking-wider uppercase font-semibold">
-                IMAGE FULL VIEW
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-mono font-medium text-white truncate max-w-md" title={lightboxAsset.filename}>
-                  {lightboxAsset.filename}
-                </p>
-                <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
-                  <span>{formatBytes(lightboxAsset.size_bytes)}</span>
-                  {imgNaturalSize && (
-                    <>
-                      <span>•</span>
-                      <span>{imgNaturalSize.width} × {imgNaturalSize.height} px</span>
-                    </>
-                  )}
-                  {imageFiles.length > 1 && (
-                    <>
-                      <span>•</span>
-                      <span className="text-zinc-300">
-                        {currentLightboxIndex + 1} of {imageFiles.length}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Zoom Controls & Close Button */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-lg p-1">
-                <button
-                  type="button"
-                  onClick={() => setLightboxZoom((prev) => Math.max(prev - 0.25, 0.5))}
-                  className="p-1.5 rounded hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                  title="Zoom Out (-)"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-[11px] font-mono text-zinc-300 px-2 min-w-[48px] text-center select-none">
-                  {Math.round(lightboxZoom * 100)}%
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLightboxZoom((prev) => Math.min(prev + 0.25, 3))}
-                  className="p-1.5 rounded hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                  title="Zoom In (+)"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                {lightboxZoom !== 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setLightboxZoom(1)}
-                    className="p-1.5 rounded hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                    title="Reset Zoom (0)"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setLightboxAsset(null)}
-                className="p-2 rounded-lg bg-zinc-900/80 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition-colors cursor-pointer"
-                title="Close Lightbox (Esc)"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Interactive Stage with Carousel Navigation */}
-          <div
-            className="flex-1 relative flex items-center justify-center p-6 overflow-auto"
-            onClick={(e) => {
-              // Click outside image closes lightbox
-              if (e.target === e.currentTarget) {
-                setLightboxAsset(null);
-              }
-            }}
-          >
-            {/* Previous Image Arrow */}
-            {imageFiles.length > 1 && currentLightboxIndex > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxAsset(imageFiles[currentLightboxIndex - 1]);
-                  setLightboxZoom(1);
-                  setImgNaturalSize(null);
-                }}
-                className="absolute left-6 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
-                title="Previous Image (Left Arrow)"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-            )}
-
-            {/* High-Resolution Zoomable Image Display */}
+            {/* Lightbox Top Control Bar */}
             <div
-              className="relative max-h-full max-w-full flex items-center justify-center transition-transform duration-150"
-              style={{ transform: `scale(${lightboxZoom})` }}
+              className="flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-black/60 backdrop-blur-md z-10 shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
-              <img
-                src={getMediaUrl(lightboxAsset.url)}
-                alt={lightboxAsset.filename}
-                onLoad={(e) => {
-                  const target = e.currentTarget;
-                  setImgNaturalSize({
-                    width: target.naturalWidth,
-                    height: target.naturalHeight,
-                  });
-                }}
-                className="max-h-[75vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none"
-              />
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px] tracking-wider uppercase font-semibold">
+                  {isLbVideo ? "CINEMA VIDEO PLAYER" : isLbAudio ? "AUDIO PREVIEW" : "IMAGE FULL VIEW"}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-mono font-medium text-white truncate max-w-md" title={lightboxAsset.filename}>
+                    {lightboxAsset.filename}
+                  </p>
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+                    <span>{formatBytes(lightboxAsset.size_bytes)}</span>
+                    {imgNaturalSize && isLbImage && (
+                      <>
+                        <span>•</span>
+                        <span>{imgNaturalSize.width} × {imgNaturalSize.height} px</span>
+                      </>
+                    )}
+                    {lightboxFiles.length > 1 && currentLightboxIndex >= 0 && (
+                      <>
+                        <span>•</span>
+                        <span className="text-zinc-300">
+                          {currentLightboxIndex + 1} of {lightboxFiles.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Zoom Controls & Close Button */}
+              <div className="flex items-center gap-2">
+                {isLbImage && (
+                  <div className="flex items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxZoom((prev) => Math.max(prev - 0.25, 0.5))}
+                      className="p-1.5 rounded hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                      title="Zoom Out (-)"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <span className="text-[11px] font-mono text-zinc-300 px-2 min-w-[48px] text-center select-none">
+                      {Math.round(lightboxZoom * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLightboxZoom((prev) => Math.min(prev + 0.25, 3))}
+                      className="p-1.5 rounded hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                      title="Zoom In (+)"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                    {lightboxZoom !== 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxZoom(1)}
+                        className="p-1.5 rounded hover:bg-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                        title="Reset Zoom (0)"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setLightboxAsset(null)}
+                  className="p-2 rounded-lg bg-zinc-900/80 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition-colors cursor-pointer"
+                  title="Close Lightbox (Esc)"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            {/* Next Image Arrow */}
-            {imageFiles.length > 1 && currentLightboxIndex < imageFiles.length - 1 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxAsset(imageFiles[currentLightboxIndex + 1]);
-                  setLightboxZoom(1);
-                  setImgNaturalSize(null);
-                }}
-                className="absolute right-6 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
-                title="Next Image (Right Arrow)"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            )}
-          </div>
+            {/* Main Interactive Stage with Carousel Navigation */}
+            <div
+              className="flex-1 relative flex items-center justify-center p-6 overflow-auto"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setLightboxAsset(null);
+                }
+              }}
+            >
+              {/* Previous Media Arrow */}
+              {lightboxFiles.length > 1 && currentLightboxIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxAsset(lightboxFiles[currentLightboxIndex - 1]);
+                    setLightboxZoom(1);
+                    setImgNaturalSize(null);
+                  }}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                  title="Previous Media (Left Arrow)"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              )}
 
-          {/* Lightbox Bottom Action Bar */}
-          <div
-            className="px-6 py-3.5 border-t border-white/10 bg-black/70 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0 z-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-zinc-400">
-                Navigation: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Left / Right Arrows</kbd> • Zoom: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">+/-</kbd>
-              </span>
+              {/* High-Resolution Zoomable Image Display */}
+              {isLbImage && (
+                <div
+                  className="relative max-h-full max-w-full flex items-center justify-center transition-transform duration-150"
+                  style={{ transform: `scale(${lightboxZoom})` }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <img
+                    src={getMediaUrl(lightboxAsset.url)}
+                    alt={lightboxAsset.filename}
+                    onLoad={(e) => {
+                      const target = e.currentTarget;
+                      setImgNaturalSize({
+                        width: target.naturalWidth,
+                        height: target.naturalHeight,
+                      });
+                    }}
+                    className="max-h-[75vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none"
+                  />
+                </div>
+              )}
+
+              {/* Cinema Video Player */}
+              {isLbVideo && (
+                <div
+                  className="relative max-h-full max-w-full flex items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <video
+                    src={getMediaUrl(lightboxAsset.url)}
+                    controls
+                    autoPlay
+                    playsInline
+                    loop
+                    className="max-h-[75vh] max-w-[85vw] object-contain rounded-2xl shadow-2xl border border-white/10 bg-black"
+                  />
+                </div>
+              )}
+
+              {/* Audio Player Card */}
+              {isLbAudio && (
+                <div
+                  className="relative max-h-full max-w-md w-full bg-zinc-900 border border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-white shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-20 h-20 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center shadow-lg">
+                    <Mic className="w-10 h-10" />
+                  </div>
+                  <p className="text-sm font-mono font-bold truncate max-w-xs">{lightboxAsset.filename}</p>
+                  <audio src={getMediaUrl(lightboxAsset.url)} controls className="w-full" autoPlay />
+                </div>
+              )}
+
+              {/* Next Media Arrow */}
+              {lightboxFiles.length > 1 && currentLightboxIndex < lightboxFiles.length - 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxAsset(lightboxFiles[currentLightboxIndex + 1]);
+                    setLightboxZoom(1);
+                    setImgNaturalSize(null);
+                  }}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                  title="Next Media (Right Arrow)"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={(e) => handleToggleFavorite(e, lightboxAsset.filename)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer",
-                  favorites.has(lightboxAsset.filename)
-                    ? "bg-amber-400 text-zinc-950 border-amber-400 font-bold"
-                    : "bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-white/10"
+            {/* Lightbox Bottom Action Bar */}
+            <div
+              className="px-6 py-3.5 border-t border-white/10 bg-black/70 backdrop-blur-md flex flex-wrap items-center justify-between gap-4 shrink-0 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-zinc-400">
+                  Navigation: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Left / Right Arrows</kbd> {isLbImage && <>• Zoom: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">+/-</kbd></>}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isLbVideo && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const asset = lightboxAsset;
+                      setLightboxAsset(null);
+                      setEditVideoAsset(asset);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold shadow-md transition-all cursor-pointer"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>LAUNCH IN VIDEO EDITOR</span>
+                  </button>
                 )}
-              >
-                <Star className={cn("w-3.5 h-3.5", favorites.has(lightboxAsset.filename) && "fill-current")} />
-                <span>{favorites.has(lightboxAsset.filename) ? "FAVORITED" : "FAVORITE"}</span>
-              </button>
 
-              <button
-                type="button"
-                onClick={() => setShareModalAsset(lightboxAsset)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>SHARE</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleFavorite(e, lightboxAsset.filename)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer",
+                    favorites.has(lightboxAsset.filename)
+                      ? "bg-amber-400 text-zinc-950 border-amber-400 font-bold"
+                      : "bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-white/10"
+                  )}
+                >
+                  <Star className={cn("w-3.5 h-3.5", favorites.has(lightboxAsset.filename) && "fill-current")} />
+                  <span>{favorites.has(lightboxAsset.filename) ? "FAVORITED" : "FAVORITE"}</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={copyLightboxUrl}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
-              >
-                {lightboxCopied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">COPIED URL</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>COPY LINK</span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShareModalAsset(lightboxAsset)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>SHARE</span>
+                </button>
 
-              <a
-                href={getMediaUrl(lightboxAsset.url)}
-                download={lightboxAsset.filename}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>DOWNLOAD</span>
-              </a>
+                <button
+                  type="button"
+                  onClick={copyLightboxUrl}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
+                >
+                  {lightboxCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">COPIED URL</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>COPY LINK</span>
+                    </>
+                  )}
+                </button>
 
-              {tab !== "trash" && (
-                <>
+                <button
+                  type="button"
+                  onClick={() => downloadAsset(lightboxAsset.url, lightboxAsset.filename)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-black font-heading font-medium text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>DOWNLOAD</span>
+                </button>
+
+                {tab !== "trash" && isLbImage && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1325,44 +1411,46 @@ export default function VaultPage() {
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>VARIATIONS</span>
                   </button>
+                )}
 
+                {tab !== "trash" && (
                   <button
                     type="button"
                     onClick={() => {
                       router.push(`/studio?mode=image_to_video&image=${encodeURIComponent(lightboxAsset.url)}`);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 text-xs font-heading font-semibold transition-all cursor-pointer shadow-lg active:scale-95"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
                   >
                     <Film className="w-3.5 h-3.5" />
-                    <span>ANIMATE IN STUDIO</span>
+                    <span>STUDIO</span>
                     <ArrowUpRight className="w-3 h-3" />
                   </button>
-                </>
-              )}
+                )}
 
-              {tab === "trash" ? (
-                <button
-                  type="button"
-                  onClick={() => handleSingleRestore(lightboxAsset)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>RESTORE</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleSingleTrashClick(lightboxAsset)}
-                  className="p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
-                  title="Move to Trash"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+                {tab === "trash" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSingleRestore(lightboxAsset)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>RESTORE</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSingleTrashClick(lightboxAsset)}
+                    className="p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
+                    title="Move to Trash"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Share Modal */}
       <ShareModal

@@ -22,6 +22,10 @@ import {
   Sliders,
   Wand2,
   FileText,
+  Clapperboard,
+  Scissors,
+  Check,
+  ChevronRight,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -29,6 +33,7 @@ import Dropdown from "@/components/ui/Dropdown";
 import StepCards from "@/components/StepCards";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
+import VideoEditorModal from "@/components/video/VideoEditorModal";
 
 const PHASES = [
   { id: 1, label: "01 • Script", desc: "Storyboard Director", icon: Layers },
@@ -39,10 +44,26 @@ const PHASES = [
 ];
 
 const PRESETS = [
-  "Cyberpunk detective uncovering an AI mystery in rainy Neo-Tokyo",
-  "Deep space expedition finding an alien monolith orbiting Jupiter",
-  "Ancient samurai meditating beneath falling cherry blossoms at dusk",
-  "Futuristic Formula-1 hypercar race through neon orbital tracks",
+  { genre: "Cyberpunk", text: "Cyberpunk detective uncovering an AI conspiracy in rainy neon Neo-Tokyo with flying spinner cruisers" },
+  { genre: "Sci-Fi", text: "Deep space expedition finding an ancient alien monolith orbiting Jupiter with planetary rings glowing" },
+  { genre: "Historical", text: "Ancient samurai meditating beside a mountain temple beneath falling pink cherry blossoms at dusk" },
+  { genre: "Action", text: "Futuristic Formula-1 hypercar race navigating orbital glass loop tracks suspended above a neon megacity" },
+  { genre: "Fantasy", text: "Mythic dragon soaring over misty Scandinavian fjords with auroras dancing across the midnight sky" },
+];
+
+const IMAGE_MODELS = [
+  { id: "gemini_flash_image", label: "Gemini Flash 2.0", badge: "Fast • High Detail" },
+  { id: "flux-schnell", label: "FLUX Schnell", badge: "Sub-Second Latency" },
+  { id: "flux_dev", label: "FLUX Dev", badge: "Studio Coherence" },
+  { id: "dall-e-3", label: "OpenAI DALL-E 3", badge: "Photoreal Aesthetics" },
+];
+
+const STYLES = [
+  { id: "cinematic", label: "Cinematic 35mm", desc: "Arri Alexa • Volumetric Lighting" },
+  { id: "cyberpunk", label: "Cyberpunk Noir", desc: "Vibrant Neon • Rainy Reflections" },
+  { id: "anime", label: "Anime Ghibli", desc: "Painterly Skies • Luminous Color" },
+  { id: "3d_pixar", label: "3D Animation", desc: "Subsurface Glow • Stylized CGI" },
+  { id: "photoreal", label: "Photoreal 8K", desc: "Hasselblad Sharp • Natural Sunlight" },
 ];
 
 function PipelineContent() {
@@ -59,6 +80,14 @@ function PipelineContent() {
   const [result, setResult] = useState<any>(null);
   const [enhancing, setEnhancing] = useState(false);
 
+  // Smooth Scrolling Section Refs
+  const deskRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // Precision Video Editor Modal State
+  const [editVideoAsset, setEditVideoAsset] = useState<{ url: string; filename: string } | null>(null);
+
   // Real-Time Live Progress Bar States
   const [progress, setProgress] = useState(0);
   const [stageTitle, setStageTitle] = useState("DIRECTOR INITIALIZATION");
@@ -66,6 +95,11 @@ function PipelineContent() {
   const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Smooth scroll helper methods
+  const scrollToDesk = () => deskRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToStage = () => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToResult = () => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // Unmount cleanup for timers and active streaming connection
   useEffect(() => {
@@ -148,6 +182,10 @@ function PipelineContent() {
     setStageTitle("01 • Initializing Autonomous Agent");
     setStatusText("Drafting screenplay & scene visual compositions...");
     setElapsedSeconds(0);
+    // Smooth scroll down to live production stage
+    setTimeout(() => {
+      stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
     const nowTime = new Date().toTimeString().split(" ")[0];
     setTelemetryLogs([
       { timestamp: nowTime, message: `Initialized Autonomous Cinema Pipeline for: "${topic.slice(0, 45)}..."` }
@@ -207,6 +245,10 @@ function PipelineContent() {
         setCurrentStep(5);
         setStageTitle("CINEMA MASTERPIECE COMPILED");
         setStatusText("Production compilation completed successfully.");
+        // Smooth scroll to the master video player
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 250);
       }
     } catch (e: any) {
       if (e.name === "AbortError") {
@@ -229,335 +271,541 @@ function PipelineContent() {
     }
   };
 
+  const isEdge = voiceProvider === "edge";
+  const costPerScene = isEdge ? 0.04 : 0.06;
+  const costUsd = costPerScene * scenes;
+  const costInr = Math.round(costUsd * 83.5 * 100) / 100;
+
   return (
-    <div className="space-y-6 pb-8 tab-content-enter">
-      {/* Studio Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-8 pb-16 tab-content-enter font-jakarta">
+      {/* Top Header & Smooth-Scroll Navigation Dock */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.2em] text-zinc-500 uppercase">
-            <span className="text-violet-500">CINEMA STUDIO 5.0</span>
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.25em] text-zinc-500 uppercase">
+            <span className="text-violet-500 font-bold">CINEMA STUDIO 5.0</span>
             <span>•</span>
-            <span>AUTONOMOUS AGENT DIRECTOR</span>
+            <span>AUTONOMOUS PIPELINE DIRECTOR</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
             Autonomous Cinema Agent
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-700 dark:text-zinc-400 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] px-3.5 py-1.5 rounded-full shadow-sm whitespace-nowrap shrink-0">
-          <Clock className="h-3 w-3 text-violet-500" />
-          <span>EST. RUNTIME: ~20-35 SECONDS</span>
+        {/* Quick Smooth-Scroll Navigation Tabs */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono">
+          <button
+            type="button"
+            onClick={scrollToDesk}
+            className="px-3 py-1.5 rounded-lg text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all cursor-pointer"
+          >
+            01 • Director Desk
+          </button>
+          <button
+            type="button"
+            onClick={scrollToStage}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer",
+              loading
+                ? "bg-violet-600 text-white font-bold animate-pulse"
+                : "text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
+            )}
+          >
+            {loading && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+            <span>02 • Production Stage</span>
+          </button>
+          {result && result.success && (
+            <button
+              type="button"
+              onClick={scrollToResult}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold transition-all cursor-pointer shadow-sm"
+            >
+              03 • Master Screening
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Production Milestone Step Cards */}
-      <StepCards currentStep={currentStep} />
+      {/* SECTION 1: DIRECTOR DESK (Configuration & Screenplay Input) */}
+      <div ref={deskRef} className="scroll-mt-6 space-y-6">
+        <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+          {/* Subtle decorative background ambient glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Studio Console Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left: Direction Parameters (Sticky & Compact) */}
-        <div className="lg:col-span-5 lg:sticky lg:top-4 self-start max-h-[calc(100vh-5.5rem)] overflow-y-auto custom-scrollbar">
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
-            <div>
-              <div className="flex items-center justify-between mb-1.5 font-mono">
-                <label className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase tracking-widest block font-medium">
-                  NARRATIVE CONCEPT
-                </label>
-                <button
-                  type="button"
-                  onClick={enhancePrompt}
-                  disabled={enhancing || !topic.trim()}
-                  className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer border border-black/[0.06] dark:border-white/[0.06] px-2.5 py-1 rounded-full bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 whitespace-nowrap shrink-0"
-                >
-                  <Wand2 className={cn("h-2.5 w-2.5", enhancing && "animate-spin")} />
-                  <span>AI ENHANCE</span>
-                </button>
+          <div className="space-y-6 relative z-10">
+            {/* Screenplay Directive Prompt Box */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-violet-500" />
+                  <label className="text-[11px] text-zinc-700 dark:text-zinc-300 uppercase tracking-widest font-bold">
+                    SCREENPLAY NARRATIVE DIRECTIVE
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  {topic.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setTopic("")}
+                      className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer px-2 py-1 rounded"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={enhancePrompt}
+                    disabled={enhancing || !topic.trim()}
+                    className="flex items-center gap-1.5 text-[10px] text-violet-700 dark:text-violet-300 hover:text-violet-900 dark:hover:text-white transition-colors cursor-pointer border border-violet-200 dark:border-violet-500/30 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 disabled:opacity-40"
+                  >
+                    <Wand2 className={cn("h-3 w-3", enhancing && "animate-spin")} />
+                    <span>{enhancing ? "ENHANCING SCRIPT..." : "AI SCRIPT ENHANCE"}</span>
+                  </button>
+                </div>
               </div>
+
               <textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Describe screenplay idea, world-building atmosphere, and visual narrative..."
-                className="w-full h-24 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta leading-relaxed"
+                placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone..."
+                className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta leading-relaxed"
               />
 
-              {/* Preset Chips */}
-              <div className="mt-2.5 space-y-1.5 font-mono">
-                <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-medium">
-                  PRESET CONCEPTS:
+              {/* Inspiration Presets */}
+              <div className="pt-2 space-y-2 font-mono">
+                <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
+                  QUICK INSPIRATION PRESETS:
                 </span>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {PRESETS.map((p, i) => (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setTopic(p)}
-                      className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-violet-300 hover:border-violet-200 dark:hover:border-violet-500/20 truncate max-w-[280px] text-left transition-colors cursor-pointer"
+                      onClick={() => setTopic(p.text)}
+                      className="text-[10px] px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-violet-700 dark:hover:text-violet-300 hover:border-violet-200 dark:hover:border-violet-500/30 transition-all cursor-pointer flex items-center gap-1.5"
                     >
-                      {p}
+                      <span className="font-bold text-violet-500">[{p.genre}]</span>
+                      <span className="truncate max-w-[220px]">{p.text}</span>
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Dropdowns for Timeline and Style */}
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <Dropdown
-                label="SCENE TIMELINE"
-                options={[
-                  { value: 2, label: "2 Scenes", description: "~10s Teaser Cut" },
-                  { value: 3, label: "3 Scenes", description: "~15s Standard Story" },
-                  { value: 4, label: "4 Scenes", description: "~20s Cinematic Cut" },
-                  { value: 5, label: "5 Scenes", description: "~25s Feature Short" },
-                ]}
-                value={scenes}
-                onChange={(val) => setScenes(Number(val))}
-              />
-
-              <Dropdown
-                label="AESTHETIC STYLE"
-                options={[
-                  { value: "cinematic", label: "Cinematic", description: "35mm Arri Alexa Lighting" },
-                  { value: "cyberpunk", label: "Cyberpunk", description: "Neon Noir Atmosphere" },
-                  { value: "anime", label: "Anime", description: "Ghibli Painterly Sky" },
-                  { value: "3d_pixar", label: "3D Animation", description: "Subsurface Scattering" },
-                  { value: "photoreal", label: "Photoreal", description: "Hasselblad Sharp Focus" },
-                ]}
-                value={style}
-                onChange={setStyle}
-              />
-            </div>
-
-            {/* Aspect Ratio & Format */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 dark:text-zinc-400 block mb-2 font-medium">
-                ASPECT RATIO FORMAT
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: "16:9", label: "16:9", desc: "Landscape / Film" },
-                  { id: "9:16", label: "9:16", desc: "Shorts / Reels" },
-                  { id: "1:1", label: "1:1", desc: "Square Social" },
-                ].map((ar) => (
-                  <button
-                    key={ar.id}
-                    type="button"
-                    onClick={() => setAspectRatio(ar.id)}
-                    className={cn(
-                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer whitespace-nowrap shrink-0",
-                      aspectRatio === ar.id
-                        ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
-                        : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    )}
-                  >
-                    <span className="text-xs font-bold font-heading block">{ar.label}</span>
-                    <span className="text-[9px] font-mono opacity-70 block">{ar.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Voice Provider Switcher */}
-            <div>
-              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 dark:text-zinc-400 block mb-2 font-medium">
-                SPEECH ENGINE
-              </label>
-              <div className="grid grid-cols-2 gap-2 font-jakarta">
-                <button
-                  type="button"
-                  onClick={() => setVoiceProvider("edge")}
-                  className={cn(
-                    "p-3 rounded-xl text-left border transition-all cursor-pointer",
-                    voiceProvider === "edge"
-                      ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
-                      : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                  )}
-                >
-                  <span className="text-xs font-bold font-heading block">Edge Neural</span>
-                  <span className="text-[9px] font-mono opacity-70 block">Free / Offline Active</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVoiceProvider("elevenlabs")}
-                  className={cn(
-                    "p-3 rounded-xl text-left border transition-all cursor-pointer",
-                    voiceProvider === "elevenlabs"
-                      ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
-                      : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                  )}
-                >
-                  <span className="text-xs font-bold font-heading block">ElevenLabs</span>
-                  <span className="text-[9px] font-mono opacity-70 block">Ultra-Realistic Speech</span>
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={requestPipelineConfirm}
-              disabled={loading || !topic.trim()}
-              className="w-full py-3.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight flex items-center justify-center gap-2 disabled:opacity-50 transition-all shadow-sm active:scale-[0.98] mt-3 cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-current" />
-                  <span>SYNTHESIZING PRODUCTION...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                  <span>EXECUTE CINEMA PIPELINE</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Master Cinema Viewport */}
-        <div className="lg:col-span-7">
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-6 flex flex-col justify-between min-h-[520px] relative shadow-sm">
-            {loading && (
-              <div className="my-auto space-y-6 py-6">
-                <LiveProgressBar
-                  progress={progress}
-                  stageTitle={stageTitle}
-                  statusMessage={statusText}
-                  elapsedSeconds={elapsedSeconds}
-                  logs={telemetryLogs}
-                  isActive={loading}
-                  showTerminal={true}
-                />
-              </div>
-            )}
-
-            {!loading && !result && (
-              <div className="my-auto text-center space-y-4 py-20">
-                <div className="h-16 w-16 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400 dark:text-zinc-600 shadow-inner">
-                  <Film className="h-8 w-8" />
-                </div>
-                <div className="space-y-1.5 max-w-sm mx-auto">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-200 font-heading tracking-tight">
-                    AUTONOMOUS CINEMA AGENT IDLE
-                  </p>
-                  <p className="text-xs text-zinc-500 font-jakarta leading-relaxed">
-                    Select your topic or pick a cinematic preset on the left, then click &quot;Execute Cinema Pipeline&quot; to stream real-time screenplay drafting, visual diffusion, and video compilation.
-                  </p>
+            {/* Production Controls Matrix */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+              {/* 1. Scene Timeline */}
+              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
+                  SCENE TIMELINE
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { num: 2, label: "2 Scenes", desc: "~10s Teaser" },
+                    { num: 3, label: "3 Scenes", desc: "~15s Short" },
+                    { num: 4, label: "4 Scenes", desc: "~20s Cinema" },
+                    { num: 5, label: "5 Scenes", desc: "~25s Feature" },
+                  ].map((item) => (
+                    <button
+                      key={item.num}
+                      type="button"
+                      onClick={() => setScenes(item.num)}
+                      className={cn(
+                        "p-2 rounded-xl border text-center transition-all cursor-pointer",
+                        scenes === item.num
+                          ? "bg-violet-600 text-white border-violet-600 shadow-sm"
+                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-violet-300"
+                      )}
+                    >
+                      <span className="text-xs font-bold font-heading block">{item.label}</span>
+                      <span className="text-[8px] font-mono opacity-80 block">{item.desc}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
 
-            {result && result.success && result.final_video && (
-              <div className="space-y-5">
-                <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-lg">
-                  <video
-                    src={getMediaUrl(result.final_video.url)}
-                    controls
-                    autoPlay
-                    className="w-full aspect-video object-contain"
-                  >
-                    {result.final_video?.vtt_url && (
-                      <track
-                        src={getMediaUrl(result.final_video.vtt_url)}
-                        kind="subtitles"
-                        srcLang="en"
-                        label="English Subtitles"
-                        default
-                      />
-                    )}
-                  </video>
-                  <span className="absolute top-3 left-3 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-300 border border-white/10 backdrop-blur-sm">
-                    [ MASTER 1080P • 30 FPS ]
-                  </span>
+              {/* 2. Visual Diffusion Engine */}
+              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
+                  DIFFUSION ENGINE
+                </label>
+                <div className="space-y-1.5">
+                  {IMAGE_MODELS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setImageModel(m.id)}
+                      className={cn(
+                        "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
+                        imageModel === m.id
+                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30 shadow-sm"
+                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
+                      )}
+                    >
+                      <span className="text-[11px] font-semibold">{m.label}</span>
+                      <span className="text-[8px] font-mono opacity-70">{m.badge}</span>
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                  <div className="space-y-0.5 font-mono">
-                    <p className="text-xs text-zinc-950 dark:text-white font-semibold">{result.final_video.filename}</p>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
-                      {result.scenes?.length} SCENES • COMPILED IN {result.elapsed_seconds}S
-                    </p>
+              {/* 3. Aesthetic Style */}
+              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
+                  AESTHETIC STYLE
+                </label>
+                <div className="space-y-1.5">
+                  {STYLES.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setStyle(s.id)}
+                      className={cn(
+                        "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
+                        style === s.id
+                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30 shadow-sm"
+                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
+                      )}
+                    >
+                      <span className="text-[11px] font-semibold">{s.label}</span>
+                      <span className="text-[8px] font-mono opacity-70 truncate max-w-[110px]">{s.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Aspect Ratio & Speech Engine */}
+              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                <div>
+                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
+                    ASPECT RATIO
+                  </label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { id: "16:9", label: "16:9", desc: "Cinema" },
+                      { id: "9:16", label: "9:16", desc: "Shorts" },
+                      { id: "1:1", label: "1:1", desc: "Square" },
+                    ].map((ar) => (
+                      <button
+                        key={ar.id}
+                        type="button"
+                        onClick={() => setAspectRatio(ar.id)}
+                        className={cn(
+                          "py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer",
+                          aspectRatio === ar.id
+                            ? "bg-violet-600 text-white border-violet-600"
+                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
+                        )}
+                      >
+                        <span className="text-[10px] font-bold block">{ar.label}</span>
+                        <span className="text-[8px] font-mono opacity-70 block">{ar.desc}</span>
+                      </button>
+                    ))}
                   </div>
+                </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                <div>
+                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
+                    NEURAL SPEECH ENGINE
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setResult(null);
-                        setCurrentStep(-1);
-                        setProgress(0);
-                      }}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                      onClick={() => setVoiceProvider("edge")}
+                      className={cn(
+                        "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                        voiceProvider === "edge"
+                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30"
+                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
+                      )}
                     >
-                      <RotateCcw className="h-3 w-3" />
-                      <span>NEW CUT</span>
+                      <span className="text-[11px] font-bold block">Edge Neural</span>
+                      <span className="text-[8px] font-mono text-emerald-600 dark:text-emerald-400 block font-semibold">
+                        Free / Instant
+                      </span>
                     </button>
-
-                    {result.final_video?.srt_url && (
-                      <a
-                        href={getMediaUrl(result.final_video.srt_url)}
-                        download
-                        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors whitespace-nowrap shrink-0"
-                        title="Download Subtitles (.srt)"
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>.SRT</span>
-                      </a>
-                    )}
-
-                    <a
-                      href={getMediaUrl(result.final_video.url)}
-                      download
-                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-heading font-bold transition-all shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
+                    <button
+                      type="button"
+                      onClick={() => setVoiceProvider("elevenlabs")}
+                      className={cn(
+                        "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                        voiceProvider === "elevenlabs"
+                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30"
+                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
+                      )}
                     >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>DOWNLOAD MASTER MP4</span>
-                    </a>
+                      <span className="text-[11px] font-bold block">ElevenLabs</span>
+                      <span className="text-[8px] font-mono text-violet-600 dark:text-violet-400 block font-semibold">
+                        Studio Voice
+                      </span>
+                    </button>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Scene Sequence Breakdown */}
-                {result.scenes && result.scenes.length > 0 && (
-                  <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.06] space-y-2.5 font-mono">
-                    <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-500">
-                      <span>SCENE BREAKDOWN • {result.scenes.length} KEYFRAMES</span>
-                    </div>
+            {/* Launch Production Command Button */}
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+              <div className="flex items-center gap-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-violet-500" />
+                  Estimated Runtime: ~{scenes * 7}s
+                </span>
+                <span>•</span>
+                <span>
+                  Est. Cost: <strong className="text-zinc-950 dark:text-white">₹{costInr}</strong> (${costUsd.toFixed(2)})
+                </span>
+              </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {result.scenes.map((s: any, i: number) => (
-                        <div
-                          key={i}
-                          className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] p-2 space-y-1.5 text-left"
-                        >
-                          {s.image?.url && (
-                            <img
-                              src={getMediaUrl(s.image.url)}
-                              alt={s.title}
-                              className="w-full h-16 object-cover rounded-lg border border-black/[0.06] dark:border-white/[0.06]"
-                            />
-                          )}
-                          <div className="pt-0.5">
-                            <span className="text-[10px] font-bold text-zinc-950 dark:text-white block truncate">
-                              SCENE {s.scene}: {s.title}
-                            </span>
-                            <span className="text-[8px] text-zinc-500 block uppercase">
-                              VECTOR: {s.video?.motion_type || "zoom"}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              <button
+                type="button"
+                onClick={requestPipelineConfirm}
+                disabled={loading || !topic.trim()}
+                className="px-8 py-3.5 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 disabled:opacity-50 transition-all shadow-md active:scale-[0.98] cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>SYNTHESIZING PRODUCTION...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 fill-current" />
+                    <span>EXECUTE AUTONOMOUS PIPELINE</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </>
                 )}
-              </div>
-            )}
-
-            {result && !result.success && (
-              <div className="my-auto text-center space-y-2 py-12">
-                <p className="text-xs text-red-500 dark:text-red-400 font-mono">{result.error}</p>
-              </div>
-            )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* SECTION 2: LIVE PRODUCTION & TELEMETRY STAGE */}
+      <div ref={stageRef} className="scroll-mt-6 space-y-6">
+        <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-4 font-mono">
+            <div className="flex items-center gap-2">
+              <span className={cn("w-2.5 h-2.5 rounded-full", loading ? "bg-emerald-500 animate-ping" : "bg-zinc-400")} />
+              <h2 className="text-xs uppercase tracking-widest font-bold text-zinc-800 dark:text-zinc-200">
+                {loading ? "LIVE PRODUCTION STAGE IN PROGRESS" : "PRODUCTION MILESTONE OVERVIEW"}
+              </h2>
+            </div>
+            {loading && abortRef.current && (
+              <button
+                type="button"
+                onClick={() => {
+                  abortRef.current?.abort();
+                  setLoading(false);
+                }}
+                className="px-3 py-1 rounded-full border border-rose-500/30 text-rose-500 hover:bg-rose-500/10 text-[10px] font-mono transition-colors cursor-pointer"
+              >
+                Cancel Production
+              </button>
+            )}
+          </div>
+
+          {/* Production Milestone Step Cards */}
+          <StepCards currentStep={currentStep} />
+
+          {/* Real-time Streaming Progress & Live Compiler Terminal */}
+          {loading && (
+            <div className="mt-6 pt-6 border-t border-black/[0.06] dark:border-white/[0.06]">
+              <LiveProgressBar
+                progress={progress}
+                stageTitle={stageTitle}
+                statusMessage={statusText}
+                elapsedSeconds={elapsedSeconds}
+                logs={telemetryLogs}
+                isActive={loading}
+                showTerminal={true}
+              />
+            </div>
+          )}
+
+          {!loading && !result && (
+            <div className="text-center py-12 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center mx-auto text-zinc-400">
+                <Clapperboard className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 font-heading">
+                Studio Ready for Screenplay Directives
+              </p>
+              <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                Once executed, the autonomous agent will automatically generate storyboard keyframes, camera motions, synchronized voiceover narration, and compile a 1080p MP4.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SECTION 3: MASTER SCREENING ROOM & SCENE STORYBOARD */}
+      {result && result.success && result.final_video && (
+        <div ref={resultRef} className="scroll-mt-6 space-y-6">
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 relative overflow-hidden">
+            {/* Top Bar with Cinema Tag & Details */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-4 font-mono">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] tracking-wider uppercase border border-emerald-500/20">
+                  MASTER RENDER READY
+                </span>
+                <span className="text-xs text-zinc-950 dark:text-white font-semibold truncate max-w-sm">
+                  {result.final_video.filename}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+                <span>{result.scenes?.length || scenes} SCENES</span>
+                <span>•</span>
+                <span>COMPILED IN {result.elapsed_seconds || elapsedSeconds}S</span>
+              </div>
+            </div>
+
+            {/* Master Video Player Viewport */}
+            <div className="relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black shadow-2xl">
+              <video
+                src={getMediaUrl(result.final_video.url)}
+                controls
+                autoPlay
+                className="w-full aspect-video object-contain"
+              >
+                {result.final_video?.vtt_url && (
+                  <track
+                    src={getMediaUrl(result.final_video.vtt_url)}
+                    kind="subtitles"
+                    srcLang="en"
+                    label="English Subtitles"
+                    default
+                  />
+                )}
+              </video>
+              <div className="absolute top-4 left-4 flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg bg-black/80 text-white border border-white/20 backdrop-blur-md">
+                  [ 1080P MASTER • 30 FPS • H.264 ]
+                </span>
+              </div>
+            </div>
+
+            {/* Master Action Control Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2 font-mono">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResult(null);
+                    setCurrentStep(-1);
+                    setProgress(0);
+                    scrollToDesk();
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-all cursor-pointer shadow-sm"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>NEW CUT</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditVideoAsset({
+                      url: result.final_video.url,
+                      filename: result.final_video.filename,
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-md"
+                >
+                  <Scissors className="h-3.5 w-3.5" />
+                  <span>PRECISION VIDEO EDITOR</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 font-mono">
+                {result.final_video?.srt_url && (
+                  <a
+                    href={getMediaUrl(result.final_video.srt_url)}
+                    download
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
+                    title="Download Subtitles (.srt)"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>DOWNLOAD .SRT</span>
+                  </a>
+                )}
+
+                <a
+                  href={getMediaUrl(result.final_video.url)}
+                  download
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-heading font-bold transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>DOWNLOAD MASTER MP4</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Visual Scene Sequence Storyboard */}
+            {result.scenes && result.scenes.length > 0 && (
+              <div className="pt-6 border-t border-black/[0.06] dark:border-white/[0.06] space-y-4 font-mono">
+                <div className="flex items-center justify-between text-xs uppercase tracking-widest text-zinc-500 font-bold">
+                  <span>SCENE STORYBOARD BREAKDOWN • {result.scenes.length} KEYFRAMES</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {result.scenes.map((s: any, i: number) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] p-3 space-y-2.5 text-left shadow-sm"
+                    >
+                      {s.image?.url && (
+                        <div className="relative rounded-xl overflow-hidden aspect-video bg-black/40">
+                          <img
+                            src={getMediaUrl(s.image.url)}
+                            alt={s.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-2 left-2 text-[9px] font-mono px-2 py-0.5 rounded bg-black/70 text-white backdrop-blur-sm border border-white/10">
+                            Scene {s.scene || i + 1}
+                          </span>
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-zinc-950 dark:text-white line-clamp-1">
+                          {s.title || `Scene ${i + 1}`}
+                        </p>
+                        {s.narration && (
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-2 italic font-jakarta">
+                            &ldquo;{s.narration}&rdquo;
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between pt-1 text-[9px] text-zinc-400">
+                          <span className="uppercase">VECTOR: {s.video?.motion_type || "zoom"}</span>
+                          {s.duration && <span>{s.duration}s</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Error Feedback Card */}
+      {result && !result.success && (
+        <div className="p-6 rounded-3xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-center space-y-2">
+          <p className="text-xs text-rose-600 dark:text-rose-400 font-mono font-bold">
+            Compilation Error: {result.error}
+          </p>
+        </div>
+      )}
+
+      {/* Precision Video Editor Modal */}
+      {editVideoAsset && (
+        <VideoEditorModal
+          isOpen={Boolean(editVideoAsset)}
+          onClose={() => setEditVideoAsset(null)}
+          videoUrl={editVideoAsset.url}
+          filename={editVideoAsset.filename}
+        />
+      )}
 
       {/* Spend Safeguard Confirmation Modal */}
       <GenerationConfirmModal

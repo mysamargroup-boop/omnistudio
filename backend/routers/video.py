@@ -10,7 +10,7 @@ import logging
 from config import settings
 from services.replicate_service import generate_video_from_image, generate_flux_image
 from services.openai_service import generate_openai_image
-from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion, get_media_duration
+from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion, get_media_duration, concatenate_videos
 from services.director_agent import direct_video_prompt
 from services.video_editor_service import edit_video
 from services.security_service import sanitize_filename
@@ -670,9 +670,24 @@ async def upload_and_generate(
 @router.get("/motions")
 @limiter.limit("60/minute")
 async def list_motion_types(request: Request):
-    replicate_active = bool(getattr(settings, 'REPLICATE_API_TOKEN', None))
-    google_active = bool(getattr(settings, 'GEMINI_API_KEY', None))
-    openai_active = bool(getattr(settings, 'OPENAI_API_KEY', None))
+    try:
+        from database import load_settings_into_runtime
+        load_settings_into_runtime()
+    except Exception:
+        pass
+
+    import os
+    replicate_token = os.environ.get("REPLICATE_API_TOKEN") or getattr(settings, 'REPLICATE_API_TOKEN', "")
+    try:
+        from services.gemini_service import get_gemini_key
+        gemini_key = get_gemini_key()
+    except Exception:
+        gemini_key = os.environ.get("GEMINI_API_KEY") or getattr(settings, 'GEMINI_API_KEY', "")
+    openai_key = os.environ.get("OPENAI_API_KEY") or getattr(settings, 'OPENAI_API_KEY', "")
+
+    replicate_active = bool(replicate_token and str(replicate_token).strip())
+    google_active = bool(gemini_key and str(gemini_key).strip())
+    openai_active = bool(openai_key and str(openai_key).strip())
 
     return {
         "motions": [
@@ -693,20 +708,20 @@ async def list_motion_types(request: Request):
         ],
         "models": [
             {"id": "ffmpeg_local", "name": "Local Ken Burns / Morph Engine", "active": True, "desc": "Hardware Accelerated FFmpeg 8.1 (Free / Instant)"},
-            {"id": "kling_2.0", "name": "Kling AI 2.0 Pro", "active": False, "desc": "Photorealistic Physics & High Dynamic Kinematics"},
-            {"id": "kling_v1.5", "name": "Kling AI v1.5", "active": False, "desc": "High Frame Consistency & Camera Simulation"},
-            {"id": "seedance_v1", "name": "Seedance (ByteDance Magic)", "active": False, "desc": "High-Fidelity Character & Dance Choreography"},
-            {"id": "seedvideo_1.0", "name": "SeedVideo 1.0 (ByteDance)", "active": False, "desc": "Fluid Multi-Subject Motion Dynamics"},
-            {"id": "omni_video_v3", "name": "OmniMotion 3.0 (Native Neural)", "active": False, "desc": "3D Spatial Camera Trajectory & Physics Control"},
-            {"id": "omni_human_pro", "name": "OmniHuman Pro", "active": False, "desc": "Photorealistic Human Expression & Expressive Movement"},
-            {"id": "runway_gen3", "name": "Runway Gen-3 Alpha Turbo", "active": False, "desc": "Ultra-Realistic Cinema Motion Coherence"},
-            {"id": "openai_sora", "name": "OpenAI Sora", "active": False, "desc": "World Simulator & Complex Multi-Shot Kinematics"},
-            {"id": "luma_dream", "name": "Luma Dream Machine 1.5", "active": False, "desc": "Consistent 3D Camera Parallax & Fluid Dynamics"},
-            {"id": "minimax_video", "name": "Minimax Video-01 (Hailuo)", "active": False, "desc": "Cinematic Resolution & Natural Human Kinetics"},
+            {"id": "kling_2.0", "name": "Kling AI 2.0 Pro", "active": replicate_active, "desc": "Photorealistic Physics & High Dynamic Kinematics"},
+            {"id": "kling_v1.5", "name": "Kling AI v1.5", "active": replicate_active, "desc": "High Frame Consistency & Camera Simulation"},
+            {"id": "seedance_v1", "name": "Seedance (ByteDance Magic)", "active": replicate_active, "desc": "High-Fidelity Character & Dance Choreography"},
+            {"id": "seedvideo_1.0", "name": "SeedVideo 1.0 (ByteDance)", "active": replicate_active, "desc": "Fluid Multi-Subject Motion Dynamics"},
+            {"id": "omni_video_v3", "name": "OmniMotion 3.0 (Native Neural)", "active": True, "desc": "3D Spatial Camera Trajectory & Physics Control"},
+            {"id": "omni_human_pro", "name": "OmniHuman Pro", "active": replicate_active, "desc": "Photorealistic Human Expression & Expressive Movement"},
+            {"id": "runway_gen3", "name": "Runway Gen-3 Alpha Turbo", "active": replicate_active, "desc": "Ultra-Realistic Cinema Motion Coherence"},
+            {"id": "openai_sora", "name": "OpenAI Sora", "active": openai_active, "desc": "World Simulator & Complex Multi-Shot Kinematics"},
+            {"id": "luma_dream", "name": "Luma Dream Machine 1.5", "active": replicate_active, "desc": "Consistent 3D Camera Parallax & Fluid Dynamics"},
+            {"id": "minimax_video", "name": "Minimax Video-01 (Hailuo)", "active": replicate_active, "desc": "Cinematic Resolution & Natural Human Kinetics"},
             {"id": "google_veo", "name": "Google Veo 2", "active": google_active, "desc": "High Definition 4K Multimodal Video Generation"},
-            {"id": "pika_v2", "name": "Pika 2.0", "active": False, "desc": "Creative Stylized Motion & Kinetic Lens Effects"},
-            {"id": "hunyuan_video", "name": "HunyuanVideo (Tencent)", "active": False, "desc": "Open-Weights High Definition Video Diffusion"},
-            {"id": "cogvideox_5b", "name": "CogVideoX-5B", "active": False, "desc": "Deep Expert 3D VAE Latent Video Synthesis"}
+            {"id": "pika_v2", "name": "Pika 2.0", "active": replicate_active, "desc": "Creative Stylized Motion & Kinetic Lens Effects"},
+            {"id": "hunyuan_video", "name": "HunyuanVideo (Tencent)", "active": replicate_active, "desc": "Open-Weights High Definition Video Diffusion"},
+            {"id": "cogvideox_5b", "name": "CogVideoX-5B", "active": replicate_active, "desc": "Deep Expert 3D VAE Latent Video Synthesis"}
         ],
         "resolutions": [
             {"id": "720p", "name": "720p HD", "desc": "Fast preview quality"},
@@ -760,6 +775,57 @@ async def edit_video_endpoint(req: EditVideoRequest, request: Request):
         chroma_bg_path=req.chroma_bg_path
     )
     return res
+
+
+class ConcatVideoRequest(BaseModel):
+    video_paths: list[str]
+    transition: Optional[str] = "none"
+    transition_duration: Optional[float] = 1.0
+
+
+@router.post("/concat")
+@limiter.limit("15/minute")
+async def concat_videos_endpoint(req: ConcatVideoRequest, request: Request):
+    """Concatenate multiple video files into a single master video."""
+    if not req.video_paths or len(req.video_paths) < 2:
+        return {"success": False, "error": "At least two video files are required to merge."}
+    
+    resolved_paths = []
+    for vp in req.video_paths:
+        p = resolve_path(vp)
+        if not p or not p.exists():
+            return {"success": False, "error": f"Video clip not found: {vp}"}
+        resolved_paths.append(p)
+    
+    out_filename = f"merged_{uuid.uuid4().hex[:8]}.mp4"
+    out_file = settings.VIDEOS_PATH / out_filename
+    
+    try:
+        await asyncio.to_thread(concatenate_videos, resolved_paths, out_file)
+        duration = await asyncio.to_thread(get_media_duration, out_file)
+        
+        try:
+            db_save_asset(
+                filename=out_filename,
+                media_type="video",
+                url=f"/outputs/videos/{out_filename}",
+                prompt=f"Merged {len(resolved_paths)} video clips",
+                model="FFmpeg Concat Stream",
+                cost=0.0
+            )
+        except Exception as e:
+            logger.warning("Failed to save merged asset to db: %s", e)
+            
+        return {
+            "success": True,
+            "filename": out_filename,
+            "url": f"/outputs/videos/{out_filename}",
+            "local_path": str(out_file),
+            "duration": duration,
+        }
+    except Exception as e:
+        logger.error("Failed to merge videos: %s", e)
+        return {"success": False, "error": str(e)}
 
 
 @router.post("/upload")

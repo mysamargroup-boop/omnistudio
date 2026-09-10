@@ -100,6 +100,59 @@ async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T>
   return res.json();
 }
 
+export function uploadWithProgress<T = any>(
+  endpoint: string,
+  file: File,
+  fieldName: string = "file",
+  onProgress?: (percent: number) => void
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const base = getApiBase();
+    const cleanPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const url = `${base}${cleanPath}`;
+    const xhr = new XMLHttpRequest();
+
+    xhr.open("POST", url);
+
+    const token = getBackendToken();
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          resolve(res);
+        } catch {
+          resolve(xhr.responseText as any);
+        }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.detail || err.error || `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network upload error"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out"));
+
+    const formData = new FormData();
+    formData.append(fieldName, file);
+    xhr.send(formData);
+  });
+}
+
 export function getMediaUrl(path: string): string {
   if (!path) return "";
 
@@ -268,7 +321,23 @@ export const api = {
     formData.append("file", file);
     return fetchApi<any>("/api/video/upload", { method: "POST", body: formData });
   },
+  uploadWithProgress,
+  uploadVideoWithProgress: (file: File, onProgress?: (percent: number) => void) =>
+    uploadWithProgress<any>("/api/video/upload", file, "file", onProgress),
+  uploadVideoKeyframeWithProgress: (file: File, onProgress?: (percent: number) => void) =>
+    uploadWithProgress<any>("/api/video/upload-keyframe", file, "file", onProgress),
+  uploadSourceVideoWithProgress: (file: File, onProgress?: (percent: number) => void) =>
+    uploadWithProgress<any>("/api/video/upload-source-video", file, "file", onProgress),
   editVideo: (data: any) => fetchApi<any>("/api/video/edit", { method: "POST", body: JSON.stringify(data) }),
+  concatVideos: (videoPaths: string[], transition?: string, transitionDuration?: number) =>
+    fetchApi<any>("/api/video/concat", {
+      method: "POST",
+      body: JSON.stringify({
+        video_paths: videoPaths,
+        transition: transition || "none",
+        transition_duration: transitionDuration || 1.0,
+      }),
+    }),
   renameAsset: (media_type: string, old_filename: string, new_filename: string) =>
     fetchApi<any>("/api/assets/rename", {
       method: "POST",
