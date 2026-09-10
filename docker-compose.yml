@@ -3,6 +3,7 @@ version: "3.8"
 services:
   # OmniStudio AI Backend (FastAPI + FFmpeg + Neural Engines)
   omni-backend:
+    image: omnistudio-backend:v1.2.0
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -39,6 +40,7 @@ services:
 
   # OmniStudio AI Frontend (Next.js 16 Production App)
   omni-frontend:
+    image: omnistudio-frontend:v1.2.0
     build:
       context: ./frontend
       dockerfile: Dockerfile
