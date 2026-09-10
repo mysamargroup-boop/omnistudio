@@ -1,41 +1,60 @@
-name: Auto Deploy OmniStudio to Hostinger VPS
+name: Build and Push to GHCR
 
 on:
   push:
     branches:
       - main
 
+env:
+  REGISTRY: ghcr.io
+  # GitHub automatically sets github.repository to your username/repo (e.g., mysamargroup-boop/omnistudio)
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  deploy:
-    name: Deploy to Hostinger VPS
+  build-and-push:
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.HOSTINGER_VPS_HOST }}
-          username: ${{ secrets.HOSTINGER_VPS_USER }}
-          password: ${{ secrets.HOSTINGER_VPS_PASSWORD }}
-          port: 22
-          script_stop: true
-          script: |
-            echo "🚀 Starting Automated Deployment..."
-            cd /home/omnistudio
-            
-            echo "📦 Pulling latest code from GitHub..."
-            git pull origin main
-            
-            echo "🔨 Rebuilding and restarting OmniStudio containers..."
-            docker compose up -d --build omni-frontend omni-backend
-            
-            echo "🧹 Cleaning up dangling build cache..."
-            docker image prune -f
-            
-            echo "✅ Verifying running OmniStudio containers:"
-            docker ps --filter "name=omnistudio" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-            
-            echo "🎉 Deployment to Hostinger VPS Completed Successfully!"
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          tags: type=raw,value=latest
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+
+      - name: Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: type=raw,value=latest
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
