@@ -351,7 +351,7 @@ export default function LoginPage() {
               </h1>
 
               <p className="text-sm text-zinc-400 max-w-xs mx-auto leading-relaxed" style={{ fontFamily: "var(--font-montserrat), Montserrat, sans-serif" }}>
-                Enter your 4-digit passcode or connect with Supabase Cloud
+                Enter your 4-digit passcode or sign in with your Cloud account
               </p>
             </div>
 
@@ -390,7 +390,7 @@ export default function LoginPage() {
                 style={{ fontFamily: "var(--font-montserrat), Montserrat, sans-serif" }}
               >
                 <ShieldCheck className="w-4 h-4" />
-                <span>Supabase</span>
+                <span>Cloud Login</span>
               </button>
             </div>
 
@@ -490,7 +490,7 @@ export default function LoginPage() {
               <form onSubmit={handleSupabaseSubmit} className="space-y-5 pt-1" style={{ animation: "tabSlideIn 0.35s ease-out" }}>
                 <div className="flex justify-between items-center pb-1">
                   <span className="text-sm font-bold text-zinc-200" style={{ fontFamily: "var(--font-montserrat), Montserrat, sans-serif" }}>
-                    {mode === "signin" ? "Sign In to OmniCloud" : "Create Account"}
+                    {mode === "signin" ? "Sign In — OmniStudio Cloud" : "Create New Account"}
                   </span>
                   <button
                     type="button"
