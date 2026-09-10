@@ -20,29 +20,30 @@ const NAV_TABS = [
 ];
 
 const VIDEO_FEATURES = [
-  { name: 'First Frame', desc: 'Image to motion video' },
-  { name: 'First + Last Frame', desc: 'Morphing between two keyframes' },
-  { name: 'Text to Video', desc: 'Generate cinema from text prompt' },
-  { name: 'Motion Transfer', desc: 'Transfer motion from source video' },
+  { name: 'First Frame', desc: 'Image to motion video', mode: 'first_frame' },
+  { name: 'First + Last Frame', desc: 'Morphing between two keyframes', mode: 'first_to_last_frame' },
+  { name: 'Multi-Keyframes', desc: 'Interpolate multiple uploaded images', mode: 'multi_frame' },
+  { name: 'Text to Video', desc: 'Generate cinema from text prompt', mode: 'text_to_video' },
+  { name: 'Motion Transfer', desc: 'Transfer motion from source video', mode: 'motion_transfer' },
 ];
 
 const VIDEO_MODELS = [
-  { name: 'FFmpeg Local', desc: 'Fast local renderer' },
-  { name: 'Kling AI 2.0', desc: 'Photorealistic motion' },
-  { name: 'Runway Gen-3', desc: 'Studio cinematic realism' },
-  { name: 'Luma Dream Machine', desc: 'Fluid camera moves' },
+  { name: 'FFmpeg Local', desc: 'Fast local renderer (100% Free)', model: 'ffmpeg_local' },
+  { name: 'Kling AI 2.0', desc: 'Photorealistic physics', model: 'kling_2.0' },
+  { name: 'Runway Gen-3', desc: 'Studio cinematic realism', model: 'runway_gen3' },
+  { name: 'Luma Dream Machine', desc: 'Fluid camera moves', model: 'luma_dream' },
 ];
 
 const AUDIO_FEATURES = [
-  { name: 'Text to Speech', desc: 'Synthesize speech from scripts' },
-  { name: 'Voice Change', desc: 'Swap audio or video voiceover' },
-  { name: 'Translate and Dub', desc: 'Auto-dubbing across 20+ languages' },
+  { name: 'Text to Speech', desc: 'Synthesize speech from scripts', mode: 'tts' },
+  { name: 'Voice Change', desc: 'Swap audio or video voiceover', mode: 'voice_change' },
+  { name: 'Translate and Dub', desc: 'Auto-dubbing across 20+ languages', mode: 'translate' },
 ];
 
 const AUDIO_MODELS = [
-  { name: 'Edge Neural', desc: 'Free high-fidelity voice' },
-  { name: 'ElevenLabs v3', desc: 'Studio voice cloning' },
-  { name: 'OpenAI TTS HD', desc: 'Standard studio narration' },
+  { name: 'Edge Neural', desc: 'Free high-fidelity voice', model: 'edge' },
+  { name: 'ElevenLabs v3', desc: 'Studio voice cloning', model: 'elevenlabs' },
+  { name: 'OpenAI TTS HD', desc: 'Standard studio narration', model: 'openai' },
 ];
 
 export default function Header() {
@@ -53,10 +54,16 @@ export default function Header() {
   const [isOnline, setIsOnline] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, isPinAuthenticated, isAuthenticated, signOut } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const isAuthed = isAuthenticated || isPinAuthenticated || Boolean(user);
+  const displayName = isPinAuthenticated
+    ? "Samar"
+    : (profile?.full_name || (user?.email?.toLowerCase().includes("samar") ? "Samar" : user?.email?.split('@')[0] || "Samar"));
+  const displayEmail = isPinAuthenticated ? "mysamargroup@gmail.com (PIN Admin)" : (user?.email || "mysamargroup@gmail.com");
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -161,7 +168,7 @@ export default function Header() {
               {VIDEO_FEATURES.map((f) => (
                 <div 
                   key={f.name}
-                  onClick={() => { setActiveDropdown(null); router.push('/video'); }}
+                  onClick={() => { setActiveDropdown(null); router.push(`/video?mode=${f.mode}`); }}
                   className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
@@ -175,7 +182,7 @@ export default function Header() {
               {VIDEO_MODELS.map((m) => (
                 <div 
                   key={m.name}
-                  onClick={() => { setActiveDropdown(null); router.push('/video'); }}
+                  onClick={() => { setActiveDropdown(null); router.push(`/video?model=${m.model}`); }}
                   className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
@@ -194,7 +201,7 @@ export default function Header() {
               {AUDIO_FEATURES.map((f) => (
                 <div 
                   key={f.name}
-                  onClick={() => { setActiveDropdown(null); router.push('/voice'); }}
+                  onClick={() => { setActiveDropdown(null); router.push(`/voice?mode=${f.mode}`); }}
                   className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
@@ -208,7 +215,7 @@ export default function Header() {
               {AUDIO_MODELS.map((m) => (
                 <div 
                   key={m.name}
-                  onClick={() => { setActiveDropdown(null); router.push('/voice'); }}
+                  onClick={() => { setActiveDropdown(null); router.push(`/voice?model=${m.model}`); }}
                   className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                 >
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
@@ -258,7 +265,7 @@ export default function Header() {
         </button>
 
         {/* Auth / Profile */}
-        {user ? (
+        {isAuthed ? (
           <div className="relative" ref={userMenuRef}>
             <button
               type="button"
@@ -266,11 +273,11 @@ export default function Header() {
               className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
               title="User Menu"
             >
-              <div className="w-5 h-5 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-[10px]">
-                {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U')}
+              <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[10px] shadow-xs">
+                {displayName.charAt(0).toUpperCase()}
               </div>
-              <span className="hidden sm:inline-block max-w-[80px] truncate font-medium text-zinc-900 dark:text-zinc-100">
-                {profile?.full_name || user.email?.split('@')[0]}
+              <span className="hidden sm:inline-block max-w-[90px] truncate font-bold text-zinc-900 dark:text-zinc-100">
+                {displayName}
               </span>
               <ChevronDown className={cn('w-3 h-3 text-zinc-400 transition-transform', userMenuOpen && 'rotate-180')} />
             </button>
@@ -279,9 +286,9 @@ export default function Header() {
               <div className="absolute right-0 top-full mt-2 w-56 p-1.5 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-xl animate-scale-in z-50">
                 <div className="px-3 py-2 border-b border-black/[0.08] dark:border-white/[0.08]">
                   <div className="font-semibold text-xs text-zinc-900 dark:text-white truncate">
-                    {profile?.full_name || user.email?.split('@')[0]}
+                    {displayName}
                   </div>
-                  <div className="text-[11px] text-zinc-400 truncate">{user.email}</div>
+                  <div className="text-[11px] text-zinc-400 truncate">{displayEmail}</div>
                 </div>
 
                 <div className="py-1">

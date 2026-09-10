@@ -8,7 +8,7 @@ from typing import Optional
 
 logger = logging.getLogger("omnistudio.ffmpeg")
 
-SAFE_MOTION_TYPES = {"zoom_in", "zoom_out", "pan_left", "pan_right", "tilt_up", "tilt_down", "orbit", "subtle"}
+SAFE_MOTION_TYPES = {"none", "zoom_in", "zoom_out", "pan_left", "pan_right", "tilt_up", "tilt_down", "orbit", "subtle"}
 SAFE_MOTIONS = SAFE_MOTION_TYPES
 SAFE_TRANSITIONS = {"smooth_morph", "cross_dissolve", "zoom_blend", "directional_wipe"}
 
@@ -85,6 +85,7 @@ def image_to_video_motion(
     total_frames = int(duration * fps)
     
     motion_filters = {
+        "none": f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
         "zoom_in": f"zoompan=z='min(zoom+0.0015,1.5)':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
         "zoom_out": f"zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
         "pan_left": f"zoompan=z=1.15:x='if(lte(on,-1),(itld-1)*0.75,max(0,x-1.5))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
@@ -95,7 +96,7 @@ def image_to_video_motion(
         "subtle": f"zoompan=z='1.05+0.02*sin(on/25)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d={total_frames}:s={width}x{height}:fps={fps}",
     }
     
-    vf = motion_filters.get(motion_type, motion_filters["zoom_in"])
+    vf = motion_filters.get(motion_type, motion_filters["none"])
     
     temp_clip = None
     if loop:
@@ -357,5 +358,63 @@ def keyframe_interpolate_motion(
             
     return Path(output_path)
 
+def multi_keyframe_interpolate_motion(
+    image_paths: list[Path | str],
+    output_path: Path | str,
+    duration: float = 6.0,
+    transition_type: str = "smooth_morph",
+    fps: int = 30,
+    width: int = 1280,
+    height: int = 720
+) -> Path:
+    """
+    Interpolate through a sequence of 2-8 keyframe images into a single fluid video.
+    Each keyframe gets proportional duration with smooth motion across frames.
+    """
+    if not image_paths:
+        raise ValueError("No image paths provided for interpolation")
+    if len(image_paths) == 1:
+        return image_to_video_motion(image_paths[0], output_path, duration=duration, motion_type="none", fps=fps, width=width, height=height)
+    if len(image_paths) == 2:
+        return keyframe_interpolate_motion(image_paths[0], image_paths[1], output_path, duration=duration, transition_type=transition_type, fps=fps, width=width, height=height)
+
+    num_images = len(image_paths)
+    seg_duration = round(duration / num_images, 2)
+    if seg_duration < 1.0:
+        seg_duration = 1.0
+
+    temp_dir = Path(output_path).parent / f"temp_multi_{uuid.uuid4().hex[:6]}"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    clips = []
+    try:
+        for idx, img in enumerate(image_paths):
+            clip_path = temp_dir / f"seg_{idx}.mp4"
+            m_type = "none" if idx == 0 else ("subtle" if idx % 2 == 1 else "none")
+            image_to_video_motion(
+                image_path=img,
+                output_path=clip_path,
+                duration=seg_duration,
+                motion_type=m_type,
+                fps=fps,
+                width=width,
+                height=height
+            )
+            if clip_path.exists():
+                clips.append(clip_path)
+            
+        if clips:
+            concatenate_videos(clips, output_path)
+        else:
+            raise RuntimeError("Failed to generate multi-keyframe segments")
+    finally:
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except Exception as e:
+            logger.debug("Failed to clean up temp_dir: %s", e)
+        
+    return Path(output_path)
+
 # Alias for backward compatibility
 merge_video_audio = merge_audio_video
+

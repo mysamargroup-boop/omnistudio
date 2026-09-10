@@ -9,7 +9,7 @@ import logging
 from config import settings
 from services.replicate_service import generate_video_from_image, generate_flux_image
 from services.openai_service import generate_openai_image
-from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion
+from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion
 from services.director_agent import direct_video_prompt
 from services.video_editor_service import edit_video
 
@@ -19,7 +19,7 @@ from pydantic import BaseModel, field_validator
 
 router = APIRouter(prefix="/api/video", tags=["Video Generation"])
 
-ALLOWED_VIDEO_MODES = {"text_to_video", "first_frame", "first_to_last_frame", "motion_transfer"}
+ALLOWED_VIDEO_MODES = {"text_to_video", "first_frame", "first_to_last_frame", "motion_transfer", "multi_frame"}
 ALLOWED_VIDEO_ASPECTS = {"16:9", "9:16", "1:1", "4:3", "21:9", "original"}
 ALLOWED_FPS = {24, 30, 60}
 ALLOWED_LUTS = {"noir", "teal_orange", "cyberpunk", "vintage"}
@@ -27,7 +27,7 @@ ALLOWED_LUTS = {"noir", "teal_orange", "cyberpunk", "vintage"}
 class DirectorAgentRequest(BaseModel):
     idea: Optional[str] = None
     prompt: Optional[str] = None
-    generation_mode: str = "first_frame"  # text_to_video, first_frame, first_to_last_frame
+    generation_mode: str = "first_frame"  # text_to_video, first_frame, first_to_last_frame, multi_frame
     target_video_model: str = "ffmpeg_local"
     style: str = "cinematic"
     aspect_ratio: str = "16:9"
@@ -47,14 +47,15 @@ class DirectorAgentRequest(BaseModel):
         return v
 
 class VideoRequest(BaseModel):
-    mode: str = "first_frame"  # text_to_video, first_frame, first_to_last_frame, motion_transfer
+    mode: str = "first_frame"  # text_to_video, first_frame, first_to_last_frame, motion_transfer, multi_frame
     image_path: Optional[str] = ""  # First Frame / Start Frame
     start_image_path: Optional[str] = None
     end_image_path: Optional[str] = None  # Last Frame / End Frame
+    image_paths: Optional[list[str]] = None  # Multi-frame sequence (2-8 keyframes)
     source_video_path: Optional[str] = None  # For motion transfer — source motion video
     prompt: Optional[str] = ""
     negative_prompt: Optional[str] = ""
-    motion_type: str = "zoom_in"
+    motion_type: str = "none"
     transition_type: str = "smooth_morph"
     duration: float = 4.0
     fps: int = 30
@@ -422,6 +423,59 @@ async def generate_video(req: VideoRequest, request: Request):
                 "success": False,
                 "error": "Failed to obtain valid initial frame for text-to-video synthesis."
             }
+
+    # ─── Mode: Multi-Frame Keyframe Sequence ───
+    if (req.mode == "multi_frame" or (req.image_paths and len(req.image_paths) > 1)) and req.image_paths:
+        resolved_imgs = []
+        for p in req.image_paths:
+            rp = resolve_path(p)
+            if rp and rp.exists():
+                resolved_imgs.append(rp)
+        if len(resolved_imgs) < 2:
+            return {"success": False, "error": "Multi-Frame sequence requires at least 2 valid image keyframes."}
+
+        filename = f"seq_{uuid.uuid4().hex[:8]}.mp4"
+        output_path = settings.VIDEOS_PATH / filename
+
+        await asyncio.to_thread(
+            multi_keyframe_interpolate_motion,
+            image_paths=resolved_imgs,
+            output_path=str(output_path),
+            duration=clip_duration,
+            transition_type=req.transition_type,
+            fps=fps_int,
+            width=w,
+            height=h
+        )
+
+        try:
+            from services.usage_tracker import log_generation
+            log_generation(
+                service_type="video",
+                provider="ffmpeg_local",
+                model=f"{req.model} (Multi-Keyframe Sequence)",
+                prompt=req.prompt or f"Sequence of {len(resolved_imgs)} keyframes",
+                status="success",
+                specs={"duration": clip_duration, "keyframes": len(resolved_imgs), "resolution": f"{w}x{h}", "fps": fps_int},
+                output_url=f"/outputs/videos/{filename}"
+            )
+        except Exception as e:
+            logger.warning("Failed to record multi-keyframe usage log: %s", e)
+
+        return {
+            "success": True,
+            "filename": filename,
+            "url": f"/outputs/videos/{filename}",
+            "local_path": str(output_path),
+            "duration": clip_duration,
+            "motion_type": req.motion_type,
+            "mode": "multi_frame",
+            "keyframes": req.image_paths,
+            "engine": f"{req.model} (Multi-Keyframe Interpolation Engine)",
+            "resolution": f"{w}x{h}",
+            "quality": req.quality,
+            "loop": req.loop
+        }
 
     # ─── Mode: First Frame + Last Frame Interpolation ───
     if req.mode == "first_to_last_frame" and req.end_image_path:

@@ -25,20 +25,23 @@ import {
   Sliders,
   Sparkle,
   Film,
-  Maximize2,
   RotateCw,
   Upload,
   Dices,
   Repeat,
-  Gauge,
-  Clock,
   Search,
   ChevronUp,
+  ChevronDown,
+  ChevronRight,
   BookOpen,
   Wand2,
   CheckCircle2,
-  Paperclip,
-  UploadCloud,
+  Plus,
+  Trash2,
+  PanelRightClose,
+  PanelRightOpen,
+  Eye,
+  SlidersHorizontal,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -47,7 +50,7 @@ import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
 
-type VideoMode = "first_frame" | "first_to_last_frame" | "text_to_video" | "motion_transfer";
+type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer";
 
 interface VideoModelOption {
   value: string;
@@ -55,7 +58,6 @@ interface VideoModelOption {
   description: string;
   badge?: string;
   category?: string;
-  iconType?: "ffmpeg" | "google" | "kling" | "runway" | "luma" | "minimax" | "sora" | "pika" | "custom";
 }
 
 const VIDEO_MODELS: VideoModelOption[] = [
@@ -65,7 +67,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Hardware Accelerated FFmpeg 8.1 (100% Free & Unlimited)",
     badge: "FREE LOCAL",
     category: "Hardware Engine",
-    iconType: "ffmpeg",
   },
   {
     value: "google_veo",
@@ -73,7 +74,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "High-Definition 4K Video Generation (Google Cloud AI)",
     badge: "ACTIVE",
     category: "Featured Cloud",
-    iconType: "google",
   },
   {
     value: "kling_2.0",
@@ -81,7 +81,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Photorealistic Physics & High Dynamic Kinematics",
     badge: "PRO",
     category: "Featured Cloud",
-    iconType: "kling",
   },
   {
     value: "runway_gen3",
@@ -89,7 +88,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Ultra-Realistic Cinema Motion Coherence & Camera Controls",
     badge: "CINEMA",
     category: "Featured Cloud",
-    iconType: "runway",
   },
   {
     value: "luma_dream",
@@ -97,7 +95,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Consistent 3D Camera Parallax & Fluid Dynamics",
     badge: "CLOUD",
     category: "Cloud SOTA",
-    iconType: "luma",
   },
   {
     value: "minimax_video",
@@ -105,7 +102,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Cinematic Resolution & Natural Human Kinetics",
     badge: "SOTA",
     category: "Cloud SOTA",
-    iconType: "minimax",
   },
   {
     value: "seedance_v1",
@@ -113,7 +109,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "High-Fidelity Character & Dance Choreography",
     badge: "DANCE",
     category: "Cloud SOTA",
-    iconType: "custom",
   },
   {
     value: "hunyuan_video",
@@ -121,7 +116,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Open-Weights High Definition Video Diffusion",
     badge: "OPEN",
     category: "Open Weights",
-    iconType: "custom",
   },
   {
     value: "openai_sora",
@@ -129,7 +123,6 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "World Simulator & Complex Multi-Shot Kinematics",
     badge: "CLOUD",
     category: "Cloud SOTA",
-    iconType: "sora",
   },
   {
     value: "pika_v2",
@@ -137,19 +130,12 @@ const VIDEO_MODELS: VideoModelOption[] = [
     description: "Creative Stylized Motion & Kinetic Lens Effects",
     badge: "FAST",
     category: "Cloud SOTA",
-    iconType: "pika",
-  },
-  {
-    value: "cogvideox_5b",
-    label: "CogVideoX-5B",
-    description: "Deep Expert 3D VAE Latent Video Synthesis",
-    badge: "DEV",
-    category: "Open Weights",
-    iconType: "custom",
   },
 ];
 
+// Default camera motion must be "none" (Static Camera)
 const MOTIONS = [
+  { id: "none", label: "Static / None", desc: "Locked-off Camera (No Motion)", icon: Video },
   { id: "zoom_in", label: "Push In", desc: "Dramatic Approach", icon: ZoomIn },
   { id: "zoom_out", label: "Pull Out", desc: "Expansive Reveal", icon: ZoomOut },
   { id: "pan_left", label: "Pan Left", desc: "Horizontal Sweep", icon: ArrowLeft },
@@ -160,18 +146,11 @@ const MOTIONS = [
   { id: "subtle", label: "Subtle Float", desc: "Organic Handheld", icon: Wind },
 ];
 
-const TRANSITIONS = [
-  { id: "smooth_morph", label: "Dissolve Morph", desc: "Seamless cross-morph" },
-  { id: "cross_dissolve", label: "Cinematic Fade", desc: "Theatrical crossfade" },
-  { id: "zoom_blend", label: "Radial Zoom Blend", desc: "Speed burst transition" },
-  { id: "directional_wipe", label: "Directional Sweep", desc: "Kinetic wipe motion" },
-];
-
 const ASPECT_RATIOS = [
   { value: "16:9", label: "16:9", desc: "Cinema / YouTube" },
   { value: "9:16", label: "9:16", desc: "Reels / TikTok" },
   { value: "1:1", label: "1:1", desc: "Square Feed" },
-  { value: "21:9", label: "21:9", desc: "Cinemascope Scope" },
+  { value: "21:9", label: "21:9", desc: "Cinemascope" },
 ];
 
 const RESOLUTIONS = [
@@ -183,21 +162,14 @@ const RESOLUTIONS = [
 
 const FPS_PROFILES = [
   { value: 24, label: "24 FPS", desc: "Cinematic Film" },
-  { value: 30, label: "30 FPS", desc: "Standard ProRes" },
+  { value: 30, label: "30 FPS", desc: "Standard" },
   { value: 60, label: "60 FPS", desc: "High Frame Rate" },
 ];
 
 const QUALITY_PROFILES = [
-  { value: "draft", label: "Draft", desc: "CRF 24 Fast Render" },
-  { value: "balanced", label: "Production", desc: "CRF 18 Crisp Quality" },
-  { value: "cinema", label: "Cinema Master", desc: "CRF 14 ProRes RAW" },
-];
-
-const SPEED_PROFILES = [
-  { value: 0.5, label: "0.5x", desc: "Slow Motion" },
-  { value: 1.0, label: "1.0x", desc: "Standard Speed" },
-  { value: 1.5, label: "1.5x", desc: "Dynamic Pace" },
-  { value: 2.0, label: "2.0x", desc: "Hyperlapse" },
+  { value: "draft", label: "Draft", desc: "Fast Render" },
+  { value: "balanced", label: "Production", desc: "Crisp Quality" },
+  { value: "cinema", label: "Cinema Master", desc: "ProRes RAW" },
 ];
 
 const DURATION_PRESETS = [4, 8, 12, 16, 24, 30];
@@ -205,26 +177,22 @@ const DURATION_PRESETS = [4, 8, 12, 16, 24, 30];
 const INSPIRATION_VIDEOS = [
   {
     title: "Cyberpunk Tokyo Drift",
-    mode: "text_to_video" as VideoMode,
     prompt: "Cinematic drone tracking shot through neon-lit futuristic Tokyo alleyways in heavy rain, puddles reflecting magenta holographic signs, 4k 60fps photorealistic",
-    motion: "zoom_in",
+    motion: "none",
   },
   {
     title: "Rainforest Temple Reveal",
-    mode: "text_to_video" as VideoMode,
     prompt: "Slow ascending tilt up revealing an ancient overgrown Mayan pyramid nestled deep within misty bioluminescent jungle at dawn, sun rays piercing foliage",
     motion: "tilt_up",
   },
   {
     title: "Liquid Gold Lotus",
-    mode: "text_to_video" as VideoMode,
     prompt: "Macro slow motion shot of molten 24k gold splashing outward and gracefully coalescing into a blooming sacred lotus blossom, studio chiaroscuro lighting",
     motion: "subtle",
   },
   {
     title: "Pacific Coastline Highway",
-    mode: "text_to_video" as VideoMode,
-    prompt: "Kinetic low-angle orbital sweep around a classic midnight blue sports car cruising along sunlit Big Sur California cliffside highway at golden hour",
+    prompt: "Kinetic low-angle sweep around a classic midnight blue sports car cruising along sunlit Big Sur California cliffside highway at golden hour",
     motion: "orbit",
   },
 ];
@@ -239,43 +207,43 @@ function VideoStudioContent() {
   // Frames State
   const [startImage, setStartImage] = useState(searchParams?.get("image") || "");
   const [endImage, setEndImage] = useState("");
+  // Multi-Frame Sequence State (2 to 8 keyframes)
+  const [keyframeImages, setKeyframeImages] = useState<string[]>([]);
 
   // Motion Transfer State
-  const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
   const [sourceVideoUrl, setSourceVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
-  // Keyframe Upload State & Drag State
+  // Upload States
   const [uploadingStartImage, setUploadingStartImage] = useState(false);
   const [uploadingEndImage, setUploadingEndImage] = useState(false);
+  const [uploadingMulti, setUploadingMulti] = useState(false);
+
+  // Drag States
   const [startDragOver, setStartDragOver] = useState(false);
   const [endDragOver, setEndDragOver] = useState(false);
-  const [videoDragOver, setVideoDragOver] = useState(false);
 
-  // Hidden File Input Refs for direct native file picking
+  // File Input Refs
   const startFileInputRef = useRef<HTMLInputElement>(null);
   const endFileInputRef = useRef<HTMLInputElement>(null);
+  const multiFileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
-  const dockFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Prompt & OpenAI Director Agent State
+  // Prompt & Enhancer State
   const [prompt, setPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
   const [showNegativePrompt, setShowNegativePrompt] = useState(false);
+  const [enhancingPrompt, setEnhancingPrompt] = useState(false);
   const [directing, setDirecting] = useState(false);
   const [directorNotes, setDirectorNotes] = useState<any>(null);
 
-  // Auto-resize prompt textarea so the full prompt is visible without clipping
+  // Auto-resize prompt textarea
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Unmount cleanup to prevent setInterval memory leaks
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
@@ -283,14 +251,13 @@ function VideoStudioContent() {
     if (promptTextareaRef.current) {
       promptTextareaRef.current.style.height = "auto";
       const scrollH = promptTextareaRef.current.scrollHeight;
-      promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 48), 140)}px`;
+      promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 44), 130)}px`;
     }
   }, [prompt]);
 
-  // Video Settings
+  // Video Settings (Camera motion defaults to "none")
   const [model, setModel] = useState("ffmpeg_local");
-  const [motion, setMotion] = useState("zoom_in");
-  const [transition, setTransition] = useState("smooth_morph");
+  const [motion, setMotion] = useState("none");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [duration, setDuration] = useState(4);
   const [fps, setFps] = useState(30);
@@ -299,76 +266,79 @@ function VideoStudioContent() {
   const [motionIntensity, setMotionIntensity] = useState(1.0);
   const [loop, setLoop] = useState(false);
   const [seed, setSeed] = useState("");
-
-  // Popover States for Floating Dock
-  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
-  const [ratioPopoverOpen, setRatioPopoverOpen] = useState(false);
-  const [motionPopoverOpen, setMotionPopoverOpen] = useState(false);
-  const [durationPopoverOpen, setDurationPopoverOpen] = useState(false);
-  const [specPopoverOpen, setSpecPopoverOpen] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
 
-  // Modals & Extras
+  // Right Sidebar & Stacked Accordions State
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [openSections, setOpenSections] = useState({
+    model: true,
+    motion: true,
+    specs: true,
+    render: true,
+  });
+
+  const toggleSection = (s: keyof typeof openSections) => {
+    setOpenSections((prev) => ({ ...prev, [s]: !prev[s] }));
+  };
+
+  const toggleAllSections = () => {
+    const allOpen = Object.values(openSections).every(Boolean);
+    setOpenSections({
+      model: !allOpen,
+      motion: !allOpen,
+      specs: !allOpen,
+      render: !allOpen,
+    });
+  };
+
+  // Modals & Vault
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
-  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [vaultOpen, setVaultOpen] = useState(false);
+  const [vaultTarget, setVaultTarget] = useState<"start" | "end" | "multi">("start");
+  const [vaultImages, setVaultImages] = useState<any[]>([]);
+  const [loadingVault, setLoadingVault] = useState(false);
 
   // Generation & Result State
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  // Real-Time Progress States
+  // Progress Bar Telemetry
   const [progress, setProgress] = useState(0);
-  const [stageTitle, setStageTitle] = useState("VIDEO MOTION ENGINE");
-  const [statusMessage, setStatusMessage] = useState("Initializing frame buffer...");
+  const [stageTitle, setStageTitle] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
 
-  // Vault Picker Modal State
-  const [vaultOpen, setVaultOpen] = useState(false);
-  const [vaultTarget, setVaultTarget] = useState<"start" | "end">("start");
-  const [vaultImages, setVaultImages] = useState<any[]>([]);
-  const [loadingVault, setLoadingVault] = useState(false);
-
-  // Confirmation Modal State
+  // Confirmation Modal
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmDetails, setConfirmDetails] = useState<GenerationConfirmDetails | null>(null);
 
   const activeModel = VIDEO_MODELS.find((m) => m.value === model) || VIDEO_MODELS[0];
   const activeMotion = MOTIONS.find((m) => m.id === motion) || MOTIONS[0];
 
+  // URL query sync
   useEffect(() => {
     const qImg = searchParams?.get("image");
     if (qImg) {
       setStartImage(qImg);
       setMode("first_frame");
     }
+    const qMode = searchParams?.get("mode");
+    if (qMode && ["first_frame", "first_to_last_frame", "multi_frame", "text_to_video", "motion_transfer"].includes(qMode)) {
+      setMode(qMode as VideoMode);
+    }
+    const qModel = searchParams?.get("model");
+    if (qModel) {
+      const found = VIDEO_MODELS.find((m) => m.value === qModel);
+      if (found) setModel(qModel);
+    }
   }, [searchParams]);
-
-  // Close popovers on click outside
-  const dockRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
-        closeAllPopovers();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const closeAllPopovers = () => {
-    setModelPopoverOpen(false);
-    setRatioPopoverOpen(false);
-    setMotionPopoverOpen(false);
-    setDurationPopoverOpen(false);
-    setSpecPopoverOpen(false);
-  };
 
   const randomizeSeed = () => {
     setSeed(Math.floor(Math.random() * 999999999).toString());
   };
 
-  const openVaultPicker = async (target: "start" | "end") => {
+  const openVaultPicker = async (target: "start" | "end" | "multi") => {
     setVaultTarget(target);
     setVaultOpen(true);
     setLoadingVault(true);
@@ -387,9 +357,7 @@ function VideoStudioContent() {
     try {
       const res = await api.uploadVideoKeyframe(file);
       const url = typeof res === "string" ? res : res?.url;
-      if (url) {
-        setStartImage(url);
-      }
+      if (url) setStartImage(url);
     } catch (err) {
       console.error("Failed to upload start keyframe:", err);
     } finally {
@@ -403,9 +371,7 @@ function VideoStudioContent() {
     try {
       const res = await api.uploadVideoKeyframe(file);
       const url = typeof res === "string" ? res : res?.url;
-      if (url) {
-        setEndImage(url);
-      }
+      if (url) setEndImage(url);
     } catch (err) {
       console.error("Failed to upload end keyframe:", err);
     } finally {
@@ -413,35 +379,38 @@ function VideoStudioContent() {
     }
   };
 
-  const handleDockImageUpload = async (file: File) => {
-    if (!file) return;
-    setUploadingStartImage(true);
-    try {
-      const res = await api.uploadVideoKeyframe(file);
-      const url = typeof res === "string" ? res : res?.url;
-      if (url) {
-        setStartImage(url);
-        if (mode === "text_to_video") {
-          setMode("first_frame");
+  const handleMultiImageUpload = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (!fileArray.length) return;
+    setUploadingMulti(true);
+    const availableSlots = Math.max(0, 8 - keyframeImages.length);
+    const selected = fileArray.slice(0, availableSlots);
+
+    for (const f of selected) {
+      try {
+        const res = await api.uploadVideoKeyframe(f);
+        const url = typeof res === "string" ? res : res?.url;
+        if (url) {
+          setKeyframeImages((prev) => [...prev, url]);
         }
+      } catch (e) {
+        console.error("Error uploading multi image:", e);
       }
-    } catch (err) {
-      console.error("Failed to upload keyframe from dock:", err);
-    } finally {
-      setUploadingStartImage(false);
     }
+    setUploadingMulti(false);
+  };
+
+  const removeKeyframeImage = (index: number) => {
+    setKeyframeImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleVideoFileProcess = async (file: File) => {
     if (!file) return;
-    setSourceVideoFile(file);
     setUploadingVideo(true);
     try {
       const res = await api.uploadSourceVideo(file);
       const url = typeof res === "string" ? res : res?.url;
-      if (url) {
-        setSourceVideoUrl(url);
-      }
+      if (url) setSourceVideoUrl(url);
     } catch (err) {
       console.error("Failed to upload source video:", err);
     } finally {
@@ -449,25 +418,37 @@ function VideoStudioContent() {
     }
   };
 
-  const handleSourceVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await handleVideoFileProcess(file);
-    e.target.value = "";
+  // 1-Click Prompt Enhancer
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) {
+      setPrompt("Cinematic sequence, dramatic atmospheric lighting, photorealistic 8k, slow motion");
+      return;
+    }
+    setEnhancingPrompt(true);
+    try {
+      const res = await api.enhancePrompt({ prompt, enhance_style: "cinematic" });
+      if (res?.enhanced) {
+        setPrompt(res.enhanced);
+      }
+    } catch (err) {
+      console.error("Failed to enhance prompt:", err);
+    } finally {
+      setEnhancingPrompt(false);
+    }
   };
 
-  // Run Parallel OpenAI Director Agent
+  // OpenAI Director Agent
   const runDirectorAgent = async () => {
     const inputIdea =
       prompt.trim() ||
       (mode === "first_to_last_frame"
-        ? "Interpolate keyframes with cinematic camera movement"
+        ? "Interpolate keyframes with cinematic motion"
         : "Dynamic camera tracking shot");
     setDirecting(true);
     try {
       const res = await api.directVideoPrompt({
         idea: inputIdea,
-        generation_mode: mode,
+        generation_mode: mode === "multi_frame" ? "first_to_last_frame" : mode,
         target_video_model: model,
         style: "cinematic",
         aspect_ratio: aspectRatio,
@@ -476,7 +457,6 @@ function VideoStudioContent() {
       if (res.success) {
         setPrompt(res.enhanced_prompt);
         if (res.camera_direction) setMotion(res.camera_direction);
-        if (res.transition_type) setTransition(res.transition_type);
         if (res.negative_prompt) setNegativePrompt(res.negative_prompt);
         setDirectorNotes({
           notes: res.director_notes,
@@ -490,16 +470,17 @@ function VideoStudioContent() {
     setDirecting(false);
   };
 
-  // Form Validation
+  // Validation
   const isFormValid = () => {
     if (mode === "first_frame") return !!startImage.trim();
     if (mode === "first_to_last_frame") return !!startImage.trim() && !!endImage.trim();
+    if (mode === "multi_frame") return keyframeImages.length >= 2;
     if (mode === "text_to_video") return !!prompt.trim();
     if (mode === "motion_transfer") return !!startImage.trim() && !!sourceVideoUrl.trim();
     return false;
   };
 
-  // Trigger Video Synthesis Confirmation
+  // Initiate Generation with Confirmation
   const requestVideoConfirm = () => {
     if (!isFormValid()) return;
 
@@ -515,10 +496,6 @@ function VideoStudioContent() {
       costUsd = duration * 0.2;
       provider = "Cloud Video Engine";
       isFree = false;
-    } else if (model === "ffmpeg_local") {
-      costUsd = 0.0;
-      provider = "Local Hardware (FFmpeg 8.1)";
-      isFree = true;
     }
 
     const costInr = Math.round(costUsd * 83.5 * 100) / 100;
@@ -544,13 +521,13 @@ function VideoStudioContent() {
     setConfirmModalOpen(true);
   };
 
-  // Video Synthesis Core
+  // Synthesis Execution
   const generate = async () => {
     setLoading(true);
     setResult(null);
-    setProgress(8);
+    setProgress(10);
     setStageTitle("01 • Initializing Frame Buffer");
-    setStatusMessage(`Preparing ${resolution} canvas texture...`);
+    setStatusMessage(`Preparing ${resolution} canvas pipeline...`);
     setElapsedSeconds(0);
     const nowTime = new Date().toTimeString().split(" ")[0];
     setTelemetryLogs([
@@ -563,38 +540,17 @@ function VideoStudioContent() {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
-        setProgress(25);
-        setStageTitle("02 • Calculating Camera Kinematics");
-        setStatusMessage(`Applying motion vector: ${activeMotion.label} (${resolution}, ${fps} FPS)...`);
-        setTelemetryLogs((prev) => [
-          ...prev,
-          {
-            timestamp: new Date().toTimeString().split(" ")[0],
-            message: `Computing camera motion trajectory (${motion}, ${duration}s)`,
-          },
-        ]);
+        setProgress(28);
+        setStageTitle("02 • Calculating Kinematics");
+        setStatusMessage(`Applying camera vector: ${activeMotion.label} (${resolution}, ${fps} FPS)...`);
       } else if (elapsed === 3) {
-        setProgress(55);
-        setStageTitle("03 • Interpolating Sub-Pixel Frames");
-        setStatusMessage("Hardware-accelerated frame interpolation in progress...");
-        setTelemetryLogs((prev) => [
-          ...prev,
-          {
-            timestamp: new Date().toTimeString().split(" ")[0],
-            message: `Synthesizing ${Math.round(duration * fps)} frames at ${fps} FPS`,
-          },
-        ]);
+        setProgress(58);
+        setStageTitle("03 • Interpolating Frames");
+        setStatusMessage("Hardware-accelerated frame interpolation running...");
       } else if (elapsed === 6) {
-        setProgress(80);
+        setProgress(82);
         setStageTitle("04 • FFmpeg ProRes Encoding");
-        setStatusMessage(`Compressing video with ${quality} CRF profile...`);
-        setTelemetryLogs((prev) => [
-          ...prev,
-          {
-            timestamp: new Date().toTimeString().split(" ")[0],
-            message: `Encoding libx264 container with ${aspectRatio} aspect ratio`,
-          },
-        ]);
+        setStatusMessage(`Encoding libx264 container at ${aspectRatio}...`);
       } else if (elapsed >= 9 && elapsed < 16) {
         setProgress((prev) => Math.min(prev + 2, 95));
       }
@@ -603,13 +559,13 @@ function VideoStudioContent() {
     try {
       const payload: any = {
         mode,
-        start_image_path: startImage,
-        end_image_path: mode === "first_to_last_frame" ? endImage : null,
+        start_image_path: mode === "multi_frame" ? keyframeImages[0] : startImage,
+        end_image_path: mode === "multi_frame" ? keyframeImages[keyframeImages.length - 1] : mode === "first_to_last_frame" ? endImage : null,
+        image_paths: mode === "multi_frame" ? keyframeImages : undefined,
         source_video_path: mode === "motion_transfer" ? sourceVideoUrl : null,
         prompt,
         negative_prompt: negativePrompt,
         motion_type: motion,
-        transition_type: transition,
         duration,
         fps,
         resolution,
@@ -650,13 +606,6 @@ function VideoStudioContent() {
     }
   };
 
-  const handleCopyPrompt = () => {
-    if (!prompt) return;
-    navigator.clipboard.writeText(prompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
-  };
-
   const filteredModels = VIDEO_MODELS.filter((m) => {
     if (!modelSearchQuery.trim()) return true;
     const q = modelSearchQuery.toLowerCase();
@@ -667,23 +616,22 @@ function VideoStudioContent() {
     );
   });
 
-  // Live Actual Spend Calculation for Video
   const videoCostUsd = model === "ffmpeg_local" ? 0 : duration * 0.15;
   const videoCostInr = Math.round(videoCostUsd * 83.5 * 100) / 100;
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-48 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
-      {/* Top Bar: Mode Selector Tabs & Studio Guide Trigger */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4">
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+    <div className="relative h-[calc(100vh-4rem)] flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
+      {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
+      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/80 dark:bg-[#0c0c12]/80 backdrop-blur-md z-20">
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-x-auto custom-scrollbar">
           <button
             type="button"
             onClick={() => setMode("first_frame")}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "first_frame"
                 ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
             )}
           >
             <ImageIcon className="h-3.5 w-3.5" />
@@ -694,14 +642,28 @@ function VideoStudioContent() {
             type="button"
             onClick={() => setMode("first_to_last_frame")}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "first_to_last_frame"
                 ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
             )}
           >
             <ArrowRightLeft className="h-3.5 w-3.5" />
             <span>First + Last Frame</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMode("multi_frame")}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              mode === "multi_frame"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            )}
+          >
+            <Layers className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Multi-Frame (2-8)</span>
             <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
               NEW
             </span>
@@ -711,10 +673,10 @@ function VideoStudioContent() {
             type="button"
             onClick={() => setMode("text_to_video")}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "text_to_video"
                 ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
             )}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -725,10 +687,10 @@ function VideoStudioContent() {
             type="button"
             onClick={() => setMode("motion_transfer")}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "motion_transfer"
                 ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
             )}
           >
             <RotateCw className="h-3.5 w-3.5" />
@@ -736,177 +698,255 @@ function VideoStudioContent() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* Active Model Indicator in GREEN */}
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+            <span className="truncate max-w-[180px]">ENGINE: {activeModel.label}</span>
+          </div>
+
           <button
             type="button"
             onClick={() => setHowItWorksOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer shrink-0"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-            <span>Studio Guide</span>
+            <span className="hidden md:inline">Studio Guide</span>
           </button>
 
-          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-zinc-800 dark:text-zinc-200 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>ENGINE: {activeModel.label}</span>
-          </div>
+          {/* Right Sidebar Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
+              sidebarOpen
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold"
+                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50"
+            )}
+            title="Toggle Settings Sidebar"
+          >
+            <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-semibold">Settings</span>
+            {sidebarOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
-      {/* Center Viewport / Canvas */}
-      <div className="flex-1 flex flex-col justify-center items-center py-6 px-2 w-full max-w-5xl mx-auto">
-        {/* State A: Generation In Progress */}
-        {loading && (
-          <div className="w-full max-w-2xl py-12 space-y-6 animate-in fade-in duration-200">
-            <LiveProgressBar
-              progress={progress}
-              stageTitle={stageTitle}
-              statusMessage={statusMessage}
-              elapsedSeconds={elapsedSeconds}
-              logs={telemetryLogs}
-              isActive={loading}
-              showTerminal={true}
-            />
-          </div>
-        )}
-
-        {/* State B: Video Render Completed */}
-        {!loading && result && result.success && (
-          <div className="w-full space-y-4 animate-in fade-in duration-200">
-            <div className="relative rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#111118] shadow-sm group max-w-4xl mx-auto">
-              <video
-                src={getMediaUrl(result.url)}
-                controls
-                autoPlay
-                loop
-                className="w-full aspect-video object-contain"
-              />
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="text-[9px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
-                  {result.mode?.toUpperCase() || "CINEMATIC"} • {fps} FPS • {aspectRatio}
-                </span>
-                <span className="text-[9px] font-mono px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 backdrop-blur-md">
-                  RENDERED
-                </span>
+      {/* Main Viewport: Canvas on Left + Settings Sidebar on Right */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Workspace / Canvas */}
+        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-4 sm:p-6 custom-scrollbar relative">
+          <div className="max-w-4xl w-full mx-auto space-y-6">
+            {/* 1. Progress Telemetry */}
+            {loading && (
+              <div className="w-full max-w-2xl mx-auto py-8 space-y-6 animate-in fade-in duration-200">
+                <LiveProgressBar
+                  progress={progress}
+                  stageTitle={stageTitle}
+                  statusMessage={statusMessage}
+                  elapsedSeconds={elapsedSeconds}
+                  logs={telemetryLogs}
+                  isActive={loading}
+                  showTerminal={true}
+                />
               </div>
-            </div>
+            )}
 
-            {/* Video Metadata & Action Bar */}
-            <div className="max-w-4xl mx-auto p-4 rounded-2xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-zinc-950 dark:text-white">
-                    {result.engine || activeModel.label}
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-500">• {resolution.toUpperCase()}</span>
-                </div>
-                <p className="text-[11px] font-mono text-zinc-500 truncate max-w-md">
-                  {result.filename || "cinematic_video.mp4"}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <a
-                  href={getMediaUrl(result.url)}
-                  download
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Download MP4</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* State C: Error State */}
-        {!loading && result && !result.success && (
-          <div className="w-full max-w-md py-12 text-center space-y-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl p-6 shadow-sm">
-            <p className="text-xs text-rose-600 dark:text-rose-400 font-mono leading-relaxed">
-              {result.error || "Video synthesis encountered an issue."}
-            </p>
-            <button
-              onClick={() => setResult(null)}
-              className="px-4 py-1.5 rounded-xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white text-xs font-mono hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-black/[0.08] dark:border-zinc-800 transition-colors shadow-sm"
-            >
-              Reset Canvas
-            </button>
-          </div>
-        )}
-
-        {/* State D: Idle / Staging Canvas */}
-        {!loading && !result && (
-          <div className="w-full max-w-4xl space-y-6">
-            {/* Keyframe Staging Grid (when mode is not pure text-to-video) */}
-            {mode !== "text_to_video" ? (
-              <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-sm p-6 space-y-5">
-                <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                    <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
-                      Keyframe Staging Canvas
+            {/* 2. Render Completed Video Player */}
+            {!loading && result && result.success && (
+              <div className="w-full space-y-4 animate-in fade-in duration-200">
+                <div className="relative rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#111118] shadow-sm max-w-4xl mx-auto">
+                  <video
+                    src={getMediaUrl(result.url)}
+                    controls
+                    autoPlay
+                    loop={loop}
+                    className="w-full aspect-video object-contain bg-black"
+                  />
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
+                      {result.mode?.toUpperCase() || "CINEMATIC"} • {fps} FPS • {aspectRatio}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 backdrop-blur-md flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>RENDERED</span>
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase">
-                    {mode === "first_to_last_frame"
-                      ? "Dual Keyframe Interpolation"
-                      : mode === "motion_transfer"
-                      ? "Motion Transfer Reference"
-                      : "Single Start Keyframe"}
-                  </span>
                 </div>
 
-                <div
-                  className={cn(
-                    "grid gap-4",
-                    mode === "first_to_last_frame" || mode === "motion_transfer"
-                      ? "grid-cols-1 md:grid-cols-2"
-                      : "grid-cols-1 max-w-xl mx-auto"
-                  )}
+                <div className="max-w-4xl mx-auto p-4 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-zinc-950 dark:text-white">
+                        {result.engine || activeModel.label}
+                      </span>
+                      <span className="text-[10px] font-mono text-zinc-500">• {resolution.toUpperCase()}</span>
+                    </div>
+                    <p className="text-[11px] font-mono text-zinc-500 truncate max-w-md">
+                      {result.filename || "cinematic_video.mp4"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setResult(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-mono border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      New Generation
+                    </button>
+                    <a
+                      href={getMediaUrl(result.url)}
+                      download
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Download MP4</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Error Alert */}
+            {!loading && result && !result.success && (
+              <div className="w-full max-w-md mx-auto py-8 text-center space-y-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-2xl p-6 shadow-sm">
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-mono leading-relaxed">
+                  {result.error || "Video synthesis encountered an issue."}
+                </p>
+                <button
+                  onClick={() => setResult(null)}
+                  className="px-4 py-1.5 rounded-xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white text-xs font-mono hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-black/[0.08] dark:border-zinc-800 transition-colors shadow-sm cursor-pointer"
                 >
-                  {/* Start Frame / Target Image Card */}
-                  <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                        {mode === "motion_transfer" ? "TARGET STILL IMAGE" : "START FRAME (KEYFRAME 01)"}
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          ref={startFileInputRef}
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleStartImageUpload(f);
-                            e.target.value = "";
-                          }}
-                          disabled={uploadingStartImage}
-                        />
+                  Reset Canvas
+                </button>
+              </div>
+            )}
+
+            {/* 4. Canvas Staging & Keyframe Areas */}
+            {!loading && !result && (
+              <div className="space-y-6">
+                {/* Mode: Multi-Frame Keyframe Sequence (2 to 8 Images) */}
+                {mode === "multi_frame" && (
+                  <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                          Multi-Frame Keyframe Sequence ({keyframeImages.length}/8)
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        Smooth Hardware-Accelerated Morph
+                      </span>
+                    </div>
+
+                    <input
+                      ref={multiFileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) handleMultiImageUpload(e.target.files);
+                        e.target.value = "";
+                      }}
+                      disabled={uploadingMulti}
+                    />
+
+                    {/* Image Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {keyframeImages.map((imgUrl, idx) => (
+                        <div key={idx} className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 aspect-video bg-zinc-100 dark:bg-zinc-900 group shadow-xs">
+                          <LazyImage
+                            src={getMediaUrl(imgUrl)}
+                            alt={`Frame ${idx + 1}`}
+                            aspectRatio="aspect-video"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-1.5 left-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/80 text-white">
+                            Frame #{idx + 1}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeKeyframeImage(idx)}
+                            className="absolute top-1.5 right-1.5 p-1 rounded-md bg-rose-500/80 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            title="Remove frame"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Add Keyframe Slot Button (up to 8) */}
+                      {keyframeImages.length < 8 && (
                         <button
                           type="button"
-                          onClick={() => startFileInputRef.current?.click()}
-                          disabled={uploadingStartImage}
-                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1.5 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
-                          title="Upload image from computer"
+                          onClick={() => multiFileInputRef.current?.click()}
+                          disabled={uploadingMulti}
+                          className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-500/5 aspect-video text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all cursor-pointer"
                         >
-                          {uploadingStartImage ? (
-                            <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+                          {uploadingMulti ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
                           ) : (
-                            <Upload className="h-3 w-3 text-violet-500" />
+                            <Plus className="w-5 h-5 text-emerald-500" />
                           )}
-                          <span className="font-semibold">{uploadingStartImage ? "UPLOADING..." : "UPLOAD"}</span>
+                          <span className="text-[11px] font-mono font-semibold">
+                            {uploadingMulti ? "Uploading..." : "Add Keyframe"}
+                          </span>
                         </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-mono text-zinc-500 pt-1">
+                      <span>Upload 2 to 8 images for fluid keyframe morphing</span>
+                      <button
+                        type="button"
+                        onClick={() => openVaultPicker("multi")}
+                        className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <FolderArchive className="w-3 h-3" />
+                        <span>Pick from Vault</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode: First Frame Single Staging */}
+                {mode === "first_frame" && (
+                  <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-sm p-6 space-y-4 max-w-xl mx-auto">
+                    <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                          Start Keyframe
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => openVaultPicker("start")}
-                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
+                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-900 cursor-pointer"
                         >
                           <FolderArchive className="h-3 w-3" />
-                          <span>VAULT</span>
+                          <span>Vault</span>
                         </button>
                       </div>
                     </div>
+
+                    <input
+                      ref={startFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleStartImageUpload(f);
+                        e.target.value = "";
+                      }}
+                      disabled={uploadingStartImage}
+                    />
 
                     {startImage ? (
                       <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 aspect-video bg-zinc-100 dark:bg-zinc-900 group shadow-sm">
@@ -920,8 +960,7 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => startFileInputRef.current?.click()}
-                            className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-sm transition-colors"
-                            title="Replace image with a new upload"
+                            className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer"
                           >
                             <Upload className="h-3.5 w-3.5" />
                             <span>Replace</span>
@@ -929,837 +968,573 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => setStartImage("")}
-                            className="p-1.5 rounded-lg bg-rose-500/60 text-white hover:bg-rose-500 cursor-pointer backdrop-blur-sm transition-colors"
-                            title="Remove image"
+                            className="p-1.5 rounded-lg bg-rose-500/80 text-white cursor-pointer"
                           >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%] shadow-sm">
-                          {startImage.split("/").pop()}
-                        </span>
                       </div>
                     ) : (
                       <div
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setStartDragOver(true);
-                        }}
-                        onDragLeave={(e) => {
-                          e.preventDefault();
-                          setStartDragOver(false);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setStartDragOver(false);
-                          const file = e.dataTransfer.files?.[0];
-                          if (file && file.type.startsWith("image/")) {
-                            handleStartImageUpload(file);
-                          }
-                        }}
                         onClick={() => startFileInputRef.current?.click()}
-                        className={cn(
-                          "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white dark:bg-[#111118] group",
-                          startDragOver
-                            ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10 scale-[1.01]"
-                            : "border-black/[0.1] dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-500/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
-                        )}
+                        className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl aspect-video flex flex-col items-center justify-center gap-2.5 p-6 cursor-pointer transition-colors bg-zinc-50/50 dark:bg-zinc-900/50"
                       >
                         {uploadingStartImage ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
-                            <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                              Uploading Keyframe...
-                            </span>
-                          </div>
+                          <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
                         ) : (
-                          <>
-                            <div className="w-10 h-10 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                              <Upload className="h-5 w-5" />
-                            </div>
-                            <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
-                              Upload {mode === "motion_transfer" ? "Target Image" : "Start Keyframe"}
-                            </span>
-                            <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                              Drag & drop or click to browse (PNG, JPG, WebP)
-                            </span>
-                            <div className="mt-2.5 flex items-center gap-2">
-                              <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
-                                Click to Upload
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openVaultPicker("start");
-                                }}
-                                className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-600 dark:text-zinc-400 transition-colors"
-                              >
-                                Or Pick Vault
-                              </button>
-                            </div>
-                          </>
+                          <Upload className="h-6 w-6 text-emerald-500" />
                         )}
+                        <div className="text-center">
+                          <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+                            {uploadingStartImage ? "Uploading..." : "Click or drag start keyframe image"}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 font-mono mt-0.5">PNG, JPG, WEBP up to 25MB</p>
+                        </div>
                       </div>
                     )}
-
-                    <input
-                      type="text"
-                      value={startImage}
-                      onChange={(e) => setStartImage(e.target.value)}
-                      placeholder="Or enter filepath / URL..."
-                      className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
-                    />
                   </div>
+                )}
 
-                  {/* End Frame Card (In first_to_last_frame mode) */}
-                  {mode === "first_to_last_frame" && (
-                    <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
+                {/* Mode: First + Last Dual Frame Staging */}
+                {mode === "first_to_last_frame" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Start Frame */}
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                          END FRAME (KEYFRAME 02)
+                        <label className="text-[11px] font-mono uppercase font-bold text-zinc-700 dark:text-zinc-300">
+                          START FRAME (KEYFRAME 01)
                         </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            ref={endFileInputRef}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"
-                            className="hidden"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) handleEndImageUpload(f);
-                              e.target.value = "";
-                            }}
-                            disabled={uploadingEndImage}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => endFileInputRef.current?.click()}
-                            disabled={uploadingEndImage}
-                            className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1.5 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
-                            title="Upload destination keyframe"
-                          >
-                            {uploadingEndImage ? (
-                              <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
-                            ) : (
-                              <Upload className="h-3 w-3 text-violet-500" />
-                            )}
-                            <span className="font-semibold">{uploadingEndImage ? "UPLOADING..." : "UPLOAD"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openVaultPicker("end")}
-                            className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
-                          >
-                            <FolderArchive className="h-3 w-3" />
-                            <span>VAULT</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {endImage ? (
-                        <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 aspect-video bg-zinc-100 dark:bg-zinc-900 group shadow-sm">
-                          <LazyImage
-                            src={getMediaUrl(endImage)}
-                            alt="End Frame"
-                            aspectRatio="aspect-video"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => endFileInputRef.current?.click()}
-                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-sm transition-colors"
-                              title="Replace end frame"
-                            >
-                              <Upload className="h-3.5 w-3.5" />
-                              <span>Replace</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEndImage("")}
-                              className="p-1.5 rounded-lg bg-rose-500/60 text-white hover:bg-rose-500 cursor-pointer backdrop-blur-sm transition-colors"
-                              title="Remove image"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%] shadow-sm">
-                            {endImage.split("/").pop()}
-                          </span>
-                        </div>
-                      ) : (
-                        <div
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setEndDragOver(true);
-                          }}
-                          onDragLeave={(e) => {
-                            e.preventDefault();
-                            setEndDragOver(false);
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            setEndDragOver(false);
-                            const file = e.dataTransfer.files?.[0];
-                            if (file && file.type.startsWith("image/")) {
-                              handleEndImageUpload(file);
-                            }
-                          }}
-                          onClick={() => endFileInputRef.current?.click()}
-                          className={cn(
-                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white dark:bg-[#111118] group",
-                            endDragOver
-                              ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10 scale-[1.01]"
-                              : "border-black/[0.1] dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-500/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
-                          )}
-                        >
-                          {uploadingEndImage ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
-                              <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                                Uploading Keyframe...
-                              </span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="w-10 h-10 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <Upload className="h-5 w-5" />
-                              </div>
-                              <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
-                                Upload Destination Keyframe
-                              </span>
-                              <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                                Drag & drop or click to browse (PNG, JPG, WebP)
-                              </span>
-                              <div className="mt-2.5 flex items-center gap-2">
-                                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
-                                  Click to Upload
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openVaultPicker("end");
-                                  }}
-                                  className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-600 dark:text-zinc-400 transition-colors"
-                                >
-                                  Or Pick Vault
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      <input
-                        type="text"
-                        value={endImage}
-                        onChange={(e) => setEndImage(e.target.value)}
-                        placeholder="Or enter filepath / URL..."
-                        className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
-                      />
-                    </div>
-                  )}
-
-                  {/* Source Motion Video (In motion_transfer mode) */}
-                  {mode === "motion_transfer" && (
-                    <div className="space-y-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06]">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                          SOURCE MOTION VIDEO (MP4/MOV)
-                        </label>
-                        <input
-                          ref={videoFileInputRef}
-                          type="file"
-                          accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
-                          className="hidden"
-                          onChange={handleSourceVideoUpload}
-                          disabled={uploadingVideo}
-                        />
                         <button
                           type="button"
-                          onClick={() => videoFileInputRef.current?.click()}
-                          disabled={uploadingVideo}
-                          className="text-[10px] font-mono text-zinc-800 dark:text-zinc-200 hover:text-violet-600 dark:hover:text-violet-400 flex items-center gap-1.5 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer whitespace-nowrap shrink-0 shadow-sm transition-all"
-                          title="Upload source video file"
+                          onClick={() => openVaultPicker("start")}
+                          className="text-[10px] font-mono text-zinc-500 hover:text-emerald-500"
                         >
-                          {uploadingVideo ? (
-                            <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
-                          ) : (
-                            <Upload className="h-3 w-3 text-violet-500" />
-                          )}
-                          <span className="font-semibold">{uploadingVideo ? "UPLOADING..." : "UPLOAD VIDEO"}</span>
+                          Vault
                         </button>
                       </div>
-
-                      {sourceVideoUrl ? (
-                        <div className="relative rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] aspect-video bg-zinc-100 dark:bg-[#111118] group shadow-sm">
-                          <video
-                            src={getMediaUrl(sourceVideoUrl)}
-                            className="w-full h-full object-cover"
-                            controls={false}
-                            autoPlay
-                            loop
-                            muted
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => videoFileInputRef.current?.click()}
-                              className="px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/40 text-[11px] font-mono flex items-center gap-1 cursor-pointer backdrop-blur-sm transition-colors"
-                              title="Upload new video"
-                            >
-                              <Upload className="h-3.5 w-3.5" />
-                              <span>Replace</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSourceVideoUrl("");
-                                setSourceVideoFile(null);
-                              }}
-                              className="p-1.5 rounded-lg bg-rose-500/60 text-white hover:bg-rose-500 cursor-pointer backdrop-blur-sm transition-colors"
-                              title="Remove video"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <span className="absolute bottom-1.5 left-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-black/80 text-zinc-200 truncate max-w-[90%] shadow-sm">
-                            {sourceVideoUrl.split("/").pop() || "source_video.mp4"}
-                          </span>
+                      {startImage ? (
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-zinc-200 dark:border-zinc-800">
+                          <LazyImage src={getMediaUrl(startImage)} alt="Start" aspectRatio="aspect-video" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setStartImage("")}
+                            className="absolute top-2 right-2 p-1 rounded-md bg-black/60 text-white"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ) : (
-                        <div
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            setVideoDragOver(true);
-                          }}
-                          onDragLeave={(e) => {
-                            e.preventDefault();
-                            setVideoDragOver(false);
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            setVideoDragOver(false);
-                            const file = e.dataTransfer.files?.[0];
-                            if (file && file.type.startsWith("video/")) {
-                              handleVideoFileProcess(file);
-                            }
-                          }}
-                          onClick={() => videoFileInputRef.current?.click()}
-                          className={cn(
-                            "border-2 border-dashed rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all bg-white dark:bg-[#111118] group",
-                            videoDragOver
-                              ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10 scale-[1.01]"
-                              : "border-black/[0.1] dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-500/40 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
-                          )}
-                        >
-                          {uploadingVideo ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
-                              <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                                Uploading motion track...
-                              </span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="w-10 h-10 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <Film className="h-5 w-5" />
-                              </div>
-                              <span className="text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100">
-                                Upload Source Motion Video
-                              </span>
-                              <span className="text-[10px] font-mono text-zinc-500 mt-1">
-                                Drag & drop or click to browse (MP4, MOV, WebM)
-                              </span>
-                              <div className="mt-2.5">
-                                <span className="text-[9px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
-                                  Click to Upload Motion Video
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      <input
-                        type="text"
-                        value={sourceVideoUrl}
-                        onChange={(e) => setSourceVideoUrl(e.target.value)}
-                        placeholder="Or enter filepath / URL..."
-                        className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Transition Dynamics Pills (for first_to_last_frame) */}
-                {mode === "first_to_last_frame" && (
-                  <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold block mb-2">
-                      TRANSITION INTERPOLATION DYNAMICS:
-                    </span>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {TRANSITIONS.map((t) => (
                         <button
-                          key={t.id}
                           type="button"
-                          onClick={() => setTransition(t.id)}
-                          className={cn(
-                            "p-2.5 rounded-xl border text-left font-mono transition-all cursor-pointer",
-                            transition === t.id
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
-                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.08]"
-                          )}
+                          onClick={() => startFileInputRef.current?.click()}
+                          className="w-full aspect-video border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1 text-xs text-zinc-500 hover:border-emerald-500"
                         >
-                          <span className="text-xs font-bold block">{t.label}</span>
-                          <span className="text-[9px] opacity-75 block truncate">{t.desc}</span>
+                          <Upload className="w-4 h-4 text-emerald-500" />
+                          <span>Upload Start Frame</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* End Frame */}
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-mono uppercase font-bold text-zinc-700 dark:text-zinc-300">
+                          END FRAME (KEYFRAME 02)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => openVaultPicker("end")}
+                          className="text-[10px] font-mono text-zinc-500 hover:text-emerald-500"
+                        >
+                          Vault
+                        </button>
+                      </div>
+                      <input
+                        ref={endFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleEndImageUpload(f);
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingEndImage}
+                      />
+                      {endImage ? (
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-zinc-200 dark:border-zinc-800">
+                          <LazyImage src={getMediaUrl(endImage)} alt="End" aspectRatio="aspect-video" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setEndImage("")}
+                            className="absolute top-2 right-2 p-1 rounded-md bg-black/60 text-white"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => endFileInputRef.current?.click()}
+                          className="w-full aspect-video border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1 text-xs text-zinc-500 hover:border-emerald-500"
+                        >
+                          <Upload className="w-4 h-4 text-emerald-500" />
+                          <span>Upload End Frame</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode: Motion Transfer Staging */}
+                {mode === "motion_transfer" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                      <label className="text-[11px] font-mono uppercase font-bold text-zinc-700 dark:text-zinc-300">
+                        TARGET STILL IMAGE
+                      </label>
+                      {startImage ? (
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-zinc-200 dark:border-zinc-800">
+                          <LazyImage src={getMediaUrl(startImage)} alt="Target" aspectRatio="aspect-video" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startFileInputRef.current?.click()}
+                          className="w-full aspect-video border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1 text-xs text-zinc-500 hover:border-emerald-500"
+                        >
+                          <Upload className="w-4 h-4 text-emerald-500" />
+                          <span>Upload Target Image</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                      <label className="text-[11px] font-mono uppercase font-bold text-zinc-700 dark:text-zinc-300">
+                        SOURCE MOTION VIDEO
+                      </label>
+                      <input
+                        ref={videoFileInputRef}
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleVideoFileProcess(f);
+                          e.target.value = "";
+                        }}
+                        disabled={uploadingVideo}
+                      />
+                      {sourceVideoUrl ? (
+                        <div className="relative rounded-xl overflow-hidden aspect-video border border-zinc-200 dark:border-zinc-800 bg-black">
+                          <video src={getMediaUrl(sourceVideoUrl)} controls className="w-full h-full object-contain" />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => videoFileInputRef.current?.click()}
+                          className="w-full aspect-video border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1 text-xs text-zinc-500 hover:border-emerald-500"
+                        >
+                          {uploadingVideo ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Film className="w-4 h-4 text-emerald-500" />}
+                          <span>Upload Motion Reference Video</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode: Text to Video Inspiration Prompts */}
+                {mode === "text_to_video" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs font-mono text-zinc-500">
+                      <span>Cinematic Scene Templates (Click to apply)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {INSPIRATION_VIDEOS.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setPrompt(item.prompt);
+                            setMotion(item.motion);
+                          }}
+                          className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] hover:border-emerald-500/50 hover:bg-emerald-50/10 text-left transition-all group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                              {item.title}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400 uppercase">
+                              Motion: {item.motion}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                            {item.prompt}
+                          </p>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
-            ) : (
-              /* Text-to-Video Hero Visual Inspiration */
-              <div className="space-y-6 text-center py-4">
-                <div className="space-y-2 max-w-lg mx-auto">
-                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-[10px] font-mono text-violet-700 dark:text-violet-300 uppercase tracking-widest font-semibold shadow-sm">
-                    <span>Next-Gen Cinema Synthesis</span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight uppercase">
-                    START CREATING WITH {activeModel.label}
-                  </h2>
-                  <p className="text-xs font-jakarta text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                    Direct your shot below with our parallel AI Director copilot, select camera motion vectors, and compile with high-performance engines.
-                  </p>
-                </div>
-
-                {/* Inspiration Video Prompt Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-                  {INSPIRATION_VIDEOS.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setPrompt(item.prompt);
-                        setMotion(item.motion);
-                      }}
-                      className="group p-4 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-200 dark:hover:border-violet-500/30 transition-all cursor-pointer text-left space-y-1.5 shadow-sm hover:shadow-md"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-                          {item.title}
-                        </span>
-                        <span className="text-[9px] font-mono text-violet-500 uppercase tracking-wider border border-violet-100 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 rounded-full">
-                          {item.motion}
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                        &quot;{item.prompt}&quot;
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Floating Bottom Studio Dock */}
-      <div
-        ref={dockRef}
-        data-lenis-prevent="true"
-        className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl sm:rounded-3xl shadow-xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
-      >
-        <input
-          ref={dockFileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleDockImageUpload(f);
-            e.target.value = "";
-          }}
-          disabled={uploadingStartImage}
-        />
+          {/* Prompt Control Bar Pinned at Bottom of Canvas */}
+          <div className="max-w-4xl w-full mx-auto mt-4 pt-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-lg space-y-3">
+              {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* 1-Click Improve Prompt Button */}
+                  <button
+                    type="button"
+                    onClick={handleEnhancePrompt}
+                    disabled={enhancingPrompt}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95"
+                    title="1-Click AI Prompt Enhancer"
+                  >
+                    <Wand2 className={cn("h-3.5 w-3.5 text-purple-600 dark:text-purple-400", enhancingPrompt && "animate-spin")} />
+                    <span>{enhancingPrompt ? "Enhancing..." : "Improve Prompt"}</span>
+                  </button>
 
-        {/* Row 1: Professional Studio Prompt Input Bar */}
-        <div className="relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30 transition-all p-1">
-          {/* Staged Keyframe Chip in Prompt Bar */}
-          {startImage && (
-            <div className="flex items-center gap-1.5 px-3 pt-2 pb-0.5">
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white dark:bg-[#16161f] text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] shadow-sm">
-                <img
-                  src={getMediaUrl(startImage)}
-                  alt="Keyframe preview"
-                  className="w-4 h-4 object-cover rounded"
-                />
-                <span className="font-semibold text-violet-600 dark:text-violet-400">KEYFRAME:</span>
-                <span className="truncate max-w-[160px]">{startImage.split("/").pop()}</span>
-                <button
-                  type="button"
-                  onClick={() => setStartImage("")}
-                  className="p-0.5 hover:text-red-500 rounded cursor-pointer transition-colors"
-                  title="Remove keyframe"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                  {/* AI Director Agent */}
+                  <button
+                    type="button"
+                    onClick={runDirectorAgent}
+                    disabled={directing}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-mono cursor-pointer transition-all"
+                    title="OpenAI Visual Director"
+                  >
+                    <Sparkle className={cn("h-3 w-3 text-amber-500", directing && "animate-spin")} />
+                    <span>Director Agent</span>
+                  </button>
+
+                  {/* Negative Prompt Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setShowNegativePrompt(!showNegativePrompt)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-xl text-xs font-mono transition-colors cursor-pointer",
+                      showNegativePrompt
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                    )}
+                  >
+                    Negative Prompt
+                  </button>
+                </div>
+
+                <div className="text-[11px] font-mono text-zinc-400">
+                  {prompt.length} chars
+                </div>
               </div>
-            </div>
-          )}
 
-          <div className="relative flex items-start w-full">
-            <textarea
-              ref={promptTextareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  requestVideoConfirm();
-                }
-              }}
-              placeholder={
-                mode === "text_to_video"
-                  ? "Describe scene cinematography, camera trajectory, lighting, motion dynamics..."
-                  : mode === "first_to_last_frame"
-                  ? "Describe morph transition dynamics, lighting shifts, speed ramps..."
-                  : mode === "motion_transfer"
-                  ? "Describe motion retargeting, kinetic flow, or artistic adaptation..."
-                  : "Describe camera motion vector, subject dynamics, scene lighting..."
-              }
-              className="w-full bg-transparent border-none px-3.5 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-24 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto"
-            />
-
-            {/* Prompt Bar Actions (Attach Image, Clear & Negative Filter) */}
-            <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
-              {/* Direct Image Attachment / Upload Keyframe button */}
-              <button
-                type="button"
-                onClick={() => dockFileInputRef.current?.click()}
-                disabled={uploadingStartImage}
-                className={cn(
-                  "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer flex items-center gap-1",
-                  startImage
-                    ? "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300 border-violet-200 dark:border-violet-500/30 shadow-sm"
-                    : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
-                )}
-                title={startImage ? "Change keyframe image" : "Attach image to animate (Image to Video)"}
-              >
-                {uploadingStartImage ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
-                ) : (
-                  <Paperclip className="w-3.5 h-3.5" />
-                )}
-              </button>
-
-              {prompt.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setPrompt("")}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                  title="Clear prompt"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              {/* Negative Prompt Drawer */}
+              {showNegativePrompt && (
+                <div className="animate-in slide-in-from-top-2 duration-150">
+                  <input
+                    type="text"
+                    value={negativePrompt}
+                    onChange={(e) => setNegativePrompt(e.target.value)}
+                    placeholder="Exclude unwanted visuals (e.g. blurry, watermark, bad anatomy, jitter)..."
+                    className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
+                  />
+                </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => setShowNegativePrompt((p) => !p)}
-                className={cn(
-                  "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
-                  showNegativePrompt || negativePrompt
-                    ? "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300 border-violet-200 dark:border-violet-500/30 shadow-sm"
-                    : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
-                )}
-                title="Toggle Negative Prompt (Exclude elements)"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-              </button>
+              {/* Textarea + Submit Row */}
+              <div className="flex items-end gap-2.5">
+                <textarea
+                  ref={promptTextareaRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder={
+                    mode === "first_frame"
+                      ? "Describe camera movement, lighting changes, or visual effects over the keyframe..."
+                      : mode === "multi_frame"
+                      ? "Describe the visual transition dynamics between the sequence of frames..."
+                      : mode === "text_to_video"
+                      ? "Describe your scene in cinematic detail (e.g., drone shot through misty cyberpunk alley)..."
+                      : "Describe the desired motion synthesis..."
+                  }
+                  rows={2}
+                  className="flex-1 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 resize-none font-sans leading-relaxed"
+                />
+
+                <button
+                  type="button"
+                  onClick={requestVideoConfirm}
+                  disabled={loading || !isFormValid()}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white font-heading font-bold text-xs sm:text-sm tracking-tight transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Synthesizing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>
+                        Generate {model === "ffmpeg_local" ? "(Free)" : `• ₹${videoCostInr.toFixed(0)}`}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Negative Prompt Expandable Input */}
-        {showNegativePrompt && (
-          <div className="animate-in fade-in slide-in-from-bottom-1 duration-150">
-            <input
-              type="text"
-              value={negativePrompt}
-              onChange={(e) => setNegativePrompt(e.target.value)}
-              placeholder="Negative prompt (e.g. jitter, flickering, blur, morph artifacts, extra limbs)..."
-              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
-            />
-          </div>
-        )}
-
-        {/* Director Notes Badge (if generated) */}
-        {directorNotes && (
-          <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 flex items-center justify-between text-[10px] font-mono text-violet-700 dark:text-violet-300 shadow-sm">
-            <span className="truncate max-w-md">
-              DIRECTOR: {directorNotes.notes} ({directorNotes.lighting})
-            </span>
-            <button
-              type="button"
-              onClick={() => setDirectorNotes(null)}
-              className="text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 ml-2 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        )}
-
-        {/* Row 2: Control Pills Strip + Main Render CTA */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
-          {/* Left Controls Group */}
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            {/* 1. Video Engine Selector Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  closeAllPopovers();
-                  setModelPopoverOpen(!modelPopoverOpen);
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-heading font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
-                  modelPopoverOpen 
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300" 
-                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-900 dark:text-white"
-                )}
-              >
-                <Sparkle className={cn("w-3.5 h-3.5", modelPopoverOpen ? "text-violet-500" : "text-emerald-500")} />
-                <span>{activeModel.label}</span>
-                <ChevronUp
-                  className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", modelPopoverOpen && "rotate-180")}
-                />
-              </button>
-
-              {/* Model Popover */}
-              {modelPopoverOpen && (
-                <div
-                  data-lenis-prevent="true"
-                  className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
-                >
-                  {/* Search Bar */}
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      value={modelSearchQuery}
-                      onChange={(e) => setModelSearchQuery(e.target.value)}
-                      placeholder="Search video engines..."
-                      className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
-                    />
-                  </div>
-
-                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Film className="w-3 h-3 text-violet-500" />
-                      <span>Available Video Engines</span>
-                    </div>
-                    <span className="text-[9px] text-zinc-400 font-normal font-mono">
-                      {filteredModels.length} models
-                    </span>
-                  </div>
-
-                  {/* Scrollable Model List */}
-                  <div
-                    data-lenis-prevent="true"
-                    onWheel={(e) => e.stopPropagation()}
-                    onTouchMove={(e) => e.stopPropagation()}
-                    className="max-h-72 sm:max-h-80 overflow-y-auto overscroll-contain space-y-1 pr-1.5 custom-scrollbar"
-                  >
-                    {filteredModels.map((m) => {
-                      const isSelected = model === m.value;
-                      return (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => {
-                            setModel(m.value);
-                            setModelPopoverOpen(false);
-                          }}
-                          className={cn(
-                            "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer font-jakarta",
-                            isSelected
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20"
-                              : "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent"
-                          )}
-                        >
-                          <div className="space-y-0.5 min-w-0 pr-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold font-heading">{m.label}</span>
-                              {m.badge && (
-                                <span
-                                  className={cn(
-                                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider",
-                                    m.badge === "FREE LOCAL" || m.badge === "OPEN"
-                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
-                                      : "bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
-                                  )}
-                                >
-                                  {m.badge}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">
-                              {m.description}
-                            </p>
-                          </div>
-                          {isSelected && <Check className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 2. Aspect Ratio Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  closeAllPopovers();
-                  setRatioPopoverOpen(!ratioPopoverOpen);
-                }}
-                className={cn(
-                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
-                  ratioPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
-                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
-                )}
-                title="Select Aspect Ratio"
-              >
-                <Maximize2 className={cn("w-3 h-3", ratioPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
-                <span>{aspectRatio}</span>
-                <ChevronUp
-                  className={cn("w-3 h-3 text-zinc-400 transition-transform", ratioPopoverOpen && "rotate-180")}
-                />
-              </button>
-
-              {ratioPopoverOpen && (
-                <div
-                  data-lenis-prevent="true"
-                  className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
-                >
-                  <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1 font-semibold">
-                    Aspect Ratio
-                  </div>
-                  {ASPECT_RATIOS.map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => {
-                        setAspectRatio(r.value);
-                        setRatioPopoverOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-mono transition-colors cursor-pointer border",
-                        aspectRatio === r.value
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
-                          : "bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-600 dark:text-zinc-400"
-                      )}
-                    >
-                      <div className="text-left">
-                        <span className="block font-bold">{r.label}</span>
-                        <span className="text-[9px] opacity-70 block">{r.desc}</span>
-                      </div>
-                      {aspectRatio === r.value && <Check className="w-3.5 h-3.5 text-violet-500" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 3. Camera Motion Compass Pill */}
-            {mode !== "first_to_last_frame" && (
-              <div className="relative">
+        {/* Right Settings Sidebar (Collapsible with Stacked Close Accordions & Independent Scroll) */}
+        {sidebarOpen && (
+          <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full overflow-hidden transition-all duration-300 shadow-lg z-10">
+            {/* Sidebar Header with Stacked Close Toggle All */}
+            <div className="flex-shrink-0 p-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white">
+                  Studio Settings
+                </h3>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    closeAllPopovers();
-                    setMotionPopoverOpen(!motionPopoverOpen);
-                  }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
-                    motionPopoverOpen
-                      ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
-                      : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
-                  )}
-                  title="Camera Motion Vector"
+                  onClick={toggleAllSections}
+                  className="text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white px-2 py-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Toggle all accordion sections"
                 >
-                  <activeMotion.icon className={cn("w-3.5 h-3.5", motionPopoverOpen ? "text-violet-500" : "text-zinc-500 dark:text-zinc-400")} />
-                  <span className="hidden sm:inline">{activeMotion.label}</span>
-                  <span className="sm:hidden">{activeMotion.label.split(" ")[0]}</span>
-                  <ChevronUp
-                    className={cn("w-3 h-3 text-zinc-400 transition-transform", motionPopoverOpen && "rotate-180")}
-                  />
+                  {Object.values(openSections).every(Boolean) ? "Collapse All" : "Expand All"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  title="Close sidebar"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Accordions Container (Independent Scroll) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
+              {/* Section 1: AI Model & Engine (Active in GREEN) */}
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection("model")}
+                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Film className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>AI VIDEO MODEL</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold truncate max-w-[110px]">
+                      {activeModel.badge || "ACTIVE"}
+                    </span>
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.model && "rotate-180")} />
+                  </div>
                 </button>
 
-                {motionPopoverOpen && (
-                  <div
-                    data-lenis-prevent="true"
-                    className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
-                        Camera Motion Vector
-                      </span>
+                {openSections.model && (
+                  <div className="p-3 pt-0 space-y-2 border-t border-zinc-100 dark:border-zinc-800/50">
+                    <div className="relative my-2">
+                      <Search className="w-3 h-3 text-zinc-400 absolute left-2.5 top-2.5" />
+                      <input
+                        type="text"
+                        value={modelSearchQuery}
+                        onChange={(e) => setModelSearchQuery(e.target.value)}
+                        placeholder="Search model..."
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-7 pr-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                      {filteredModels.map((m) => {
+                        const isSelected = model === m.value;
+                        return (
+                          <button
+                            key={m.value}
+                            type="button"
+                            onClick={() => setModel(m.value)}
+                            className={cn(
+                              "w-full p-2.5 rounded-xl text-left transition-all duration-150 cursor-pointer flex items-start justify-between gap-2",
+                              isSelected
+                                ? "border border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
+                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-transparent"
+                            )}
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn("text-xs font-bold font-heading truncate", isSelected && "text-emerald-700 dark:text-emerald-400")}>
+                                  {m.label}
+                                </span>
+                                {m.badge && (
+                                  <span className={cn("text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase", isSelected ? "bg-emerald-500 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}>
+                                    {m.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-zinc-400 truncate">{m.description}</p>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Camera Motion (Default: None / Static) */}
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection("motion")}
+                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Compass className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>CAMERA MOTION</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
+                      {activeMotion.label}
+                    </span>
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.motion && "rotate-180")} />
+                  </div>
+                </button>
+
+                {openSections.motion && (
+                  <div className="p-3 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800/50">
+                    <div className="grid grid-cols-2 gap-1.5 my-2">
                       {MOTIONS.map((m) => {
+                        const Icon = m.icon;
                         const isSelected = motion === m.id;
                         return (
                           <button
                             key={m.id}
                             type="button"
-                            onClick={() => {
-                              setMotion(m.id);
-                              setMotionPopoverOpen(false);
-                            }}
+                            onClick={() => setMotion(m.id)}
                             className={cn(
-                              "flex items-center gap-2 p-2 rounded-xl border text-left font-mono text-xs transition-all cursor-pointer",
+                              "flex items-center gap-1.5 p-2 rounded-lg text-left text-xs transition-all cursor-pointer",
                               isSelected
-                                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 shadow-sm"
-                                : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
+                                ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 font-bold shadow-xs"
+                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-800/60"
                             )}
                           >
-                            <m.icon className="w-3.5 h-3.5 shrink-0" />
-                            <div className="min-w-0">
-                              <span className="font-bold block truncate">{m.label}</span>
-                            </div>
+                            <Icon className={cn("w-3.5 h-3.5 shrink-0", isSelected ? "text-emerald-500" : "text-zinc-400")} />
+                            <span className="truncate">{m.label}</span>
                           </button>
                         );
                       })}
                     </div>
 
-                    {/* Speed / Intensity */}
-                    <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                      <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-1.5">
-                        Motion Intensity:
-                      </span>
-                      <div className="grid grid-cols-4 gap-1 font-mono">
-                        {SPEED_PROFILES.map((sp) => (
+                    {/* Motion Intensity Slider */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                        <span>Motion Intensity</span>
+                        <span className="font-bold text-zinc-900 dark:text-white">{motionIntensity}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.0"
+                        step="0.1"
+                        value={motionIntensity}
+                        onChange={(e) => setMotionIntensity(parseFloat(e.target.value))}
+                        className="w-full accent-emerald-500 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 3: Aspect Ratio, Resolution & FPS */}
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection("specs")}
+                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>FORMAT & RESOLUTION</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
+                      {aspectRatio} • {resolution}
+                    </span>
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.specs && "rotate-180")} />
+                  </div>
+                </button>
+
+                {openSections.specs && (
+                  <div className="p-3 pt-0 space-y-3.5 border-t border-zinc-100 dark:border-zinc-800/50">
+                    {/* Aspect Ratio */}
+                    <div className="space-y-1.5 my-2">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Aspect Ratio</span>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {ASPECT_RATIOS.map((ar) => (
                           <button
-                            key={sp.value}
+                            key={ar.value}
                             type="button"
-                            onClick={() => setMotionIntensity(sp.value)}
+                            onClick={() => setAspectRatio(ar.value)}
                             className={cn(
-                              "py-1 text-center rounded-lg text-[10px] border transition-colors cursor-pointer",
-                              motionIntensity === sp.value
-                                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
-                                : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
+                              aspectRatio === ar.value
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
+                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                             )}
                           >
-                            {sp.label}
+                            {ar.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Resolution */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Resolution</span>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {RESOLUTIONS.map((res) => (
+                          <button
+                            key={res.value}
+                            type="button"
+                            onClick={() => setResolution(res.value)}
+                            className={cn(
+                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
+                              resolution === res.value
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
+                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                            )}
+                          >
+                            {res.value.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Framerate */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Framerate (FPS)</span>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {FPS_PROFILES.map((f) => (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => setFps(f.value)}
+                            className={cn(
+                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
+                              fps === f.value
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
+                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                            )}
+                          >
+                            {f.label}
                           </button>
                         ))}
                       </div>
@@ -1767,216 +1542,134 @@ function VideoStudioContent() {
                   </div>
                 )}
               </div>
-            )}
 
-            {/* 4. Duration Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  closeAllPopovers();
-                  setDurationPopoverOpen(!durationPopoverOpen);
-                }}
-                className={cn(
-                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
-                  durationPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
-                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
-                )}
-                title="Select Duration"
-              >
-                <Clock className={cn("w-3 h-3", durationPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
-                <span>{duration}s</span>
-                <ChevronUp
-                  className={cn("w-3 h-3 text-zinc-400 transition-transform", durationPopoverOpen && "rotate-180")}
-                />
-              </button>
-
-              {durationPopoverOpen && (
-                <div
-                  data-lenis-prevent="true"
-                  className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
+              {/* Section 4: Duration, Quality & Seed */}
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection("render")}
+                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold">
-                      Clip Duration
-                    </span>
-                    <span className="text-xs font-bold font-mono text-zinc-950 dark:text-white">
-                      {duration} SECONDS
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <Repeat className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>DURATION & RENDER</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
+                      {duration}s • {quality}
+                    </span>
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.render && "rotate-180")} />
+                  </div>
+                </button>
 
-                  <div className="flex items-center gap-1 font-mono">
-                    {DURATION_PRESETS.map((d) => (
+                {openSections.render && (
+                  <div className="p-3 pt-0 space-y-3.5 border-t border-zinc-100 dark:border-zinc-800/50">
+                    {/* Duration Presets */}
+                    <div className="space-y-1.5 my-2">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Duration (Seconds)</span>
+                      <div className="grid grid-cols-6 gap-1">
+                        {DURATION_PRESETS.map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => setDuration(d)}
+                            className={cn(
+                              "py-1 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
+                              duration === d
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
+                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                            )}
+                          >
+                            {d}s
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Quality Profile */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Render Quality</span>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {QUALITY_PROFILES.map((qp) => (
+                          <button
+                            key={qp.value}
+                            type="button"
+                            onClick={() => setQuality(qp.value)}
+                            className={cn(
+                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
+                              quality === qp.value
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
+                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                            )}
+                          >
+                            {qp.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Loop Toggle */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <Repeat className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold">Loop Seamlessly</span>
+                      </div>
                       <button
-                        key={d}
                         type="button"
-                        onClick={() => setDuration(d)}
+                        onClick={() => setLoop(!loop)}
                         className={cn(
-                          "flex-1 py-1 rounded text-[10px] border text-center transition-colors cursor-pointer",
-                          duration === d
-                            ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
-                            : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                          "w-8 h-4 rounded-full transition-colors relative cursor-pointer",
+                          loop ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
                         )}
                       >
-                        {d}s
+                        <div className={cn("w-3 h-3 rounded-full bg-white transition-transform absolute top-0.5", loop ? "left-4.5" : "left-0.5")} />
                       </button>
-                    ))}
-                  </div>
-
-                  <input
-                    type="range"
-                    min={2}
-                    max={30}
-                    step={1}
-                    value={duration}
-                    onChange={(e) => setDuration(parseFloat(e.target.value))}
-                    className="w-full accent-violet-600 cursor-pointer"
-                  />
-
-                  {/* Seamless Loop Option */}
-                  <div className="flex items-center justify-between pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-800 dark:text-zinc-200">
-                      <Repeat className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Seamless Loop</span>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={loop}
-                      onChange={(e) => setLoop(e.target.checked)}
-                      className="h-4 w-4 rounded border-black/[0.1] dark:border-white/[0.1] accent-violet-600 cursor-pointer"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
 
-            {/* 5. Resolution & FPS Master Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  closeAllPopovers();
-                  setSpecPopoverOpen(!specPopoverOpen);
-                }}
-                className={cn(
-                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
-                  specPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
-                    : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
+                    {/* Seed Input */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono font-semibold text-zinc-400 uppercase">
+                        <span>Seed (Reproducibility)</span>
+                        <button
+                          type="button"
+                          onClick={randomizeSeed}
+                          className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          <Dices className="w-3 h-3" />
+                          <span>Random</span>
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={seed}
+                        onChange={(e) => setSeed(e.target.value)}
+                        placeholder="Random seed (optional)"
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
                 )}
-                title="Resolution, FPS, Quality"
-              >
-                <Gauge className={cn("w-3 h-3", specPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
-                <span>{resolution} • {fps}fps</span>
-                <ChevronUp
-                  className={cn("w-3 h-3 text-zinc-400 transition-transform", specPopoverOpen && "rotate-180")}
-                />
-              </button>
-
-              {specPopoverOpen && (
-                <div
-                  data-lenis-prevent="true"
-                  className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
-                >
-                  {/* Resolution */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
-                      Resolution
-                    </span>
-                    <div className="grid grid-cols-2 gap-1 font-mono">
-                      {RESOLUTIONS.map((res) => (
-                        <button
-                          key={res.value}
-                          type="button"
-                          onClick={() => setResolution(res.value)}
-                          className={cn(
-                            "p-1.5 text-center rounded-lg border text-[11px] transition-colors cursor-pointer",
-                            resolution === res.value
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
-                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                          )}
-                        >
-                          <span className="block font-bold">{res.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Frame Rate */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
-                      Frame Rate
-                    </span>
-                    <div className="grid grid-cols-3 gap-1 font-mono">
-                      {FPS_PROFILES.map((p) => (
-                        <button
-                          key={p.value}
-                          type="button"
-                          onClick={() => setFps(p.value)}
-                          className={cn(
-                            "p-1.5 text-center rounded-lg border text-[10px] transition-colors cursor-pointer",
-                            fps === p.value
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
-                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                          )}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Quality */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-semibold block">
-                      Quality Profile
-                    </span>
-                    <div className="grid grid-cols-3 gap-1 font-mono">
-                      {QUALITY_PROFILES.map((qp) => (
-                        <button
-                          key={qp.value}
-                          type="button"
-                          onClick={() => setQuality(qp.value)}
-                          className={cn(
-                            "p-1.5 text-center rounded-lg border text-[10px] transition-colors cursor-pointer",
-                            quality === qp.value
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold shadow-sm"
-                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                          )}
-                        >
-                          {qp.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
 
-          {/* Right Action: Render Button */}
-          <button
-            type="button"
-            onClick={requestVideoConfirm}
-            disabled={loading || !isFormValid()}
-            className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-extrabold text-xs sm:text-sm tracking-tight disabled:opacity-40 transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-current" />
-                <span>Synthesizing...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>
-                  Render {model === "ffmpeg_local" ? "(100% Free)" : `• ₹${videoCostInr.toFixed(2)} ($${videoCostUsd.toFixed(2)})`}
-                </span>
-              </>
-            )}
-          </button>
-        </div>
+            {/* Sidebar Bottom: Cost & Specs Summary */}
+            <div className="flex-shrink-0 p-3.5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex items-center justify-between text-xs font-mono">
+              <div className="space-y-0.5">
+                <span className="text-zinc-400 text-[10px] uppercase">Estimated Spend</span>
+                <div className="font-bold text-zinc-900 dark:text-white">
+                  {model === "ffmpeg_local" ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">100% Free Local</span>
+                  ) : (
+                    <span>₹{videoCostInr.toFixed(2)} (${videoCostUsd.toFixed(2)})</span>
+                  )}
+                </div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold">
+                {activeModel.badge || "ACTIVE"}
+              </span>
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Vault Picker Modal */}
@@ -1985,7 +1678,7 @@ function VideoStudioContent() {
           <div className="bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2 font-mono text-xs text-zinc-950 dark:text-white font-semibold">
-                <FolderArchive className="h-4 w-4 text-zinc-500" />
+                <FolderArchive className="h-4 w-4 text-emerald-500" />
                 <span>SELECT {vaultTarget.toUpperCase()} FRAME FROM VAULT</span>
               </div>
               <button
@@ -1997,15 +1690,10 @@ function VideoStudioContent() {
               </button>
             </div>
 
-            <div
-              data-lenis-prevent="true"
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
-              className="p-4 overflow-y-auto flex-1 custom-scrollbar"
-            >
+            <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
               {loadingVault ? (
                 <div className="py-12 text-center text-xs text-zinc-500 font-mono flex flex-col items-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
                   Loading vault images...
                 </div>
               ) : vaultImages.length === 0 ? (
@@ -2020,10 +1708,15 @@ function VideoStudioContent() {
                       type="button"
                       onClick={() => {
                         if (vaultTarget === "start") setStartImage(img.url);
-                        else setEndImage(img.url);
+                        else if (vaultTarget === "end") setEndImage(img.url);
+                        else if (vaultTarget === "multi") {
+                          if (keyframeImages.length < 8) {
+                            setKeyframeImages((prev) => [...prev, img.url]);
+                          }
+                        }
                         setVaultOpen(false);
                       }}
-                      className="group rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md text-left transition-all relative aspect-video bg-zinc-100 dark:bg-zinc-900 cursor-pointer"
+                      className="group rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 hover:shadow-md text-left transition-all relative aspect-video bg-zinc-100 dark:bg-zinc-900 cursor-pointer"
                     >
                       <LazyImage
                         src={getMediaUrl(img.url)}
@@ -2066,8 +1759,8 @@ export default function VideoStudio() {
     <Suspense
       fallback={
         <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
-          <span className="text-xs text-zinc-500 font-mono">Loading Video Motion Studio...</span>
+          <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+          <span className="text-xs text-zinc-500 font-mono">Loading Video Studio...</span>
         </div>
       }
     >

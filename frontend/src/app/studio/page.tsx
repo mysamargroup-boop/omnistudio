@@ -92,6 +92,7 @@ const ASPECT_RATIOS = [
 ];
 
 const MOTIONS = [
+  { id: "none", label: "Static / None", desc: "Locked-off camera (No motion)" },
   { id: "zoom_in", label: "Push In", desc: "Smooth cinematic lens forward push" },
   { id: "zoom_out", label: "Pull Back", desc: "Expansive reveal pulling backward" },
   { id: "pan_left", label: "Pan Left", desc: "Horizontal track smoothly to the left" },
@@ -147,7 +148,7 @@ function StudioContent() {
   const [imageModel, setImageModel] = useState("gpt-image-2");
   const [voiceProvider, setVoiceProvider] = useState("edge");
   const [aspectRatio, setAspectRatio] = useState("16:9");
-  const [motion, setMotion] = useState("zoom_in");
+  const [motion, setMotion] = useState("none");
   const [transition, setTransition] = useState("smooth_morph");
   const [duration, setDuration] = useState(4);
   const [fps, setFps] = useState(30);
@@ -251,6 +252,24 @@ function StudioContent() {
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
+  // 1-Click AI Prompt Enhancer
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) {
+      setPrompt("Cinematic visual sequence, dramatic atmospheric lighting, photorealistic 8k");
+      return;
+    }
+    setDirecting(true);
+    try {
+      const res = await api.enhancePrompt({ prompt, enhance_style: "cinematic" });
+      const enhanced = res?.enhanced || res?.enhanced_prompt;
+      if (enhanced) setPrompt(enhanced);
+    } catch (e: any) {
+      console.error("Enhance prompt error:", e);
+    } finally {
+      setDirecting(false);
+    }
+  };
+
   // AI Copilot / Director Prompt Refinement
   const runCopilot = async () => {
     if (!prompt.trim()) return;
@@ -258,13 +277,14 @@ function StudioContent() {
     try {
       if (masterMode === "image") {
         const res = await api.enhancePrompt({ prompt });
-        if (res && res.enhanced_prompt) setPrompt(res.enhanced_prompt);
+        const enhanced = res?.enhanced || res?.enhanced_prompt;
+        if (enhanced) setPrompt(enhanced);
       } else {
         const res = await api.directVideoPrompt({ idea: prompt, prompt, motion_type: motion });
         const enhanced = res?.enhanced_prompt || res?.cinematic_prompt;
         if (enhanced) setPrompt(enhanced);
-        if (res?.camera_direction) setMotion(res.camera_direction);
-        if (res?.negative_prompt) setNegativePrompt(res.negative_prompt);
+        if (res?.camera_direction) setMotion(res?.camera_direction);
+        if (res?.negative_prompt) setNegativePrompt(res?.negative_prompt);
       }
     } catch (e: any) {
       console.error("Copilot error:", e);
@@ -1159,13 +1179,13 @@ function StudioContent() {
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
             <button
               type="button"
-              onClick={runCopilot}
+              onClick={handleEnhancePrompt}
               disabled={directing || !prompt.trim()}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#16161a] text-[11px] font-mono text-zinc-800 dark:text-zinc-200 border border-black/[0.08] dark:border-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/[0.08] disabled:opacity-40 transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
-              title="Enhance prompt with AI Copilot"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-[11px] font-mono text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 disabled:opacity-40 transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              title="1-Click AI Prompt Enhancer"
             >
-              <Wand2 className={cn("w-3 h-3 text-zinc-900 dark:text-white", directing && "animate-spin")} />
-              <span className="hidden sm:inline">Copilot</span>
+              <Wand2 className={cn("w-3.5 h-3.5 text-purple-600 dark:text-purple-400", directing && "animate-spin")} />
+              <span className="hidden sm:inline font-semibold">Improve Prompt</span>
             </button>
 
             <button
@@ -1212,13 +1232,13 @@ function StudioContent() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-heading font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
                   modelPopoverOpen
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold"
-                    : "bg-zinc-50 dark:bg-white/[0.04] hover:bg-zinc-100 dark:hover:bg-white/[0.08] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
+                    ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-zinc-950 border-transparent font-bold"
+                    : "bg-emerald-500/10 hover:bg-emerald-500/15 border-emerald-500/30 text-emerald-800 dark:text-emerald-300 font-bold"
                 )}
               >
-                <Sparkle className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span>{masterMode === "video" ? activeVideoModel.label : masterMode === "image" ? activeImageModel.label : "Edge / ElevenLabs"}</span>
-                <ChevronUp className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", modelPopoverOpen && "rotate-180")} />
+                <ChevronUp className={cn("w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 transition-transform duration-200", modelPopoverOpen && "rotate-180")} />
               </button>
 
               {/* Model Popover */}
@@ -1240,7 +1260,7 @@ function StudioContent() {
 
                   <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center justify-between">
                     <div className="flex items-center gap-1">
-                      <Film className="w-3 h-3 text-zinc-700 dark:text-zinc-300" />
+                      <Film className="w-3 h-3 text-emerald-500" />
                       <span>{masterMode.toUpperCase()} ENGINES</span>
                     </div>
                   </div>
@@ -1269,22 +1289,22 @@ function StudioContent() {
                             className={cn(
                               "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer font-jakarta",
                               isSelected
-                                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-bold"
+                                ? "border border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 font-bold"
                                 : "hover:bg-zinc-100 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300"
                             )}
                           >
                             <div className="space-y-0.5 min-w-0 pr-2">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold font-heading">{m.label}</span>
+                                <span className={cn("text-xs font-bold font-heading", isSelected && "text-emerald-700 dark:text-emerald-400")}>{m.label}</span>
                                 {m.badge && (
-                                  <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider", isSelected ? "bg-white/20 text-white dark:bg-black/20 dark:text-black" : "bg-zinc-100 dark:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 border border-black/[0.08] dark:border-white/[0.08]")}>
+                                  <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider", isSelected ? "bg-emerald-500 text-white font-bold" : "bg-zinc-100 dark:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 border border-black/[0.08] dark:border-white/[0.08]")}>
                                     {m.badge}
                                   </span>
                                 )}
                               </div>
-                              <p className={cn("text-[10px] leading-snug line-clamp-1", isSelected ? "opacity-80" : "text-zinc-500 dark:text-zinc-400")}>{m.description}</p>
+                              <p className={cn("text-[10px] leading-snug line-clamp-1", isSelected ? "text-emerald-600/80 dark:text-emerald-400/80" : "text-zinc-500 dark:text-zinc-400")}>{m.description}</p>
                             </div>
-                            {isSelected && <Check className="w-4 h-4 text-white dark:text-zinc-950 shrink-0 mt-1" />}
+                            {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-1" />}
                           </button>
                         );
                       })}

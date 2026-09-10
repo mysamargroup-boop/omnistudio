@@ -131,6 +131,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const maxAgeHours = 12;
           if (parsed?.authenticated && tokenAge < maxAgeHours * 60 * 60 * 1000) {
             setIsPinAuthenticated(true);
+            setProfile((prev) => prev || {
+              id: "pin-samar-master",
+              email: "mysamargroup@gmail.com",
+              full_name: "Samar",
+              avatar_url: null,
+              role: "admin",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
           }
         }
         try { localStorage.removeItem("omnistudio_pin_session"); } catch { /* migration */ }
@@ -253,6 +262,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       store.setItem(PIN_SESSION_KEY, JSON.stringify({ authenticated: true, timestamp: Date.now() }));
       try { localStorage.removeItem("omnistudio_pin_session"); } catch { /* migration */ }
       setIsPinAuthenticated(true);
+      setProfile({
+        id: "pin-samar-master",
+        email: "mysamargroup@gmail.com",
+        full_name: "Samar",
+        avatar_url: null,
+        role: "admin",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
       return { success: true };
     } catch {
       return { success: false, error: "Could not reach the authentication server." };

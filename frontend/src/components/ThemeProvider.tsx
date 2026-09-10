@@ -16,12 +16,12 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("omni-theme") as Theme | null;
-    const initial = saved === "light" ? "light" : "dark";
+    const initial = saved === "dark" ? "dark" : "light";
     setThemeState(initial);
     applyTheme(initial);
     setMounted(true);

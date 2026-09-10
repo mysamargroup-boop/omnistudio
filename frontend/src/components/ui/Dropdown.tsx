@@ -110,14 +110,19 @@ export default function Dropdown({
             const isFocused = index === focusedIndex;
             return (
               <button
-                key={option.value}
+                key={String(option.value)}
                 type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
                 onClick={() => {
                   onChange(option.value);
                   setIsOpen(false);
                 }}
                 className={cn(
-                  "w-full flex items-center justify-between px-3.5 py-2 text-xs text-left transition-colors font-jakarta cursor-pointer rounded-lg mx-1 w-[calc(100%-8px)]",
+                  "flex items-center justify-between px-3.5 py-2 text-xs text-left transition-colors font-jakarta cursor-pointer rounded-lg mx-1 w-[calc(100%-8px)]",
                   isSelected
                     ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-semibold"
                     : isFocused

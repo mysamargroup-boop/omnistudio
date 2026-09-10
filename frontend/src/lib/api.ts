@@ -257,6 +257,7 @@ export const api = {
   // Settings
   getStatus: () => fetchApi<any>("/api/settings/status"),
   getKeys: () => fetchApi<any>("/api/settings/keys"),
+  getSystemMetrics: () => fetchApi<any>("/api/settings/system-metrics"),
   updateKeys: (data: any) => fetchApi<any>("/api/settings/keys", { method: "POST", body: JSON.stringify(data) }),
   testDatabase: (url?: string) => fetchApi<any>("/api/settings/test-db", { method: "POST", body: JSON.stringify({ database_url: url }) }),
   testStorage: () => fetchApi<any>("/api/settings/test-r2", { method: "POST" }),
