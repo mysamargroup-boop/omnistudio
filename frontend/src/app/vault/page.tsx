@@ -167,10 +167,27 @@ export default function VaultPage() {
   };
 
   const copyAssetToClipboard = (file: VaultAsset) => {
-    const fullUrl = `${window.location.origin}${getMediaUrl(file.url)}`;
+    const fullUrl = getMediaUrl(file.url);
     navigator.clipboard.writeText(fullUrl);
     setCopiedKey(file.filename);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const downloadAsset = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(getMediaUrl(url));
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      console.error('Download failed:', e);
+      window.open(getMediaUrl(url), '_blank');
+    }
   };
 
 
@@ -913,10 +930,12 @@ export default function VaultPage() {
                     <span>Add to prompt</span>
                   </button>
 
-                  <a
-                    href={getMediaUrl(file.url)}
-                    download={file.filename}
-                    onClick={() => setActiveMenuKey(null)}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMenuKey(null);
+                      downloadAsset(file.url, file.filename);
+                    }}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
@@ -924,7 +943,7 @@ export default function VaultPage() {
                       <span>Download</span>
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
-                  </a>
+                  </button>
 
                   <button
                     type="button"
@@ -953,35 +972,33 @@ export default function VaultPage() {
                     </button>
                   )}
 
-                  {isImage && tab !== "trash" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveMenuKey(null);
-                        setCopiedKey(file.filename);
-                        setTimeout(() => setCopiedKey(null), 2000);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
-                    >
-                      <ImageIcon className="w-4 h-4 text-zinc-400" />
-                      <span>Set project cover</span>
-                    </button>
-                  )}
-
                   <div className="border-t border-white/10 my-1" />
 
                   {tab === "trash" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveMenuKey(null);
-                        handleSingleRestore(file);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-emerald-400 transition-colors text-left cursor-pointer"
-                    >
-                      <RotateCcw className="w-4 h-4 text-emerald-400" />
-                      <span>Restore from trash</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveMenuKey(null);
+                          handleSingleRestore(file);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-emerald-400 transition-colors text-left cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4 text-emerald-400" />
+                        <span>Restore from trash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveMenuKey(null);
+                          handleSinglePermanentDeleteClick(file);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-400 transition-colors text-left cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-400" />
+                        <span>Delete forever</span>
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"

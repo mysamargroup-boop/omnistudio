@@ -36,7 +36,7 @@ interface CharacterStudioModalProps {
   onUnlockCharacter: () => void;
 }
 
-const ARCHETYPES = [
+export const ARCHETYPES = [
   {
     id: "the_eccentric",
     name: "The Eccentric",

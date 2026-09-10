@@ -255,6 +255,19 @@ export default function ImageStudioPage() {
       .catch((e: unknown) => console.error("Failed to fetch model status", e));
   }, []);
 
+  // Load Studio Preferences from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("omnistudio_preferences");
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.defaultImageModel) setModel(p.defaultImageModel);
+        if (p.defaultResolution) setResolution(p.defaultResolution);
+        if (p.defaultAspectRatio) setAspectRatio(p.defaultAspectRatio);
+      }
+    } catch {}
+  }, []);
+
   // Close popovers on click outside
   const dockRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -342,6 +355,19 @@ export default function ImageStudioPage() {
         lens,
       },
     });
+
+    let shouldSkipModal = false;
+    try {
+      const savedPrefs = localStorage.getItem("omnistudio_preferences");
+      if (savedPrefs && JSON.parse(savedPrefs).skipConfirmModal) shouldSkipModal = true;
+    } catch {}
+
+    if (shouldSkipModal) {
+      if (studioMode === "text_to_image") generate();
+      else generateBulkVariations();
+      return;
+    }
+
     setConfirmModalOpen(true);
   };
 
@@ -352,8 +378,9 @@ export default function ImageStudioPage() {
     setEnhancingPrompt(true);
     try {
       const data = await api.enhancePrompt({ prompt, style: "cinematic" });
-      if (data && data.enhanced_prompt) {
-        setPrompt(data.enhanced_prompt);
+      const enhancedText = data?.enhanced || data?.enhanced_prompt;
+      if (enhancedText) {
+        setPrompt(enhancedText);
       } else {
         setPrompt(
           (prev) =>
@@ -422,8 +449,19 @@ export default function ImageStudioPage() {
       };
       const sizeParam = sizeMap[aspectRatio] || "1792x1024";
 
+      let finalPromptText = prompt.trim();
+      try {
+        const savedPrefs = localStorage.getItem("omnistudio_preferences");
+        if (savedPrefs) {
+          const p = JSON.parse(savedPrefs);
+          if (p.enablePromptDirective && p.promptDirective) {
+            finalPromptText = `${finalPromptText}, ${p.promptDirective}`;
+          }
+        }
+      } catch {}
+
       const data = await api.generateImage({
-        prompt: prompt.trim(),
+        prompt: finalPromptText,
         negative_prompt: negativePrompt.trim(),
         model,
         size: sizeParam,
@@ -1402,6 +1440,21 @@ export default function ImageStudioPage() {
 
             <button
               type="button"
+              onClick={enhancePromptText}
+              disabled={!prompt.trim() || enhancingPrompt}
+              className={cn(
+                "p-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer",
+                enhancingPrompt
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-sm animate-pulse"
+                  : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 border-black/[0.08] dark:border-white/[0.08] disabled:opacity-30"
+              )}
+              title="Improve Prompt with AI (GPT-4o-mini)"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowNegativePrompt((p) => !p)}
               className={cn(
                 "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer",
@@ -1468,7 +1521,7 @@ export default function ImageStudioPage() {
         )}
 
         {/* Row 2: Bottom Control Pills Strip + Generate Button */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1.5 border-t border-black/[0.06] dark:border-white/[0.06]">
           {/* Left Controls Group */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {/* 1. Model Selector Pill */}
@@ -1827,7 +1880,7 @@ export default function ImageStudioPage() {
             type="button"
             onClick={requestImageConfirm}
             disabled={loading || loadingVariations || (!prompt.trim() && studioMode === "text_to_image")}
-            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 disabled:opacity-40 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0"
+            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0"
           >
             {loading || loadingVariations ? (
               <>

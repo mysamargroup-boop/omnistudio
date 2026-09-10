@@ -52,7 +52,7 @@ import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/u
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
-import CharacterStudioModal, { CharacterData } from "@/components/video/CharacterStudioModal";
+import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/video/CharacterStudioModal";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
@@ -219,9 +219,14 @@ function VideoStudioContent() {
   const [sourceVideoUrl, setSourceVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
-  // Character Lock State (Reference Image 1)
+  // Character Lock State (Sidebar & Consistent Persona)
   const [characterModalOpen, setCharacterModalOpen] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<CharacterData | null>(null);
+  const [customCharName, setCustomCharName] = useState("");
+  const [customCharPrompt, setCustomCharPrompt] = useState("");
+  const [customCharImage, setCustomCharImage] = useState("");
+  const [uploadingCharImage, setUploadingCharImage] = useState(false);
+  const charFileInputRef = useRef<HTMLInputElement>(null);
 
   // Video Editor & Upload Mode State
   const [editorVideoFile, setEditorVideoFile] = useState<File | null>(null);
@@ -287,6 +292,7 @@ function VideoStudioContent() {
   // Right Sidebar & Stacked Accordions State
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
+    character: false,
     model: false,
     motion: false,
     specs: false,
@@ -300,6 +306,7 @@ function VideoStudioContent() {
   const toggleAllSections = () => {
     const allOpen = Object.values(openSections).every(Boolean);
     setOpenSections({
+      character: !allOpen,
       model: !allOpen,
       motion: !allOpen,
       specs: !allOpen,
@@ -349,6 +356,20 @@ function VideoStudioContent() {
       if (found) setModel(qModel);
     }
   }, [searchParams]);
+
+  // Load Studio Preferences from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("omnistudio_preferences");
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.cameraMotion) setMotion(p.cameraMotion);
+        if (p.defaultVideoEngine) setModel(p.defaultVideoEngine);
+        if (p.defaultResolution) setResolution(p.defaultResolution);
+        if (p.defaultAspectRatio) setAspectRatio(p.defaultAspectRatio);
+      }
+    } catch {}
+  }, []);
 
   const randomizeSeed = () => {
     setSeed(Math.floor(Math.random() * 999999999).toString());
@@ -503,9 +524,9 @@ function VideoStudioContent() {
     setDirecting(false);
   };
 
-  // Validation
+  // Validation: prompt alone or image alone is valid for first_frame mode
   const isFormValid = () => {
-    if (mode === "first_frame") return !!startImage.trim();
+    if (mode === "first_frame") return !!startImage.trim() || !!prompt.trim();
     if (mode === "first_to_last_frame") return !!startImage.trim() && !!endImage.trim();
     if (mode === "multi_frame") return keyframeImages.length >= 2;
     if (mode === "text_to_video") return !!prompt.trim();
@@ -533,14 +554,17 @@ function VideoStudioContent() {
 
     const costInr = Math.round(costUsd * 83.5 * 100) / 100;
     const modelObj = VIDEO_MODELS.find((m) => m.value === model);
+    const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
+    const characterContext = activeCharacter?.isLocked && activeCharacter?.prompt ? `[Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ` : "";
+    const displayPrompt = (characterContext + prompt).trim() || `Motion: ${motion} on keyframe`;
 
     setConfirmDetails({
       serviceType: "video",
       modelName: modelObj?.label || model,
       provider,
-      prompt: prompt.trim() || `Motion: ${motion} on keyframe`,
+      prompt: displayPrompt,
       specs: {
-        mode,
+        mode: effectiveMode,
         duration,
         resolution,
         fps,
@@ -551,6 +575,18 @@ function VideoStudioContent() {
       costInr,
       isFree,
     });
+
+    let shouldSkipModal = false;
+    try {
+      const savedPrefs = localStorage.getItem("omnistudio_preferences");
+      if (savedPrefs && JSON.parse(savedPrefs).skipConfirmModal) shouldSkipModal = true;
+    } catch {}
+
+    if (shouldSkipModal) {
+      generate();
+      return;
+    }
+
     setConfirmModalOpen(true);
   };
 
@@ -590,13 +626,30 @@ function VideoStudioContent() {
     }, 1000);
 
     try {
+      const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
+      const effectiveStartImage = !startImage.trim() && activeCharacter?.isLocked && activeCharacter?.imageUrl ? activeCharacter.imageUrl : startImage;
+      const characterContext = activeCharacter?.isLocked && activeCharacter?.prompt ? `[Featuring Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ` : "";
+
+      let promptDirectiveText = "";
+      try {
+        const savedPrefs = localStorage.getItem("omnistudio_preferences");
+        if (savedPrefs) {
+          const p = JSON.parse(savedPrefs);
+          if (p.enablePromptDirective && p.promptDirective) {
+            promptDirectiveText = `, ${p.promptDirective}`;
+          }
+        }
+      } catch {}
+
+      const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
+
       const payload: any = {
-        mode,
-        start_image_path: mode === "multi_frame" ? keyframeImages[0] : startImage,
+        mode: effectiveMode,
+        start_image_path: mode === "multi_frame" ? keyframeImages[0] : effectiveStartImage,
         end_image_path: mode === "multi_frame" ? keyframeImages[keyframeImages.length - 1] : mode === "first_to_last_frame" ? endImage : null,
         image_paths: mode === "multi_frame" ? keyframeImages : undefined,
         source_video_path: mode === "motion_transfer" ? sourceVideoUrl : null,
-        prompt,
+        prompt: finalPrompt,
         negative_prompt: negativePrompt,
         motion_type: motion,
         duration,
@@ -608,6 +661,7 @@ function VideoStudioContent() {
         loop,
         seed: seed ? parseInt(seed, 10) : undefined,
         model,
+        character_name: activeCharacter?.isLocked ? activeCharacter.name : undefined,
       };
 
       const data = await api.generateVideo(payload);
@@ -653,10 +707,10 @@ function VideoStudioContent() {
   const videoCostInr = Math.round(videoCostUsd * 83.5 * 100) / 100;
 
   return (
-    <div className="relative h-[calc(100vh-4rem)] flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
+    <div className="relative h-full flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/80 dark:bg-[#0c0c12]/80 backdrop-blur-md z-20">
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex-wrap">
+      <div className="flex-shrink-0 sticky top-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/90 dark:bg-[#0c0c12]/90 backdrop-blur-md z-20">
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-x-auto no-scrollbar flex-nowrap shrink-0 max-w-[calc(100vw-300px)]">
           <button
             type="button"
             onClick={() => setMode("first_frame")}
@@ -752,7 +806,10 @@ function VideoStudioContent() {
           {/* Character Lock Button (Reference Image 1) */}
           <button
             type="button"
-            onClick={() => setCharacterModalOpen(true)}
+            onClick={() => {
+              setSidebarOpen(true);
+              setOpenSections((prev) => ({ ...prev, character: true }));
+            }}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 border",
               activeCharacter?.isLocked
@@ -1073,18 +1130,43 @@ function VideoStudioContent() {
                     ) : (
                       <div
                         onClick={() => startFileInputRef.current?.click()}
-                        className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl aspect-video flex flex-col items-center justify-center gap-2.5 p-6 cursor-pointer transition-colors bg-zinc-50/50 dark:bg-zinc-900/50"
-                      >
-                        {uploadingStartImage ? (
-                          <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
-                        ) : (
-                          <Upload className="h-6 w-6 text-emerald-500" />
+                        onDragOver={(e) => { e.preventDefault(); setStartDragOver(true); }}
+                        onDragLeave={() => setStartDragOver(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setStartDragOver(false);
+                          const f = e.dataTransfer.files?.[0];
+                          if (f) handleStartImageUpload(f);
+                        }}
+                        className={cn(
+                          "group relative rounded-2xl aspect-video flex flex-col items-center justify-center gap-3 p-6 cursor-pointer transition-all duration-300 border-2 border-dashed",
+                          startDragOver
+                            ? "border-emerald-500 bg-emerald-500/10 scale-[1.01] shadow-lg shadow-emerald-500/10"
+                            : "border-zinc-300 dark:border-zinc-700/80 hover:border-emerald-500 dark:hover:border-emerald-500/80 bg-gradient-to-b from-zinc-50 to-zinc-100/50 dark:from-[#101018]/80 dark:to-[#09090f]/80 shadow-xs"
                         )}
-                        <div className="text-center">
-                          <p className="text-xs font-semibold text-zinc-900 dark:text-white">
-                            {uploadingStartImage ? "Uploading..." : "Click or drag start keyframe image"}
+                      >
+                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800/80 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:border-emerald-500/50 transition-all duration-300">
+                          {uploadingStartImage ? (
+                            <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                          ) : (
+                            <Upload className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                          )}
+                        </div>
+                        <div className="text-center space-y-1">
+                          <p className="text-xs sm:text-sm font-heading font-bold text-zinc-900 dark:text-white">
+                            {uploadingStartImage ? "Uploading Keyframe Image..." : "Drop Keyframe Image or Click to Browse"}
                           </p>
-                          <p className="text-[10px] text-zinc-400 font-mono mt-0.5">PNG, JPG, WEBP up to 25MB</p>
+                          <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                            Supports PNG, JPG, WEBP • Up to 25MB • 16:9 Recommended
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-zinc-200/70 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-400">
+                            Direct NVMe Buffer
+                          </span>
+                          <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            1-Click Animate
+                          </span>
                         </div>
                       </div>
                     )}
@@ -1120,14 +1202,16 @@ function VideoStudioContent() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
+                        <div
                           onClick={() => startFileInputRef.current?.click()}
-                          className="w-full aspect-video border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1 text-xs text-zinc-500 hover:border-emerald-500"
+                          className="w-full aspect-video rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700/80 hover:border-emerald-500 flex flex-col items-center justify-center gap-2 text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 bg-zinc-50/50 dark:bg-zinc-900/40 hover:bg-emerald-500/5 transition-all cursor-pointer group"
                         >
-                          <Upload className="w-4 h-4 text-emerald-500" />
-                          <span>Upload Start Frame</span>
-                        </button>
+                          <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Upload className="w-4 h-4 text-emerald-500" />
+                          </div>
+                          <span className="text-xs font-semibold">Upload Start Frame</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">PNG, JPG, WEBP</span>
+                        </div>
                       )}
                     </div>
 
@@ -1169,14 +1253,16 @@ function VideoStudioContent() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
+                        <div
                           onClick={() => endFileInputRef.current?.click()}
-                          className="w-full aspect-video border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1 text-xs text-zinc-500 hover:border-emerald-500"
+                          className="w-full aspect-video rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700/80 hover:border-emerald-500 flex flex-col items-center justify-center gap-2 text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 bg-zinc-50/50 dark:bg-zinc-900/40 hover:bg-emerald-500/5 transition-all cursor-pointer group"
                         >
-                          <Upload className="w-4 h-4 text-emerald-500" />
-                          <span>Upload End Frame</span>
-                        </button>
+                          <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Upload className="w-4 h-4 text-emerald-500" />
+                          </div>
+                          <span className="text-xs font-semibold">Upload End Frame</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">PNG, JPG, WEBP</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1373,7 +1459,7 @@ function VideoStudioContent() {
           </div>
 
           {/* Prompt Control Bar Pinned at Bottom of Canvas */}
-          <div className="max-w-4xl w-full mx-auto mt-4 pt-2">
+          <div className="max-w-4xl w-full mx-auto mt-4 pt-2 pb-5 mb-2">
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-lg space-y-3">
               {/* Active Character Lock Pill (Reference Image 1) */}
               {activeCharacter?.isLocked && (
@@ -1396,7 +1482,10 @@ function VideoStudioContent() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setCharacterModalOpen(true)}
+                      onClick={() => {
+                        setSidebarOpen(true);
+                        setOpenSections((prev) => ({ ...prev, character: true }));
+                      }}
                       className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 transition-colors cursor-pointer"
                     >
                       Change
@@ -1496,7 +1585,7 @@ function VideoStudioContent() {
                   type="button"
                   onClick={requestVideoConfirm}
                   disabled={loading || !isFormValid()}
-                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white font-heading font-bold text-xs sm:text-sm tracking-tight transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-heading font-bold text-xs sm:text-sm tracking-tight transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
@@ -1507,7 +1596,7 @@ function VideoStudioContent() {
                     <>
                       <Play className="w-3.5 h-3.5 fill-current" />
                       <span>
-                        Generate {model === "ffmpeg_local" ? "(Free)" : `• ₹${videoCostInr.toFixed(0)}`}
+                        Generate {model === "ffmpeg_local" ? "• Free (₹0)" : `• ₹${videoCostInr.toFixed(0)} ($${videoCostUsd.toFixed(2)})`}
                       </span>
                     </>
                   )}
@@ -1550,6 +1639,153 @@ function VideoStudioContent() {
 
             {/* Scrollable Accordions Container (Independent Scroll) */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
+              {/* Section 0: Character Lock & Consistency (Native Right Sidebar) */}
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection("character")}
+                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>CHARACTER LOCK</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full font-bold truncate max-w-[120px]",
+                      activeCharacter?.isLocked
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                        : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+                    )}>
+                      {activeCharacter?.isLocked ? `LOCKED: ${activeCharacter.name}` : "UNLOCKED"}
+                    </span>
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.character && "rotate-180")} />
+                  </div>
+                </button>
+
+                {openSections.character && (
+                  <div className="p-3 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800/50">
+                    {/* Active Locked Character Status */}
+                    {activeCharacter?.isLocked ? (
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {activeCharacter.imageUrl && (
+                              <img
+                                src={getMediaUrl(activeCharacter.imageUrl)}
+                                alt={activeCharacter.name}
+                                className="w-8 h-8 rounded-lg object-cover border border-emerald-500"
+                              />
+                            )}
+                            <div>
+                              <p className="text-xs font-bold font-heading text-emerald-900 dark:text-emerald-100">{activeCharacter.name}</p>
+                              <p className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Active in Synthesis
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveCharacter(null)}
+                            className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                          >
+                            Unlock
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-jakarta line-clamp-2 leading-relaxed">
+                          {activeCharacter.prompt}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-zinc-500 font-jakarta leading-relaxed">
+                        Lock a character identity to keep the same face, costume, and persona consistent across all camera motions and takes.
+                      </p>
+                    )}
+
+                    {/* Predefined Archetypes */}
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                        Choose Archetype Preset
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5">
+                        {ARCHETYPES.map((arch) => {
+                          const isSelected = activeCharacter?.id === arch.id && activeCharacter?.isLocked;
+                          return (
+                            <button
+                              key={arch.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveCharacter({
+                                  id: arch.id,
+                                  name: arch.name,
+                                  tagline: "",
+                                  description: arch.description,
+                                  prompt: arch.prompt,
+                                  imageUrl: arch.avatar,
+                                  isLocked: true,
+                                });
+                              }}
+                              className={cn(
+                                "p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col gap-1.5",
+                                isSelected
+                                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
+                                  : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+                              )}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <img src={arch.avatar} alt={arch.name} className="w-6 h-6 rounded-md object-cover border border-black/10 dark:border-white/10" />
+                                <span className="text-[11px] font-bold font-heading truncate">{arch.name}</span>
+                              </div>
+                              <span className="text-[9px] text-zinc-500 line-clamp-1">{arch.description}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Custom Character Creator */}
+                    <div className="space-y-2 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                      <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                        Or Create Custom Character
+                      </div>
+                      <input
+                        type="text"
+                        value={customCharName}
+                        onChange={(e) => setCustomCharName(e.target.value)}
+                        placeholder="Character name (e.g. Captain Nova)..."
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <textarea
+                        value={customCharPrompt}
+                        onChange={(e) => setCustomCharPrompt(e.target.value)}
+                        placeholder="Visual description (hair, costume, facial traits, age)..."
+                        rows={2}
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={!customCharName.trim() || !customCharPrompt.trim()}
+                        onClick={() => {
+                          setActiveCharacter({
+                            id: "custom_" + Date.now(),
+                            name: customCharName.trim(),
+                            tagline: "",
+                            description: customCharPrompt.trim(),
+                            prompt: customCharPrompt.trim(),
+                            imageUrl: customCharImage || undefined,
+                            isLocked: true,
+                          });
+                        }}
+                        className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        Lock Custom Character
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Section 1: AI Model & Engine (Active in GREEN) */}
               <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
                 <button

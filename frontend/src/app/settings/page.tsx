@@ -82,7 +82,12 @@ export default function SettingsPage() {
     activeModelHighlight: "emerald",
     defaultResolution: "1080p",
     defaultAspectRatio: "16:9",
+    defaultImageModel: "gpt-image-2",
+    defaultVideoEngine: "ffmpeg_local",
     autoPlayHoverSound: true,
+    promptDirective: "Cinematic 8k lighting, master composition, photorealistic color grade",
+    enablePromptDirective: false,
+    skipConfirmModal: false,
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 
@@ -303,7 +308,7 @@ export default function SettingsPage() {
   const trashBytes = trashData?.total_bytes || 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-7 pb-16 font-jakarta tab-content-enter">
+    <div className="max-w-6xl mx-auto space-y-7 pb-16 font-jakarta tab-content-enter">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
         <div>
@@ -1067,6 +1072,159 @@ export default function SettingsPage() {
                     )}
                   >
                     {preferences.autoPlayHoverSound ? "ENABLED" : "MUTED"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Default Resolution & Aspect Ratio */}
+              <div className="space-y-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                      Default Canvas Resolution
+                    </label>
+                    <p className="text-xs text-zinc-500">Auto-selected resolution for new generations</p>
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                      {["720p", "1080p", "2k", "4k"].map((res) => (
+                        <button
+                          key={res}
+                          type="button"
+                          onClick={() => savePreferences({ ...preferences, defaultResolution: res })}
+                          className={cn(
+                            "py-2 px-3 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer text-center border",
+                            preferences.defaultResolution === res
+                              ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-black/20"
+                          )}
+                        >
+                          {res}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                      Default Aspect Ratio
+                    </label>
+                    <p className="text-xs text-zinc-500">Framing format for newly loaded scenes</p>
+                    <div className="grid grid-cols-5 gap-1.5 pt-1">
+                      {["16:9", "9:16", "1:1", "4:3", "21:9"].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => savePreferences({ ...preferences, defaultAspectRatio: r })}
+                          className={cn(
+                            "py-2 px-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer text-center border",
+                            preferences.defaultAspectRatio === r
+                              ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-black/20"
+                          )}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Default AI Engines */}
+              <div className="space-y-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                      Default Image Studio Model
+                    </label>
+                    <p className="text-xs text-zinc-500">Initial model loaded in Image Studio</p>
+                    <select
+                      value={preferences.defaultImageModel}
+                      onChange={(e) => savePreferences({ ...preferences, defaultImageModel: e.target.value })}
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="gpt-image-2">GPT Image 2 (OpenAI Flagship)</option>
+                      <option value="imagen_3">Imagen 3 (Google DeepMind)</option>
+                      <option value="flux_pro">Flux.1 Pro (BFL Studio)</option>
+                      <option value="dall-e-3">DALL-E 3 HD</option>
+                      <option value="flux-schnell">Flux Schnell (Speed)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                      Default Video Studio Engine
+                    </label>
+                    <p className="text-xs text-zinc-500">Initial engine selected in Video Studio</p>
+                    <select
+                      value={preferences.defaultVideoEngine}
+                      onChange={(e) => savePreferences({ ...preferences, defaultVideoEngine: e.target.value })}
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="ffmpeg_local">FFmpeg Local Hardware (Free • Zero API Cost)</option>
+                      <option value="google_veo">Google Veo 3.1 (Cloud Video)</option>
+                      <option value="kling_v15">Kling AI v1.5 (Pro Cinematic)</option>
+                      <option value="luma_dream">Luma Dream Machine (Dynamic)</option>
+                      <option value="runway_gen3">Runway Gen-3 Alpha</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Studio Prompt Directive (Answers user question: studio settings prompt me kaise jaati hai) */}
+              <div className="space-y-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                      Studio Prompt Directive (Auto-Injected)
+                    </label>
+                    <p className="text-xs text-zinc-500">
+                      When enabled, these cinematic quality directives are automatically appended to all your synthesis prompts across studios.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => savePreferences({ ...preferences, enablePromptDirective: !preferences.enablePromptDirective })}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer",
+                      preferences.enablePromptDirective
+                        ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
+                        : "bg-zinc-100 dark:bg-white/[0.06] text-zinc-500"
+                    )}
+                  >
+                    {preferences.enablePromptDirective ? "ACTIVE IN PROMPT" : "DISABLED"}
+                  </button>
+                </div>
+                <textarea
+                  value={preferences.promptDirective}
+                  onChange={(e) => savePreferences({ ...preferences, promptDirective: e.target.value })}
+                  placeholder="Style tokens to append (e.g., 8k master photography, anamorphic lens, raytracing lighting)..."
+                  rows={2}
+                  className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Spend Safeguard Confirmation Modal Toggle */}
+              <div className="space-y-2 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                      Skip Spend Safeguard Modal
+                    </label>
+                    <p className="text-xs text-zinc-500">
+                      Instantly trigger generation on click without requiring the cost confirmation popup dialog.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => savePreferences({ ...preferences, skipConfirmModal: !preferences.skipConfirmModal })}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer",
+                      preferences.skipConfirmModal
+                        ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
+                        : "bg-zinc-100 dark:bg-white/[0.06] text-zinc-500"
+                    )}
+                  >
+                    {preferences.skipConfirmModal ? "SKIP MODAL" : "SHOW MODAL"}
                   </button>
                 </div>
               </div>
