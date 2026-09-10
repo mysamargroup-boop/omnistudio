@@ -70,15 +70,6 @@ services:
     networks:
       - omnistudio-network
 
-  # Watchtower for automatic updates from GHCR
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 60
-
 networks:
   omnistudio-network:
     name: omnistudio-network
