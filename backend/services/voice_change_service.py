@@ -7,7 +7,10 @@ import subprocess
 import shutil
 from pathlib import Path
 from typing import Optional
+import logging
 from config import settings
+
+logger = logging.getLogger("omnistudio.voice_change")
 
 
 async def extract_audio_from_file(input_path: str, output_path: str) -> bool:
@@ -19,8 +22,11 @@ async def extract_audio_from_file(input_path: str, output_path: str) -> bool:
             output_path
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            logger.warning("FFmpeg audio extraction failed: %s", result.stderr)
         return result.returncode == 0
-    except Exception:
+    except Exception as e:
+        logger.warning("Exception during audio extraction from %s: %s", input_path, e)
         return False
 
 
@@ -35,8 +41,11 @@ async def replace_audio_in_video(video_path: str, audio_path: str, output_path: 
             "-shortest", output_path
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if result.returncode != 0:
+            logger.warning("FFmpeg audio replacement in video failed: %s", result.stderr)
         return result.returncode == 0
-    except Exception:
+    except Exception as e:
+        logger.warning("Exception during video audio replacement: %s", e)
         return False
 
 
@@ -124,8 +133,8 @@ async def change_voice_in_video(
     # Clean up temp
     try:
         Path(temp_audio).unlink(missing_ok=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to unlink temp audio %s: %s", temp_audio, e)
 
     if not vc_result.get("success"):
         return vc_result

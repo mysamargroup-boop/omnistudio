@@ -26,6 +26,12 @@ COPY . .
 # Ensure outputs directory exists
 RUN mkdir -p outputs/images outputs/videos outputs/audio outputs/final
 
+# Create non-root user and set permissions
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
 # Expose port
 EXPOSE 8000
 

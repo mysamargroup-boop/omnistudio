@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from pathlib import Path
+from limiter import limiter
 import uuid
 import shutil
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
@@ -10,8 +11,17 @@ from config import settings
 from services.openai_service import generate_openai_image
 from services.replicate_service import generate_flux_image
 from services.prompt_enhancer import enhance_prompt
+import logging
+
+logger = logging.getLogger("omnistudio.image")
+
+from pydantic import BaseModel, field_validator
 
 router = APIRouter(prefix="/api/image", tags=["Image Generation"])
+
+ALLOWED_ASPECT_RATIOS = {"1:1", "16:9", "9:16", "4:3", "3:2", "21:9"}
+ALLOWED_IMAGE_QUALITIES = {"standard", "hd", "ultra"}
+ALLOWED_IMAGE_STYLES = {"cinematic", "photoreal", "anime", "cyberpunk", "3d_pixar", "vintage", "fantasy", "analog"}
 
 class ImageRequest(BaseModel):
     prompt: str
@@ -33,6 +43,60 @@ class ImageRequest(BaseModel):
     seed: Optional[int] = None
     count: Optional[int] = 1  # 1, 2, 4 images batch
 
+    @field_validator("prompt")
+    @classmethod
+    def validate_prompt(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Prompt cannot be empty")
+        if len(s) > 2000:
+            raise ValueError("Prompt cannot exceed 2000 characters")
+        return s
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_aspect_ratio(cls, v: str) -> str:
+        if v not in ALLOWED_ASPECT_RATIOS:
+            raise ValueError(f"Invalid aspect_ratio '{v}'. Allowed: {sorted(ALLOWED_ASPECT_RATIOS)}")
+        return v
+
+    @field_validator("quality")
+    @classmethod
+    def validate_quality(cls, v: str) -> str:
+        if v not in ALLOWED_IMAGE_QUALITIES:
+            raise ValueError(f"Invalid quality '{v}'. Allowed: {sorted(ALLOWED_IMAGE_QUALITIES)}")
+        return v
+
+    @field_validator("style")
+    @classmethod
+    def validate_style(cls, v: str) -> str:
+        if v not in ALLOWED_IMAGE_STYLES:
+            return "cinematic"
+        return v
+
+    @field_validator("count")
+    @classmethod
+    def validate_count(cls, v: Optional[int]) -> int:
+        if v is None:
+            return 1
+        if not (1 <= v <= 4):
+            raise ValueError("Image batch count must be between 1 and 4")
+        return v
+
+    @field_validator("cfg_scale")
+    @classmethod
+    def validate_cfg_scale(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and not (1.0 <= v <= 20.0):
+            raise ValueError("cfg_scale must be between 1.0 and 20.0")
+        return v
+
+    @field_validator("sampling_steps")
+    @classmethod
+    def validate_sampling_steps(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and not (10 <= v <= 100):
+            raise ValueError("sampling_steps must be between 10 and 100")
+        return v
+
 class ImageVariationsRequest(BaseModel):
     reference_image_path: str
     prompt: Optional[str] = ""
@@ -44,21 +108,51 @@ class ImageVariationsRequest(BaseModel):
     model: str = "dall-e-3"
     quality: str = "hd"
 
+    @field_validator("batch_size")
+    @classmethod
+    def validate_batch_size(cls, v: int) -> int:
+        if not (1 <= v <= 8):
+            raise ValueError("batch_size must be between 1 and 8")
+        return v
+
+    @field_validator("variation_strength")
+    @classmethod
+    def validate_variation_strength(cls, v: float) -> float:
+        if not (0.05 <= v <= 0.95):
+            raise ValueError("variation_strength must be between 0.05 and 0.95")
+        return round(float(v), 2)
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_var_aspect_ratio(cls, v: str) -> str:
+        if v not in ALLOWED_ASPECT_RATIOS:
+            return "16:9"
+        return v
+
+from path_utils import safe_resolve_output_path as _hardened_resolve
+
 def resolve_image_path(p: str) -> Optional[Path]:
     if not p:
         return None
-    if p.startswith("/outputs/"):
-        return settings.OUTPUTS_PATH / p.replace("/outputs/", "")
-    return Path(p)
+    try:
+        return _hardened_resolve(p, "images", must_exist=True)
+    except Exception:
+        try:
+            return _hardened_resolve(p, "final", must_exist=True)
+        except Exception:
+            return None
 
 @router.post("/upload-reference")
 async def upload_reference_image(file: UploadFile = File(...)):
     """Upload a source/reference image for image-to-image variations."""
-    ext = Path(file.filename).suffix or ".png"
+    from services.security_service import sanitize_filename, validate_uploaded_media
+    clean_orig = sanitize_filename(file.filename)
+    ext = Path(clean_orig).suffix or ".png"
     filename = f"ref_{uuid.uuid4().hex[:8]}{ext}"
     target_path = settings.IMAGES_PATH / filename
 
     content = await file.read()
+    validate_uploaded_media(content, clean_orig, "image")
     with open(target_path, "wb") as f:
         f.write(content)
 
@@ -73,45 +167,38 @@ async def upload_reference_image(file: UploadFile = File(...)):
 async def generate_image_variations(req: ImageVariationsRequest):
     """
     Generate multiple image variations in bulk from a single reference image + prompt/settings.
-    Supports 2, 4, or 8 batch variations with custom style exploration and denoising strength.
+    Supports 2, 4, or 8 batch variations.
     """
     ref_path = resolve_image_path(req.reference_image_path)
     if not ref_path or not ref_path.exists():
         return {"success": False, "error": f"Reference image not found: {req.reference_image_path}"}
+
+    if not settings.OPENAI_API_KEY and not getattr(settings, 'REPLICATE_API_TOKEN', None):
+        return {
+            "success": False, 
+            "error_type": "KEY_MISSING",
+            "error": "API Key (OpenAI or Replicate) is required for neural image variations."
+        }
 
     variations = []
     batch_count = min(max(req.batch_size, 1), 8)
 
     # Perspective / Aesthetic variation angles
     VARIATION_ANGLES = [
-        {"desc": "Angle 1: Warm Golden Sunlight & Shallow Depth of Field", "style": "cinematic", "tint": (1.15, 1.05, 0.95), "contrast": 1.12},
-        {"desc": "Angle 2: Cool Ambient Twilight & Dramatic Rim Lighting", "style": "photoreal", "tint": (0.95, 1.02, 1.15), "contrast": 1.18},
-        {"desc": "Angle 3: Cyberpunk Neon Noir with Vivid Reflections", "style": "cyberpunk", "tint": (1.2, 0.9, 1.25), "contrast": 1.25},
-        {"desc": "Angle 4: Classic 35mm Silver Halide Film Emulation", "style": "vintage_noir", "tint": (1.0, 1.0, 1.0), "contrast": 1.2},
-        {"desc": "Angle 5: High Key Studio Fashion Softbox Lighting", "style": "studio", "tint": (1.05, 1.05, 1.05), "contrast": 1.08},
-        {"desc": "Angle 6: Low Key Chiaroscuro & Moody Shadow Play", "style": "chiaroscuro", "tint": (0.92, 0.92, 0.96), "contrast": 1.3},
-        {"desc": "Angle 7: Anime / Ghibli Inspired Luminous Palette", "style": "anime", "tint": (1.1, 1.12, 1.05), "contrast": 1.15},
-        {"desc": "Angle 8: Ethereal Mist & Volumetric Fog Atmosphere", "style": "ethereal", "tint": (1.02, 1.08, 1.1), "contrast": 1.05},
+        {"desc": "Angle 1: Warm Golden Sunlight & Shallow Depth of Field", "style": "cinematic"},
+        {"desc": "Angle 2: Cool Ambient Twilight & Dramatic Rim Lighting", "style": "photoreal"},
+        {"desc": "Angle 3: Cyberpunk Neon Noir with Vivid Reflections", "style": "cyberpunk"},
+        {"desc": "Angle 4: Classic 35mm Silver Halide Film Emulation", "style": "vintage_noir"},
     ]
-
-    # Open reference image for processing
-    try:
-        base_img = Image.open(str(ref_path)).convert("RGB")
-    except Exception as e:
-        return {"success": False, "error": f"Failed to open reference image: {str(e)}"}
 
     for i in range(batch_count):
         angle = VARIATION_ANGLES[i % len(VARIATION_ANGLES)]
-        var_filename = f"var_{i+1}_{uuid.uuid4().hex[:8]}.png"
-        var_path = settings.IMAGES_PATH / var_filename
-
-        # If user has cloud keys, synthesize via diffusion with variation directives
+        
         user_prompt = req.prompt.strip() if req.prompt else "Variation of reference subject"
         var_prompt = f"{user_prompt}, {angle['desc']}, variation strength {req.variation_strength}"
 
         if settings.OPENAI_API_KEY:
             try:
-                # Real OpenAI DALL-E 3 variation synthesis
                 res = await generate_openai_image(
                     prompt=var_prompt,
                     model=req.model,
@@ -130,66 +217,25 @@ async def generate_image_variations(req: ImageVariationsRequest):
                         "prompt": var_prompt,
                         "model": res.get("model")
                     })
-                    continue
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Neural variation attempt failed: %s", e)
 
-        # High-Fidelity Parametric Variation Engine (Pillow Image Transform)
-        # Applies intelligent color curve remapping, contrast modulation, and photographic filters
-        var_img = base_img.copy()
-
-        # Scale / Crop variation based on variation strength
-        w, h = var_img.size
-        crop_inset = int(min(w, h) * (0.02 * (i % 3) * req.variation_strength))
-        if crop_inset > 0:
-            var_img = var_img.crop((crop_inset, crop_inset, w - crop_inset, h - crop_inset))
-            var_img = var_img.resize((w, h), Image.Resampling.LANCZOS)
-
-        # Contrast & Saturation tuning
-        enhancer = ImageEnhance.Contrast(var_img)
-        var_img = enhancer.enhance(angle["contrast"])
-
-        color_enhancer = ImageEnhance.Color(var_img)
-        var_img = color_enhancer.enhance(1.0 + (req.variation_strength * 0.4))
-
-        # Color Matrix grading
-        r_mult, g_mult, b_mult = angle["tint"]
-        r, g, b = var_img.split()
-        r = r.point(lambda p: min(255, int(p * r_mult)))
-        g = g.point(lambda p: min(255, int(p * g_mult)))
-        b = b.point(lambda p: min(255, int(p * b_mult)))
-        var_img = Image.merge("RGB", (r, g, b))
-
-        # Sharpness
-        sharpness = ImageEnhance.Sharpness(var_img)
-        var_img = sharpness.enhance(1.2)
-
-        var_img.save(str(var_path), "PNG")
-
-        variations.append({
-            "id": i + 1,
-            "filename": var_filename,
-            "url": f"/outputs/images/{var_filename}",
-            "local_path": str(var_path),
-            "angle": angle["desc"],
-            "style": angle["style"],
-            "prompt": var_prompt,
-            "model": "OmniStudio Neural Variation Engine"
-        })
+    if not variations:
+        return {"success": False, "error": "Failed to generate variations using the configured API providers."}
 
     try:
         from services.usage_tracker import log_generation
         log_generation(
             service_type="image",
-            provider="local",
+            provider="openai",
             model="Neural Variation Engine",
             prompt=f"Multi-angle variations ({batch_count}x) for {Path(req.reference_image_path).name}",
             status="success",
             specs={"batch_size": batch_count, "variation_strength": req.variation_strength},
             output_url=variations[0]["url"] if variations else ""
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to record image variation usage log: %s", e)
 
     return {
         "success": True,
@@ -225,15 +271,11 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
             quality=openai_quality, style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural"
         )
     elif req.model == "omni_diffusion":
-        from services.mock_service import generate_mock_image
-        local_mock = generate_mock_image(composed_prompt)
         result = {
-            "success": True,
-            "simulated": True,
-            "filename": local_mock.name,
-            "url": f"/outputs/images/{local_mock.name}",
-            "local_path": str(local_mock),
-            "model": "OmniStudio In-House Neural Diffusion"
+            "success": False,
+            "error_type": "LOCAL_MODEL_UNCONFIGURED",
+            "error": "OmniDiffusion local weights are not installed on this host. Please choose Flux-Schnell (Replicate), Imagen 3 (Google), or DALL-E 3 (OpenAI) with your API key.",
+            "provider": "local"
         }
     else:
         from services.gemini_service import get_gemini_key, generate_gemini_image
@@ -280,13 +322,14 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
                 result["r2_url"] = synced.get("url")
                 # Ensure primary display url is always the reliable local outputs proxy
                 result["url"] = f"/outputs/images/{Path(result['local_path']).name}"
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to sync generated image asset to cloud storage: %s", e)
 
     return result
 
 @router.post("/generate")
-async def generate_image(req: ImageRequest):
+@limiter.limit("10/minute")
+async def generate_image(req: ImageRequest, request: Request):
     modifiers = []
     if req.lens:
         modifiers.append(f"shot on {req.lens}")
@@ -372,8 +415,8 @@ async def generate_image(req: ImageRequest):
             output_url=result.get("url", ""),
             error=result.get("error") if not result.get("success") else None
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to record image generation usage log: %s", e)
 
     return result
 
@@ -382,19 +425,69 @@ async def enhance_prompt_endpoint(req: ImageRequest):
     enhanced = await enhance_prompt(req.prompt, req.enhance_style)
     return {"original": req.prompt, "enhanced": enhanced, "style": req.enhance_style}
 
+class AdvancedEditRequest(BaseModel):
+    image_path: str
+    rotate: float = 0
+    flip_h: bool = False
+    flip_v: bool = False
+    crop: Optional[list] = None
+    exposure: float = 0
+    contrast: float = 0
+    saturation: float = 0
+    temperature: float = 0
+    tint: float = 0
+    shadows: float = 0
+    highlights: float = 0
+    sharpness: float = 0
+    blur: float = 0
+    vignette: float = 0
+
+@router.post("/advanced-edit")
+async def advanced_edit_endpoint(req: AdvancedEditRequest):
+    """
+    Advanced Adobe/Snapseed style parametric image manipulation.
+    Applies cropping, color correction, curves, and lens effects.
+    """
+    try:
+        from services.advanced_image_editor import apply_advanced_edits
+        src_path = resolve_image_path(req.image_path)
+        if not src_path or not src_path.exists():
+            return {"success": False, "error": f"Image not found: {req.image_path}"}
+            
+        ext = src_path.suffix or ".png"
+        out_filename = f"edited_{uuid.uuid4().hex[:8]}{ext}"
+        out_path = settings.IMAGES_PATH / out_filename
+        
+        apply_advanced_edits(str(src_path), req.model_dump(), str(out_path))
+        
+        return {
+            "success": True,
+            "filename": out_filename,
+            "url": f"/outputs/images/{out_filename}",
+            "local_path": str(out_path),
+            "original_image": req.image_path
+        }
+    except Exception as e:
+        logger.error("Advanced edit failed: %s", e)
+        return {"success": False, "error": f"Image editing failed: {e}"}
+
 @router.get("/models")
 async def list_image_models():
+    openai_active = bool(settings.OPENAI_API_KEY)
+    replicate_active = bool(settings.REPLICATE_API_TOKEN)
+    google_active = bool(getattr(settings, 'GEMINI_API_KEY', None))
+    
     return {
         "models": [
-            {"id": "dall-e-3", "name": "DALL-E 3 HD (OpenAI)", "provider": "openai", "badge": "PRO", "description": "High Composition Precision & Semantic Fidelity"},
-            {"id": "flux_pro", "name": "Flux.1 Pro (Black Forest Labs)", "provider": "replicate", "badge": "PRO", "description": "State-of-the-Art Typography & Photorealism"},
-            {"id": "flux_dev", "name": "Flux.1 Dev (Open Weights)", "provider": "replicate", "badge": "DEV", "description": "High-Fidelity Fine-Tuned Guidance"},
-            {"id": "flux-schnell", "name": "Flux.1 Schnell (Fast Latent)", "provider": "replicate", "badge": "FAST", "description": "Speed Latent Diffusion & Rapid Generation"},
-            {"id": "midjourney_v6", "name": "Midjourney v6.1 (Photoreal)", "provider": "cloud", "badge": "PRO", "description": "World-class Cinematic Lighting & Color Grading"},
-            {"id": "sd_35_large", "name": "Stable Diffusion 3.5 Large", "provider": "stability", "badge": "OPEN", "description": "Advanced Multimodal Prompt Adherence"},
-            {"id": "imagen_3", "name": "Google Imagen 3 (DeepMind)", "provider": "google", "badge": "GOOGLE", "description": "Hyper-realistic Lighting & Texture Precision"},
-            {"id": "ideogram_v2", "name": "Ideogram v2 (Graphics & Type)", "provider": "ideogram", "badge": "TYPE", "description": "Flawless In-Image Lettering & Graphic Design"},
-            {"id": "omni_diffusion", "name": "OmniDiffusion 4.0 Pro", "provider": "local", "badge": "LOCAL", "description": "Parametric Studio Neural Sampler"},
+            {"id": "dall-e-3", "name": "DALL-E 3 HD (OpenAI)", "provider": "openai", "badge": "PRO", "active": openai_active, "description": "High Composition Precision & Semantic Fidelity"},
+            {"id": "flux_pro", "name": "Flux.1 Pro (Black Forest Labs)", "provider": "replicate", "badge": "PRO", "active": replicate_active, "description": "State-of-the-Art Typography & Photorealism"},
+            {"id": "flux_dev", "name": "Flux.1 Dev (Open Weights)", "provider": "replicate", "badge": "DEV", "active": replicate_active, "description": "High-Fidelity Fine-Tuned Guidance"},
+            {"id": "flux-schnell", "name": "Flux.1 Schnell (Fast Latent)", "provider": "replicate", "badge": "FAST", "active": replicate_active, "description": "Speed Latent Diffusion & Rapid Generation"},
+            {"id": "midjourney_v6", "name": "Midjourney v6.1 (Photoreal)", "provider": "cloud", "badge": "PRO", "active": False, "description": "World-class Cinematic Lighting & Color Grading"},
+            {"id": "sd_35_large", "name": "Stable Diffusion 3.5 Large", "provider": "stability", "badge": "OPEN", "active": False, "description": "Advanced Multimodal Prompt Adherence"},
+            {"id": "imagen_3", "name": "Google Imagen 3 (DeepMind)", "provider": "google", "badge": "GOOGLE", "active": google_active, "description": "Hyper-realistic Lighting & Texture Precision"},
+            {"id": "ideogram_v2", "name": "Ideogram v2 (Graphics & Type)", "provider": "ideogram", "badge": "TYPE", "active": False, "description": "Flawless In-Image Lettering & Graphic Design"},
+            {"id": "omni_diffusion", "name": "OmniDiffusion 4.0 Pro", "provider": "local", "badge": "LOCAL", "active": False, "description": "Local GPU-Accelerated Stable Diffusion (Requires RTX 3090+)"},
         ],
         "lenses": [
             {"id": "16mm", "name": "16mm Ultra-Wide"},

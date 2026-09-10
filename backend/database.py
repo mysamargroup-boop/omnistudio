@@ -119,6 +119,23 @@ def init_database():
             setting_value TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS asset_favorites (
+            filename TEXT PRIMARY KEY,
+            is_favorite INTEGER DEFAULT 1,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS asset_collections (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS asset_collection_items (
+            collection_id TEXT,
+            filename TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (collection_id, filename)
+        );
         """)
 
         # Migration check: Ensure generations table has service_type column if existing SQLite was created with old schema
@@ -154,12 +171,20 @@ def test_db_connection(url: Optional[str] = None) -> dict:
         start = time.time()
         res = supabase_rest_request("projects?limit=1")
         latency_ms = round((time.time() - start) * 1000, 1)
+        project_ref = "unknown"
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(settings.SUPABASE_URL)
+            if parsed.hostname and ".supabase.co" in parsed.hostname:
+                project_ref = parsed.hostname.split(".")[0]
+        except Exception:
+            pass
         if res.get("success"):
             return {
                 "success": True,
                 "provider": "Supabase Managed PostgreSQL (Project: Omni)",
-                "project_ref": "lsttnpynhwtpkzfbfntf",
-                "region": "ap-south-1 (Mumbai)",
+                "project_ref": project_ref,
+                "region": "auto-detected (configuration-only)",
                 "tables": ["projects", "assets", "generations", "director_logs", "studio_settings"],
                 "latency_ms": latency_ms,
                 "connected": True
@@ -336,6 +361,177 @@ def db_set_asset_trashed(filename: str, trashed: bool = True):
     except Exception as e:
         print(f"[SQLite Error] Asset trash update: {e}")
 
+# ─── Asset Favorites Helpers ───
+
+def db_toggle_favorite(filename: str, is_fav: Optional[bool] = None) -> bool:
+    """Toggle or explicitly set favorite status for an asset (Cloud + Local)"""
+    current_status = False
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT is_favorite FROM asset_favorites WHERE filename = ?", (filename,))
+        row = cur.fetchone()
+        if row:
+            current_status = bool(row[0])
+            new_status = not current_status if is_fav is None else bool(is_fav)
+            cur.execute("UPDATE asset_favorites SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE filename = ?", (1 if new_status else 0, filename))
+        else:
+            new_status = True if is_fav is None else bool(is_fav)
+            cur.execute("INSERT INTO asset_favorites (filename, is_favorite) VALUES (?, ?)", (filename, 1 if new_status else 0))
+        conn.commit()
+        conn.close()
+        
+        # Supabase sync if configured
+        if is_supabase():
+            try:
+                supabase_rest_request("asset_favorites", method="POST", data={"filename": filename, "is_favorite": 1 if new_status else 0})
+            except Exception as e:
+                print(f"[Supabase Warning] Favorite sync: {e}")
+                
+        return new_status
+    except Exception as e:
+        print(f"[SQLite Error] Toggle favorite: {e}")
+        return False
+
+def db_get_favorites() -> list[str]:
+    """Get list of filenames marked as favorite"""
+    # 1. Supabase check
+    if is_supabase():
+        try:
+            res = supabase_rest_request("asset_favorites?is_favorite=eq.1&select=filename")
+            if res.get("success") and isinstance(res.get("data"), list):
+                return [r["filename"] for r in res["data"] if "filename" in r]
+        except Exception as e:
+            print(f"[Supabase Warning] Get favorites: {e}")
+
+    # 2. SQLite local
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT filename FROM asset_favorites WHERE is_favorite = 1")
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+    except Exception as e:
+        print(f"[SQLite Error] Get favorites: {e}")
+        return []
+
+# ─── Asset Collections Helpers ───
+
+def db_get_collections() -> list[dict]:
+    """Retrieve all collections with their item counts and preview filenames"""
+    collections = []
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT c.id, c.name, c.description, c.created_at,
+                   COUNT(ci.filename) as item_count
+            FROM asset_collections c
+            LEFT JOIN asset_collection_items ci ON c.id = ci.collection_id
+            GROUP BY c.id, c.name, c.description, c.created_at
+            ORDER BY c.created_at DESC
+        """)
+        for row in cur.fetchall():
+            coll_id = row[0]
+            # Fetch up to 4 preview items
+            cur.execute("SELECT filename FROM asset_collection_items WHERE collection_id = ? LIMIT 4", (coll_id,))
+            preview_items = [p[0] for p in cur.fetchall()]
+            collections.append({
+                "id": coll_id,
+                "name": row[1],
+                "description": row[2] or "",
+                "created_at": row[3],
+                "item_count": row[4],
+                "previews": preview_items
+            })
+        conn.close()
+    except Exception as e:
+        print(f"[SQLite Error] Get collections: {e}")
+    return collections
+
+def db_create_collection(name: str, description: str = "") -> dict:
+    """Create a new asset collection"""
+    import uuid
+    coll_id = f"col_{uuid.uuid4().hex[:10]}"
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO asset_collections (id, name, description) VALUES (?, ?, ?)", (coll_id, name, description))
+        conn.commit()
+        conn.close()
+        
+        if is_supabase():
+            try:
+                supabase_rest_request("asset_collections", method="POST", data={"id": coll_id, "name": name, "description": description})
+            except Exception as e:
+                print(f"[Supabase Warning] Create collection sync: {e}")
+                
+        return {"id": coll_id, "name": name, "description": description, "item_count": 0, "previews": []}
+    except Exception as e:
+        print(f"[SQLite Error] Create collection: {e}")
+        return {"id": coll_id, "name": name, "description": description, "error": str(e)}
+
+def db_delete_collection(collection_id: str) -> bool:
+    """Delete a collection and its associations"""
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM asset_collection_items WHERE collection_id = ?", (collection_id,))
+        cur.execute("DELETE FROM asset_collections WHERE id = ?", (collection_id,))
+        conn.commit()
+        conn.close()
+        
+        if is_supabase():
+            try:
+                supabase_rest_request(f"asset_collection_items?collection_id=eq.{collection_id}", method="DELETE")
+                supabase_rest_request(f"asset_collections?id=eq.{collection_id}", method="DELETE")
+            except Exception as e:
+                print(f"[Supabase Warning] Delete collection sync: {e}")
+        return True
+    except Exception as e:
+        print(f"[SQLite Error] Delete collection: {e}")
+        return False
+
+def db_add_asset_to_collection(collection_id: str, filename: str) -> bool:
+    """Associate an asset with a collection"""
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO asset_collection_items (collection_id, filename) VALUES (?, ?)", (collection_id, filename))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[SQLite Error] Add asset to collection: {e}")
+        return False
+
+def db_remove_asset_from_collection(collection_id: str, filename: str) -> bool:
+    """Remove an asset from a collection"""
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM asset_collection_items WHERE collection_id = ? AND filename = ?", (collection_id, filename))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[SQLite Error] Remove asset from collection: {e}")
+        return False
+
+def db_get_collection_item_filenames(collection_id: str) -> list[str]:
+    """Get all filenames in a collection"""
+    try:
+        conn = get_sqlite_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT filename FROM asset_collection_items WHERE collection_id = ?", (collection_id,))
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+    except Exception as e:
+        print(f"[SQLite Error] Get collection items: {e}")
+        return []
+
 def db_save_generation(
     generation_id: str,
     service_type: str,
@@ -508,11 +704,14 @@ def load_settings_into_runtime():
         # Even on critical exception, ensure .env is not wiped
         return merged_settings
 
+import logging
+db_logger = logging.getLogger("omnistudio.db")
+
 # Auto-initialize DB and load settings on import
 try:
     init_database()
     load_settings_into_runtime()
-except Exception:
-    pass
+except Exception as e:
+    db_logger.warning("Database initialization or runtime settings load encountered error: %s", e)
 
 

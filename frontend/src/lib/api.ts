@@ -24,13 +24,35 @@ export function getApiBase(): string {
   return process.env.BACKEND_INTERNAL_URL || "http://omni-backend:8000";
 }
 
+function getBackendToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const sessionToken = sessionStorage.getItem("omnistudio_backend_jwt")?.trim();
+  if (sessionToken && sessionToken.length > 40) return sessionToken;
+  const legacyToken = localStorage.getItem("omnistudio_backend_jwt")?.trim();
+  if (legacyToken && legacyToken.length > 40) {
+    try { sessionStorage.setItem("omnistudio_backend_jwt", legacyToken); localStorage.removeItem("omnistudio_backend_jwt"); } catch { /* ignore */ }
+    return legacyToken;
+  }
+  return null;
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const token = getBackendToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${cleanPath}`;
+  const authHeaders = getAuthHeaders();
   const res = await fetch(url, {
     ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders,
+      ...options?.headers,
+    },
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -51,8 +73,12 @@ async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T>
   const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${cleanPath}`;
+  const authHeaders = getAuthHeaders();
   const res = await fetch(url, {
     method: "POST",
+    headers: {
+      ...authHeaders,
+    },
     body: formData,
   });
   if (!res.ok) {
@@ -84,7 +110,12 @@ export function getMediaUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${cleanPath}`;
+  const token = getBackendToken() || "";
+  // Native image/video/audio tags cannot attach Authorization headers. The
+  // backend accepts this query token only for authenticated output requests.
+  return token && cleanPath.startsWith("/outputs/")
+    ? `${base}${cleanPath}?access_token=${encodeURIComponent(token)}`
+    : `${base}${cleanPath}`;
 }
 
 export const api = {
@@ -148,7 +179,7 @@ export const api = {
     const base = getApiBase();
     const res = await fetch(`${base}/api/pipeline/run-stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
@@ -203,6 +234,23 @@ export const api = {
   bulkDeleteAssets: (items: { media_type: string; filename: string }[], permanent: boolean = false, fromTrash: boolean = false) =>
     fetchApi<any>("/api/assets/bulk-delete", { method: "POST", body: JSON.stringify({ items, permanent, from_trash: fromTrash }) }),
   emptyTrash: () => fetchApi<any>("/api/assets/trash/empty", { method: "DELETE" }),
+
+  // Favorites & Collections
+  getFavorites: () => fetchApi<{ success: boolean; favorites: string[] }>("/api/assets/favorites"),
+  toggleFavorite: (filename: string, is_favorite?: boolean) =>
+    fetchApi<any>("/api/assets/favorite", { method: "POST", body: JSON.stringify({ filename, is_favorite }) }),
+  getCollections: () => fetchApi<{ success: boolean; collections: any[] }>("/api/assets/collections"),
+  createCollection: (name: string, description?: string) =>
+    fetchApi<any>("/api/assets/collections", { method: "POST", body: JSON.stringify({ name, description }) }),
+  deleteCollection: (id: string) => fetchApi<any>(`/api/assets/collections/${id}`, { method: "DELETE" }),
+  getCollectionItems: (id: string) => fetchApi<any>(`/api/assets/collections/${id}/items`),
+  addToCollection: (id: string, filenames: string[]) =>
+    fetchApi<any>(`/api/assets/collections/${id}/items`, { method: "POST", body: JSON.stringify({ filenames }) }),
+  removeFromCollection: (id: string, filename: string) =>
+    fetchApi<any>(`/api/assets/collections/${id}/items/${encodeURIComponent(filename)}`, { method: "DELETE" }),
+
+  // Video Editing Tools
+  editVideo: (data: any) => fetchApi<any>("/api/video/edit", { method: "POST", body: JSON.stringify(data) }),
 
   // Settings
   getStatus: () => fetchApi<any>("/api/settings/status"),

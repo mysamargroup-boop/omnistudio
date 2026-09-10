@@ -29,13 +29,20 @@ import {
   Copy,
   Sparkles,
   ExternalLink,
+  Star,
+  Share2,
+  FolderPlus,
+  Layers,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
 import DeleteConfirmModal, { DeleteModalItem } from "@/components/ui/DeleteConfirmModal";
 import LazyImage from "@/components/ui/LazyImage";
+import ShareModal from "@/components/ui/ShareModal";
+import CreateCollectionModal from "@/components/ui/CreateCollectionModal";
+import VideoEditorModal from "@/components/video/VideoEditorModal";
 
-type Tab = "all" | "final" | "videos" | "images" | "audio" | "trash";
+type Tab = "all" | "favorites" | "final" | "videos" | "images" | "audio" | "trash";
 
 interface VaultAsset {
   filename: string;
@@ -54,7 +61,16 @@ export default function VaultPage() {
   const [search, setSearch] = useState("");
   const [assets, setAssets] = useState<any>(null);
   const [trashAssets, setTrashAssets] = useState<any>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [collections, setCollections] = useState<any[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [collectionFilenames, setCollectionFilenames] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // New Feature Modals state
+  const [shareModalAsset, setShareModalAsset] = useState<VaultAsset | null>(null);
+  const [createCollectionOpen, setCreateCollectionOpen] = useState(false);
+  const [editVideoAsset, setEditVideoAsset] = useState<VaultAsset | null>(null);
 
   // Multi-selection state: Set of "type::filename"
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
@@ -77,17 +93,54 @@ export default function VaultPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [allRes, trashRes] = await Promise.allSettled([
+      const [allRes, trashRes, favRes, colRes] = await Promise.allSettled([
         api.getAllAssets(),
         api.getTrashAssets(),
+        api.getFavorites(),
+        api.getCollections(),
       ]);
       if (allRes.status === "fulfilled") setAssets(allRes.value);
       if (trashRes.status === "fulfilled") setTrashAssets(trashRes.value);
+      if (favRes.status === "fulfilled" && favRes.value?.favorites) {
+        setFavorites(new Set(favRes.value.favorites));
+      }
+      if (colRes.status === "fulfilled" && colRes.value?.collections) {
+        setCollections(colRes.value.collections);
+      }
     } catch (e) {
       console.error("Failed to load vault assets", e);
     }
     setLoading(false);
   };
+
+  const handleToggleFavorite = async (e: React.MouseEvent, filename: string) => {
+    e.stopPropagation();
+    const isFav = favorites.has(filename);
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (isFav) next.delete(filename);
+      else next.add(filename);
+      return next;
+    });
+    try {
+      await api.toggleFavorite(filename, !isFav);
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    }
+  };
+
+  // Sync collection items when a collection is selected
+  useEffect(() => {
+    if (!selectedCollectionId) {
+      setCollectionFilenames(new Set());
+      return;
+    }
+    api.getCollectionItems(selectedCollectionId).then((res) => {
+      if (res.success && res.filenames) {
+        setCollectionFilenames(new Set(res.filenames));
+      }
+    }).catch(console.error);
+  }, [selectedCollectionId]);
 
   useEffect(() => {
     loadData();
@@ -98,7 +151,7 @@ export default function VaultPage() {
     setSelectedKeys(new Set());
   }, [tab]);
 
-  // Derive current list based on tab
+  // Derive current list based on tab & collection
   const activeFiles: VaultAsset[] = useMemo(() => {
     if (tab === "trash") {
       if (!trashAssets?.items) return [];
@@ -112,7 +165,14 @@ export default function VaultPage() {
 
     if (!assets) return [];
     let list: VaultAsset[] = [];
-    if (tab === "all") {
+    if (tab === "favorites") {
+      list = [
+        ...(assets.final || []),
+        ...(assets.videos || []),
+        ...(assets.images || []),
+        ...(assets.audio || []),
+      ].filter((f) => favorites.has(f.filename));
+    } else if (tab === "all") {
       list = [
         ...(assets.final || []),
         ...(assets.videos || []),
@@ -123,12 +183,17 @@ export default function VaultPage() {
       list = assets[tab] || [];
     }
 
+    // Filter by selected collection if active
+    if (selectedCollectionId && collectionFilenames.size > 0) {
+      list = list.filter((f) => collectionFilenames.has(f.filename));
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((f) => f.filename.toLowerCase().includes(q));
     }
     return list;
-  }, [tab, assets, trashAssets, search]);
+  }, [tab, assets, trashAssets, search, favorites, selectedCollectionId, collectionFilenames]);
 
   // All image assets in current active list for lightbox carousel
   const imageFiles = useMemo(() => {
@@ -388,6 +453,7 @@ export default function VaultPage() {
 
   const tabIcon = {
     all: FolderArchive,
+    favorites: Star,
     final: Film,
     videos: Video,
     images: ImageIcon,
@@ -432,16 +498,19 @@ export default function VaultPage() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="flex flex-wrap gap-1.5">
-          {(["all", "final", "videos", "images", "audio", "trash"] as Tab[]).map((t) => {
+          {(["all", "favorites", "final", "videos", "images", "audio", "trash"] as Tab[]).map((t) => {
             const Icon = tabIcon[t];
             const count =
               t === "trash"
                 ? trashCount
+                : t === "favorites"
+                ? favorites.size
                 : t === "all"
                 ? assets?.total || 0
                 : assets?.[t]?.length || 0;
 
             const isTrashTab = t === "trash";
+            const isFavTab = t === "favorites";
             const isActive = tab === t;
 
             return (
@@ -453,20 +522,26 @@ export default function VaultPage() {
                   isActive
                     ? isTrashTab
                       ? "bg-rose-600 text-white font-semibold shadow-sm"
+                      : isFavTab
+                      ? "bg-amber-400 text-zinc-950 font-bold shadow-sm"
                       : "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
                     : isTrashTab && trashCount > 0
                     ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100 dark:hover:bg-rose-900/60"
-                    : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700"
+                    : isFavTab && favorites.size > 0
+                    ? "bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+                    : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:border-zinc-700"
                 )}
               >
-                <Icon className={cn("h-3.5 w-3.5", isTrashTab && !isActive && "text-rose-500")} />
-                <span>{t === "final" ? "Masters" : t === "trash" ? "Trash Bin" : t}</span>
+                <Icon className={cn("h-3.5 w-3.5", isTrashTab && !isActive && "text-rose-500", isFavTab && (isActive ? "text-zinc-950 fill-current" : "text-amber-400 fill-current"))} />
+                <span>{t === "final" ? "Masters" : t === "trash" ? "Trash Bin" : t === "favorites" ? "Favorites" : t}</span>
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.2 rounded-full font-mono",
                     isActive
                       ? isTrashTab
                         ? "bg-white/20 text-white"
+                        : isFavTab
+                        ? "bg-black/20 text-zinc-950 font-bold"
                         : "bg-white/20 dark:bg-zinc-900/40 text-white dark:text-zinc-950 font-bold"
                       : isTrashTab && trashCount > 0
                       ? "bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 font-bold"
@@ -512,6 +587,55 @@ export default function VaultPage() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Collections Filter Strip */}
+      <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-zinc-100/60 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-500 pl-1 pr-2">
+          <Layers className="w-3.5 h-3.5" />
+          <span className="uppercase text-[10px] tracking-wider font-semibold">COLLECTIONS:</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSelectedCollectionId(null)}
+          className={cn(
+            "px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer",
+            selectedCollectionId === null
+              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+              : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800"
+          )}
+        >
+          All Collections
+        </button>
+
+        {collections.map((col) => (
+          <button
+            key={col.id}
+            type="button"
+            onClick={() => setSelectedCollectionId(col.id === selectedCollectionId ? null : col.id)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer",
+              selectedCollectionId === col.id
+                ? "bg-amber-400 text-zinc-950 font-bold shadow-xs"
+                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800"
+            )}
+          >
+            <span>{col.name}</span>
+            <span className="text-[10px] px-1 rounded bg-black/10 dark:bg-white/10 font-bold">
+              {col.item_count || 0}
+            </span>
+          </button>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setCreateCollectionOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all cursor-pointer ml-auto"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
+          <span>+ New Collection</span>
+        </button>
       </div>
 
       {/* Trash Tab Banner Notice */}
@@ -568,6 +692,23 @@ export default function VaultPage() {
                   "ring-2 ring-zinc-950 dark:ring-white border-zinc-950 dark:border-white bg-zinc-50 dark:bg-zinc-800/40"
               )}
             >
+              {/* Favorite Star Button Top Right */}
+              {tab !== "trash" && (
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleFavorite(e, file.filename)}
+                  className={cn(
+                    "absolute top-2.5 right-11 z-20 p-1.5 rounded-md backdrop-blur-md transition-all cursor-pointer border",
+                    favorites.has(file.filename)
+                      ? "bg-amber-400 text-zinc-950 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.4)]"
+                      : "bg-black/60 text-white/70 hover:text-white border-white/20 hover:bg-black/90"
+                  )}
+                  title={favorites.has(file.filename) ? "Remove from Favorites" : "Add to Favorites"}
+                >
+                  <Star className={cn("w-4 h-4", favorites.has(file.filename) && "fill-current")} />
+                </button>
+              )}
+
               {/* Checkbox Trigger Top Right */}
               <button
                 type="button"
@@ -665,6 +806,30 @@ export default function VaultPage() {
                       <Download className="h-3 w-3" />
                       <span>DL</span>
                     </a>
+
+                    {tab !== "trash" && (
+                      <button
+                        type="button"
+                        onClick={() => setShareModalAsset(file)}
+                        className="flex items-center gap-1 text-[11px] font-mono text-zinc-700 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                        title="Send & Share Asset"
+                      >
+                        <Share2 className="h-3 w-3" />
+                        <span>SHARE</span>
+                      </button>
+                    )}
+
+                    {(file.type === "videos" || file.type === "final") && tab !== "trash" && (
+                      <button
+                        type="button"
+                        onClick={() => setEditVideoAsset(file)}
+                        className="flex items-center gap-1 text-[11px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-400/10 hover:bg-amber-100 dark:hover:bg-amber-400/20 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                        title="Open Video Editor"
+                      >
+                        <Film className="h-3 w-3" />
+                        <span>EDIT</span>
+                      </button>
+                    )}
 
                     {isImage && (
                       <button
@@ -974,6 +1139,29 @@ export default function VaultPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={(e) => handleToggleFavorite(e, lightboxAsset.filename)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer",
+                  favorites.has(lightboxAsset.filename)
+                    ? "bg-amber-400 text-zinc-950 border-amber-400 font-bold"
+                    : "bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-white/10"
+                )}
+              >
+                <Star className={cn("w-3.5 h-3.5", favorites.has(lightboxAsset.filename) && "fill-current")} />
+                <span>{favorites.has(lightboxAsset.filename) ? "FAVORITED" : "FAVORITE"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShareModalAsset(lightboxAsset)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>SHARE</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={copyLightboxUrl}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
               >
@@ -1048,6 +1236,33 @@ export default function VaultPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={Boolean(shareModalAsset)}
+        onClose={() => setShareModalAsset(null)}
+        asset={shareModalAsset}
+      />
+
+      {/* Create Collection Modal */}
+      <CreateCollectionModal
+        isOpen={createCollectionOpen}
+        onClose={() => setCreateCollectionOpen(false)}
+        onCreated={(newCol) => {
+          setCollections((prev) => [newCol, ...prev]);
+        }}
+      />
+
+      {/* Video Editor Modal */}
+      {editVideoAsset && (
+        <VideoEditorModal
+          isOpen={Boolean(editVideoAsset)}
+          onClose={() => setEditVideoAsset(null)}
+          videoUrl={editVideoAsset.url}
+          filename={editVideoAsset.filename}
+          onSaved={() => loadData()}
+        />
       )}
 
       {/* Confirmation Modal */}

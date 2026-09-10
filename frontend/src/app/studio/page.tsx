@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Copy,
   CheckCircle2,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { api, getMediaUrl } from "@/lib/api";
@@ -43,6 +44,8 @@ import { cn } from "@/lib/utils";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
+import VideoEditorModal from "@/components/video/VideoEditorModal";
+import ShareModal from "@/components/ui/ShareModal";
 
 type StudioMasterMode = "video" | "image" | "voice" | "cinema";
 
@@ -226,6 +229,8 @@ function StudioContent() {
 
   const [generationError, setGenerationError] = useState<{ title: string; message: string; details?: string } | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [videoToEdit, setVideoToEdit] = useState<{ url: string; filename: string } | null>(null);
+  const [shareModalAsset, setShareModalAsset] = useState<any | null>(null);
 
   const handleCopyUrl = (url: string) => {
     if (!url) return;
@@ -729,6 +734,34 @@ function StudioContent() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  onClick={() =>
+                    setVideoToEdit({
+                      url: videoResult.url,
+                      filename: videoResult.filename || "rendered_video.mp4",
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-heading font-bold shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                  title="Open Pure Video Editing Tools (Trim, Speed, Aspect, Color LUTs, Audio, Text)"
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span>EDIT IN STUDIO</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShareModalAsset({
+                      url: videoResult.url,
+                      filename: videoResult.filename || "rendered_video.mp4",
+                      type: "videos",
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 text-xs font-mono font-medium hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleCopyUrl(videoResult.url)}
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 text-xs font-mono font-medium hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
                 >
@@ -776,6 +809,20 @@ function StudioContent() {
                 <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">READY</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShareModalAsset({
+                      url: imageResult.url || imageResult.images?.[0]?.url,
+                      filename: "generated_visual.png",
+                      type: "images",
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 text-xs font-mono font-medium hover:bg-zinc-200 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleCopyUrl(imageResult.url || imageResult.images?.[0]?.url)}
@@ -1498,6 +1545,27 @@ function StudioContent() {
 
       {/* Studio Guide Modal */}
       <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
+
+      {/* Video Editor Modal */}
+      {videoToEdit && (
+        <VideoEditorModal
+          isOpen={Boolean(videoToEdit)}
+          onClose={() => setVideoToEdit(null)}
+          videoUrl={videoToEdit.url}
+          filename={videoToEdit.filename}
+          onSaved={(edited) => {
+            setVideoResult(edited);
+            setVideoToEdit(null);
+          }}
+        />
+      )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={Boolean(shareModalAsset)}
+        onClose={() => setShareModalAsset(null)}
+        asset={shareModalAsset}
+      />
     </div>
   );
 }

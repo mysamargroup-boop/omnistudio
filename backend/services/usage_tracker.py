@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -9,8 +10,51 @@ from config import settings
 ANALYTICS_DIR = settings.OUTPUTS_PATH / "analytics"
 ANALYTICS_DIR.mkdir(parents=True, exist_ok=True)
 USAGE_FILE = ANALYTICS_DIR / "usage_logs.json"
+LOCK_FILE = ANALYTICS_DIR / "usage_logs.lock"
 
 USD_TO_INR = 83.50
+
+class _FileLock:
+    """Simple cross-platform file lock using exclusive directory creation.
+
+    os.mkdir is atomic on POSIX and on Windows NTFS, so using a lock
+    directory is portable and avoids a dependency on ``portalocker``.
+    """
+
+    def __init__(self, lock_path: Path, timeout: float = 10.0, poll: float = 0.05):
+        self.lock_path = Path(lock_path)
+        self.timeout = timeout
+        self.poll = poll
+        self._acquired = False
+
+    def __enter__(self):
+        import time
+        deadline = time.time() + self.timeout
+        while True:
+            try:
+                self.lock_path.mkdir(parents=False, exist_ok=False)
+                self._acquired = True
+                return self
+            except FileExistsError:
+                if time.time() >= deadline:
+                    try:
+                        self.lock_path.rmdir()
+                    except OSError:
+                        pass
+                    raise RuntimeError(f"Could not acquire usage-data lock within {self.timeout}s")
+                time.sleep(self.poll)
+
+    def __exit__(self, exc_type, exc, tb):
+        if self._acquired:
+            try:
+                self.lock_path.rmdir()
+            except OSError:
+                pass
+            self._acquired = False
+
+
+def usage_lock():
+    return _FileLock(LOCK_FILE)
 
 OFFICIAL_RATE_CARDS = [
     # ─── GOOGLE AI STUDIO / GEMINI ───
@@ -217,24 +261,47 @@ OFFICIAL_RATE_CARDS = [
 ]
 
 def load_usage_data() -> Dict[str, Any]:
-    if not USAGE_FILE.exists():
-        initial = {
-            "version": "1.0",
-            "last_updated": datetime.utcnow().isoformat(),
-            "records": []
-        }
-        save_usage_data(initial)
-        return initial
+    with usage_lock():
+        if not USAGE_FILE.exists():
+            initial = {
+                "version": "1.0",
+                "last_updated": datetime.utcnow().isoformat(),
+                "records": []
+            }
+            _atomic_write_usage(initial)
+            return initial
+        try:
+            with open(USAGE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {"version": "1.0", "last_updated": datetime.utcnow().isoformat(), "records": []}
+
+
+def _atomic_write_usage(data: Dict[str, Any]) -> None:
+    """Write usage data atomically using temp file + replace pattern."""
+    tmp_dir = USAGE_FILE.parent
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix=".usage_", suffix=".tmp", dir=str(tmp_dir))
     try:
-        with open(USAGE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
+            json.dump(data, tmp_f, indent=2, ensure_ascii=False)
+            tmp_f.flush()
+            try:
+                os.fsync(tmp_f.fileno())
+            except OSError:
+                pass
+        os.replace(tmp_path, USAGE_FILE)
     except Exception:
-        return {"version": "1.0", "last_updated": datetime.utcnow().isoformat(), "records": []}
+        try:
+            Path(tmp_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
 
 def save_usage_data(data: Dict[str, Any]):
     data["last_updated"] = datetime.utcnow().isoformat()
-    with open(USAGE_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    with usage_lock():
+        _atomic_write_usage(data)
 
 def calculate_spend(
     service_type: str,

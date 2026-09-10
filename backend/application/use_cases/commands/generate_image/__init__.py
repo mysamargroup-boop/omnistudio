@@ -1,0 +1,1 @@
+# Init generate_image

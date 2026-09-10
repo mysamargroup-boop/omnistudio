@@ -1,8 +1,29 @@
 import uuid
 import httpx
+import logging
 from pathlib import Path
 from config import settings
-from services.mock_service import generate_mock_image
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+
+logger = logging.getLogger("omnistudio.openai")
+
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)),
+    reraise=True
+)
+async def _execute_openai_image_generate(client, kwargs):
+    return await client.images.generate(**kwargs)
+
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)),
+    reraise=True
+)
+async def _execute_openai_speech_create(client, **kwargs):
+    return await client.audio.speech.create(**kwargs)
 
 async def generate_openai_image(
     prompt: str,
@@ -53,7 +74,7 @@ async def generate_openai_image(
                     if candidate == "dall-e-3":
                         kwargs["quality"] = quality
                 
-                response = await client.images.generate(**kwargs)
+                response = await _execute_openai_image_generate(client, kwargs)
                 used_model = candidate
                 break
             except Exception as candidate_err:
@@ -131,11 +152,7 @@ async def generate_openai_speech(
         filename = f"openai_tts_{uuid.uuid4().hex[:8]}.mp3"
         local_path = settings.AUDIO_PATH / filename
         
-        response = await client.audio.speech.create(
-            model=model,
-            voice=voice,
-            input=text
-        )
+        response = await _execute_openai_speech_create(client, model=model, voice=voice, input=text)
         
         response.stream_to_file(str(local_path))
         return {
@@ -147,16 +164,17 @@ async def generate_openai_speech(
             "model": f"{model} ({voice})"
         }
     except Exception as e:
+        logger.warning("OpenAI speech synthesis failed, falling back to Microsoft Edge Neural TTS: %s", e)
         from services.edgetts_service import generate_edge_speech
         filename = f"audio_fallback_{uuid.uuid4().hex[:8]}.mp3"
         local_path = settings.AUDIO_PATH / filename
         await generate_edge_speech(text, voice_id="en-US-ChristopherNeural", output_path=local_path)
         return {
             "success": True,
-            "simulated": True,
+            "simulated": False,
             "filename": filename,
             "url": f"/outputs/audio/{filename}",
             "local_path": str(local_path),
             "error": str(e),
-            "model": "Edge Neural TTS (Fallback)"
+            "model": "Edge Neural TTS (Free Fallback)"
         }

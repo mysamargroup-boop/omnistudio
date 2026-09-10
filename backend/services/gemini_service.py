@@ -2,8 +2,18 @@ import os
 import requests
 from typing import Optional, Dict, Any
 from config import settings
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
+
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.ConnectionError)),
+    reraise=True
+)
+def _safe_gemini_post(url: str, json_payload: dict, timeout: int):
+    return requests.post(url, json=json_payload, timeout=timeout)
 
 def get_gemini_key() -> str:
     return settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
@@ -19,7 +29,7 @@ async def generate_gemini_text(prompt: str, model: str = "gemini-3.6-flash") -> 
     }
 
     try:
-        r = requests.post(url, json=payload, timeout=20)
+        r = _safe_gemini_post(url, payload, timeout=20)
         if r.status_code == 200:
             data = r.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -45,7 +55,7 @@ async def generate_veo_video(prompt: str, aspect_ratio: str = "16:9", model: str
     }
 
     try:
-        r = requests.post(url, json=payload, timeout=25)
+        r = _safe_gemini_post(url, payload, timeout=25)
         if r.status_code == 200:
             data = r.json()
             return {"success": True, "operation": data, "model": model}
@@ -78,7 +88,7 @@ async def generate_gemini_image(prompt: str, model: str = "gemini-2.5-flash-imag
     }
 
     try:
-        r = requests.post(url, json=payload, timeout=40)
+        r = _safe_gemini_post(url, payload, timeout=40)
         if r.status_code != 200:
             return {"success": False, "status_code": r.status_code, "error": r.text}
         

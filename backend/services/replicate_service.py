@@ -1,9 +1,24 @@
 import uuid
 import httpx
+import logging
 from pathlib import Path
 from config import settings
 from services.ffmpeg_service import image_to_video_motion
-from services.mock_service import generate_mock_image
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+
+logger = logging.getLogger("omnistudio.replicate")
+
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)),
+    reraise=True
+)
+async def _execute_replicate_prediction(url: str, data: dict, headers: dict, timeout: float = 90.0):
+    async with httpx.AsyncClient() as client:
+        res = await client.post(url, json=data, headers=headers, timeout=timeout)
+        result = res.json()
+        return result
 
 async def generate_video_from_image(
     image_path: Path | str,
@@ -81,29 +96,28 @@ async def generate_flux_image(
                 "output_format": "png"
             }
         }
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, json=data, headers=headers, timeout=90.0)
-            result = res.json()
-            if "output" in result and result["output"]:
-                img_url = result["output"][0] if isinstance(result["output"], list) else result["output"]
-                r = await client.get(img_url)
-                with open(local_path, "wb") as f:
-                    f.write(r.content)
-                return {
-                    "success": True,
-                    "simulated": False,
-                    "filename": filename,
-                    "url": f"/outputs/images/{filename}",
-                    "local_path": str(local_path),
-                    "model": model
-                }
-            else:
-                return {
-                    "success": False,
-                    "error_type": "API_ERROR",
-                    "error": result.get("error", "Replicate returned empty output"),
-                    "provider": "replicate"
-                }
+        result = await _execute_replicate_prediction(url, data, headers, timeout=90.0)
+        if "output" in result and result["output"]:
+            img_url = result["output"][0] if isinstance(result["output"], list) else result["output"]
+            async with httpx.AsyncClient() as dl_client:
+                r = await dl_client.get(img_url, timeout=30.0)
+            with open(local_path, "wb") as f:
+                f.write(r.content)
+            return {
+                "success": True,
+                "simulated": False,
+                "filename": filename,
+                "url": f"/outputs/images/{filename}",
+                "local_path": str(local_path),
+                "model": model
+            }
+        else:
+            return {
+                "success": False,
+                "error_type": "API_ERROR",
+                "error": result.get("error", "Replicate returned empty output"),
+                "provider": "replicate"
+            }
     except Exception as e:
         return {
             "success": False,

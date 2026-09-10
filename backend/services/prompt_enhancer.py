@@ -1,6 +1,9 @@
 import json
 import re
+import logging
 from config import settings
+
+logger = logging.getLogger("omnistudio.prompt_enhancer")
 
 CINEMATIC_MODIFIERS = {
     "cinematic": "shot on 35mm Arri Alexa LF, anamorphic lens, shallow depth of field, dramatic cinematic volumetric lighting, raytracing, photorealistic 8k, hyper-detailed, film grain, color graded",
@@ -28,8 +31,8 @@ async def enhance_prompt(prompt: str, style: str = "cinematic") -> str:
                 temperature=0.7
             )
             return res.choices[0].message.content.strip()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("OpenAI prompt expansion unavailable: %s", e)
 
     # Gemini 2.5 Flash Enhancer fallback
     try:
@@ -39,8 +42,8 @@ async def enhance_prompt(prompt: str, style: str = "cinematic") -> str:
             gemini_res = await generate_gemini_text(gemini_prompt)
             if gemini_res.get("success") and gemini_res.get("text"):
                 return gemini_res["text"].strip().strip('"')
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Gemini prompt expansion fallback unavailable: %s", e)
             
     # Algorithmic cinematic prompt enhancer
     clean_prompt = prompt.strip().rstrip(".")
@@ -88,8 +91,8 @@ Return ONLY a valid JSON array of objects with this schema:
                 return data
             if "scenes" in data:
                 return data["scenes"]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("OpenAI storyboard parse/call failed, falling back to algorithmic storyboard: %s", e)
             
     # Intelligent Algorithmic Storyboard Fallback
     motions = ["zoom_in", "pan_right", "subtle", "zoom_out", "tilt_up"]

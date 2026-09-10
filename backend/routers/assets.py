@@ -6,7 +6,13 @@ from pydantic import BaseModel
 from typing import Optional, List
 from config import settings
 from services.storage_service import delete_file_from_r2
-from database import db_delete_asset, db_set_asset_trashed
+from database import (
+    db_delete_asset, db_set_asset_trashed,
+    db_toggle_favorite, db_get_favorites,
+    db_get_collections, db_create_collection, db_delete_collection,
+    db_add_asset_to_collection, db_remove_asset_from_collection,
+    db_get_collection_item_filenames
+)
 
 router = APIRouter(prefix="/api/assets", tags=["Asset Vault"])
 
@@ -24,14 +30,76 @@ TRASH_DIR_MAP = {
     "final": settings.TRASH_PATH / "final"
 }
 
+from pydantic import BaseModel, field_validator
+
 class AssetItem(BaseModel):
     media_type: str
     filename: str
+
+    @field_validator("media_type")
+    @classmethod
+    def validate_media_type(cls, v: str) -> str:
+        if v not in {"images", "videos", "audio", "final"}:
+            raise ValueError("Invalid media_type")
+        return v
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("filename cannot be empty")
+        return s
 
 class BulkActionRequest(BaseModel):
     items: List[AssetItem]
     permanent: Optional[bool] = False
     from_trash: Optional[bool] = False
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: List[AssetItem]) -> List[AssetItem]:
+        if not v:
+            raise ValueError("items list cannot be empty")
+        if len(v) > 100:
+            raise ValueError("Cannot perform bulk action on more than 100 items at once")
+        return v
+
+class FavoriteRequest(BaseModel):
+    filename: str
+    is_favorite: Optional[bool] = None
+
+    @field_validator("filename")
+    @classmethod
+    def validate_fav_filename(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("filename cannot be empty")
+        return s
+
+class CreateCollectionRequest(BaseModel):
+    name: str
+    description: Optional[str] = ""
+
+    @field_validator("name")
+    @classmethod
+    def validate_collection_name(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Collection name cannot be empty")
+        if len(s) > 100:
+            raise ValueError("Collection name cannot exceed 100 characters")
+        return s
+
+class CollectionItemsRequest(BaseModel):
+    filenames: List[str]
+
+    @field_validator("filenames")
+    @classmethod
+    def validate_filenames(cls, v: List[str]) -> List[str]:
+        if not v:
+            raise ValueError("filenames list cannot be empty")
+        return [f.strip() for f in v if f.strip()]
 
 def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False) -> list[dict]:
     files = []
@@ -53,44 +121,61 @@ def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False) -> l
             })
     return files
 
+from services.security_service import sanitize_filename
+
 def safe_move_to_trash(media_type: str, filename: str) -> bool:
+    try:
+        clean_name = sanitize_filename(filename)
+    except Exception:
+        return False
+
     src_dir = DIR_MAP.get(media_type)
     dest_dir = TRASH_DIR_MAP.get(media_type)
     if not src_dir or not dest_dir:
         return False
     
-    src_file = (src_dir / filename).resolve()
+    src_file = (src_dir / clean_name).resolve()
     if not src_file.is_relative_to(src_dir.resolve()) or not src_file.exists():
         return False
     
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / filename
+    dest_file = dest_dir / clean_name
     shutil.move(str(src_file), str(dest_file))
-    db_set_asset_trashed(filename, trashed=True)
+    db_set_asset_trashed(clean_name, trashed=True)
     return True
 
 def safe_restore_from_trash(media_type: str, filename: str) -> bool:
+    try:
+        clean_name = sanitize_filename(filename)
+    except Exception:
+        return False
+
     src_dir = TRASH_DIR_MAP.get(media_type)
     dest_dir = DIR_MAP.get(media_type)
     if not src_dir or not dest_dir:
         return False
     
-    src_file = (src_dir / filename).resolve()
+    src_file = (src_dir / clean_name).resolve()
     if not src_file.is_relative_to(src_dir.resolve()) or not src_file.exists():
         return False
     
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / filename
+    dest_file = dest_dir / clean_name
     shutil.move(str(src_file), str(dest_file))
-    db_set_asset_trashed(filename, trashed=False)
+    db_set_asset_trashed(clean_name, trashed=False)
     return True
 
 async def safe_permanent_delete(media_type: str, filename: str, from_trash: bool = False) -> bool:
+    try:
+        clean_name = sanitize_filename(filename)
+    except Exception:
+        return False
+
     target_dir = TRASH_DIR_MAP.get(media_type) if from_trash else DIR_MAP.get(media_type)
     if not target_dir:
         return False
     
-    target_file = (target_dir / filename).resolve()
+    target_file = (target_dir / clean_name).resolve()
     deleted_local = False
     if target_file.is_relative_to(target_dir.resolve()) and target_file.exists():
         target_file.unlink()
@@ -99,17 +184,17 @@ async def safe_permanent_delete(media_type: str, filename: str, from_trash: bool
         # Check alternate directory
         alt_dir = DIR_MAP.get(media_type) if from_trash else TRASH_DIR_MAP.get(media_type)
         if alt_dir:
-            alt_file = alt_dir / filename
-            if alt_file.exists():
+            alt_file = (alt_dir / clean_name).resolve()
+            if alt_file.is_relative_to(alt_dir.resolve()) and alt_file.exists():
                 alt_file.unlink()
                 deleted_local = True
 
     # Cloudflare R2 delete
-    object_name = f"{media_type}s/{filename}"
+    object_name = f"{media_type}s/{clean_name}"
     await delete_file_from_r2(object_name)
 
     # Supabase Cloud & SQLite DB delete
-    db_delete_asset(filename=filename, asset_type=media_type)
+    db_delete_asset(filename=clean_name, asset_type=media_type)
     return deleted_local
 
 @router.get("/all")
@@ -267,3 +352,60 @@ async def delete_asset(
         if ok:
             return {"success": True, "trashed": filename, "permanent": False}
         return {"success": False, "error": "File not found or could not move to trash"}
+
+# ─── Favorites Endpoints ───
+
+@router.get("/favorites")
+async def get_favorites():
+    """Retrieve all favorited asset filenames"""
+    favs = db_get_favorites()
+    return {"success": True, "favorites": favs}
+
+@router.post("/favorite")
+async def toggle_favorite(req: FavoriteRequest):
+    """Toggle or set favorite status for an asset"""
+    new_status = db_toggle_favorite(req.filename, req.is_favorite)
+    return {"success": True, "filename": req.filename, "is_favorite": new_status}
+
+# ─── Collections Endpoints ───
+
+@router.get("/collections")
+async def get_collections():
+    """List all asset collections with item counts"""
+    cols = db_get_collections()
+    return {"success": True, "collections": cols}
+
+@router.post("/collections")
+async def create_collection(req: CreateCollectionRequest):
+    """Create a new collection"""
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="Collection name cannot be empty")
+    col = db_create_collection(req.name.strip(), req.description or "")
+    return {"success": True, "collection": col}
+
+@router.delete("/collections/{collection_id}")
+async def delete_collection(collection_id: str):
+    """Delete a collection"""
+    ok = db_delete_collection(collection_id)
+    return {"success": ok}
+
+@router.get("/collections/{collection_id}/items")
+async def get_collection_items(collection_id: str):
+    """Get all asset filenames belonging to a collection"""
+    items = db_get_collection_item_filenames(collection_id)
+    return {"success": True, "collection_id": collection_id, "filenames": items}
+
+@router.post("/collections/{collection_id}/items")
+async def add_items_to_collection(collection_id: str, req: CollectionItemsRequest):
+    """Add one or more assets to a collection"""
+    added = []
+    for fn in req.filenames:
+        if db_add_asset_to_collection(collection_id, fn):
+            added.append(fn)
+    return {"success": True, "added_count": len(added), "filenames": added}
+
+@router.delete("/collections/{collection_id}/items/{filename}")
+async def remove_item_from_collection(collection_id: str, filename: str):
+    """Remove an asset from a collection"""
+    ok = db_remove_asset_from_collection(collection_id, filename)
+    return {"success": ok, "filename": filename}

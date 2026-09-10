@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import Optional
 from services.usage_tracker import (
     get_usage_summary,
@@ -6,6 +6,7 @@ from services.usage_tracker import (
     get_rate_cards,
     clear_history
 )
+from auth import require_admin_token
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics & Usage"])
 
@@ -35,8 +36,8 @@ async def get_rate_cards_endpoint():
         "rates": get_rate_cards()
     }
 
-@router.post("/clear")
+@router.post("/clear", dependencies=[Depends(require_admin_token)])
 async def clear_history_endpoint():
-    """Clears generation telemetry audit logs."""
+    """Clears generation telemetry audit logs. Requires ADMIN_API_TOKEN bearer token."""
     clear_history()
     return {"success": True, "message": "Telemetry logs cleared successfully."}

@@ -46,6 +46,7 @@ backend/outputs/*.sqlite3
 .DS_Store
 Thumbs.db
 *.log
+backend/security_audit.ndjson
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

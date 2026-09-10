@@ -13,8 +13,15 @@ from services.openai_service import generate_openai_image
 from services.replicate_service import generate_video_from_image
 from services.elevenlabs_service import generate_elevenlabs_speech
 from services.ffmpeg_service import merge_video_audio, concatenate_videos
+import logging
+
+logger = logging.getLogger("omnistudio.pipeline")
+
+from pydantic import BaseModel, field_validator
 
 router = APIRouter(prefix="/api/pipeline", tags=["Auto Pipeline"])
+
+ALLOWED_PIPELINE_ASPECTS = {"16:9", "9:16", "1:1", "4:3", "21:9"}
 
 class PipelineRequest(BaseModel):
     topic: str
@@ -25,6 +32,30 @@ class PipelineRequest(BaseModel):
     enhance_prompts: bool = True
     style: str = "cinematic"
     aspect_ratio: str = "16:9"
+
+    @field_validator("topic")
+    @classmethod
+    def validate_topic(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Pipeline topic/idea cannot be empty")
+        if len(s) > 1000:
+            raise ValueError("Pipeline topic cannot exceed 1000 characters")
+        return s
+
+    @field_validator("num_scenes")
+    @classmethod
+    def validate_scenes(cls, v: int) -> int:
+        if not (1 <= v <= 8):
+            raise ValueError("num_scenes must be between 1 and 8")
+        return int(v)
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_aspect(cls, v: str) -> str:
+        if v not in ALLOWED_PIPELINE_ASPECTS:
+            return "16:9"
+        return v
 
 def time_to_vtt(seconds: float) -> str:
     h = int(seconds // 3600)
@@ -133,14 +164,9 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
             )
 
         if not img_result.get("success") or not img_result.get("local_path"):
-            from services.mock_service import generate_mock_image
-            fallback_path = generate_mock_image(f"Scene {scene_num}: {visual[:30]}")
-            img_result = {
-                "success": True,
-                "local_path": str(fallback_path),
-                "url": f"/outputs/images/{fallback_path.name}",
-                "simulated": True
-            }
+            err_detail = img_result.get("error", "Visual generation failed for this scene")
+            logger.error("Scene %s image synthesis failed: %s", scene_num, err_detail)
+            raise RuntimeError(f"Scene {scene_num} visual failed: {err_detail}. Please check your API keys in Settings.")
         scene_data["image"] = img_result
 
         # ── Camera Motion Generation ──
@@ -259,8 +285,8 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
         )
         if synced.get("url"):
             final_url = synced["url"]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to sync final video asset: %s", e)
 
     # Save Project Record to Supabase & SQLite
     try:
@@ -282,7 +308,7 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
             }
         )
     except Exception as db_e:
-        print(f"[Project DB Save Warning] {db_e}")
+        logger.warning("[Project DB Save Warning] %s", db_e)
 
     # Usage tracking
     try:
@@ -296,8 +322,8 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
             specs={"scenes": len(scene_outputs), "image_model": req.image_model, "voice_provider": req.voice_provider, "aspect_ratio": req.aspect_ratio},
             output_url=final_url
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to record pipeline usage log: %s", e)
 
     result = {
         "success": True,

@@ -1,10 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from typing import Optional
 from config import settings, save_api_keys, get_key_status
 from services.ffmpeg_service import check_ffmpeg
 from database import test_db_connection, init_database, db_save_setting
 from services.storage_service import test_r2_connection
+from auth import require_admin_token
+from security_logger import audit_log
+from limiter import limiter
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
@@ -36,11 +39,13 @@ async def get_status():
         "outputs_path": str(settings.OUTPUTS_PATH)
     }
 
-@router.post("/keys")
-async def update_keys(req: KeysUpdateRequest):
+@router.post("/keys", dependencies=[Depends(require_admin_token)])
+@limiter.limit("10/hour")
+async def update_keys(req: KeysUpdateRequest, request: Request):
     from database import db_save_setting, load_settings_into_runtime, init_database
     keys = {k: v.strip() for k, v in req.model_dump().items() if v is not None}
     result = save_api_keys(keys)
+    audit_log("keys.updated", keys=sorted(keys))
     # Save settings to Supabase database
     for k, v in keys.items():
         try:
@@ -69,7 +74,6 @@ async def get_keys():
     ]
 
     masked = {}
-    raw_keys = {}
     keys_detail = {}
 
     for k in KEY_NAMES:
@@ -86,7 +90,6 @@ async def get_keys():
             val = ""
             source = "Not Configured"
 
-        raw_keys[k] = val
         if val:
             if len(val) > 8:
                 masked[k] = val[:4] + "••••••••" + val[-4:]
@@ -96,7 +99,7 @@ async def get_keys():
             masked[k] = ""
 
         keys_detail[k] = {
-            "value": val,
+            "value": "",
             "masked": masked[k],
             "source": source,
             "configured": bool(val)
@@ -105,15 +108,14 @@ async def get_keys():
     return {
         "keys": get_key_status(),
         "masked_keys": masked,
-        "raw_keys": raw_keys,
         "keys_detail": keys_detail,
         "source": "Supabase Cloud Database" if is_supabase() else "Local SQLite & VPS .env"
     }
 
-@router.post("/test-db")
+@router.post("/test-db", dependencies=[Depends(require_admin_token)])
 async def test_database(req: TestDbRequest):
     return test_db_connection(req.database_url)
 
-@router.post("/test-r2")
+@router.post("/test-r2", dependencies=[Depends(require_admin_token)])
 async def test_storage():
     return test_r2_connection()

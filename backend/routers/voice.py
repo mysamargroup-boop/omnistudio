@@ -16,8 +16,15 @@ from services.translate_service import (
 from config import settings
 import uuid
 from pathlib import Path
+import logging
+
+logger = logging.getLogger("omnistudio.voice")
+
+from pydantic import BaseModel, field_validator
 
 router = APIRouter(prefix="/api/voice", tags=["Voice Generation"])
+
+ALLOWED_VOICE_PROVIDERS = {"elevenlabs", "openai", "edge"}
 
 class VoiceRequest(BaseModel):
     text: str
@@ -26,6 +33,30 @@ class VoiceRequest(BaseModel):
     model: str = "eleven_multilingual_v2"
     stability: float = 0.5
     similarity_boost: float = 0.75
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Voice text cannot be empty")
+        if len(s) > 5000:
+            raise ValueError("Voice text cannot exceed 5000 characters")
+        return s
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        if v not in ALLOWED_VOICE_PROVIDERS:
+            raise ValueError(f"Provider must be one of {sorted(ALLOWED_VOICE_PROVIDERS)}")
+        return v
+
+    @field_validator("stability", "similarity_boost")
+    @classmethod
+    def validate_stability(cls, v: float) -> float:
+        if not (0.0 <= v <= 1.0):
+            raise ValueError("Audio settings must be between 0.0 and 1.0")
+        return round(float(v), 2)
 
 class VoiceChangeRequest(BaseModel):
     target_voice_id: str = "pNInz6obpgDQGcFmaJgB"
@@ -42,10 +73,30 @@ class TranslateRequest(BaseModel):
     voice_id: Optional[str] = None
     video_path: Optional[str] = None
 
+    @field_validator("text")
+    @classmethod
+    def validate_translate_text(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Translation text cannot be empty")
+        if len(s) > 5000:
+            raise ValueError("Translation text cannot exceed 5000 characters")
+        return s
+
 class TranslateTextRequest(BaseModel):
     text: str
     source_lang: str = "en"
     target_lang: str = "hi"
+
+    @field_validator("text")
+    @classmethod
+    def validate_text_simple(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Text cannot be empty")
+        if len(s) > 5000:
+            raise ValueError("Text cannot exceed 5000 characters")
+        return s
 
 @router.post("/generate")
 async def generate_voice(req: VoiceRequest):
@@ -80,8 +131,8 @@ async def generate_voice(req: VoiceRequest):
             if synced.get("url"):
                 res["url"] = synced["url"]
             res["asset_id"] = synced.get("asset_id")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to sync generated speech asset to cloud: %s", e)
 
     if res.get("url"):
         res["audio_url"] = res["url"]
@@ -98,8 +149,8 @@ async def generate_voice(req: VoiceRequest):
             output_url=res.get("url", ""),
             error=res.get("error") if not res.get("success") else None
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to record speech generation usage log: %s", e)
 
     return res
 
@@ -116,12 +167,15 @@ async def voice_change(
     # Normalize provider
     clean_provider = "elevenlabs" if "eleven" in provider.lower() else provider
 
-    # Save uploaded file
-    ext = Path(file.filename).suffix or ".mp3"
-    upload_name = f"vc_upload_{uuid.uuid4().hex[:8]}{ext}"
+    from services.security_service import sanitize_filename, validate_uploaded_media
+    clean_ext = Path(sanitize_filename(file.filename)).suffix.lower()
+    if clean_ext not in [".mp3", ".wav", ".mp4", ".m4a", ".ogg", ".flac", ".mov"]:
+        clean_ext = ".mp3"
+    upload_name = f"vc_upload_{uuid.uuid4().hex[:8]}{clean_ext}"
     upload_path = settings.AUDIO_PATH / upload_name
     
     content = await file.read()
+    validate_uploaded_media(content, sanitize_filename(file.filename), "video" if is_video else "audio")
     with open(upload_path, "wb") as f:
         f.write(content)
     
@@ -142,8 +196,8 @@ async def voice_change(
     # Clean up uploaded temp file
     try:
         upload_path.unlink(missing_ok=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Could not unlink temp upload file %s: %s", upload_path, e)
 
     if result.get("url"):
         result["audio_url"] = result["url"]
@@ -160,8 +214,8 @@ async def voice_change(
             output_url=result.get("url", ""),
             error=result.get("error") if not result.get("success") else None
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to record voice change usage log: %s", e)
     
     return result
 
@@ -186,10 +240,8 @@ async def translate_and_dub_endpoint(req: TranslateRequest):
     """
     video_p = None
     if req.video_path:
-        if req.video_path.startswith("/outputs/"):
-            video_p = str(settings.OUTPUTS_PATH / req.video_path.replace("/outputs/", ""))
-        else:
-            video_p = req.video_path
+        from path_utils import safe_resolve_output_path
+        video_p = str(safe_resolve_output_path(req.video_path, "videos", must_exist=True))
     
     result = await translate_and_dub(
         text=req.text,
@@ -215,8 +267,8 @@ async def translate_and_dub_endpoint(req: TranslateRequest):
             output_url=result.get("url", ""),
             error=result.get("error") if not result.get("success") else None
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to record translate & dub usage log: %s", e)
 
     return result
 

@@ -14,6 +14,14 @@ services:
       - "8050:8000"
     env_file:
       - ./backend/.env
+    environment:
+      # Required deployment secrets — MANDATORY. Compose refuses to start if unset.
+      # Set these in shell, a .env file, or your platform secret manager.
+      - STUDIO_PASSCODE=${STUDIO_PASSCODE:?ERROR: STUDIO_PASSCODE is required for deployment security}
+      - JWT_SECRET=${JWT_SECRET:?ERROR: JWT_SECRET must be set to a random 32+ character string}
+      - BACKEND_API_TOKEN=${BACKEND_API_TOKEN:?ERROR: BACKEND_API_TOKEN is required for service-to-service calls}
+      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN:?ERROR: ADMIN_API_TOKEN is required to protect settings/key management}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3050,http://31.97.231.218:3050}
     volumes:
       # Mount outputs directory so videos, images, and database persist on the host
       - ./backend/outputs:/app/outputs
@@ -41,6 +49,9 @@ services:
       - BACKEND_INTERNAL_URL=http://omni-backend:8000
       - NODE_ENV=production
       - PORT=3000
+      # Supabase public configuration must come from rotated deployment values.
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:?Set the Supabase project URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Set the rotated Supabase publishable/anon key}
     depends_on:
       omni-backend:
         condition: service_healthy

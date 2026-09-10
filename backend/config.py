@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     
     # Database (Supabase PostgreSQL / Neon / SQLite fallback)
     DATABASE_URL: str = ""
-    SUPABASE_URL: str = "https://lsttnpynhwtpkzfbfntf.supabase.co"
-    SUPABASE_ANON_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzdHRucHluaHd0cGt6ZmJmbnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NTg3NTgsImV4cCI6MjEwNDQzNDc1OH0.BltQVtk0-IKKKZAVdD6grkiFcT6_ikXUsHr9BHpZUqM"
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
     
     # Cloud Object Storage (Cloudflare R2 or S3)
     R2_ACCOUNT_ID: str = ""
@@ -32,11 +32,55 @@ class Settings(BaseSettings):
     FINAL_PATH: Path = OUTPUT_DIR / "final"
     TRASH_PATH: Path = OUTPUT_DIR / "trash"
     
+    # Authentication & Security
+    STUDIO_PASSCODE: str = ""
+    BACKEND_API_TOKEN: str = ""
+    ADMIN_API_TOKEN: str = ""
+    JWT_SECRET: str = ""
+    SUPABASE_JWT_SECRET: str = ""
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRY_HOURS: int = 12
+
     # Server settings
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
-    
+    ENVIRONMENT: str = "development"
+    CORS_ORIGINS: str = ""
+
+    def get_cors_origins(self) -> list[str]:
+        """
+        Whitelist allowed CORS origins.
+        Merges secure defaults with environment-configured origins.
+        Wildcard '*' is strictly prohibited for security.
+        """
+        defaults = [
+            "http://localhost:3000",
+            "http://localhost:3050",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3050",
+            "http://31.97.231.218:3050",
+        ]
+        origins = [] if self.ENVIRONMENT.lower() == "production" else list(defaults)
+        raw = (self.CORS_ORIGINS or "").strip()
+        if raw:
+            if raw.startswith("[") and raw.endswith("]"):
+                try:
+                    import json
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        for o in parsed:
+                            item = str(o).strip().rstrip("/")
+                            if item and item != "*" and item not in origins:
+                                origins.append(item)
+                except Exception:
+                    pass
+            else:
+                for part in raw.split(","):
+                    item = part.strip().rstrip("/")
+                    if item and item != "*" and item not in origins:
+                        origins.append(item)
+        return origins
+
     class Config:
         env_file = str(ENV_FILE)
         extra = "ignore"
@@ -90,6 +134,7 @@ def get_key_status():
         "gemini": bool(settings.GEMINI_API_KEY),
         "database": bool(settings.DATABASE_URL),
         "r2_storage": bool(settings.R2_ACCESS_KEY_ID and settings.R2_SECRET_ACCESS_KEY),
+        "studio_auth": bool(settings.BACKEND_API_TOKEN or settings.JWT_SECRET or settings.SUPABASE_JWT_SECRET),
         "edge_tts": True,  # Free built-in fallback
         "ffmpeg": True
     }
