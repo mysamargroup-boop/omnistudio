@@ -108,6 +108,18 @@ app.add_middleware(SlowlorisTimeoutMiddleware)
 outputs_path = Path(__file__).parent / "outputs"
 outputs_path.mkdir(parents=True, exist_ok=True)
 
+# Public latency & health benchmark routes (no auth required for live ping)
+@app.get("/api/settings/ping")
+@app.get("/api/ping")
+async def ping_benchmark():
+    import time
+    return {
+        "status": "online",
+        "timestamp": time.time(),
+        "server": "OmniStudio Neural Engine",
+        "version": "5.0.0"
+    }
+
 # Register all routers with API Key / Passcode validation
 api_security = [Depends(get_current_user_or_token)]
 
