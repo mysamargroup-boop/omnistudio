@@ -103,6 +103,21 @@ export default function VoiceStudioPage() {
 
   // Audio Playback State
   const audioRef = useRef<HTMLAudioElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Unmount cleanup for progress timers and audio element
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
@@ -217,7 +232,8 @@ export default function VoiceStudioPage() {
       { timestamp: new Date().toTimeString().split(" ")[0], message: `Started ${ttsProvider.toUpperCase()} voice generation (${ttsVoice})` }
     ]);
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
@@ -265,7 +281,10 @@ export default function VoiceStudioPage() {
         { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${err.message}` }
       ]);
     } finally {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setIsGenerating(false);
     }
   };
@@ -282,7 +301,8 @@ export default function VoiceStudioPage() {
       { timestamp: new Date().toTimeString().split(" ")[0], message: `Started Speech-to-Speech voice swap to ${vcTargetVoice}` }
     ]);
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
@@ -316,7 +336,10 @@ export default function VoiceStudioPage() {
       console.error("Voice change error:", err);
       alert(err.message || "Voice change failed");
     } finally {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setIsGenerating(false);
     }
   };
@@ -334,7 +357,8 @@ export default function VoiceStudioPage() {
       { timestamp: new Date().toTimeString().split(" ")[0], message: `Translating text from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()}` }
     ]);
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 1 && dub) {
@@ -379,6 +403,10 @@ export default function VoiceStudioPage() {
       console.error("Translate error:", err);
       alert(err.message || "Translation failed");
     } finally {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setIsGenerating(false);
     }
   };

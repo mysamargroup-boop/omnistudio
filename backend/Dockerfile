@@ -39,6 +39,7 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
 ENV HOST=0.0.0.0
+ENV WEB_CONCURRENCY=2
 
 # Healthcheck probe
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
