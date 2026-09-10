@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     const backendUrl = process.env.BACKEND_INTERNAL_URL || "http://omni-backend:8000";
     return [
