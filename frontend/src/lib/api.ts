@@ -174,13 +174,15 @@ export const api = {
   runPipeline: (data: any) => fetchApi<any>("/api/pipeline/run", { method: "POST", body: JSON.stringify(data) }),
   runPipelineStream: async (
     data: any,
-    onEvent: (event: any) => void
+    onEvent: (event: any) => void,
+    signal?: AbortSignal
   ): Promise<any> => {
     const base = getApiBase();
     const res = await fetch(`${base}/api/pipeline/run-stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify(data),
+      signal,
     });
     if (!res.ok) {
       let msg = res.statusText;

@@ -1,4 +1,5 @@
 import os
+import asyncio
 import subprocess
 import uuid
 import json
@@ -71,7 +72,7 @@ async def edit_video(
     if not src_file or not src_file.exists():
         return {"success": False, "error": f"Source video not found: {video_path}"}
 
-    total_duration = get_media_duration(src_file)
+    total_duration = await asyncio.to_thread(get_media_duration, src_file)
     actual_end = min(end_time, total_duration) if end_time and end_time > start_time else total_duration
     trimmed_duration = max(0.5, actual_end - start_time)
 
@@ -81,8 +82,8 @@ async def edit_video(
     safe_speed = max(0.2, min(4.0, speed))
     target_output_dur = trimmed_duration / safe_speed
 
-    # Detect if source has audio
-    source_has_audio = _probe_has_audio(src_file)
+    # Detect if source has audio non-blockingly
+    source_has_audio = await asyncio.to_thread(_probe_has_audio, src_file)
 
     # ─── Collect Input Files ───
     # input_map tracks: key -> (index, path)
@@ -304,7 +305,9 @@ async def edit_video(
     logger.info("Video edit FFmpeg command: %s", " ".join(cmd))
 
     try:
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=180)
+        proc = await asyncio.to_thread(
+            subprocess.run, cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=180
+        )
         if proc.returncode != 0 or not out_file.exists():
             logger.error("FFmpeg edit failed: %s", proc.stderr[-600:] if proc.stderr else "Unknown")
             return {

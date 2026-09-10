@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "outputs"
@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     TRASH_PATH: Path = OUTPUT_DIR / "trash"
     
     # Authentication & Security
+    ENCRYPTION_KEY: str = ""
     STUDIO_PASSCODE: str = ""
     BACKEND_API_TOKEN: str = ""
     ADMIN_API_TOKEN: str = ""
@@ -81,9 +82,10 @@ class Settings(BaseSettings):
                         origins.append(item)
         return origins
 
-    class Config:
-        env_file = str(ENV_FILE)
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_FILE),
+        extra="ignore",
+    )
 
 settings = Settings()
 
@@ -101,29 +103,45 @@ for path in [
 ]:
     path.mkdir(parents=True, exist_ok=True)
 
+import threading
+
+_env_lock = threading.Lock()
+
+ALLOWED_CONFIG_KEYS = {
+    "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
+    "DATABASE_URL", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "BACKEND_API_TOKEN", "JWT_SECRET",
+    "SUPABASE_JWT_SECRET", "ACCESS_PIN", "ENABLE_LOCAL_AUTH", "ENVIRONMENT",
+    "CORS_ORIGINS", "LOG_LEVEL"
+}
+
 def save_api_keys(keys: dict[str, str]):
-    """Persist API keys to .env and update current runtime settings"""
-    env_content = {}
-    if ENV_FILE.exists():
-        with open(ENV_FILE, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    env_content[k.strip()] = v.strip()
-    
-    for k, v in keys.items():
-        if v is not None:
-            env_content[k] = v.strip()
-            if hasattr(settings, k):
-                setattr(settings, k, v.strip())
-                os.environ[k] = v.strip()
+    """Persist API keys to .env and update current runtime settings with thread-safety and key allowlist."""
+    with _env_lock:
+        env_content = {}
+        if ENV_FILE.exists():
+            with open(ENV_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        env_content[k.strip()] = v.strip()
+        
+        for k, v in keys.items():
+            clean_k = k.strip()
+            # Only allow whitelisted config keys to prevent arbitrary env injection
+            if clean_k in ALLOWED_CONFIG_KEYS and v is not None:
+                clean_v = str(v).strip()
+                env_content[clean_k] = clean_v
+                if hasattr(settings, clean_k):
+                    setattr(settings, clean_k, clean_v)
+                os.environ[clean_k] = clean_v
+                    
+        with open(ENV_FILE, "w", encoding="utf-8") as f:
+            for k, v in env_content.items():
+                f.write(f"{k}={v}\n")
                 
-    with open(ENV_FILE, "w", encoding="utf-8") as f:
-        for k, v in env_content.items():
-            f.write(f"{k}={v}\n")
-            
-    return get_key_status()
+        return get_key_status()
 
 def get_key_status():
     """Check which keys are configured"""

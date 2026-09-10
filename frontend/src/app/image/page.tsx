@@ -52,6 +52,7 @@ interface ModelOption {
   badge?: string;
   category?: string;
   iconType?: "openai" | "google" | "flux" | "midjourney" | "bytedance" | "custom";
+  active?: boolean;
 }
 
 const DIFFUSION_MODELS: ModelOption[] = [
@@ -217,8 +218,41 @@ export default function ImageStudioPage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
 
+  // Dynamic Models State
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>(DIFFUSION_MODELS);
+
+  useEffect(() => {
+    // Fetch active model status from backend based on available API keys
+    api.getImageModels()
+      .then((data: any) => {
+        if (data && data.models && Array.isArray(data.models)) {
+          const activeMap = new Map<string, boolean>(
+            data.models.map((m: { id: string; active?: boolean }) => [m.id, Boolean(m.active)])
+          );
+          setAvailableModels((prev: ModelOption[]) =>
+            prev.map((m: ModelOption) => ({
+              ...m,
+              active: activeMap.has(m.value) ? Boolean(activeMap.get(m.value)) : false,
+            }))
+          );
+        }
+      })
+      .catch((e: unknown) => console.error("Failed to fetch model status", e));
+  }, []);
+
   // Close popovers on click outside
   const dockRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Unmount cleanup for progress intervals
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
@@ -338,7 +372,8 @@ export default function ImageStudioPage() {
     ]);
 
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 2) {
@@ -412,7 +447,10 @@ export default function ImageStudioPage() {
         { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` },
       ]);
     } finally {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setLoading(false);
     }
   };
@@ -432,7 +470,8 @@ export default function ImageStudioPage() {
     ]);
 
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
@@ -467,7 +506,10 @@ export default function ImageStudioPage() {
     } catch (e: any) {
       setVariationsResult({ success: false, error: e.message });
     } finally {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setLoadingVariations(false);
     }
   };
@@ -508,7 +550,7 @@ export default function ImageStudioPage() {
   };
 
   // Filtered models for search in popover
-  const filteredModels = DIFFUSION_MODELS.filter((m) => {
+  const filteredModels = availableModels.filter((m) => {
     if (!modelSearchQuery.trim()) return true;
     const q = modelSearchQuery.toLowerCase();
     return (
@@ -1094,28 +1136,37 @@ export default function ImageStudioPage() {
                   >
                     {filteredModels.map((m) => {
                       const isSelected = model === m.value;
+                      const isInactive = m.active === false;
                       return (
                         <button
                           key={m.value}
                           type="button"
+                          disabled={isInactive}
                           onClick={() => {
-                            setModel(m.value);
-                            setModelPopoverOpen(false);
+                            if (!isInactive) {
+                              setModel(m.value);
+                              setModelPopoverOpen(false);
+                            }
                           }}
                           className={cn(
-                            "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer font-jakarta",
-                            isSelected
+                            "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all font-jakarta",
+                            isInactive ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                            isSelected && !isInactive
                               ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20"
-                              : "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent"
+                              : (!isInactive && "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent")
                           )}
                         >
                           <div className="space-y-0.5 min-w-0 pr-2">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold font-heading">{m.label}</span>
-                              {m.badge && (
+                              {isInactive ? (
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                                  INACTIVE
+                                </span>
+                              ) : m.badge && (
                                 <span
                                   className={cn(
-                                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider",
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider",
                                     m.badge === "PREMIUM"
                                       ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                                       : m.badge === "NEW"
@@ -1128,10 +1179,10 @@ export default function ImageStudioPage() {
                               )}
                             </div>
                             <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug line-clamp-1">
-                              {m.description}
+                              {isInactive ? "API Key required in Settings to activate" : m.description}
                             </p>
                           </div>
-                          {isSelected && <Check className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
+                          {isSelected && !isInactive && <Check className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
                         </button>
                       );
                     })}

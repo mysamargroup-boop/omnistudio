@@ -2,8 +2,9 @@ import uuid
 import time
 import json
 import asyncio
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
+from limiter import limiter
 from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
@@ -233,13 +234,14 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
         merged_filename = f"scene_{job_id}_{scene_num}.mp4"
         merged_path = settings.FINAL_PATH / merged_filename
         try:
-            merge_video_audio(
+            await asyncio.to_thread(
+                merge_video_audio,
                 video_path=vid_result["local_path"],
                 audio_path=voice_result["local_path"],
                 output_path=merged_path
             )
         except Exception as e:
-            print(f"[Pipeline Merge Warning] Scene {scene_num}: {e}")
+            logger.warning("[Pipeline Merge Warning] Scene %s: %s", scene_num, e)
             import shutil
             shutil.copyfile(vid_result["local_path"], merged_path)
 
@@ -258,9 +260,9 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
     final_path = settings.FINAL_PATH / final_filename
     merged_paths = [s["merged"]["local_path"] for s in scene_outputs]
     try:
-        concatenate_videos(merged_paths, final_path)
+        await asyncio.to_thread(concatenate_videos, merged_paths, final_path)
     except Exception as e:
-        print(f"[Pipeline Concat Warning] {e}")
+        logger.warning("[Pipeline Concat Warning] %s", e)
         if merged_paths:
             import shutil
             shutil.copyfile(merged_paths[0], final_path)
@@ -345,12 +347,14 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
     return result
 
 @router.post("/run")
-async def run_pipeline(req: PipelineRequest):
+@limiter.limit("5/minute")
+async def run_pipeline(req: PipelineRequest, request: Request):
     """Standard synchronous pipeline endpoint."""
     return await execute_pipeline_core(req)
 
 @router.post("/run-stream")
-async def run_pipeline_stream(req: PipelineRequest):
+@limiter.limit("5/minute")
+async def run_pipeline_stream(req: PipelineRequest, request: Request):
     """
     Real-Time Server-Sent Events (SSE) streaming endpoint.
     Streams live progress percentages, stage updates, timestamped terminal logs, and final output.

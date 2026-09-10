@@ -69,6 +69,13 @@ CREATE TABLE IF NOT EXISTS studio_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 6. API Keys Table (Encrypted at rest with Fernet)
+CREATE TABLE IF NOT EXISTS api_keys (
+    service VARCHAR(64) PRIMARY KEY,
+    key_value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(asset_type);
 CREATE INDEX IF NOT EXISTS idx_assets_created ON assets(created_at DESC);

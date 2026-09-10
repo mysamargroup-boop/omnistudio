@@ -15,3 +15,5 @@ psycopg2-binary>=2.9.9
 python-jose[cryptography]>=3.3.0
 slowapi>=0.1.9
 tenacity>=8.2.0
+cryptography>=42.0.0
+python-json-logger>=2.0.0

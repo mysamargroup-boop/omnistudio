@@ -29,6 +29,8 @@ ENV/
 .env.test.local
 .env.production.local
 *.env
+.encryption_key
+*.encryption_key
 
 # Media outputs & SQLite Database (Keep local outputs private)
 backend/outputs/images/*

@@ -4,13 +4,14 @@ from typing import Optional
 from pathlib import Path
 from limiter import limiter
 import uuid
+import asyncio
+import logging
 from config import settings
 from services.replicate_service import generate_video_from_image, generate_flux_image
 from services.openai_service import generate_openai_image
 from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion
 from services.director_agent import direct_video_prompt
 from services.video_editor_service import edit_video
-import logging
 
 logger = logging.getLogger("omnistudio.video")
 
@@ -216,7 +217,8 @@ def get_resolution(res: str, aspect: str) -> tuple:
     return res_map.get(aspect, res_map["16:9"])
 
 @router.post("/director-agent")
-async def video_director_agent(req: DirectorAgentRequest):
+@limiter.limit("20/minute")
+async def video_director_agent(req: DirectorAgentRequest, request: Request):
     """
     Parallel AI Director Agent using OpenAI (gpt-4o-mini / gpt-4o).
     Enhances prompt, camera vectors, negative prompt, and lighting for video generation.
@@ -269,7 +271,8 @@ def resolve_path(p: str, media_type: Optional[str] = None) -> Optional[Path]:
         return None
 
 @router.post("/upload-keyframe")
-async def upload_keyframe(file: UploadFile = File(...)):
+@limiter.limit("20/minute")
+async def upload_keyframe(request: Request, file: UploadFile = File(...)):
     """Upload a starting or ending keyframe image for Image-to-Video synthesis."""
     from services.security_service import validate_uploaded_media
     clean_orig = sanitize_filename(file.filename)
@@ -292,7 +295,8 @@ async def upload_keyframe(file: UploadFile = File(...)):
     }
 
 @router.post("/upload-source-video")
-async def upload_source_video(file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def upload_source_video(request: Request, file: UploadFile = File(...)):
     """Upload a source motion video for motion transfer."""
     from services.security_service import validate_uploaded_media
     clean_orig = sanitize_filename(file.filename)
@@ -359,7 +363,7 @@ async def generate_video(req: VideoRequest, request: Request):
                 "-pix_fmt", "yuv420p",
                 str(output_path)
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, timeout=180)
             
             if result.returncode != 0:
                 return {"success": False, "error": f"Motion transfer FFmpeg error: {result.stderr[:300]}"}
@@ -432,7 +436,8 @@ async def generate_video(req: VideoRequest, request: Request):
         filename = f"morph_{uuid.uuid4().hex[:8]}.mp4"
         output_path = settings.VIDEOS_PATH / filename
             
-        keyframe_interpolate_motion(
+        await asyncio.to_thread(
+            keyframe_interpolate_motion,
             start_image_path=str(start_resolved),
             end_image_path=str(end_resolved),
             output_path=str(output_path),
@@ -603,7 +608,8 @@ async def upload_and_generate(
     return result
 
 @router.get("/motions")
-async def list_motion_types():
+@limiter.limit("60/minute")
+async def list_motion_types(request: Request):
     replicate_active = bool(getattr(settings, 'REPLICATE_API_TOKEN', None))
     google_active = bool(getattr(settings, 'GEMINI_API_KEY', None))
     openai_active = bool(getattr(settings, 'OPENAI_API_KEY', None))
@@ -662,7 +668,8 @@ async def list_motion_types():
     }
 
 @router.post("/edit")
-async def edit_video_endpoint(req: EditVideoRequest):
+@limiter.limit("20/minute")
+async def edit_video_endpoint(req: EditVideoRequest, request: Request):
     """
     Apply pure video editing tools (trimming, speed curve, aspect ratio,
     color grading/LUTs, audio track mixing, text overlay) to any generated or vault video.

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Request
 from pydantic import BaseModel
 from typing import Optional
+from limiter import limiter
 from services.elevenlabs_service import generate_elevenlabs_speech, get_elevenlabs_voices
 from services.edgetts_service import generate_edge_speech, get_edge_voices
 from services.openai_service import generate_openai_speech
@@ -99,7 +100,8 @@ class TranslateTextRequest(BaseModel):
         return s
 
 @router.post("/generate")
-async def generate_voice(req: VoiceRequest):
+@limiter.limit("15/minute")
+async def generate_voice(req: VoiceRequest, request: Request):
     if req.provider == "elevenlabs":
         res = await generate_elevenlabs_speech(
             text=req.text, voice_id=req.voice_id, model_id=req.model,
@@ -156,7 +158,9 @@ async def generate_voice(req: VoiceRequest):
 
 # Voice Change — Upload audio file and change voice
 @router.post("/change")
+@limiter.limit("10/minute")
 async def voice_change(
+    request: Request,
     file: UploadFile = File(...),
     target_voice_id: str = Form("pNInz6obpgDQGcFmaJgB"),
     provider: str = Form("elevenlabs"),
@@ -221,7 +225,8 @@ async def voice_change(
 
 # Translate text only
 @router.post("/translate-text")
-async def translate_text_endpoint(req: TranslateTextRequest):
+@limiter.limit("30/minute")
+async def translate_text_endpoint(req: TranslateTextRequest, request: Request):
     """Translate text from source language to target language using OpenAI."""
     return await translate_text(
         text=req.text,
@@ -231,7 +236,8 @@ async def translate_text_endpoint(req: TranslateTextRequest):
 
 # Translate + Dub (full pipeline)
 @router.post("/translate")
-async def translate_and_dub_endpoint(req: TranslateRequest):
+@limiter.limit("10/minute")
+async def translate_and_dub_endpoint(req: TranslateRequest, request: Request):
     """
     Full translate + dub pipeline:
     1. Translate text via OpenAI GPT-4o
@@ -274,11 +280,13 @@ async def translate_and_dub_endpoint(req: TranslateRequest):
 
 # Get supported languages for translate
 @router.get("/languages")
-async def list_languages():
+@limiter.limit("60/minute")
+async def list_languages(request: Request):
     return {"languages": get_supported_languages()}
 
 @router.get("/voices")
-async def list_voices():
+@limiter.limit("60/minute")
+async def list_voices(request: Request):
     return {
         "elevenlabs": get_elevenlabs_voices(),
         "edge": get_edge_voices(),

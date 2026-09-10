@@ -1,4 +1,5 @@
 import uuid
+import asyncio
 import httpx
 import logging
 from pathlib import Path
@@ -40,8 +41,9 @@ async def generate_video_from_image(
     filename = f"vid_{uuid.uuid4().hex[:8]}.mp4"
     output_path = settings.VIDEOS_PATH / filename
     
-    # High-Performance Local FFmpeg Engine
-    image_to_video_motion(
+    # High-Performance Local FFmpeg Engine (Non-blocking worker thread)
+    await asyncio.to_thread(
+        image_to_video_motion,
         image_path=image_path,
         output_path=output_path,
         duration=duration,

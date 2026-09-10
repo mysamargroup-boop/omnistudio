@@ -9,6 +9,7 @@ from typing import Optional
 logger = logging.getLogger("omnistudio.ffmpeg")
 
 SAFE_MOTION_TYPES = {"zoom_in", "zoom_out", "pan_left", "pan_right", "tilt_up", "tilt_down", "orbit", "subtle"}
+SAFE_MOTIONS = SAFE_MOTION_TYPES
 SAFE_TRANSITIONS = {"smooth_morph", "cross_dissolve", "zoom_blend", "directional_wipe"}
 
 def check_ffmpeg() -> dict:

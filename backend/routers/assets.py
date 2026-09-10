@@ -1,9 +1,11 @@
 import os
 import shutil
-from fastapi import APIRouter, Query, HTTPException
+import asyncio
+from fastapi import APIRouter, Query, HTTPException, Request
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional, List
+from limiter import limiter
 from config import settings
 from services.storage_service import delete_file_from_r2
 from database import (
@@ -198,16 +200,21 @@ async def safe_permanent_delete(media_type: str, filename: str, from_trash: bool
     return deleted_local
 
 @router.get("/all")
-async def get_all_assets():
-    images = scan_directory(settings.IMAGES_PATH, "images")
-    videos = scan_directory(settings.VIDEOS_PATH, "videos")
-    audio = scan_directory(settings.AUDIO_PATH, "audio")
-    final = scan_directory(settings.FINAL_PATH, "final")
-
-    trash_images = scan_directory(settings.TRASH_PATH / "images", "images", is_trash=True)
-    trash_videos = scan_directory(settings.TRASH_PATH / "videos", "videos", is_trash=True)
-    trash_audio = scan_directory(settings.TRASH_PATH / "audio", "audio", is_trash=True)
-    trash_final = scan_directory(settings.TRASH_PATH / "final", "final", is_trash=True)
+@limiter.limit("60/minute")
+async def get_all_assets(request: Request):
+    (
+        images, videos, audio, final,
+        trash_images, trash_videos, trash_audio, trash_final
+    ) = await asyncio.gather(
+        asyncio.to_thread(scan_directory, settings.IMAGES_PATH, "images"),
+        asyncio.to_thread(scan_directory, settings.VIDEOS_PATH, "videos"),
+        asyncio.to_thread(scan_directory, settings.AUDIO_PATH, "audio"),
+        asyncio.to_thread(scan_directory, settings.FINAL_PATH, "final"),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "images", "images", is_trash=True),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "videos", "videos", is_trash=True),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "audio", "audio", is_trash=True),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "final", "final", is_trash=True),
+    )
 
     total_trash = len(trash_images) + len(trash_videos) + len(trash_audio) + len(trash_final)
     total_trash_bytes = sum(f["size_bytes"] for f in (trash_images + trash_videos + trash_audio + trash_final))
@@ -257,7 +264,8 @@ async def get_trash_assets():
     }
 
 @router.post("/trash")
-async def move_to_trash(req: BulkActionRequest):
+@limiter.limit("30/minute")
+async def move_to_trash(req: BulkActionRequest, request: Request):
     """Move one or more assets to Trash (soft delete)"""
     trashed = []
     failed = []
@@ -275,7 +283,8 @@ async def move_to_trash(req: BulkActionRequest):
     }
 
 @router.post("/restore")
-async def restore_from_trash(req: BulkActionRequest):
+@limiter.limit("30/minute")
+async def restore_from_trash(req: BulkActionRequest, request: Request):
     """Restore one or more assets from Trash back to active vault"""
     restored = []
     failed = []
@@ -293,7 +302,8 @@ async def restore_from_trash(req: BulkActionRequest):
     }
 
 @router.post("/bulk-delete")
-async def bulk_delete_assets(req: BulkActionRequest):
+@limiter.limit("20/minute")
+async def bulk_delete_assets(req: BulkActionRequest, request: Request):
     """Bulk delete assets: soft-delete to trash or permanent destruction"""
     processed = []
     failed = []
@@ -315,7 +325,8 @@ async def bulk_delete_assets(req: BulkActionRequest):
     }
 
 @router.delete("/trash/empty")
-async def empty_trash():
+@limiter.limit("10/minute")
+async def empty_trash(request: Request):
     """Permanently delete all assets inside the Trash directory"""
     purged = []
     for media_type, trash_dir in TRASH_DIR_MAP.items():
@@ -335,9 +346,11 @@ async def empty_trash():
     }
 
 @router.delete("/{media_type}/{filename}")
+@limiter.limit("30/minute")
 async def delete_asset(
     media_type: str,
     filename: str,
+    request: Request,
     permanent: bool = Query(False),
     from_trash: bool = Query(False)
 ):

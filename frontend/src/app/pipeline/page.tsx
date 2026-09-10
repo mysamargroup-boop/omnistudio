@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Cpu,
@@ -64,6 +64,22 @@ function PipelineContent() {
   const [stageTitle, setStageTitle] = useState("DIRECTOR INITIALIZATION");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [telemetryLogs, setTelemetryLogs] = useState<LogEntry[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Unmount cleanup for timers and active streaming connection
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
+    };
+  }, []);
 
   // Safeguard Confirmation Modal State
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -138,9 +154,12 @@ function PipelineContent() {
     ]);
 
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - startTimestamp) / 1000));
     }, 1000);
+
+    abortRef.current = new AbortController();
 
     try {
       const streamResult = await api.runPipelineStream({
@@ -180,7 +199,7 @@ function PipelineContent() {
           else if (event.stage.includes("cloud_sync")) setStageTitle("08 • Supabase & Vault Sync");
           else if (event.stage.includes("complete")) setStageTitle("09 • Render Complete");
         }
-      });
+      }, abortRef.current.signal);
 
       if (streamResult) {
         setResult(streamResult);
@@ -190,14 +209,22 @@ function PipelineContent() {
         setStatusText("Production compilation completed successfully.");
       }
     } catch (e: any) {
-      setResult({ success: false, error: e.message });
-      setStatusText("Pipeline compilation error");
-      setTelemetryLogs((prev) => [
-        ...prev,
-        { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` }
-      ]);
+      if (e.name === "AbortError") {
+        setStatusText("Pipeline compilation cancelled.");
+      } else {
+        setResult({ success: false, error: e.message });
+        setStatusText("Pipeline compilation error");
+        setTelemetryLogs((prev) => [
+          ...prev,
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` }
+        ]);
+      }
     } finally {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      abortRef.current = null;
       setLoading(false);
     }
   };

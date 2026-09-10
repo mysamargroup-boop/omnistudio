@@ -4,6 +4,7 @@ from typing import Optional, List
 from pathlib import Path
 from limiter import limiter
 import uuid
+import asyncio
 import shutil
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
@@ -143,7 +144,8 @@ def resolve_image_path(p: str) -> Optional[Path]:
             return None
 
 @router.post("/upload-reference")
-async def upload_reference_image(file: UploadFile = File(...)):
+@limiter.limit("20/minute")
+async def upload_reference_image(request: Request, file: UploadFile = File(...)):
     """Upload a source/reference image for image-to-image variations."""
     from services.security_service import sanitize_filename, validate_uploaded_media
     clean_orig = sanitize_filename(file.filename)
@@ -164,7 +166,8 @@ async def upload_reference_image(file: UploadFile = File(...)):
     }
 
 @router.post("/variations")
-async def generate_image_variations(req: ImageVariationsRequest):
+@limiter.limit("10/minute")
+async def generate_image_variations(req: ImageVariationsRequest, request: Request):
     """
     Generate multiple image variations in bulk from a single reference image + prompt/settings.
     Supports 2, 4, or 8 batch variations.
@@ -443,7 +446,8 @@ class AdvancedEditRequest(BaseModel):
     vignette: float = 0
 
 @router.post("/advanced-edit")
-async def advanced_edit_endpoint(req: AdvancedEditRequest):
+@limiter.limit("30/minute")
+async def advanced_edit_endpoint(req: AdvancedEditRequest, request: Request):
     """
     Advanced Adobe/Snapseed style parametric image manipulation.
     Applies cropping, color correction, curves, and lens effects.
@@ -458,7 +462,7 @@ async def advanced_edit_endpoint(req: AdvancedEditRequest):
         out_filename = f"edited_{uuid.uuid4().hex[:8]}{ext}"
         out_path = settings.IMAGES_PATH / out_filename
         
-        apply_advanced_edits(str(src_path), req.model_dump(), str(out_path))
+        await asyncio.to_thread(apply_advanced_edits, str(src_path), req.model_dump(), str(out_path))
         
         return {
             "success": True,
@@ -472,7 +476,8 @@ async def advanced_edit_endpoint(req: AdvancedEditRequest):
         return {"success": False, "error": f"Image editing failed: {e}"}
 
 @router.get("/models")
-async def list_image_models():
+@limiter.limit("60/minute")
+async def list_image_models(request: Request):
     openai_active = bool(settings.OPENAI_API_KEY)
     replicate_active = bool(settings.REPLICATE_API_TOKEN)
     google_active = bool(getattr(settings, 'GEMINI_API_KEY', None))

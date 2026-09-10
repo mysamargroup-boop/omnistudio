@@ -27,7 +27,8 @@ class TestDbRequest(BaseModel):
     database_url: Optional[str] = None
 
 @router.get("/status")
-async def get_status():
+@limiter.limit("60/minute")
+async def get_status(request: Request):
     ffmpeg_info = check_ffmpeg()
     db_info = test_db_connection()
     r2_info = test_r2_connection()
@@ -62,7 +63,8 @@ async def update_keys(req: KeysUpdateRequest, request: Request):
     return {"success": True, "keys": result}
 
 @router.get("/keys")
-async def get_keys():
+@limiter.limit("60/minute")
+async def get_keys(request: Request):
     from database import load_settings_into_runtime, db_get_all_settings, is_supabase
     import os
     load_settings_into_runtime()
@@ -113,9 +115,11 @@ async def get_keys():
     }
 
 @router.post("/test-db", dependencies=[Depends(require_admin_token)])
-async def test_database(req: TestDbRequest):
+@limiter.limit("10/minute")
+async def test_database(req: TestDbRequest, request: Request):
     return test_db_connection(req.database_url)
 
 @router.post("/test-r2", dependencies=[Depends(require_admin_token)])
-async def test_storage():
+@limiter.limit("10/minute")
+async def test_storage(request: Request):
     return test_r2_connection()

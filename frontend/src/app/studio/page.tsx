@@ -186,6 +186,18 @@ function StudioContent() {
 
   // Auto-resize prompt textarea
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Unmount cleanup for progress intervals
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (promptTextareaRef.current) {
       promptTextareaRef.current.style.height = "auto";
@@ -346,7 +358,8 @@ function StudioContent() {
       { timestamp: new Date().toTimeString().split(" ")[0], message: `Initiating ${masterMode.toUpperCase()} synthesis pipeline...` },
     ]);
 
-    const timer = setInterval(() => setElapsedSeconds((p) => p + 1), 1000);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setElapsedSeconds((p) => p + 1), 1000);
 
     try {
       if (masterMode === "video") {
@@ -433,7 +446,10 @@ function StudioContent() {
         message: e?.message || "Failed to reach OmniStudio engine. Please verify local server connectivity.",
       });
     } finally {
-      clearInterval(timer);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setLoading(false);
     }
   };

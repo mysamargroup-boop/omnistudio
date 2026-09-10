@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 import threading
 from pathlib import Path
@@ -59,7 +60,8 @@ async def upload_file_to_r2(local_path: Path | str, object_name: str, content_ty
     s3 = get_r2_client()
     if s3:
         try:
-            s3.upload_file(
+            await asyncio.to_thread(
+                s3.upload_file,
                 str(local_file),
                 settings.R2_BUCKET_NAME,
                 object_name,
@@ -167,7 +169,7 @@ async def delete_file_from_r2(object_name: str) -> bool:
         s3 = get_r2_client()
         if not s3:
             return False
-        s3.delete_object(Bucket=settings.R2_BUCKET_NAME, Key=object_name)
+        await asyncio.to_thread(s3.delete_object, Bucket=settings.R2_BUCKET_NAME, Key=object_name)
         return True
     except Exception as e:
         logger.warning("[R2 Delete Warning] Could not delete %s: %s", object_name, e)

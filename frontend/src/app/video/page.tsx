@@ -267,6 +267,18 @@ function VideoStudioContent() {
 
   // Auto-resize prompt textarea so the full prompt is visible without clipping
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Unmount cleanup to prevent setInterval memory leaks
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (promptTextareaRef.current) {
       promptTextareaRef.current.style.height = "auto";
@@ -546,7 +558,8 @@ function VideoStudioContent() {
     ]);
 
     const startTimestamp = Date.now();
-    const timerInterval = setInterval(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
       if (elapsed === 1) {
@@ -629,7 +642,10 @@ function VideoStudioContent() {
         { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` },
       ]);
     } finally {
-      clearInterval(timerInterval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       setLoading(false);
     }
   };

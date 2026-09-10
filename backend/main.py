@@ -17,6 +17,13 @@ from limiter import limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
+from structured_logging import setup_structured_logging
+from request_id_middleware import RequestIDMiddleware
+from timeout_middleware import SlowlorisTimeoutMiddleware
+
+# Initialize structured JSON logging
+setup_structured_logging()
+
 app = FastAPI(
     title="OmniStudio AI",
     description="Advanced Multi-Model AI Creative Studio — Personal Edition",
@@ -33,6 +40,8 @@ SAFE_CORS_HEADERS = [
     "Origin", "Referer", "User-Agent", "DNT",
     # Authentication (OmniStudio)
     "Authorization", "X-API-Key", "X-Requested-With", "X-Idempotency-Key",
+    # Correlation & Tracing
+    "X-Request-ID", "X-Correlation-ID",
     # Supabase / REST standard
     "apikey", "x-client-info", "Prefer", "Range", "Accept-Profile", "Content-Profile",
     # Media uploads
@@ -46,9 +55,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=SAFE_CORS_METHODS,
     allow_headers=SAFE_CORS_HEADERS,
-    expose_headers=["Content-Disposition", "Content-Length", "X-Request-ID", "X-RateLimit-Remaining"],
+    expose_headers=["Content-Disposition", "Content-Length", "X-Request-ID", "X-Correlation-ID", "X-RateLimit-Remaining"],
     max_age=3600,  # Cache preflight responses 1 hour (reduces OPTIONS requests)
 )
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(SlowlorisTimeoutMiddleware)
 
 # Output files are protected too. StaticFiles would bypass FastAPI dependencies.
 outputs_path = Path(__file__).parent / "outputs"
@@ -111,4 +122,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, timeout_keep_alive=15)

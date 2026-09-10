@@ -2,11 +2,16 @@ import os
 import time
 import json
 import sqlite3
+import logging
 import urllib.request
 import urllib.parse
 from pathlib import Path
 from typing import Optional, Any
+from contextlib import contextmanager
 from config import settings
+from services.encryption_service import encrypt_secret, decrypt_secret, is_sensitive_key
+
+db_logger = logging.getLogger("omnistudio.db")
 
 DB_FILE = settings.OUTPUTS_PATH / "omnistudio.db"
 
@@ -37,132 +42,157 @@ def supabase_rest_request(endpoint: str, method: str = "GET", data: Optional[Any
         return {"success": False, "error": str(e)}
 
 def get_sqlite_conn():
-    conn = sqlite3.connect(str(DB_FILE))
+    """Returns a raw SQLite connection. For new code, prefer `with db_session() as conn:`."""
+    conn = sqlite3.connect(str(DB_FILE), timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
+
+@contextmanager
+def db_session():
+    """Context manager providing a safe, automatically closed SQLite connection."""
+    conn = sqlite3.connect(str(DB_FILE), timeout=30.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        try:
+            conn.close()
+        except Exception as e:
+            db_logger.debug("Error closing SQLite connection: %s", e)
 
 def init_database():
     """Initialize database tables for SQLite or execute schema on PostgreSQL"""
     if is_postgres():
         try:
             import psycopg2
-            conn = psycopg2.connect(settings.DATABASE_URL, sslmode="require")
-            with conn.cursor() as cur:
-                schema_path = Path(__file__).parent / "db" / "schema.sql"
-                if schema_path.exists():
-                    with open(schema_path, "r", encoding="utf-8") as f:
-                        cur.execute(f.read())
-                conn.commit()
-            conn.close()
+            conn = psycopg2.connect(settings.DATABASE_URL, sslmode="require", connect_timeout=10)
+            try:
+                with conn.cursor() as cur:
+                    schema_path = Path(__file__).parent / "db" / "schema.sql"
+                    if schema_path.exists():
+                        with open(schema_path, "r", encoding="utf-8") as f:
+                            cur.execute(f.read())
+                    conn.commit()
+            finally:
+                conn.close()
             provider_name = "Supabase PostgreSQL" if "supabase" in settings.DATABASE_URL.lower() else "PostgreSQL"
             return {"success": True, "provider": provider_name, "status": "initialized"}
         except Exception as e:
+            db_logger.error("Postgres init error: %s", e)
             return {"success": False, "error": str(e)}
     else:
         # SQLite local initialization
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.executescript("""
-        CREATE TABLE IF NOT EXISTS projects (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            topic TEXT,
-            style TEXT DEFAULT 'cinematic',
-            status TEXT DEFAULT 'completed',
-            scenes_count INTEGER DEFAULT 1,
-            metadata TEXT DEFAULT '{}',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS assets (
-            id TEXT PRIMARY KEY,
-            project_id TEXT,
-            asset_type TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            url TEXT NOT NULL,
-            local_path TEXT,
-            storage_provider TEXT DEFAULT 'local',
-            size_bytes INTEGER DEFAULT 0,
-            mime_type TEXT,
-            metadata TEXT DEFAULT '{}',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS generations (
-            id TEXT PRIMARY KEY,
-            service_type TEXT NOT NULL,
-            provider TEXT,
-            model_used TEXT NOT NULL,
-            prompt TEXT,
-            negative_prompt TEXT,
-            duration_sec REAL,
-            parameters TEXT DEFAULT '{}',
-            output_url TEXT NOT NULL,
-            cost_usd REAL DEFAULT 0.0,
-            cost_inr REAL DEFAULT 0.0,
-            saved_usd REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'success',
-            error_message TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS director_logs (
-            id TEXT PRIMARY KEY,
-            user_idea TEXT NOT NULL,
-            enhanced_prompt TEXT NOT NULL,
-            camera_direction TEXT,
-            lighting_directive TEXT,
-            negative_prompt TEXT,
-            director_notes TEXT,
-            agent_model TEXT DEFAULT 'gpt-4o-mini',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS studio_settings (
-            setting_key TEXT PRIMARY KEY,
-            setting_value TEXT NOT NULL,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS asset_favorites (
-            filename TEXT PRIMARY KEY,
-            is_favorite INTEGER DEFAULT 1,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS asset_collections (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS asset_collection_items (
-            collection_id TEXT,
-            filename TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (collection_id, filename)
-        );
-        """)
-
-        # Migration check: Ensure generations table has service_type column if existing SQLite was created with old schema
         try:
-            cur.execute("PRAGMA table_info(generations)")
-            existing_cols = [row[1] for row in cur.fetchall()]
-            if "service_type" not in existing_cols and "type" in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN service_type TEXT DEFAULT 'general'")
-                cur.execute("UPDATE generations SET service_type = type")
-            if "provider" not in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN provider TEXT DEFAULT 'local'")
-            if "cost_usd" not in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN cost_usd REAL DEFAULT 0.0")
-            if "cost_inr" not in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN cost_inr REAL DEFAULT 0.0")
-            if "saved_usd" not in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN saved_usd REAL DEFAULT 0.0")
-            if "status" not in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN status TEXT DEFAULT 'success'")
-            if "error_message" not in existing_cols:
-                cur.execute("ALTER TABLE generations ADD COLUMN error_message TEXT")
-        except Exception as mig_e:
-            print(f"[SQLite Migration Warning] {mig_e}")
+            with db_session() as conn:
+                cur = conn.cursor()
+                cur.executescript("""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    topic TEXT,
+                    style TEXT DEFAULT 'cinematic',
+                    status TEXT DEFAULT 'completed',
+                    scenes_count INTEGER DEFAULT 1,
+                    metadata TEXT DEFAULT '{}',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS assets (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT,
+                    asset_type TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    local_path TEXT,
+                    storage_provider TEXT DEFAULT 'local',
+                    size_bytes INTEGER DEFAULT 0,
+                    mime_type TEXT,
+                    metadata TEXT DEFAULT '{}',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS generations (
+                    id TEXT PRIMARY KEY,
+                    service_type TEXT NOT NULL,
+                    provider TEXT,
+                    model_used TEXT NOT NULL,
+                    prompt TEXT,
+                    negative_prompt TEXT,
+                    duration_sec REAL,
+                    parameters TEXT DEFAULT '{}',
+                    output_url TEXT NOT NULL,
+                    cost_usd REAL DEFAULT 0.0,
+                    cost_inr REAL DEFAULT 0.0,
+                    saved_usd REAL DEFAULT 0.0,
+                    status TEXT DEFAULT 'success',
+                    error_message TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS director_logs (
+                    id TEXT PRIMARY KEY,
+                    user_idea TEXT NOT NULL,
+                    enhanced_prompt TEXT NOT NULL,
+                    camera_direction TEXT,
+                    lighting_directive TEXT,
+                    negative_prompt TEXT,
+                    director_notes TEXT,
+                    agent_model TEXT DEFAULT 'gpt-4o-mini',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS studio_settings (
+                    setting_key TEXT PRIMARY KEY,
+                    setting_value TEXT NOT NULL,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS api_keys (
+                    service TEXT PRIMARY KEY,
+                    key_value TEXT NOT NULL,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS asset_favorites (
+                    filename TEXT PRIMARY KEY,
+                    is_favorite INTEGER DEFAULT 1,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS asset_collections (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS asset_collection_items (
+                    collection_id TEXT,
+                    filename TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (collection_id, filename)
+                );
+                """)
 
-        conn.commit()
-        conn.close()
-        return {"success": True, "provider": "Local SQLite", "status": "initialized"}
+                # Migration check: Ensure generations table has service_type column if existing SQLite was created with old schema
+                try:
+                    cur.execute("PRAGMA table_info(generations)")
+                    existing_cols = [row[1] for row in cur.fetchall()]
+                    if "service_type" not in existing_cols and "type" in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN service_type TEXT DEFAULT 'general'")
+                        cur.execute("UPDATE generations SET service_type = type")
+                    if "provider" not in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN provider TEXT DEFAULT 'local'")
+                    if "cost_usd" not in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN cost_usd REAL DEFAULT 0.0")
+                    if "cost_inr" not in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN cost_inr REAL DEFAULT 0.0")
+                    if "saved_usd" not in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN saved_usd REAL DEFAULT 0.0")
+                    if "status" not in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN status TEXT DEFAULT 'success'")
+                    if "error_message" not in existing_cols:
+                        cur.execute("ALTER TABLE generations ADD COLUMN error_message TEXT")
+                except Exception as mig_e:
+                    db_logger.warning("[SQLite Migration Warning] %s", mig_e)
+
+                conn.commit()
+            return {"success": True, "provider": "Local SQLite", "status": "initialized"}
+        except Exception as e:
+            db_logger.error("SQLite init error: %s", e)
+            return {"success": False, "error": str(e)}
 
 def test_db_connection(url: Optional[str] = None) -> dict:
     """Test connection latency to Supabase PostgreSQL, custom Postgres, or SQLite"""
@@ -204,10 +234,12 @@ def test_db_connection(url: Optional[str] = None) -> dict:
         try:
             import psycopg2
             conn = psycopg2.connect(target_url, sslmode="require", connect_timeout=5)
-            with conn.cursor() as cur:
-                cur.execute("SELECT version();")
-                version = cur.fetchone()[0]
-            conn.close()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT version();")
+                    version = cur.fetchone()[0]
+            finally:
+                conn.close()
             latency_ms = round((time.time() - start) * 1000, 1)
             is_supa_direct = "supabase" in target_url.lower()
             is_neon = "neon" in target_url.lower() or "neon" in version.lower()
@@ -235,11 +267,10 @@ def test_db_connection(url: Optional[str] = None) -> dict:
         # SQLite connection
         start = time.time()
         try:
-            conn = get_sqlite_conn()
-            cur = conn.cursor()
-            cur.execute("SELECT sqlite_version();")
-            version = cur.fetchone()[0]
-            conn.close()
+            with db_session() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT sqlite_version();")
+                version = cur.fetchone()[0]
             latency_ms = round((time.time() - start) * 1000, 2)
             return {
                 "success": True,
@@ -281,21 +312,20 @@ def db_save_asset(
         }
         res = supabase_rest_request("assets", method="POST", data=payload)
         if not res.get("success"):
-            print(f"[Supabase Warning] Asset cloud sync: {res.get('error')}")
+            db_logger.warning("[Supabase Warning] Asset cloud sync: %s", res.get("error"))
 
     # 2. Local SQLite Sync
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT OR REPLACE INTO assets 
-            (id, project_id, asset_type, filename, url, local_path, storage_provider, size_bytes, mime_type, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (asset_id, project_id, asset_type, filename, url, local_path, storage_provider, size_bytes, mime_type, json.dumps(metadata or {})))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT OR REPLACE INTO assets 
+                (id, project_id, asset_type, filename, url, local_path, storage_provider, size_bytes, mime_type, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (asset_id, project_id, asset_type, filename, url, local_path, storage_provider, size_bytes, mime_type, json.dumps(metadata or {})))
+            conn.commit()
     except Exception as e:
-        print(f"[SQLite Error] Save asset: {e}")
+        db_logger.error("[SQLite Error] Save asset: %s", e)
 
 def db_delete_asset(filename: str, asset_type: Optional[str] = None):
     """Delete asset record from Supabase Cloud and local SQLite"""
@@ -305,19 +335,18 @@ def db_delete_asset(filename: str, asset_type: Optional[str] = None):
             encoded_fn = urllib.parse.quote(filename)
             res = supabase_rest_request(f"assets?filename=eq.{encoded_fn}", method="DELETE")
             if not res.get("success"):
-                print(f"[Supabase Warning] Asset delete sync: {res.get('error')}")
+                db_logger.warning("[Supabase Warning] Asset delete sync: %s", res.get("error"))
         except Exception as e:
-            print(f"[Supabase Warning] Asset delete sync error: {e}")
+            db_logger.warning("[Supabase Warning] Asset delete sync error: %s", e)
 
     # 2. Local SQLite Sync
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM assets WHERE filename = ?", (filename,))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM assets WHERE filename = ?", (filename,))
+            conn.commit()
     except Exception as e:
-        print(f"[SQLite Error] Delete asset: {e}")
+        db_logger.error("[SQLite Error] Delete asset: %s", e)
 
 def db_set_asset_trashed(filename: str, trashed: bool = True):
     """Update trash status in asset metadata across Supabase and SQLite"""
@@ -332,34 +361,33 @@ def db_set_asset_trashed(filename: str, trashed: bool = True):
                 if isinstance(meta, str):
                     try:
                         meta = json.loads(meta)
-                    except:
+                    except Exception:
                         meta = {}
                 meta["trashed"] = trashed
                 meta["trashed_at"] = time.time() if trashed else None
                 supabase_rest_request(f"assets?filename=eq.{encoded_fn}", method="PATCH", data={"metadata": meta})
         except Exception as e:
-            print(f"[Supabase Warning] Asset trash state sync error: {e}")
+            db_logger.warning("[Supabase Warning] Asset trash state sync error: %s", e)
 
     # 2. Local SQLite Sync
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT id, metadata FROM assets WHERE filename = ?", (filename,))
-        row = cur.fetchone()
-        if row:
-            meta = {}
-            if row["metadata"]:
-                try:
-                    meta = json.loads(row["metadata"])
-                except:
-                    meta = {}
-            meta["trashed"] = trashed
-            meta["trashed_at"] = time.time() if trashed else None
-            cur.execute("UPDATE assets SET metadata = ? WHERE filename = ?", (json.dumps(meta), filename))
-            conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, metadata FROM assets WHERE filename = ?", (filename,))
+            row = cur.fetchone()
+            if row:
+                meta = {}
+                if row["metadata"]:
+                    try:
+                        meta = json.loads(row["metadata"])
+                    except Exception:
+                        meta = {}
+                meta["trashed"] = trashed
+                meta["trashed_at"] = time.time() if trashed else None
+                cur.execute("UPDATE assets SET metadata = ? WHERE filename = ?", (json.dumps(meta), filename))
+                conn.commit()
     except Exception as e:
-        print(f"[SQLite Error] Asset trash update: {e}")
+        db_logger.error("[SQLite Error] Asset trash update: %s", e)
 
 # ─── Asset Favorites Helpers ───
 
@@ -367,30 +395,29 @@ def db_toggle_favorite(filename: str, is_fav: Optional[bool] = None) -> bool:
     """Toggle or explicitly set favorite status for an asset (Cloud + Local)"""
     current_status = False
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT is_favorite FROM asset_favorites WHERE filename = ?", (filename,))
-        row = cur.fetchone()
-        if row:
-            current_status = bool(row[0])
-            new_status = not current_status if is_fav is None else bool(is_fav)
-            cur.execute("UPDATE asset_favorites SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE filename = ?", (1 if new_status else 0, filename))
-        else:
-            new_status = True if is_fav is None else bool(is_fav)
-            cur.execute("INSERT INTO asset_favorites (filename, is_favorite) VALUES (?, ?)", (filename, 1 if new_status else 0))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT is_favorite FROM asset_favorites WHERE filename = ?", (filename,))
+            row = cur.fetchone()
+            if row:
+                current_status = bool(row[0])
+                new_status = not current_status if is_fav is None else bool(is_fav)
+                cur.execute("UPDATE asset_favorites SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE filename = ?", (1 if new_status else 0, filename))
+            else:
+                new_status = True if is_fav is None else bool(is_fav)
+                cur.execute("INSERT INTO asset_favorites (filename, is_favorite) VALUES (?, ?)", (filename, 1 if new_status else 0))
+            conn.commit()
         
         # Supabase sync if configured
         if is_supabase():
             try:
                 supabase_rest_request("asset_favorites", method="POST", data={"filename": filename, "is_favorite": 1 if new_status else 0})
             except Exception as e:
-                print(f"[Supabase Warning] Favorite sync: {e}")
+                db_logger.warning("[Supabase Warning] Favorite sync: %s", e)
                 
         return new_status
     except Exception as e:
-        print(f"[SQLite Error] Toggle favorite: {e}")
+        db_logger.error("[SQLite Error] Toggle favorite: %s", e)
         return False
 
 def db_get_favorites() -> list[str]:
@@ -402,52 +429,49 @@ def db_get_favorites() -> list[str]:
             if res.get("success") and isinstance(res.get("data"), list):
                 return [r["filename"] for r in res["data"] if "filename" in r]
         except Exception as e:
-            print(f"[Supabase Warning] Get favorites: {e}")
+            db_logger.warning("[Supabase Warning] Get favorites: %s", e)
 
     # 2. SQLite local
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT filename FROM asset_favorites WHERE is_favorite = 1")
-        rows = cur.fetchall()
-        conn.close()
-        return [r[0] for r in rows]
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT filename FROM asset_favorites WHERE is_favorite = 1")
+            rows = cur.fetchall()
+            return [r[0] for r in rows]
     except Exception as e:
-        print(f"[SQLite Error] Get favorites: {e}")
+        db_logger.error("[SQLite Error] Get favorites: %s", e)
         return []
 
 # ─── Asset Collections Helpers ───
 
 def db_get_collections() -> list[dict]:
-    """Retrieve all collections with their item counts and preview filenames"""
+    """Retrieve all collections with their item counts and preview filenames in a single query."""
     collections = []
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT c.id, c.name, c.description, c.created_at,
-                   COUNT(ci.filename) as item_count
-            FROM asset_collections c
-            LEFT JOIN asset_collection_items ci ON c.id = ci.collection_id
-            GROUP BY c.id, c.name, c.description, c.created_at
-            ORDER BY c.created_at DESC
-        """)
-        for row in cur.fetchall():
-            coll_id = row[0]
-            # Fetch up to 4 preview items
-            cur.execute("SELECT filename FROM asset_collection_items WHERE collection_id = ? LIMIT 4", (coll_id,))
-            preview_items = [p[0] for p in cur.fetchall()]
-            collections.append({
-                "id": coll_id,
-                "name": row[1],
-                "description": row[2] or "",
-                "created_at": row[3],
-                "item_count": row[4],
-                "previews": preview_items
-            })
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT c.id, c.name, c.description, c.created_at,
+                       COUNT(ci.filename) as item_count,
+                       GROUP_CONCAT(ci.filename, ',') as all_items
+                FROM asset_collections c
+                LEFT JOIN asset_collection_items ci ON c.id = ci.collection_id
+                GROUP BY c.id, c.name, c.description, c.created_at
+                ORDER BY c.created_at DESC
+            """)
+            for row in cur.fetchall():
+                all_items_str = row[5] or ""
+                previews = [fn.strip() for fn in all_items_str.split(",") if fn.strip()][:4]
+                collections.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "description": row[2] or "",
+                    "created_at": row[3],
+                    "item_count": row[4],
+                    "previews": previews
+                })
     except Exception as e:
-        print(f"[SQLite Error] Get collections: {e}")
+        db_logger.error("[SQLite Error] Get collections: %s", e)
     return collections
 
 def db_create_collection(name: str, description: str = "") -> dict:
@@ -455,81 +479,76 @@ def db_create_collection(name: str, description: str = "") -> dict:
     import uuid
     coll_id = f"col_{uuid.uuid4().hex[:10]}"
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("INSERT INTO asset_collections (id, name, description) VALUES (?, ?, ?)", (coll_id, name, description))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO asset_collections (id, name, description) VALUES (?, ?, ?)", (coll_id, name, description))
+            conn.commit()
         
         if is_supabase():
             try:
                 supabase_rest_request("asset_collections", method="POST", data={"id": coll_id, "name": name, "description": description})
             except Exception as e:
-                print(f"[Supabase Warning] Create collection sync: {e}")
+                db_logger.warning("[Supabase Warning] Create collection sync: %s", e)
                 
         return {"id": coll_id, "name": name, "description": description, "item_count": 0, "previews": []}
     except Exception as e:
-        print(f"[SQLite Error] Create collection: {e}")
+        db_logger.error("[SQLite Error] Create collection: %s", e)
         return {"id": coll_id, "name": name, "description": description, "error": str(e)}
 
 def db_delete_collection(collection_id: str) -> bool:
     """Delete a collection and its associations"""
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM asset_collection_items WHERE collection_id = ?", (collection_id,))
-        cur.execute("DELETE FROM asset_collections WHERE id = ?", (collection_id,))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM asset_collection_items WHERE collection_id = ?", (collection_id,))
+            cur.execute("DELETE FROM asset_collections WHERE id = ?", (collection_id,))
+            conn.commit()
         
         if is_supabase():
             try:
                 supabase_rest_request(f"asset_collection_items?collection_id=eq.{collection_id}", method="DELETE")
                 supabase_rest_request(f"asset_collections?id=eq.{collection_id}", method="DELETE")
             except Exception as e:
-                print(f"[Supabase Warning] Delete collection sync: {e}")
+                db_logger.warning("[Supabase Warning] Delete collection sync: %s", e)
         return True
     except Exception as e:
-        print(f"[SQLite Error] Delete collection: {e}")
+        db_logger.error("[SQLite Error] Delete collection: %s", e)
         return False
 
 def db_add_asset_to_collection(collection_id: str, filename: str) -> bool:
     """Associate an asset with a collection"""
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("INSERT OR IGNORE INTO asset_collection_items (collection_id, filename) VALUES (?, ?)", (collection_id, filename))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT OR IGNORE INTO asset_collection_items (collection_id, filename) VALUES (?, ?)", (collection_id, filename))
+            conn.commit()
         return True
     except Exception as e:
-        print(f"[SQLite Error] Add asset to collection: {e}")
+        db_logger.error("[SQLite Error] Add asset to collection: %s", e)
         return False
 
 def db_remove_asset_from_collection(collection_id: str, filename: str) -> bool:
     """Remove an asset from a collection"""
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM asset_collection_items WHERE collection_id = ? AND filename = ?", (collection_id, filename))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM asset_collection_items WHERE collection_id = ? AND filename = ?", (collection_id, filename))
+            conn.commit()
         return True
     except Exception as e:
-        print(f"[SQLite Error] Remove asset from collection: {e}")
+        db_logger.error("[SQLite Error] Remove asset from collection: %s", e)
         return False
 
 def db_get_collection_item_filenames(collection_id: str) -> list[str]:
     """Get all filenames in a collection"""
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT filename FROM asset_collection_items WHERE collection_id = ?", (collection_id,))
-        rows = cur.fetchall()
-        conn.close()
-        return [r[0] for r in rows]
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT filename FROM asset_collection_items WHERE collection_id = ?", (collection_id,))
+            rows = cur.fetchall()
+            return [r[0] for r in rows]
     except Exception as e:
-        print(f"[SQLite Error] Get collection items: {e}")
+        db_logger.error("[SQLite Error] Get collection items: %s", e)
         return []
 
 def db_save_generation(
@@ -568,21 +587,20 @@ def db_save_generation(
         }
         res = supabase_rest_request("generations", method="POST", data=payload)
         if not res.get("success"):
-            print(f"[Supabase Warning] Generation cloud sync: {res.get('error')}")
+            db_logger.warning("[Supabase Warning] Generation cloud sync: %s", res.get("error"))
 
     # 2. Local SQLite Sync
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT OR REPLACE INTO generations 
-            (id, service_type, provider, model_used, prompt, negative_prompt, duration_sec, parameters, output_url, cost_usd, cost_inr, saved_usd, status, error_message)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (generation_id, service_type, provider, model_used, prompt, negative_prompt, duration_sec, json.dumps(parameters or {}), output_url, cost_usd, cost_inr, saved_usd, status, error_message))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT OR REPLACE INTO generations 
+                (id, service_type, provider, model_used, prompt, negative_prompt, duration_sec, parameters, output_url, cost_usd, cost_inr, saved_usd, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (generation_id, service_type, provider, model_used, prompt, negative_prompt, duration_sec, json.dumps(parameters or {}), output_url, cost_usd, cost_inr, saved_usd, status, error_message))
+            conn.commit()
     except Exception as e:
-        print(f"[SQLite Error] Save generation: {e}")
+        db_logger.error("[SQLite Error] Save generation: %s", e)
 
 def db_save_project(
     project_id: str,
@@ -606,36 +624,35 @@ def db_save_project(
         }
         res = supabase_rest_request("projects", method="POST", data=payload)
         if not res.get("success"):
-            print(f"[Supabase Warning] Save project: {res.get('error')}")
+            db_logger.warning("[Supabase Warning] Save project: %s", res.get("error"))
 
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT OR REPLACE INTO projects (id, title, topic, style, status, scenes_count, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (project_id, title, topic, style, status, scenes_count, json.dumps(metadata or {})))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT OR REPLACE INTO projects (id, title, topic, style, status, scenes_count, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (project_id, title, topic, style, status, scenes_count, json.dumps(metadata or {})))
+            conn.commit()
     except Exception as e:
-        print(f"[SQLite Error] Save project: {e}")
+        db_logger.error("[SQLite Error] Save project: %s", e)
 
 def db_save_setting(key: str, value: str):
-    """Save studio setting to Supabase Cloud and local SQLite."""
+    """Save studio setting to Supabase Cloud and local SQLite with at-rest encryption for secrets."""
+    stored_val = encrypt_secret(value) if is_sensitive_key(key) else value
     if is_supabase():
-        payload = {"setting_key": key, "setting_value": value}
+        payload = {"setting_key": key, "setting_value": stored_val}
         supabase_rest_request("studio_settings", method="POST", data=payload)
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO studio_settings (setting_key, setting_value) VALUES (?, ?)", (key, value))
-        conn.commit()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO studio_settings (setting_key, setting_value) VALUES (?, ?)", (key, stored_val))
+            conn.commit()
     except Exception as e:
-        print(f"[SQLite Error] Save setting: {e}")
+        db_logger.error("[SQLite Error] Save setting: %s", e)
 
 def db_get_all_settings() -> dict:
-    """Fetch all studio settings from Supabase Cloud or fallback SQLite."""
+    """Fetch all studio settings from Supabase Cloud or fallback SQLite with transparent decryption."""
     settings_dict = {}
     if is_supabase():
         try:
@@ -648,22 +665,61 @@ def db_get_all_settings() -> dict:
                             val = json.loads(val)
                         except Exception:
                             val = val.strip("\"'")
-                    settings_dict[row["setting_key"]] = val
+                    k = row.get("setting_key")
+                    if k:
+                        settings_dict[k] = decrypt_secret(val) if (is_sensitive_key(k) or (isinstance(val, str) and val.startswith("gAAAAA"))) else val
                 if settings_dict:
                     return settings_dict
         except Exception as e:
-            print(f"[Supabase Settings Fetch Warning] {e}")
+            db_logger.warning("[Supabase Settings Fetch Warning] %s", e)
 
     try:
-        conn = get_sqlite_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT setting_key, setting_value FROM studio_settings")
-        for row in cur.fetchall():
-            settings_dict[row[0]] = row[1]
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT setting_key, setting_value FROM studio_settings")
+            for row in cur.fetchall():
+                k, val = row[0], row[1]
+                settings_dict[k] = decrypt_secret(val) if (is_sensitive_key(k) or (isinstance(val, str) and val.startswith("gAAAAA"))) else val
     except Exception as e:
-        print(f"[SQLite Settings Fetch Error] {e}")
+        db_logger.error("[SQLite Settings Fetch Error] %s", e)
     return settings_dict
+
+def db_save_api_key(service: str, key_value: str):
+    """Save encrypted API key for a specific service at rest."""
+    encrypted_val = encrypt_secret(key_value)
+    if is_supabase():
+        payload = {"service": service, "key_value": encrypted_val}
+        supabase_rest_request("api_keys", method="POST", data=payload)
+    try:
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO api_keys (service, key_value) VALUES (?, ?)", (service, encrypted_val))
+            conn.commit()
+    except Exception as e:
+        db_logger.error("[SQLite Error] Save api_key: %s", e)
+
+def db_get_api_keys() -> dict[str, str]:
+    """Fetch all API keys with transparent Fernet decryption (and legacy plaintext fallback)."""
+    keys_dict = {}
+    if is_supabase():
+        try:
+            res = supabase_rest_request("api_keys?select=service,key_value")
+            if res.get("success") and isinstance(res.get("data"), list):
+                for row in res["data"]:
+                    keys_dict[row["service"]] = decrypt_secret(row.get("key_value", ""))
+                if keys_dict:
+                    return keys_dict
+        except Exception as e:
+            db_logger.warning("[Supabase api_keys Fetch Warning] %s", e)
+    try:
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT service, key_value FROM api_keys")
+            for row in cur.fetchall():
+                keys_dict[row[0]] = decrypt_secret(row[1])
+    except Exception as e:
+        db_logger.error("[SQLite api_keys Fetch Error] %s", e)
+    return keys_dict
 
 def load_settings_into_runtime():
     """
@@ -700,12 +756,9 @@ def load_settings_into_runtime():
 
         return merged_settings
     except Exception as e:
-        print(f"[Settings Runtime Sync Error] {e}")
+        db_logger.error("[Settings Runtime Sync Error] %s", e)
         # Even on critical exception, ensure .env is not wiped
         return merged_settings
-
-import logging
-db_logger = logging.getLogger("omnistudio.db")
 
 # Auto-initialize DB and load settings on import
 try:
@@ -713,5 +766,3 @@ try:
     load_settings_into_runtime()
 except Exception as e:
     db_logger.warning("Database initialization or runtime settings load encountered error: %s", e)
-
-
