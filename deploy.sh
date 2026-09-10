@@ -34,9 +34,9 @@ if [ ! -f "backend/.env" ]; then
     fi
 fi
 
-# 4. Create outputs folder with write permissions
+# 4. Create outputs folder with secure write permissions
 mkdir -p backend/outputs/images backend/outputs/videos backend/outputs/audio backend/outputs/final
-chmod -R 777 backend/outputs
+chmod -R 775 backend/outputs
 
 # 5. Build and launch isolated containers
 echo "[+] Starting OmniStudio AI containers on isolated ports (3050 & 8050)..."
