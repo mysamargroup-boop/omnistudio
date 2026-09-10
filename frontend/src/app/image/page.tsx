@@ -38,6 +38,11 @@ import {
   ZoomIn,
   CheckCircle2,
   Share2,
+  ChevronDown,
+  Type,
+  Palette,
+  Crop,
+  SlidersHorizontal,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -209,13 +214,32 @@ export default function ImageStudioPage() {
   const [editorContrast, setEditorContrast] = useState<number>(0); // -50 to 50
   const [editorSaturation, setEditorSaturation] = useState<number>(0); // -50 to 50
   const [editorSharpness, setEditorSharpness] = useState<number>(0); // 0 to 100
-  const [editorFilter, setEditorFilter] = useState<string>("none"); // none, cinematic, noir, cyberpunk, vintage, editorial
-  const [editorCropRatio, setEditorCropRatio] = useState<string>("original"); // original, 16:9, 9:16, 1:1, 4:3
+  const [editorFilter, setEditorFilter] = useState<string>("none"); // none, cinematic, noir, cyberpunk, vintage, editorial, golden_hour, vibrant, pastel
+  const [editorCropRatio, setEditorCropRatio] = useState<string>("original"); // original, 16:9, 9:16, 1:1, 4:3, 3:4, 21:9
   const [editorUpscale, setEditorUpscale] = useState<boolean>(false);
   const [uploadingEditorImage, setUploadingEditorImage] = useState<boolean>(false);
   const [processingImageEdit, setProcessingImageEdit] = useState<boolean>(false);
   const editorFileInputRef = useRef<HTMLInputElement>(null);
   const quickUploadInputRef = useRef<HTMLInputElement>(null);
+
+  // New HSL, Color Temp, Curves, Text, Resize & Compression States
+  const [editorHue, setEditorHue] = useState<number>(0); // -180 to 180
+  const [editorLightness, setEditorLightness] = useState<number>(0); // -50 to 50
+  const [editorTemperature, setEditorTemperature] = useState<number>(0); // -100 to 100 (warm/cool)
+  const [editorTint, setEditorTint] = useState<number>(0); // -100 to 100 (green/magenta)
+  const [editorCurvePreset, setEditorCurvePreset] = useState<string>("linear"); // linear, s_curve, matte, high_contrast, moody
+  const [editorTextOverlay, setEditorTextOverlay] = useState<string>("");
+  const [editorTextPosition, setEditorTextPosition] = useState<string>("bottom"); // top, center, bottom
+  const [editorTextColor, setEditorTextColor] = useState<string>("#ffffff");
+  const [editorTextSize, setEditorTextSize] = useState<number>(36);
+  const [editorResizeEnabled, setEditorResizeEnabled] = useState<boolean>(false);
+  const [editorWidth, setEditorWidth] = useState<number>(1920);
+  const [editorHeight, setEditorHeight] = useState<number>(1080);
+  const [editorLockAspectRatio, setEditorLockAspectRatio] = useState<boolean>(true);
+  const [editorCompressionQuality, setEditorCompressionQuality] = useState<number>(92);
+  const [editorOutputFormat, setEditorOutputFormat] = useState<string>("png"); // png, jpeg, webp
+  const [editorActiveTab, setEditorActiveTab] = useState<"filters" | "hsl" | "curves" | "text" | "resize" | "export">("filters");
+  const [promptDockCollapsed, setPromptDockCollapsed] = useState<boolean>(false);
 
   // Vault Picker Modal State
   const [vaultOpen, setVaultOpen] = useState(false);
@@ -592,6 +616,7 @@ export default function ImageStudioPage() {
         setEditorImageUrl(url);
         setEditorImageFile(file);
         setStudioMode("image_editor");
+        setPromptDockCollapsed(true);
       }
     } catch (err) {
       console.error("Failed to upload image for editing:", err);
@@ -605,7 +630,9 @@ export default function ImageStudioPage() {
     if (!editorImageUrl) return;
     setProcessingImageEdit(true);
     try {
+      const filename = editorImageUrl.split("/").pop() || "source_image.png";
       const res = await api.editImage({
+        filename: filename,
         image_path: editorImageUrl,
         brightness: editorBrightness,
         contrast: editorContrast,
@@ -614,12 +641,26 @@ export default function ImageStudioPage() {
         filter: editorFilter,
         aspect_ratio: editorCropRatio !== "original" ? editorCropRatio : undefined,
         upscale: editorUpscale,
+        upscale_factor: editorUpscale ? 2 : 1,
+        hue: editorHue,
+        lightness: editorLightness,
+        temperature: editorTemperature,
+        tint: editorTint,
+        curve_preset: editorCurvePreset !== "linear" ? editorCurvePreset : undefined,
+        text_overlay: editorTextOverlay.trim() || undefined,
+        text_position: editorTextPosition,
+        text_color: editorTextColor,
+        text_size: editorTextSize,
+        resize_width: editorResizeEnabled ? editorWidth : undefined,
+        resize_height: editorResizeEnabled ? editorHeight : undefined,
+        compression_quality: editorCompressionQuality,
+        output_format: editorOutputFormat,
       });
       if (res && res.success) {
         setResult(res);
         setEditorImageUrl(res.url);
       } else {
-        alert(res?.error || "Image edit failed");
+        alert(res?.detail || res?.error || "Image edit failed");
       }
     } catch (err: any) {
       alert(err?.message || "Failed to process image edit");
@@ -679,6 +720,78 @@ export default function ImageStudioPage() {
   const currentUnitCost = baseUnitCost * resolutionMultiplier;
   const currentTotalSpendUsd = currentUnitCost * activeBatchCount;
   const currentTotalSpendInr = Math.round(currentTotalSpendUsd * 83.5 * 100) / 100;
+
+  // Dynamic Aspect Ratio classes for the preview canvas
+  const getAspectRatioClass = (ratio: string) => {
+    switch (ratio) {
+      case "16:9": return "aspect-[16/9] max-h-[500px]";
+      case "9:16": return "aspect-[9/16] max-h-[540px]";
+      case "1:1": return "aspect-square max-h-[460px]";
+      case "4:3": return "aspect-[4/3] max-h-[480px]";
+      case "3:4": return "aspect-[3/4] max-h-[520px]";
+      case "21:9": return "aspect-[21/9] max-h-[400px]";
+      default: return "aspect-auto max-h-[520px]";
+    }
+  };
+
+  const getAspectRatioLabel = (ratio: string) => {
+    switch (ratio) {
+      case "16:9": return "1920 × 1080 (16:9 Cinema)";
+      case "9:16": return "1080 × 1920 (9:16 Shorts/Reels)";
+      case "1:1": return "1080 × 1080 (1:1 Square Feed)";
+      case "4:3": return "1440 × 1080 (4:3 Classic Photo)";
+      case "3:4": return "1080 × 1440 (3:4 Editorial Portrait)";
+      case "21:9": return "2560 × 1080 (21:9 Ultra-Wide)";
+      default: return "Original Native Aspect";
+    }
+  };
+
+  const computeLiveFilterStyle = () => {
+    const parts: string[] = [];
+    parts.push(`brightness(${100 + editorBrightness + editorLightness}%)`);
+    let c = 100 + editorContrast;
+    if (editorCurvePreset === "s_curve") c += 25;
+    else if (editorCurvePreset === "high_contrast") c += 45;
+    else if (editorCurvePreset === "matte") c -= 15;
+    parts.push(`contrast(${c}%)`);
+
+    let s = 100 + editorSaturation;
+    if (editorCurvePreset === "s_curve") s += 12;
+    else if (editorCurvePreset === "matte") s -= 12;
+    parts.push(`saturate(${s}%)`);
+
+    if (editorHue !== 0) {
+      parts.push(`hue-rotate(${editorHue}deg)`);
+    }
+
+    if (editorTemperature > 0) {
+      parts.push(`sepia(${Math.round(editorTemperature * 0.4)}%)`);
+    } else if (editorTemperature < 0) {
+      parts.push(`hue-rotate(${Math.round(editorTemperature * 0.35)}deg)`);
+    }
+
+    if (editorFilter === "noir" || editorFilter === "black_white") {
+      parts.push("grayscale(100%) contrast(125%)");
+    } else if (editorFilter === "sepia") {
+      parts.push("sepia(80%) contrast(95%)");
+    } else if (editorFilter === "cyberpunk") {
+      parts.push("hue-rotate(275deg) saturate(180%) contrast(120%)");
+    } else if (editorFilter === "cinematic") {
+      parts.push("contrast(118%) saturate(125%)");
+    } else if (editorFilter === "golden_hour") {
+      parts.push("sepia(35%) saturate(130%) contrast(110%)");
+    } else if (editorFilter === "vintage") {
+      parts.push("sepia(50%) saturate(80%) contrast(95%)");
+    } else if (editorFilter === "editorial") {
+      parts.push("contrast(125%) saturate(105%)");
+    } else if (editorFilter === "vibrant") {
+      parts.push("saturate(150%) contrast(110%)");
+    } else if (editorFilter === "pastel") {
+      parts.push("contrast(90%) brightness(108%) saturate(110%)");
+    }
+
+    return parts.join(" ");
+  };
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-32 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
@@ -1066,15 +1179,18 @@ export default function ImageStudioPage() {
           </div>
         )}
 
-        {/* State E: Image Precision Editor */}
+        {/* State E: Image Precision Editor & Color Lab */}
         {studioMode === "image_editor" && (
-          <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+          <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-emerald-500" />
                 <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
-                  Precision Image Editor & Enhancer
+                  Precision Image Studio & Color Lab
                 </h2>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold">
+                  LIVE REAL-TIME PREVIEW
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -1108,32 +1224,94 @@ export default function ImageStudioPage() {
 
             {editorImageUrl ? (
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                {/* Image Live Viewport */}
-                <div className="md:col-span-7 space-y-3">
-                  <div className="relative rounded-2xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-black shadow-lg flex items-center justify-center min-h-[380px] max-h-[500px]">
+                {/* Image Live Viewport & Canvas */}
+                <div className="md:col-span-7 space-y-4">
+                  {/* Aspect Ratio Canvas Container */}
+                  <div
+                    className={cn(
+                      "relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black/95 shadow-xl flex items-center justify-center transition-all duration-300 mx-auto w-full",
+                      getAspectRatioClass(editorCropRatio)
+                    )}
+                  >
                     <img
                       src={getMediaUrl(editorImageUrl)}
                       alt="Editor Preview"
                       style={{
-                        filter: `brightness(${100 + editorBrightness}%) contrast(${100 + editorContrast}%) saturate(${100 + editorSaturation}%) ${
-                          editorFilter === "noir"
-                            ? "grayscale(100%) contrast(120%)"
-                            : editorFilter === "vintage"
-                            ? "sepia(70%) contrast(90%)"
-                            : editorFilter === "cyberpunk"
-                            ? "hue-rotate(280deg) saturate(180%)"
-                            : editorFilter === "cinematic"
-                            ? "contrast(115%) saturate(125%)"
-                            : ""
-                        }`,
+                        filter: computeLiveFilterStyle(),
                       }}
-                      className="w-full h-full object-contain max-h-[500px] transition-all duration-150"
+                      className={cn(
+                        "transition-all duration-150",
+                        editorCropRatio !== "original" ? "w-full h-full object-cover" : "max-h-[500px] w-auto object-contain mx-auto"
+                      )}
                     />
-                    <div className="absolute top-3 left-3 text-[10px] font-mono px-2 py-0.5 rounded bg-black/80 text-white backdrop-blur-sm">
-                      {editorFilter.toUpperCase()} • B:{editorBrightness > 0 ? `+${editorBrightness}` : editorBrightness}% • C:{editorContrast > 0 ? `+${editorContrast}` : editorContrast}%
+
+                    {/* Live Text Overlay on Canvas */}
+                    {editorTextOverlay.trim() && (
+                      <div
+                        className={cn(
+                          "absolute left-0 right-0 px-6 text-center font-bold tracking-wide pointer-events-none select-none",
+                          editorTextPosition === "top" && "top-6",
+                          editorTextPosition === "center" && "top-1/2 -translate-y-1/2",
+                          editorTextPosition === "bottom" && "bottom-6"
+                        )}
+                        style={{
+                          color: editorTextColor,
+                          fontSize: `${Math.max(14, Math.min(52, editorTextSize))}px`,
+                          textShadow: "0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8)",
+                        }}
+                      >
+                        {editorTextOverlay}
+                      </div>
+                    )}
+
+                    {/* Live Status Overlay Badge */}
+                    <div className="absolute top-3 left-3 text-[10px] font-mono px-2.5 py-1 rounded-lg bg-black/80 text-white backdrop-blur-md border border-white/10 flex items-center gap-2 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{getAspectRatioLabel(editorCropRatio)}</span>
+                      {editorFilter !== "none" && <span className="opacity-75">• {editorFilter.toUpperCase()}</span>}
+                      {editorCurvePreset !== "linear" && <span className="opacity-75">• {editorCurvePreset.toUpperCase()}</span>}
                     </div>
                   </div>
 
+                  {/* Reformat Canvas Aspect Ratio Toolbar */}
+                  <div className="p-3 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-1.5">
+                        <Crop className="w-3 h-3 text-emerald-500" />
+                        Reformat Canvas Aspect Ratio
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                        {getAspectRatioLabel(editorCropRatio)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 text-xs font-mono">
+                      {[
+                        { id: "original", label: "Original" },
+                        { id: "16:9", label: "16:9" },
+                        { id: "9:16", label: "9:16" },
+                        { id: "1:1", label: "1:1" },
+                        { id: "4:3", label: "4:3" },
+                        { id: "3:4", label: "3:4" },
+                        { id: "21:9", label: "21:9" },
+                      ].map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setEditorCropRatio(r.id)}
+                          className={cn(
+                            "py-1.5 rounded-xl border text-center transition-all cursor-pointer font-bold",
+                            editorCropRatio === r.id
+                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent shadow-xs"
+                              : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                          )}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Quick Bar Under Canvas */}
                   <div className="flex items-center justify-between gap-2 pt-1 font-mono text-xs">
                     <button
                       type="button"
@@ -1142,18 +1320,25 @@ export default function ImageStudioPage() {
                         setEditorContrast(0);
                         setEditorSaturation(0);
                         setEditorSharpness(0);
+                        setEditorHue(0);
+                        setEditorLightness(0);
+                        setEditorTemperature(0);
+                        setEditorTint(0);
+                        setEditorCurvePreset("linear");
                         setEditorFilter("none");
                         setEditorCropRatio("original");
+                        setEditorTextOverlay("");
+                        setEditorResizeEnabled(false);
                       }}
-                      className="text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                      className="text-zinc-500 hover:text-rose-500 transition-colors cursor-pointer text-[11px]"
                     >
-                      Reset Adjustments
+                      Reset All Adjustments
                     </button>
 
                     <button
                       type="button"
                       onClick={() => router.push(`/video?image=${encodeURIComponent(editorImageUrl)}`)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer font-bold"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer font-bold shadow-xs"
                     >
                       <Film className="w-3.5 h-3.5" />
                       <span>Animate to Video</span>
@@ -1161,161 +1346,498 @@ export default function ImageStudioPage() {
                   </div>
                 </div>
 
-                {/* Editor Adjustments Sidebar */}
-                <div className="md:col-span-5 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-5 space-y-4 shadow-sm font-jakarta">
-                  {/* Preset Filters */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
-                      Color Filter LUT
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { id: "none", label: "Original" },
-                        { id: "cinematic", label: "Cinematic" },
-                        { id: "noir", label: "B&W Noir" },
-                        { id: "cyberpunk", label: "Cyberpunk" },
-                        { id: "vintage", label: "Vintage" },
-                        { id: "editorial", label: "Editorial" },
-                      ].map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => setEditorFilter(f.id)}
-                          className={cn(
-                            "px-2.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer truncate",
-                            editorFilter === f.id
-                              ? "bg-emerald-500 text-zinc-950 font-bold shadow-xs"
-                              : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200"
-                          )}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
+                {/* Editor Adjustments Sidebar (Multi-Tab Suite) */}
+                <div className="md:col-span-5 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm font-jakarta">
+                  {/* Category Tabs */}
+                  <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-x-auto custom-scrollbar">
+                    {[
+                      { id: "filters", label: "Filters" },
+                      { id: "hsl", label: "HSL & Color" },
+                      { id: "curves", label: "Curves" },
+                      { id: "text", label: "Text" },
+                      { id: "resize", label: "Resize" },
+                      { id: "export", label: "Export" },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setEditorActiveTab(tab.id as any)}
+                        className={cn(
+                          "px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0",
+                          editorActiveTab === tab.id
+                            ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-xs font-bold"
+                            : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                        )}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Sliders */}
-                  <div className="space-y-3 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
-                        <span>Brightness</span>
-                        <span>{editorBrightness > 0 ? `+${editorBrightness}` : editorBrightness}%</span>
+                  {/* Tab 1: Preset Filters & Core Adjustments */}
+                  {editorActiveTab === "filters" && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                          Color Filter LUT Presets
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { id: "none", label: "Original" },
+                            { id: "cinematic", label: "Cinematic" },
+                            { id: "noir", label: "Film Noir" },
+                            { id: "cyberpunk", label: "Cyberpunk" },
+                            { id: "golden_hour", label: "Golden Hour" },
+                            { id: "vintage", label: "Vintage 70s" },
+                            { id: "editorial", label: "Editorial" },
+                            { id: "vibrant", label: "Vibrant Pop" },
+                            { id: "pastel", label: "Pastel Soft" },
+                          ].map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setEditorFilter(f.id)}
+                              className={cn(
+                                "px-2 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer truncate text-center",
+                                editorFilter === f.id
+                                  ? "bg-emerald-500 text-zinc-950 font-bold shadow-xs"
+                                  : "bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100"
+                              )}
+                            >
+                              {f.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={editorBrightness}
-                        onChange={(e) => setEditorBrightness(Number(e.target.value))}
-                        className="w-full accent-emerald-500 cursor-pointer"
-                      />
-                    </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
-                        <span>Contrast</span>
-                        <span>{editorContrast > 0 ? `+${editorContrast}` : editorContrast}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={editorContrast}
-                        onChange={(e) => setEditorContrast(Number(e.target.value))}
-                        className="w-full accent-emerald-500 cursor-pointer"
-                      />
-                    </div>
+                      <div className="space-y-3 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span>Brightness</span>
+                            <span>{editorBrightness > 0 ? `+${editorBrightness}` : editorBrightness}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-50"
+                            max="50"
+                            value={editorBrightness}
+                            onChange={(e) => setEditorBrightness(Number(e.target.value))}
+                            className="w-full accent-emerald-500 cursor-pointer"
+                          />
+                        </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
-                        <span>Saturation</span>
-                        <span>{editorSaturation > 0 ? `+${editorSaturation}` : editorSaturation}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={editorSaturation}
-                        onChange={(e) => setEditorSaturation(Number(e.target.value))}
-                        className="w-full accent-emerald-500 cursor-pointer"
-                      />
-                    </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span>Contrast</span>
+                            <span>{editorContrast > 0 ? `+${editorContrast}` : editorContrast}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-50"
+                            max="50"
+                            value={editorContrast}
+                            onChange={(e) => setEditorContrast(Number(e.target.value))}
+                            className="w-full accent-emerald-500 cursor-pointer"
+                          />
+                        </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
-                        <span>Sharpness</span>
-                        <span>{editorSharpness}%</span>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span>Saturation</span>
+                            <span>{editorSaturation > 0 ? `+${editorSaturation}` : editorSaturation}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-50"
+                            max="50"
+                            value={editorSaturation}
+                            onChange={(e) => setEditorSaturation(Number(e.target.value))}
+                            className="w-full accent-emerald-500 cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span>Sharpness Texture</span>
+                            <span>{editorSharpness}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={editorSharpness}
+                            onChange={(e) => setEditorSharpness(Number(e.target.value))}
+                            className="w-full accent-emerald-500 cursor-pointer"
+                          />
+                        </div>
                       </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={editorSharpness}
-                        onChange={(e) => setEditorSharpness(Number(e.target.value))}
-                        className="w-full accent-emerald-500 cursor-pointer"
-                      />
                     </div>
+                  )}
+
+                  {/* Tab 2: HSL, Color Temperature & Tint */}
+                  {editorActiveTab === "hsl" && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-400" />
+                              Color Temperature
+                            </span>
+                            <span className="font-bold">
+                              {editorTemperature > 0 ? `+${editorTemperature} (Warm)` : editorTemperature < 0 ? `${editorTemperature} (Cool)` : "Neutral 0"}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-100"
+                            max="100"
+                            value={editorTemperature}
+                            onChange={(e) => setEditorTemperature(Number(e.target.value))}
+                            className="w-full accent-amber-500 cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] font-mono text-zinc-400">
+                            <span>Cool Blue (-100)</span>
+                            <span>Warm Amber (+100)</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-fuchsia-400" />
+                              Tint (Green / Magenta)
+                            </span>
+                            <span className="font-bold">
+                              {editorTint > 0 ? `+${editorTint} (Magenta)` : editorTint < 0 ? `${editorTint} (Green)` : "Neutral 0"}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-100"
+                            max="100"
+                            value={editorTint}
+                            onChange={(e) => setEditorTint(Number(e.target.value))}
+                            className="w-full accent-fuchsia-500 cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] font-mono text-zinc-400">
+                            <span>Green (-100)</span>
+                            <span>Magenta (+100)</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span className="flex items-center gap-1.5">
+                              <Palette className="w-3.5 h-3.5 text-indigo-400" />
+                              Hue Wheel Angle
+                            </span>
+                            <span className="font-bold">{editorHue}°</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-180"
+                            max="180"
+                            value={editorHue}
+                            onChange={(e) => setEditorHue(Number(e.target.value))}
+                            className="w-full accent-indigo-500 cursor-pointer"
+                          />
+                          {/* Visual Rainbow Spectrum Strip */}
+                          <div className="h-2 rounded-full w-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-cyan-400 via-blue-500 via-purple-500 to-red-500 opacity-85" />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span>Lightness Shift</span>
+                            <span>{editorLightness > 0 ? `+${editorLightness}` : editorLightness}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-50"
+                            max="50"
+                            value={editorLightness}
+                            onChange={(e) => setEditorLightness(Number(e.target.value))}
+                            className="w-full accent-emerald-500 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 3: Curves Tone Grading */}
+                  {editorActiveTab === "curves" && (
+                    <div className="space-y-3 animate-in fade-in duration-150">
+                      <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                        Curve Color Grading Presets
+                      </label>
+                      <div className="space-y-2">
+                        {[
+                          { id: "linear", name: "Linear (Default)", desc: "Neutral flat tone response without contrast curve" },
+                          { id: "s_curve", name: "S-Curve (High Definition)", desc: "Punchy contrast, deeper rich blacks, and luminous highlights" },
+                          { id: "matte", name: "Faded Matte Film", desc: "Lifted darks, muted vintage blacks, and soft retro skin tones" },
+                          { id: "high_contrast", name: "High Contrast Punch", desc: "Dramatic commercial shadows with crisp high dynamic range" },
+                          { id: "moody", name: "Moody Blockbuster", desc: "Hollywood teal shadows with warm amber skin highlights" },
+                        ].map((c) => (
+                          <div
+                            key={c.id}
+                            onClick={() => setEditorCurvePreset(c.id)}
+                            className={cn(
+                              "p-3 rounded-xl border text-left cursor-pointer transition-all",
+                              editorCurvePreset === c.id
+                                ? "bg-emerald-500/10 border-emerald-500 text-emerald-950 dark:text-emerald-200 shadow-xs"
+                                : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200/70 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-mono font-bold">{c.name}</span>
+                              {editorCurvePreset === c.id && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">{c.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 4: Typography & Text Overlay */}
+                  {editorActiveTab === "text" && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                          Overlay Caption / Watermark
+                        </label>
+                        <input
+                          type="text"
+                          value={editorTextOverlay}
+                          onChange={(e) => setEditorTextOverlay(e.target.value)}
+                          placeholder="Type overlay text (e.g. SUMMER 2026)..."
+                          className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-jakarta focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                          Position
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5 text-xs font-mono">
+                          {["top", "center", "bottom"].map((pos) => (
+                            <button
+                              key={pos}
+                              type="button"
+                              onClick={() => setEditorTextPosition(pos)}
+                              className={cn(
+                                "py-1.5 rounded-xl border uppercase transition-all cursor-pointer font-bold",
+                                editorTextPosition === pos
+                                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent"
+                                  : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                              )}
+                            >
+                              {pos}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                          <span>Font Size</span>
+                          <span>{editorTextSize}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="16"
+                          max="72"
+                          value={editorTextSize}
+                          onChange={(e) => setEditorTextSize(Number(e.target.value))}
+                          className="w-full accent-emerald-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                          Text Color
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {[
+                            { color: "#ffffff", label: "White" },
+                            { color: "#fbbf24", label: "Gold" },
+                            { color: "#06b6d4", label: "Cyan" },
+                            { color: "#ec4899", label: "Pink" },
+                            { color: "#10b981", label: "Emerald" },
+                            { color: "#18181b", label: "Black" },
+                          ].map((c) => (
+                            <button
+                              key={c.color}
+                              type="button"
+                              onClick={() => setEditorTextColor(c.color)}
+                              className={cn(
+                                "w-7 h-7 rounded-full border-2 transition-transform cursor-pointer shadow-xs",
+                                editorTextColor === c.color ? "scale-115 border-emerald-500" : "border-white/30"
+                              )}
+                              style={{ backgroundColor: c.color }}
+                              title={c.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 5: Dimensions & Resize */}
+                  {editorActiveTab === "resize" && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-black/[0.06] dark:border-white/[0.06]">
+                        <div>
+                          <span className="text-xs font-bold text-zinc-900 dark:text-white block">Custom Canvas Resize</span>
+                          <span className="text-[10px] font-mono text-zinc-500">Rescale pixels with Lanczos resampling</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editorResizeEnabled}
+                          onChange={(e) => setEditorResizeEnabled(e.target.checked)}
+                          className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                        />
+                      </div>
+
+                      {editorResizeEnabled && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3 font-mono text-xs">
+                            <div>
+                              <label className="text-[10px] uppercase text-zinc-500 block mb-1">Width (px)</label>
+                              <input
+                                type="number"
+                                value={editorWidth}
+                                onChange={(e) => setEditorWidth(Number(e.target.value))}
+                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase text-zinc-500 block mb-1">Height (px)</label>
+                              <input
+                                type="number"
+                                value={editorHeight}
+                                onChange={(e) => setEditorHeight(Number(e.target.value))}
+                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                              Quick Dimension Presets
+                            </label>
+                            <div className="grid grid-cols-2 gap-1.5 font-mono text-xs">
+                              {[
+                                { label: "1080p FHD (1920x1080)", w: 1920, h: 1080 },
+                                { label: "2K QHD (2560x1440)", w: 2560, h: 1440 },
+                                { label: "4K UHD (3840x2160)", w: 3840, h: 2160 },
+                                { label: "Square (1080x1080)", w: 1080, h: 1080 },
+                                { label: "Story (1080x1920)", w: 1080, h: 1920 },
+                              ].map((p) => (
+                                <button
+                                  key={p.label}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditorWidth(p.w);
+                                    setEditorHeight(p.h);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 text-[11px] truncate text-left hover:border-emerald-500 cursor-pointer"
+                                >
+                                  {p.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 6: Export, Compression & Super-Resolution */}
+                  {editorActiveTab === "export" && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                          Output Format
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
+                          {[
+                            { id: "png", label: "PNG (Lossless)" },
+                            { id: "jpeg", label: "JPEG (Photo)" },
+                            { id: "webp", label: "WEBP (Compact)" },
+                          ].map((fmt) => (
+                            <button
+                              key={fmt.id}
+                              type="button"
+                              onClick={() => setEditorOutputFormat(fmt.id)}
+                              className={cn(
+                                "py-2 rounded-xl border text-center transition-all cursor-pointer font-bold",
+                                editorOutputFormat === fmt.id
+                                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent"
+                                  : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+                              )}
+                            >
+                              {fmt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                          <span>Compression Quality</span>
+                          <span className="font-bold">{editorCompressionQuality}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="40"
+                          max="100"
+                          value={editorCompressionQuality}
+                          onChange={(e) => setEditorCompressionQuality(Number(e.target.value))}
+                          className="w-full accent-emerald-500 cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[9px] font-mono text-zinc-400">
+                          <span>Smaller File</span>
+                          <span>Maximum Clarity</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-black/[0.06] dark:border-white/[0.06]">
+                        <div>
+                          <span className="text-xs font-bold text-zinc-900 dark:text-white block">AI Super-Resolution 4K</span>
+                          <span className="text-[10px] font-mono text-zinc-500">Sharpen micro-textures & double resolution</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editorUpscale}
+                          onChange={(e) => setEditorUpscale(e.target.checked)}
+                          className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Primary Save & Export Action Button */}
+                  <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleApplyImageEdit}
+                      disabled={processingImageEdit}
+                      className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs tracking-tight shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {processingImageEdit ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Rendering & Exporting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Save & Export to Vault</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-
-                  {/* Crop / Reformat Aspect Ratio */}
-                  <div className="space-y-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
-                      Reformat Canvas
-                    </label>
-                    <div className="grid grid-cols-4 gap-1.5 text-xs font-mono">
-                      {["original", "16:9", "9:16", "1:1"].map((r) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setEditorCropRatio(r)}
-                          className={cn(
-                            "py-1.5 rounded-lg border text-center transition-all cursor-pointer uppercase",
-                            editorCropRatio === r
-                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold border-transparent"
-                              : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
-                          )}
-                        >
-                          {r}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Upscale Toggle */}
-                  <div className="flex items-center justify-between pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <div>
-                      <span className="text-xs font-bold text-zinc-900 dark:text-white block font-heading">
-                        AI Super-Resolution 4K
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500">Sharpen micro-textures & skin details</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editorUpscale}
-                      onChange={(e) => setEditorUpscale(e.target.checked)}
-                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="button"
-                    onClick={handleApplyImageEdit}
-                    disabled={processingImageEdit}
-                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs tracking-tight shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {processingImageEdit ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Rendering Edits...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Save & Export to Vault</span>
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
             ) : (
@@ -1333,7 +1855,7 @@ export default function ImageStudioPage() {
                     {uploadingEditorImage ? "Uploading Image..." : "Click or drag an image here to edit"}
                   </p>
                   <p className="text-xs text-zinc-400 font-mono">
-                    PNG, JPG, WEBP • Adjust lighting, apply film LUTs & upscale
+                    PNG, JPG, WEBP • HSL, Color Wheel, Tone Curves, Text & 4K Super-Resolution
                   </p>
                 </div>
               </div>
@@ -1930,7 +2452,12 @@ export default function ImageStudioPage() {
                 <div
                   key={i}
                   onClick={() => {
-                    setRefImageUrl(img);
+                    if (studioMode === "image_editor") {
+                      setEditorImageUrl(img);
+                      setPromptDockCollapsed(true);
+                    } else {
+                      setRefImageUrl(img);
+                    }
                     setVaultOpen(false);
                   }}
                   className="rounded-xl overflow-hidden aspect-square border border-black/[0.08] dark:border-white/[0.08] hover:border-violet-500/50 cursor-pointer transition-colors"

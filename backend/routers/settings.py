@@ -258,3 +258,51 @@ async def test_database(req: TestDbRequest, request: Request):
 @limiter.limit("10/minute")
 async def test_storage(request: Request):
     return test_r2_connection()
+
+@router.get("/ping")
+@limiter.limit("120/minute")
+async def ping_health(request: Request):
+    import time
+    return {
+        "status": "online",
+        "timestamp": time.time(),
+        "server": "OmniStudio Neural Engine",
+        "version": "5.0.0"
+    }
+
+@router.post("/cache-clear", dependencies=[Depends(require_admin_token)])
+@limiter.limit("10/minute")
+async def clear_system_cache(request: Request):
+    import os
+    import shutil
+    from pathlib import Path
+    
+    freed_bytes = 0
+    files_removed = 0
+    
+    # 1. Clean temp directory if exists
+    temp_dirs = [
+        settings.OUTPUTS_PATH / "temp",
+        Path("/tmp/omnistudio"),
+    ]
+    
+    for tdir in temp_dirs:
+        if tdir.exists() and tdir.is_dir():
+            for item in tdir.iterdir():
+                try:
+                    if item.is_file():
+                        freed_bytes += item.stat().st_size
+                        item.unlink()
+                        files_removed += 1
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                except Exception:
+                    pass
+                    
+    return {
+        "success": True,
+        "message": f"Cache purged successfully. Removed {files_removed} temp files.",
+        "freed_bytes": freed_bytes,
+        "freed_mb": round(freed_bytes / (1024 * 1024), 2),
+        "files_removed": files_removed
+    }

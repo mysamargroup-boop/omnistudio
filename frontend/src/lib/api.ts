@@ -351,6 +351,12 @@ export const api = {
   updateKeys: (data: any) => fetchApi<any>("/api/settings/keys", { method: "POST", body: JSON.stringify(data) }),
   testDatabase: (url?: string) => fetchApi<any>("/api/settings/test-db", { method: "POST", body: JSON.stringify({ database_url: url }) }),
   testStorage: () => fetchApi<any>("/api/settings/test-r2", { method: "POST" }),
+  clearCache: () => fetchApi<any>("/api/settings/cache-clear", { method: "POST" }),
+  pingLatency: async () => {
+    const start = performance.now();
+    await fetchApi<any>("/api/settings/ping");
+    return Math.round(performance.now() - start);
+  },
 
   // Analytics & Usage
   getUsageSummary: () => fetchApi<any>("/api/analytics/summary"),

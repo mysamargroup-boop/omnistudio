@@ -51,11 +51,22 @@ const PRESETS = [
   { genre: "Fantasy", text: "Mythic dragon soaring over misty Scandinavian fjords with auroras dancing across the midnight sky" },
 ];
 
-const IMAGE_MODELS = [
-  { id: "gemini_flash_image", label: "Gemini Flash 2.0", badge: "Fast • High Detail" },
-  { id: "flux-schnell", label: "FLUX Schnell", badge: "Sub-Second Latency" },
-  { id: "flux_dev", label: "FLUX Dev", badge: "Studio Coherence" },
-  { id: "dall-e-3", label: "OpenAI DALL-E 3", badge: "Photoreal Aesthetics" },
+interface PipelineModelOption {
+  id: string;
+  name: string;
+  badge: string;
+  provider: string;
+  description: string;
+  active?: boolean;
+}
+
+const PIPELINE_IMAGE_MODELS: PipelineModelOption[] = [
+  { id: "gemini_flash_image", name: "Gemini Flash 2.0", badge: "FAST", provider: "Google DeepMind", description: "Sub-second photo diffusion", active: false },
+  { id: "imagen_3", name: "Google Imagen 3", badge: "PRO", provider: "Google Cloud AI", description: "Photoreal lighting & textures", active: false },
+  { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "4K Composition precision", active: false },
+  { id: "dall-e-3", name: "OpenAI DALL-E 3", badge: "HD", provider: "OpenAI", description: "High prompt adherence", active: false },
+  { id: "flux-schnell", name: "FLUX.1 Schnell", badge: "FAST", provider: "Replicate", description: "Rapid latent diffusion", active: false },
+  { id: "flux_dev", name: "FLUX.1 Dev", badge: "DEV", provider: "Replicate", description: "Studio guidance coherence", active: false },
 ];
 
 const STYLES = [
@@ -74,6 +85,7 @@ function PipelineContent() {
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [voiceProvider, setVoiceProvider] = useState("edge");
   const [imageModel, setImageModel] = useState("gemini_flash_image");
+  const [availableModels, setAvailableModels] = useState<PipelineModelOption[]>(PIPELINE_IMAGE_MODELS);
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
   const [statusText, setStatusText] = useState("");
@@ -101,6 +113,25 @@ function PipelineContent() {
   const scrollToStage = () => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const scrollToResult = () => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  // Fetch live active models based on user API keys
+  useEffect(() => {
+    api.getImageModels()
+      .then((data: any) => {
+        if (data && data.models && Array.isArray(data.models)) {
+          const activeMap = new Map<string, boolean>(
+            data.models.map((m: { id: string; active?: boolean }) => [m.id, Boolean(m.active)])
+          );
+          setAvailableModels((prev) =>
+            prev.map((m) => ({
+              ...m,
+              active: activeMap.has(m.id) ? Boolean(activeMap.get(m.id)) : false,
+            }))
+          );
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch image models for pipeline:", err));
+  }, []);
+
   // Unmount cleanup for timers and active streaming connection
   useEffect(() => {
     return () => {
@@ -125,11 +156,13 @@ function PipelineContent() {
     const costPerScene = isEdge ? 0.04 : 0.06;
     const costUsd = costPerScene * scenes;
     const costInr = Math.round(costUsd * 83.5 * 100) / 100;
+    const currentModelObj = availableModels.find((m) => m.id === imageModel);
+    const modelDisplayName = currentModelObj ? currentModelObj.name : imageModel;
 
     setConfirmDetails({
       serviceType: "pipeline",
-      modelName: `Autonomous Cinema Agent (${scenes} Scenes)`,
-      provider: isEdge ? "OpenAI DALL-E 3 + Edge Neural + FFmpeg" : "OpenAI DALL-E 3 + ElevenLabs + FFmpeg",
+      modelName: `${modelDisplayName} (${scenes} Scenes)`,
+      provider: isEdge ? `${modelDisplayName} + Edge Neural + FFmpeg` : `${modelDisplayName} + ElevenLabs + FFmpeg`,
       isFree: false,
       costUsd,
       costInr,
@@ -282,7 +315,7 @@ function PipelineContent() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.25em] text-zinc-500 uppercase">
-            <span className="text-violet-500 font-bold">CINEMA STUDIO 5.0</span>
+            <span className="text-emerald-500 font-bold">CINEMA STUDIO 5.0</span>
             <span>•</span>
             <span>AUTONOMOUS PIPELINE DIRECTOR</span>
           </div>
@@ -306,7 +339,7 @@ function PipelineContent() {
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               loading
-                ? "bg-violet-600 text-white font-bold animate-pulse"
+                ? "bg-emerald-600 text-white font-bold animate-pulse shadow-sm"
                 : "text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800"
             )}
           >
@@ -329,16 +362,201 @@ function PipelineContent() {
       <div ref={deskRef} className="scroll-mt-6 space-y-6">
         <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
           {/* Subtle decorative background ambient glow */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/[0.03] rounded-full blur-3xl pointer-events-none" />
 
           <div className="space-y-6 relative z-10">
-            {/* Screenplay Directive Prompt Box */}
-            <div className="space-y-2">
+            {/* ── TOP PART: PRODUCTION CONTROLS MATRIX (Boxes on Top) ── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between font-mono pb-1 border-b border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <label className="text-[11px] text-zinc-700 dark:text-zinc-300 uppercase tracking-widest font-bold">
+                    01 • PRODUCTION SPECIFICATIONS & ENGINE DYNAMICS
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Scene Timeline */}
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
+                    SCENE TIMELINE
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { num: 2, label: "2 Scenes", desc: "~10s Teaser" },
+                      { num: 3, label: "3 Scenes", desc: "~15s Short" },
+                      { num: 4, label: "4 Scenes", desc: "~20s Cinema" },
+                      { num: 5, label: "5 Scenes", desc: "~25s Feature" },
+                    ].map((item) => (
+                      <button
+                        key={item.num}
+                        type="button"
+                        onClick={() => setScenes(item.num)}
+                        className={cn(
+                          "p-2 rounded-xl border text-center transition-all cursor-pointer",
+                          scenes === item.num
+                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
+                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
+                        )}
+                      >
+                        <span className="text-xs font-bold font-heading block">{item.label}</span>
+                        <span className="text-[8px] font-mono opacity-80 block">{item.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Visual Diffusion Engine (with dynamic active API green badges) */}
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
+                      DIFFUSION ENGINE
+                    </label>
+                    <span className="text-[9px] font-mono text-zinc-400">
+                      {availableModels.filter((m) => m.active).length} Active
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto custom-scrollbar pr-0.5">
+                    {availableModels.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setImageModel(m.id)}
+                        className={cn(
+                          "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer",
+                          imageModel === m.id
+                            ? "bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500 text-zinc-950 dark:text-white shadow-xs"
+                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-semibold block truncate">{m.name}</span>
+                          <span className="text-[8px] font-mono text-zinc-400 dark:text-zinc-500 block truncate">
+                            {m.description}
+                          </span>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-1">
+                          {m.active ? (
+                            <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              ACTIVE
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center text-[8px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-700/60 font-medium">
+                              KEY REQ
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Aesthetic Style */}
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
+                    AESTHETIC STYLE
+                  </label>
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto custom-scrollbar pr-0.5">
+                    {STYLES.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setStyle(s.id)}
+                        className={cn(
+                          "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
+                          style === s.id
+                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
+                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
+                        )}
+                      >
+                        <span className="text-[11px] font-semibold">{s.label}</span>
+                        <span className="text-[8px] font-mono opacity-70 truncate max-w-[100px]">{s.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Aspect Ratio & Speech Engine */}
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                  <div>
+                    <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
+                      ASPECT RATIO
+                    </label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {[
+                        { id: "16:9", label: "16:9", desc: "Cinema" },
+                        { id: "9:16", label: "9:16", desc: "Shorts" },
+                        { id: "1:1", label: "1:1", desc: "Square" },
+                      ].map((ar) => (
+                        <button
+                          key={ar.id}
+                          type="button"
+                          onClick={() => setAspectRatio(ar.id)}
+                          className={cn(
+                            "py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer",
+                            aspectRatio === ar.id
+                              ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
+                              : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
+                          )}
+                        >
+                          <span className="text-[10px] font-bold block">{ar.label}</span>
+                          <span className="text-[8px] font-mono opacity-70 block">{ar.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
+                      NEURAL SPEECH ENGINE
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setVoiceProvider("edge")}
+                        className={cn(
+                          "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                          voiceProvider === "edge"
+                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
+                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
+                        )}
+                      >
+                        <span className="text-[11px] font-bold block">Edge Neural</span>
+                        <span className="text-[8px] font-mono text-emerald-500 block font-semibold">
+                          Free / Instant
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVoiceProvider("elevenlabs")}
+                        className={cn(
+                          "p-2 rounded-xl border text-left transition-all cursor-pointer",
+                          voiceProvider === "elevenlabs"
+                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
+                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
+                        )}
+                      >
+                        <span className="text-[11px] font-bold block">ElevenLabs</span>
+                        <span className="text-[8px] font-mono text-zinc-400 block font-semibold">
+                          Studio Voice
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── BOTTOM PART: SCREENPLAY NARRATIVE DIRECTIVE (Prompt Box on Bottom) ── */}
+            <div className="space-y-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
               <div className="flex items-center justify-between font-mono">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-violet-500" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <label className="text-[11px] text-zinc-700 dark:text-zinc-300 uppercase tracking-widest font-bold">
-                    SCREENPLAY NARRATIVE DIRECTIVE
+                    02 • SCREENPLAY NARRATIVE DIRECTIVE
                   </label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -355,7 +573,7 @@ function PipelineContent() {
                     type="button"
                     onClick={enhancePrompt}
                     disabled={enhancing || !topic.trim()}
-                    className="flex items-center gap-1.5 text-[10px] text-violet-700 dark:text-violet-300 hover:text-violet-900 dark:hover:text-white transition-colors cursor-pointer border border-violet-200 dark:border-violet-500/30 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 disabled:opacity-40"
+                    className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white transition-colors cursor-pointer border border-emerald-300 dark:border-emerald-500/30 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-40"
                   >
                     <Wand2 className={cn("h-3 w-3", enhancing && "animate-spin")} />
                     <span>{enhancing ? "ENHANCING SCRIPT..." : "AI SCRIPT ENHANCE"}</span>
@@ -367,11 +585,11 @@ function PipelineContent() {
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone..."
-                className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all font-jakarta leading-relaxed"
+                className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed"
               />
 
               {/* Inspiration Presets */}
-              <div className="pt-2 space-y-2 font-mono">
+              <div className="pt-1 space-y-2 font-mono">
                 <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
                   QUICK INSPIRATION PRESETS:
                 </span>
@@ -381,164 +599,12 @@ function PipelineContent() {
                       key={i}
                       type="button"
                       onClick={() => setTopic(p.text)}
-                      className="text-[10px] px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-violet-700 dark:hover:text-violet-300 hover:border-violet-200 dark:hover:border-violet-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+                      className="text-[10px] px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1.5"
                     >
-                      <span className="font-bold text-violet-500">[{p.genre}]</span>
+                      <span className="font-bold text-emerald-500">[{p.genre}]</span>
                       <span className="truncate max-w-[220px]">{p.text}</span>
                     </button>
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Production Controls Matrix */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-              {/* 1. Scene Timeline */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
-                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
-                  SCENE TIMELINE
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { num: 2, label: "2 Scenes", desc: "~10s Teaser" },
-                    { num: 3, label: "3 Scenes", desc: "~15s Short" },
-                    { num: 4, label: "4 Scenes", desc: "~20s Cinema" },
-                    { num: 5, label: "5 Scenes", desc: "~25s Feature" },
-                  ].map((item) => (
-                    <button
-                      key={item.num}
-                      type="button"
-                      onClick={() => setScenes(item.num)}
-                      className={cn(
-                        "p-2 rounded-xl border text-center transition-all cursor-pointer",
-                        scenes === item.num
-                          ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-violet-300"
-                      )}
-                    >
-                      <span className="text-xs font-bold font-heading block">{item.label}</span>
-                      <span className="text-[8px] font-mono opacity-80 block">{item.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2. Visual Diffusion Engine */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
-                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
-                  DIFFUSION ENGINE
-                </label>
-                <div className="space-y-1.5">
-                  {IMAGE_MODELS.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setImageModel(m.id)}
-                      className={cn(
-                        "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
-                        imageModel === m.id
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30 shadow-sm"
-                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
-                      )}
-                    >
-                      <span className="text-[11px] font-semibold">{m.label}</span>
-                      <span className="text-[8px] font-mono opacity-70">{m.badge}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3. Aesthetic Style */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
-                <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
-                  AESTHETIC STYLE
-                </label>
-                <div className="space-y-1.5">
-                  {STYLES.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setStyle(s.id)}
-                      className={cn(
-                        "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
-                        style === s.id
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30 shadow-sm"
-                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300"
-                      )}
-                    >
-                      <span className="text-[11px] font-semibold">{s.label}</span>
-                      <span className="text-[8px] font-mono opacity-70 truncate max-w-[110px]">{s.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 4. Aspect Ratio & Speech Engine */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
-                <div>
-                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
-                    ASPECT RATIO
-                  </label>
-                  <div className="grid grid-cols-3 gap-1">
-                    {[
-                      { id: "16:9", label: "16:9", desc: "Cinema" },
-                      { id: "9:16", label: "9:16", desc: "Shorts" },
-                      { id: "1:1", label: "1:1", desc: "Square" },
-                    ].map((ar) => (
-                      <button
-                        key={ar.id}
-                        type="button"
-                        onClick={() => setAspectRatio(ar.id)}
-                        className={cn(
-                          "py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer",
-                          aspectRatio === ar.id
-                            ? "bg-violet-600 text-white border-violet-600"
-                            : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
-                        )}
-                      >
-                        <span className="text-[10px] font-bold block">{ar.label}</span>
-                        <span className="text-[8px] font-mono opacity-70 block">{ar.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
-                    NEURAL SPEECH ENGINE
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setVoiceProvider("edge")}
-                      className={cn(
-                        "p-2 rounded-xl border text-left transition-all cursor-pointer",
-                        voiceProvider === "edge"
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30"
-                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
-                      )}
-                    >
-                      <span className="text-[11px] font-bold block">Edge Neural</span>
-                      <span className="text-[8px] font-mono text-emerald-600 dark:text-emerald-400 block font-semibold">
-                        Free / Instant
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVoiceProvider("elevenlabs")}
-                      className={cn(
-                        "p-2 rounded-xl border text-left transition-all cursor-pointer",
-                        voiceProvider === "elevenlabs"
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-500/30"
-                          : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
-                      )}
-                    >
-                      <span className="text-[11px] font-bold block">ElevenLabs</span>
-                      <span className="text-[8px] font-mono text-violet-600 dark:text-violet-400 block font-semibold">
-                        Studio Voice
-                      </span>
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -547,7 +613,7 @@ function PipelineContent() {
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-black/[0.06] dark:border-white/[0.06]">
               <div className="flex items-center gap-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">
                 <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-violet-500" />
+                  <Clock className="w-3.5 h-3.5 text-emerald-500" />
                   Estimated Runtime: ~{scenes * 7}s
                 </span>
                 <span>•</span>

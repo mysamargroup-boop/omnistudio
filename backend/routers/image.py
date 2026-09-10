@@ -6,7 +6,9 @@ from limiter import limiter
 import uuid
 import asyncio
 import shutil
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageDraw, ImageFont
+import math
+import colorsys
 
 from config import settings
 from services.openai_service import generate_openai_image
@@ -549,14 +551,33 @@ async def list_image_models(request: Request):
 
 
 class ImageEditRequest(BaseModel):
-    filename: str
+    filename: Optional[str] = None
+    image_path: Optional[str] = None
     brightness: Optional[float] = 1.0
     contrast: Optional[float] = 1.0
     saturation: Optional[float] = 1.0
     sharpness: Optional[float] = 1.0
     upscale_factor: Optional[int] = 1
+    upscale: Optional[bool] = False
     filter: Optional[str] = "none"
     aspect_ratio: Optional[str] = None
+    # Advanced color & tone
+    hue: Optional[float] = 0.0          # -180 to 180
+    lightness: Optional[float] = 0.0    # -50 to 50
+    temperature: Optional[float] = 0.0  # -100 to 100
+    tint: Optional[float] = 0.0         # -100 to 100
+    curve_preset: Optional[str] = None # linear, s_curve, matte, high_contrast, moody
+    # Text overlay
+    text_overlay: Optional[str] = None
+    text_position: Optional[str] = "bottom"  # top, center, bottom
+    text_color: Optional[str] = "#ffffff"
+    text_size: Optional[int] = 32
+    # Resize & dimensions
+    resize_width: Optional[int] = None
+    resize_height: Optional[int] = None
+    # Compression & output format
+    compression_quality: Optional[int] = 90
+    output_format: Optional[str] = "png"  # png, jpeg, webp
 
 
 @router.post("/upload")
@@ -615,54 +636,195 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 @router.post("/edit")
 @limiter.limit("20/minute")
 async def edit_image(req: ImageEditRequest, request: Request):
-    """Edit an existing image with filters, adjustments, upscaling, and aspect ratio crop"""
-    clean_name = sanitize_filename(req.filename)
-    src_file = settings.IMAGES_PATH / clean_name
+    """Edit an existing image with filters, HSL, color temperature, curves, text, upscaling, and aspect ratio crop"""
+    target_name = None
+    if req.filename and req.filename.strip():
+        target_name = sanitize_filename(req.filename.strip())
+    elif req.image_path and req.image_path.strip():
+        target_name = sanitize_filename(Path(req.image_path.strip()).name)
+
+    if not target_name:
+        raise HTTPException(status_code=400, detail="Missing filename or image_path")
+
+    src_file = settings.IMAGES_PATH / target_name
     if not src_file.exists():
-        raise HTTPException(status_code=404, detail="Source image not found")
+        alt_paths = [
+            settings.OUTPUTS_PATH / "images" / target_name,
+            settings.OUTPUTS_PATH / target_name,
+        ]
+        found = False
+        for p in alt_paths:
+            if p.exists():
+                src_file = p
+                found = True
+                break
+        if not found:
+            raise HTTPException(status_code=404, detail=f"Source image '{target_name}' not found")
 
     try:
         img = Image.open(src_file).convert("RGB")
 
-        # 1. Adjustments
+        # 1. Exposure & Tone Adjustments (normalize slider offset vs multiplier)
         if req.brightness is not None and req.brightness != 1.0:
+            if req.brightness > 5.0 or req.brightness < 0 or req.brightness == 0:
+                b_mult = 1.0 + (req.brightness / 100.0)
+            else:
+                b_mult = req.brightness
             enhancer = ImageEnhance.Brightness(img)
-            img = enhancer.enhance(max(0.2, min(req.brightness, 2.5)))
+            img = enhancer.enhance(max(0.1, min(b_mult, 3.0)))
 
         if req.contrast is not None and req.contrast != 1.0:
+            if req.contrast > 5.0 or req.contrast < 0 or req.contrast == 0:
+                c_mult = 1.0 + (req.contrast / 100.0)
+            else:
+                c_mult = req.contrast
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(max(0.2, min(req.contrast, 2.5)))
+            img = enhancer.enhance(max(0.1, min(c_mult, 3.0)))
 
         if req.saturation is not None and req.saturation != 1.0:
+            if req.saturation > 5.0 or req.saturation < 0 or req.saturation == 0:
+                s_mult = 1.0 + (req.saturation / 100.0)
+            else:
+                s_mult = req.saturation
             enhancer = ImageEnhance.Color(img)
-            img = enhancer.enhance(max(0.0, min(req.saturation, 2.5)))
+            img = enhancer.enhance(max(0.0, min(s_mult, 3.0)))
 
-        if req.sharpness is not None and req.sharpness != 1.0:
+        if req.sharpness is not None and req.sharpness != 1.0 and req.sharpness != 0:
+            if req.sharpness > 1.0:
+                sh_mult = 1.0 + (req.sharpness / 50.0)
+            else:
+                sh_mult = req.sharpness
             enhancer = ImageEnhance.Sharpness(img)
-            img = enhancer.enhance(max(0.0, min(req.sharpness, 3.0)))
+            img = enhancer.enhance(max(0.0, min(sh_mult, 3.5)))
 
-        # 2. Cinematic Filters
-        if req.filter == "black_white":
+        # 2. HSL: Hue Shift
+        if req.hue and abs(req.hue) > 0.5:
+            angle = math.radians(req.hue)
+            cosA = math.cos(angle)
+            sinA = math.sin(angle)
+            matrix = (
+                0.213 + cosA * 0.787 - sinA * 0.213,  0.715 - cosA * 0.715 - sinA * 0.715,  0.072 - cosA * 0.072 + sinA * 0.928, 0.0,
+                0.213 - cosA * 0.213 + sinA * 0.143,  0.715 + cosA * 0.285 + sinA * 0.140,  0.072 - cosA * 0.072 - sinA * 0.283, 0.0,
+                0.213 - cosA * 0.213 - sinA * 0.787,  0.715 - cosA * 0.715 + sinA * 0.715,  0.072 + cosA * 0.928 + sinA * 0.072, 0.0
+            )
+            img = img.convert("RGB", matrix)
+
+        # 3. HSL: Lightness Shift
+        if req.lightness and abs(req.lightness) > 0.5:
+            l_mult = 1.0 + (req.lightness / 100.0)
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(max(0.1, min(l_mult, 2.5)))
+
+        # 4. Color Temperature (Warm / Cool) & Tint (Green / Magenta)
+        if req.temperature and abs(req.temperature) > 0.5:
+            t = max(-1.0, min(1.0, req.temperature / 100.0))
+            r, g, b = img.split()
+            if t > 0:
+                r = r.point(lambda i: min(255, int(i * (1.0 + t * 0.22))))
+                b = b.point(lambda i: max(0, int(i * (1.0 - t * 0.18))))
+            else:
+                b = b.point(lambda i: min(255, int(i * (1.0 - t * 0.22))))
+                r = r.point(lambda i: max(0, int(i * (1.0 + t * 0.18))))
+            img = Image.merge("RGB", (r, g, b))
+
+        if req.tint and abs(req.tint) > 0.5:
+            ti = max(-1.0, min(1.0, req.tint / 100.0))
+            r, g, b = img.split()
+            if ti > 0:
+                r = r.point(lambda i: min(255, int(i * (1.0 + ti * 0.14))))
+                b = b.point(lambda i: min(255, int(i * (1.0 + ti * 0.14))))
+                g = g.point(lambda i: max(0, int(i * (1.0 - ti * 0.14))))
+            else:
+                g = g.point(lambda i: min(255, int(i * (1.0 - ti * 0.18))))
+                r = r.point(lambda i: max(0, int(i * (1.0 + ti * 0.08))))
+            img = Image.merge("RGB", (r, g, b))
+
+        # 5. Curve Color Grading Presets
+        if req.curve_preset and req.curve_preset != "linear":
+            if req.curve_preset == "s_curve":
+                def s_curve_fn(x):
+                    norm = x / 255.0
+                    val = 0.5 * (1.0 + math.sin(math.pi * (norm - 0.5)))
+                    return int(max(0, min(255, val * 255)))
+                lut = [s_curve_fn(i) for i in range(256)]
+                img = img.point(lut * 3)
+            elif req.curve_preset == "matte":
+                def matte_fn(x):
+                    return int(28 + (x / 255.0) * (242 - 28))
+                lut = [matte_fn(i) for i in range(256)]
+                img = img.point(lut * 3)
+            elif req.curve_preset == "high_contrast":
+                def hc_fn(x):
+                    if x < 128:
+                        return int(max(0, x * 0.82))
+                    return int(min(255, 128 + (x - 128) * 1.28))
+                lut = [hc_fn(i) for i in range(256)]
+                img = img.point(lut * 3)
+            elif req.curve_preset == "moody":
+                r, g, b = img.split()
+                r = r.point(lambda i: min(255, int(i * 1.12 + 8)))
+                b = b.point(lambda i: min(255, int(i * 1.14 + (16 if i < 128 else -8))))
+                img = Image.merge("RGB", (r, g, b))
+
+        # 6. Cinematic & Creative Filters
+        if req.filter in {"black_white", "noir"}:
             img = ImageOps.grayscale(img).convert("RGB")
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(1.22)
         elif req.filter == "sepia":
             gray = ImageOps.grayscale(img)
-            img = ImageOps.colorize(gray, "#2e1c0c", "#ffebd2")
+            img = ImageOps.colorize(gray, "#26170a", "#fbe8d0")
         elif req.filter == "cyberpunk":
             r, g, b = img.split()
-            r = r.point(lambda i: min(255, int(i * 1.2 + 20)))
-            b = b.point(lambda i: min(255, int(i * 1.3 + 30)))
+            r = r.point(lambda i: min(255, int(i * 1.25 + 25)))
+            b = b.point(lambda i: min(255, int(i * 1.35 + 35)))
             img = Image.merge("RGB", (r, g, b))
         elif req.filter == "cinematic":
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.15)
+            img = enhancer.enhance(1.18)
             r, g, b = img.split()
             g = g.point(lambda i: min(255, int(i * 1.05)))
-            b = b.point(lambda i: min(255, int(i * 0.95)))
+            b = b.point(lambda i: min(255, int(i * 0.94)))
             img = Image.merge("RGB", (r, g, b))
+        elif req.filter == "golden_hour":
+            r, g, b = img.split()
+            r = r.point(lambda i: min(255, int(i * 1.2 + 15)))
+            g = g.point(lambda i: min(255, int(i * 1.08 + 5)))
+            b = b.point(lambda i: max(0, int(i * 0.88 - 5)))
+            img = Image.merge("RGB", (r, g, b))
+        elif req.filter == "vintage":
+            enhancer = ImageEnhance.Color(img)
+            img = enhancer.enhance(0.75)
+            r, g, b = img.split()
+            r = r.point(lambda i: min(255, int(i * 1.1 + 10)))
+            b = b.point(lambda i: max(0, int(i * 0.92)))
+            img = Image.merge("RGB", (r, g, b))
+        elif req.filter == "editorial":
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(1.25)
+            enhancer2 = ImageEnhance.Sharpness(img)
+            img = enhancer2.enhance(1.3)
+        elif req.filter == "vibrant":
+            enhancer = ImageEnhance.Color(img)
+            img = enhancer.enhance(1.4)
+            enhancer2 = ImageEnhance.Contrast(img)
+            img = enhancer2.enhance(1.1)
+        elif req.filter == "pastel":
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(0.9)
+            enhancer2 = ImageEnhance.Brightness(img)
+            img = enhancer2.enhance(1.08)
 
-        # 3. Aspect Ratio Crop
-        if req.aspect_ratio:
-            ratio_map = {"16:9": (16, 9), "9:16": (9, 16), "1:1": (1, 1), "4:3": (4, 3)}
+        # 7. Aspect Ratio Crop (Reformat Canvas)
+        if req.aspect_ratio and req.aspect_ratio != "original":
+            ratio_map = {
+                "16:9": (16, 9),
+                "9:16": (9, 16),
+                "1:1": (1, 1),
+                "4:3": (4, 3),
+                "3:4": (3, 4),
+                "21:9": (21, 9)
+            }
             if req.aspect_ratio in ratio_map:
                 target_w, target_h = ratio_map[req.aspect_ratio]
                 w, h = img.size
@@ -677,16 +839,72 @@ async def edit_image(req: ImageEditRequest, request: Request):
                     offset = (h - new_h) // 2
                     img = img.crop((0, offset, w, offset + new_h))
 
-        # 4. Upscaling
-        if req.upscale_factor and req.upscale_factor in {2, 4}:
-            new_size = (img.width * req.upscale_factor, img.height * req.upscale_factor)
-            img = img.resize(new_size, Image.Resampling.LANCZOS)
+        # 8. Custom Dimensions Resize
+        if req.resize_width and req.resize_height and req.resize_width > 32 and req.resize_height > 32:
+            rw = min(8192, max(32, int(req.resize_width)))
+            rh = min(8192, max(32, int(req.resize_height)))
+            img = img.resize((rw, rh), Image.Resampling.LANCZOS)
 
-        # Output filename preserving original identity
-        stem = Path(clean_name).stem
-        new_filename = f"{stem}_edited_{uuid.uuid4().hex[:6]}.png"
+        # 9. AI Super-Resolution / Upscaling
+        if req.upscale or (req.upscale_factor and req.upscale_factor > 1):
+            factor = req.upscale_factor if (req.upscale_factor and req.upscale_factor in {2, 4}) else 2
+            new_size = (img.width * factor, img.height * factor)
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            enhancer = ImageEnhance.Sharpness(img)
+            img = enhancer.enhance(1.25)
+
+        # 10. Text Overlay
+        if req.text_overlay and req.text_overlay.strip():
+            draw = ImageDraw.Draw(img)
+            text = req.text_overlay.strip()
+            font_size = req.text_size or 36
+            try:
+                font = ImageFont.load_default(size=font_size)
+            except TypeError:
+                font = ImageFont.load_default()
+
+            bbox = draw.textbbox((0, 0), text, font=font)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
+
+            pos_x = max(20, (img.width - tw) // 2)
+            if req.text_position == "top":
+                pos_y = int(img.height * 0.08)
+            elif req.text_position == "center":
+                pos_y = (img.height - th) // 2
+            else:  # bottom
+                pos_y = int(img.height * 0.88 - th)
+
+            color = req.text_color or "#ffffff"
+            shadow_color = "#000000"
+            for dx, dy in [(-2, -2), (-2, 2), (2, -2), (2, 2), (0, 2), (2, 0)]:
+                draw.text((pos_x + dx, pos_y + dy), text, font=font, fill=shadow_color)
+            draw.text((pos_x, pos_y), text, font=font, fill=color)
+
+        # 11. Format & Compression
+        fmt = (req.output_format or "png").lower()
+        if fmt in {"jpeg", "jpg"}:
+            save_fmt = "JPEG"
+            ext = ".jpg"
+            mime = "image/jpeg"
+        elif fmt == "webp":
+            save_fmt = "WEBP"
+            ext = ".webp"
+            mime = "image/webp"
+        else:
+            save_fmt = "PNG"
+            ext = ".png"
+            mime = "image/png"
+
+        quality = max(10, min(100, req.compression_quality or 92))
+        stem = Path(target_name).stem
+        new_filename = f"{stem}_edited_{uuid.uuid4().hex[:6]}{ext}"
         out_path = settings.IMAGES_PATH / new_filename
-        img.save(out_path, "PNG", quality=95)
+
+        if save_fmt in {"JPEG", "WEBP"}:
+            img.save(out_path, save_fmt, quality=quality, optimize=True)
+        else:
+            img.save(out_path, "PNG", optimize=True)
 
         stat = out_path.stat()
         asset_id = str(uuid.uuid4())
@@ -701,8 +919,8 @@ async def edit_image(req: ImageEditRequest, request: Request):
             local_path=str(out_path),
             storage_provider="local",
             size_bytes=stat.st_size,
-            mime_type="image/png",
-            metadata={"source_file": clean_name, "edited": True}
+            mime_type=mime,
+            metadata={"source_file": target_name, "edited": True, "filter": req.filter}
         )
 
         return {
@@ -710,7 +928,9 @@ async def edit_image(req: ImageEditRequest, request: Request):
             "filename": new_filename,
             "url": url,
             "size_bytes": stat.st_size,
-            "size_mb": round(stat.st_size / (1024 * 1024), 2)
+            "size_mb": round(stat.st_size / (1024 * 1024), 2),
+            "width": img.width,
+            "height": img.height
         }
     except Exception as e:
         logger.error("Image edit error: %s", e)
