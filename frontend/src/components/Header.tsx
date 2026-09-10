@@ -264,6 +264,15 @@ export default function Header() {
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
+        {/* Primary CTA Button */}
+        <button 
+          onClick={() => router.push('/pipeline')}
+          className="flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Create</span>
+        </button>
+
         {/* Auth / Profile */}
         {isAuthed ? (
           <div className="relative" ref={userMenuRef}>
@@ -322,15 +331,6 @@ export default function Header() {
             <span className="hidden sm:inline">Sign In</span>
           </Link>
         )}
-
-        {/* Primary CTA Button */}
-        <button 
-          onClick={() => router.push('/pipeline')}
-          className="flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Create</span>
-        </button>
       </div>
 
       <HowItWorksModal

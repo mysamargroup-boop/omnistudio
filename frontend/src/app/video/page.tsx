@@ -68,8 +68,8 @@ interface VideoModelOption {
 const VIDEO_MODELS: VideoModelOption[] = [
   {
     value: "ffmpeg_local",
-    label: "Local Ken Burns / Morph Engine",
-    description: "Hardware Accelerated FFmpeg 8.1 (100% Free & Unlimited)",
+    label: "Local Ken Burns / Morph",
+    description: "Fast Local FFmpeg (100% Free)",
     badge: "FREE LOCAL",
     category: "Hardware Engine",
   },
@@ -285,12 +285,12 @@ function VideoStudioContent() {
   const [modelSearchQuery, setModelSearchQuery] = useState("");
 
   // Right Sidebar & Stacked Accordions State
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
-    model: true,
-    motion: true,
-    specs: true,
-    render: true,
+    model: false,
+    motion: false,
+    specs: false,
+    render: false,
   });
 
   const toggleSection = (s: keyof typeof openSections) => {
@@ -656,7 +656,7 @@ function VideoStudioContent() {
     <div className="relative h-[calc(100vh-4rem)] flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
       <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/80 dark:bg-[#0c0c12]/80 backdrop-blur-md z-20">
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex-wrap">
           <button
             type="button"
             onClick={() => setMode("first_frame")}

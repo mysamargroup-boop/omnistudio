@@ -51,7 +51,7 @@ type StudioMasterMode = "video" | "image" | "voice" | "cinema";
 
 // Video Models
 const VIDEO_MODELS = [
-  { value: "ffmpeg_local", label: "Local Ken Burns / Morph Engine", description: "Hardware Accelerated FFmpeg 8.1 (100% Free & Unlimited)", badge: "FREE LOCAL", category: "Hardware Engine" },
+  { value: "ffmpeg_local", label: "Local Ken Burns / Morph", description: "Fast Local FFmpeg (100% Free)", badge: "FREE LOCAL", category: "Hardware Engine" },
   { value: "google_veo", label: "Google Veo 3.1 / 2 (DeepMind)", description: "High-Definition 4K Video Generation (Google Cloud AI)", badge: "ACTIVE", category: "Featured Cloud" },
   { value: "kling_2.0", label: "Kling AI 2.0 Pro", description: "Photorealistic Physics & High Dynamic Kinematics", badge: "PRO", category: "Featured Cloud" },
   { value: "runway_gen3", label: "Runway Gen-3 Alpha Turbo", description: "Ultra-Realistic Cinema Motion Coherence & Camera Controls", badge: "CINEMA", category: "Featured Cloud" },
