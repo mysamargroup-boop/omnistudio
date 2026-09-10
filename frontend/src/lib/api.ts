@@ -191,6 +191,7 @@ export const api = {
 
   // Video
   generateVideo: (data: any) => fetchApi<any>("/api/video/generate", { method: "POST", body: JSON.stringify(data) }),
+  getVideoModels: () => fetchApi<any>("/api/video/models"),
   directVideoPrompt: (data: any) =>
     fetchApi<any>("/api/video/director-agent", {
       method: "POST",
@@ -211,6 +212,7 @@ export const api = {
   // Voice — Text to Speech
   generateVoice: (data: any) => fetchApi<any>("/api/voice/generate", { method: "POST", body: JSON.stringify(data) }),
   getVoices: () => fetchApi<any>("/api/voice/voices"),
+  getVoiceModels: () => fetchApi<any>("/api/voice/models"),
 
   // Voice — Voice Change
   changeVoice: (file: File, targetVoiceId: string, provider: string = "elevenlabs", isVideo: boolean = false) => {
@@ -352,10 +354,11 @@ export const api = {
   testDatabase: (url?: string) => fetchApi<any>("/api/settings/test-db", { method: "POST", body: JSON.stringify({ database_url: url }) }),
   testStorage: () => fetchApi<any>("/api/settings/test-r2", { method: "POST" }),
   clearCache: () => fetchApi<any>("/api/settings/cache-clear", { method: "POST" }),
-  pingLatency: async () => {
+  pingLatency: async (): Promise<{ status: string; latency_ms: number; server?: string; version?: string }> => {
     const start = performance.now();
-    await fetchApi<any>("/api/settings/ping");
-    return Math.round(performance.now() - start);
+    const data = await fetchApi<any>("/api/settings/ping");
+    const latency_ms = Math.round(performance.now() - start);
+    return { status: data?.status || "online", server: data?.server || "OmniStudio Engine", version: data?.version || "5.0.0", latency_ms };
   },
 
   // Analytics & Usage

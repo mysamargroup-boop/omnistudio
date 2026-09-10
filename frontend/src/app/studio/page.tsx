@@ -37,6 +37,7 @@ import {
   Copy,
   CheckCircle2,
   Share2,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { api, getMediaUrl } from "@/lib/api";
@@ -188,6 +189,67 @@ function StudioContent() {
   // Auto-resize prompt textarea
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // File upload refs & state
+  const startFileInputRef = useRef<HTMLInputElement>(null);
+  const endFileInputRef = useRef<HTMLInputElement>(null);
+  const refFileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingStartImage, setUploadingStartImage] = useState(false);
+  const [uploadingEndImage, setUploadingEndImage] = useState(false);
+  const [uploadingRefImage, setUploadingRefImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [startDragOver, setStartDragOver] = useState(false);
+  const [endDragOver, setEndDragOver] = useState(false);
+  const [refDragOver, setRefDragOver] = useState(false);
+
+  const handleStartImageUpload = async (file: File) => {
+    try {
+      setUploadingStartImage(true);
+      const res = await api.uploadImage(file);
+      if (res?.url) setStartImage(res.url);
+    } catch (err) {
+      console.error("Upload start image failed", err);
+    } finally {
+      setUploadingStartImage(false);
+    }
+  };
+
+  const handleEndImageUpload = async (file: File) => {
+    try {
+      setUploadingEndImage(true);
+      const res = await api.uploadImage(file);
+      if (res?.url) setEndImage(res.url);
+    } catch (err) {
+      console.error("Upload end image failed", err);
+    } finally {
+      setUploadingEndImage(false);
+    }
+  };
+
+  const handleRefImageUpload = async (file: File) => {
+    try {
+      setUploadingRefImage(true);
+      const res = await api.uploadImage(file);
+      if (res?.url) setRefImage(res.url);
+    } catch (err) {
+      console.error("Upload ref image failed", err);
+    } finally {
+      setUploadingRefImage(false);
+    }
+  };
+
+  const handleSourceVideoUpload = async (file: File) => {
+    try {
+      setUploadingVideo(true);
+      const res = await api.uploadSourceVideo(file);
+      if (res?.url) setSourceVideoUrl(res.url);
+    } catch (err) {
+      console.error("Upload source video failed", err);
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
 
   // Unmount cleanup for progress intervals
   useEffect(() => {
@@ -493,21 +555,21 @@ function StudioContent() {
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-48 font-jakarta bg-[var(--bg-primary)]">
       {/* Top Header: Master Engine Switcher & Sub-Mode Navigation */}
-      <div className="space-y-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4 sm:px-6">
+      <div className="space-y-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-3.5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Engine Master Switch Tabs */}
-          <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100/90 dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl overflow-x-auto custom-scrollbar flex-nowrap whitespace-nowrap">
+          <div className="flex items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-[#0c0c12] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl overflow-x-auto no-scrollbar flex-nowrap shrink-0 shadow-xs">
             <button
               type="button"
               onClick={() => setMasterMode("video")}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                 masterMode === "video"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-transparent font-bold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
               )}
             >
-              <Video className="w-3.5 h-3.5" />
+              <Video className={cn("w-3.5 h-3.5", masterMode === "video" ? "text-emerald-400 dark:text-emerald-600" : "")} />
               <span>Video Studio</span>
             </button>
 
@@ -515,13 +577,13 @@ function StudioContent() {
               type="button"
               onClick={() => setMasterMode("image")}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                 masterMode === "image"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-transparent font-bold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
               )}
             >
-              <ImageIcon className="w-3.5 h-3.5" />
+              <ImageIcon className={cn("w-3.5 h-3.5", masterMode === "image" ? "text-emerald-400 dark:text-emerald-600" : "")} />
               <span>Image Studio</span>
             </button>
 
@@ -529,31 +591,31 @@ function StudioContent() {
               type="button"
               onClick={() => setMasterMode("voice")}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                 masterMode === "voice"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 border border-transparent font-bold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-sm"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
               )}
             >
-              <Mic className="w-3.5 h-3.5" />
+              <Mic className={cn("w-3.5 h-3.5", masterMode === "voice" ? "text-emerald-400 dark:text-emerald-600" : "")} />
               <span>Voice Studio</span>
             </button>
 
             <button
               type="button"
               onClick={() => router.push("/pipeline")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white border border-transparent hover:bg-white/50 dark:hover:bg-white/[0.04]"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50"
             >
               <Film className="w-3.5 h-3.5 text-violet-500" />
               <span>Cinema Agent</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => setHowItWorksOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-700 dark:text-zinc-300 transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0"
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>Studio Guide</span>
@@ -566,117 +628,138 @@ function StudioContent() {
         </div>
 
         {/* Sub-Mode Context Pill Strip */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-0.5">
           {masterMode === "video" && (
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold pr-1">Modes:</span>
+            <div className="flex items-center gap-1 p-1 bg-zinc-100/90 dark:bg-[#0d0d14] border border-zinc-200 dark:border-zinc-800/70 rounded-xl overflow-x-auto no-scrollbar">
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono font-bold px-2">Modes:</span>
               <button
                 type="button"
                 onClick={() => setVideoSubMode("first_frame")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   videoSubMode === "first_frame"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                First Frame
+                <ImageIcon className="w-3 h-3" />
+                <span>First Frame</span>
               </button>
               <button
                 type="button"
                 onClick={() => setVideoSubMode("first_to_last_frame")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   videoSubMode === "first_to_last_frame"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                First + Last Frame (Morph)
+                <ArrowRightLeft className="w-3 h-3" />
+                <span>First + Last (Morph)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setVideoSubMode("text_to_video")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   videoSubMode === "text_to_video"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                Text to Video
+                <Sparkles className="w-3 h-3" />
+                <span>Text to Video</span>
               </button>
               <button
                 type="button"
                 onClick={() => setVideoSubMode("motion_transfer")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   videoSubMode === "motion_transfer"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                Motion Transfer
+                <RotateCw className="w-3 h-3 text-emerald-500" />
+                <span>Motion Transfer</span>
               </button>
             </div>
           )}
 
           {masterMode === "image" && (
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold pr-1">Modes:</span>
+            <div className="flex items-center gap-1 p-1 bg-zinc-100/90 dark:bg-[#0d0d14] border border-zinc-200 dark:border-zinc-800/70 rounded-xl overflow-x-auto no-scrollbar">
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono font-bold px-2">Modes:</span>
               <button
                 type="button"
                 onClick={() => setImageSubMode("text_to_image")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   imageSubMode === "text_to_image"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                Text to Image
+                <Sparkles className="w-3 h-3" />
+                <span>Text to Image</span>
               </button>
               <button
                 type="button"
                 onClick={() => setImageSubMode("image_variations")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   imageSubMode === "image_variations"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                Reference Variations
+                <Repeat className="w-3 h-3 text-emerald-500" />
+                <span>Reference Variations</span>
               </button>
             </div>
           )}
 
           {masterMode === "voice" && (
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold pr-1">Modes:</span>
+            <div className="flex items-center gap-1 p-1 bg-zinc-100/90 dark:bg-[#0d0d14] border border-zinc-200 dark:border-zinc-800/70 rounded-xl overflow-x-auto no-scrollbar">
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono font-bold px-2">Modes:</span>
               <button
                 type="button"
                 onClick={() => setVoiceSubMode("tts")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   voiceSubMode === "tts"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                Text to Speech
+                <Volume2 className="w-3 h-3" />
+                <span>Text to Speech</span>
               </button>
               <button
                 type="button"
                 onClick={() => setVoiceSubMode("voice_change")}
                 className={cn(
-                  "px-3 py-1 rounded-lg border transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
                   voiceSubMode === "voice_change"
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                    : "bg-zinc-100 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 )}
               >
-                Voice Changer
+                <ArrowRightLeft className="w-3 h-3" />
+                <span>Voice Change</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceSubMode("translate")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer whitespace-nowrap",
+                  voiceSubMode === "translate"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+                )}
+              >
+                <Languages className="w-3 h-3" />
+                <span>Translate</span>
               </button>
             </div>
           )}
@@ -952,152 +1035,504 @@ function StudioContent() {
         {/* Idle Canvas Workspace */}
         {!loading && !videoResult && !imageResult && !voiceResult && (
           <div className="w-full max-w-4xl space-y-6">
-            {/* 1. Video Staging Canvas */}
-            {masterMode === "video" && videoSubMode !== "text_to_video" && (
-              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#111114] shadow-sm p-6 space-y-5">
+            {/* Hidden File Inputs for Direct Local Staging */}
+            <input
+              ref={startFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleStartImageUpload(f);
+                e.target.value = "";
+              }}
+              disabled={uploadingStartImage}
+            />
+            <input
+              ref={endFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleEndImageUpload(f);
+                e.target.value = "";
+              }}
+              disabled={uploadingEndImage}
+            />
+            <input
+              ref={refFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleRefImageUpload(f);
+                e.target.value = "";
+              }}
+              disabled={uploadingRefImage}
+            />
+            <input
+              ref={videoFileInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleSourceVideoUpload(f);
+                e.target.value = "";
+              }}
+              disabled={uploadingVideo}
+            />
+
+            {/* 1. Video Staging: First Frame Mode */}
+            {masterMode === "video" && videoSubMode === "first_frame" && (
+              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#111114] shadow-sm p-5 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
                   <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-zinc-950 dark:text-white" />
+                    <ImageIcon className="h-4 w-4 text-emerald-500" />
                     <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
-                      Keyframe Staging Canvas
+                      Start Frame Stage
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase font-medium">
-                    {videoSubMode === "first_to_last_frame" ? "Dual Keyframe Interpolation" : "Single Start Keyframe"}
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    Natural Aspect Ratio • Single Keyframe
                   </span>
                 </div>
 
-                <div className={cn("grid gap-4", videoSubMode === "first_to_last_frame" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 max-w-xl mx-auto")}>
-                  {/* Start Keyframe */}
-                  <div className="space-y-2.5 p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06]">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                        START KEYFRAME (01)
-                      </label>
+                {startImage ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-sm flex items-center justify-center p-2 min-h-[180px] max-h-[380px] w-full">
+                    <img
+                      src={getMediaUrl(startImage)}
+                      alt="Start Frame"
+                      className="max-h-[360px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
+                    />
+                    <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>START FRAME ACTIVE</span>
+                    </div>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-xs">
                       <button
                         type="button"
-                        onClick={() => openVaultPicker("start")}
-                        className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#16161a] cursor-pointer transition-colors duration-200"
+                        onClick={() => startFileInputRef.current?.click()}
+                        className="px-3.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <FolderArchive className="h-3 w-3" />
-                        <span>VAULT</span>
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Replace Frame</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStartImage("")}
+                        className="p-2 rounded-xl bg-rose-500/80 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                        title="Remove Keyframe"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-
-                    {startImage ? (
-                      <div className="relative rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] aspect-video bg-black group shadow-sm">
-                        <img src={getMediaUrl(startImage)} alt="Start Frame" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setStartImage("")}
-                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black cursor-pointer transition-colors duration-200"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => openVaultPicker("start")}
-                        className="border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:border-zinc-500 dark:hover:border-zinc-400 hover:bg-zinc-100/50 dark:hover:bg-white/[0.03] transition-all duration-200 bg-white/50 dark:bg-black/20"
-                      >
-                        <ImageIcon className="h-7 w-7 text-zinc-400 mb-2" />
-                        <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                          Select Start Keyframe
-                        </span>
-                        <span className="text-[10px] font-mono text-zinc-500 mt-1">Pick from vault or paste path</span>
-                      </div>
-                    )}
-                    <input
-                      type="text"
-                      value={startImage}
-                      onChange={(e) => setStartImage(e.target.value)}
-                      placeholder="Or enter filepath / URL..."
-                      className="w-full bg-white dark:bg-[#16161a] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all duration-200"
-                    />
                   </div>
-
-                  {/* End Keyframe (in dual frame mode) */}
-                  {videoSubMode === "first_to_last_frame" && (
-                    <div className="space-y-2.5 p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06]">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
-                          END KEYFRAME (02)
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => openVaultPicker("end")}
-                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 border border-black/[0.08] dark:border-white/[0.08] px-2.5 py-1 rounded-full bg-white dark:bg-[#16161a] cursor-pointer transition-colors duration-200"
-                        >
-                          <FolderArchive className="h-3 w-3" />
-                          <span>VAULT</span>
-                        </button>
+                ) : (
+                  <div
+                    onClick={() => startFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setStartDragOver(true);
+                    }}
+                    onDragLeave={() => setStartDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setStartDragOver(false);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) handleStartImageUpload(f);
+                    }}
+                    className={cn(
+                      "group relative rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300 border-2 border-dashed",
+                      startDragOver
+                        ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                        : "border-zinc-300 dark:border-zinc-800 hover:border-emerald-500/80 bg-gradient-to-r from-zinc-50 to-zinc-100/50 dark:from-[#11111a] dark:to-[#0c0c14]"
+                    )}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800/80 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-all">
+                        {uploadingStartImage ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                        ) : (
+                          <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        )}
                       </div>
-
-                      {endImage ? (
-                        <div className="relative rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] aspect-video bg-black group shadow-sm">
-                          <img src={getMediaUrl(endImage)} alt="End Frame" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setEndImage("")}
-                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black cursor-pointer transition-colors duration-200"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => openVaultPicker("end")}
-                          className="border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl aspect-video flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:border-zinc-500 dark:hover:border-zinc-400 hover:bg-zinc-100/50 dark:hover:bg-white/[0.03] transition-all duration-200 bg-white/50 dark:bg-black/20"
-                        >
-                          <ImageIcon className="h-7 w-7 text-zinc-400 mb-2" />
-                          <span className="text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
-                            Select Destination Keyframe
-                          </span>
-                          <span className="text-[10px] font-mono text-zinc-500 mt-1">Destination frame to morph towards</span>
-                        </div>
-                      )}
-                      <input
-                        type="text"
-                        value={endImage}
-                        onChange={(e) => setEndImage(e.target.value)}
-                        placeholder="Or enter filepath / URL..."
-                        className="w-full bg-white dark:bg-[#16161a] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white font-mono placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all duration-200"
-                      />
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-xs sm:text-sm font-heading font-bold text-zinc-900 dark:text-white truncate">
+                          {uploadingStartImage ? "Uploading Start Keyframe..." : "Tap to browse or drop Start Keyframe"}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-mono truncate">
+                          Supports PNG, JPG, WEBP • Fast Hardware Buffer • Up to 25MB
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Transitions */}
-                {videoSubMode === "first_to_last_frame" && (
-                  <div className="pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold block mb-2">
-                      TRANSITION DYNAMICS:
-                    </span>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {TRANSITIONS.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setTransition(t.id)}
-                          className={cn(
-                            "p-3 rounded-xl border text-left font-mono transition-all duration-200 cursor-pointer",
-                            transition === t.id
-                              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
-                              : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                          )}
-                        >
-                          <span className="text-xs font-bold block">{t.label}</span>
-                          <span className="text-[9px] opacity-75 block truncate mt-0.5">{t.desc}</span>
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startFileInputRef.current?.click();
+                        }}
+                        className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all shadow-xs cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Browse Image</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openVaultPicker("start");
+                        }}
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono hover:text-emerald-500 transition-colors cursor-pointer"
+                      >
+                        <FolderArchive className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Vault</span>
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 2. Text to Video or Image Hero */}
-            {(masterMode === "image" || (masterMode === "video" && videoSubMode === "text_to_video")) && (
+            {/* 1B. Video Staging: First + Last Dual Frame Mode */}
+            {masterMode === "video" && videoSubMode === "first_to_last_frame" && (
+              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#111114] shadow-sm p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+                  <div className="flex items-center gap-2">
+                    <ArrowRightLeft className="h-4 w-4 text-emerald-500" />
+                    <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                      First + Last Frame Morph Stage
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    Dual Keyframe Interpolation
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Start Frame Slot */}
+                  <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-zinc-700 dark:text-zinc-300 uppercase flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Start Frame (01)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openVaultPicker("start")}
+                        className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        Vault
+                      </button>
+                    </div>
+
+                    {startImage ? (
+                      <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
+                        <img src={getMediaUrl(startImage)} alt="Start Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/30">
+                          01 START
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setStartImage("")}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => startFileInputRef.current?.click()}
+                        className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 transition-transform">
+                          {uploadingStartImage ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
+                        </div>
+                        <span className="text-[11px] font-semibold">Select Start Frame</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* End Frame Slot */}
+                  <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-zinc-700 dark:text-zinc-300 uppercase flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                        End Frame (02)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openVaultPicker("end")}
+                        className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        Vault
+                      </button>
+                    </div>
+
+                    {endImage ? (
+                      <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
+                        <img src={getMediaUrl(endImage)} alt="End Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 text-[9px] font-mono font-bold text-teal-400 border border-teal-500/30">
+                          02 END
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEndImage("")}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => endFileInputRef.current?.click()}
+                        className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 transition-transform">
+                          {uploadingEndImage ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
+                        </div>
+                        <span className="text-[11px] font-semibold">Select End Frame</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Transitions */}
+                <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold block mb-2">
+                    TRANSITION DYNAMICS:
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {TRANSITIONS.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTransition(t.id)}
+                        className={cn(
+                          "p-2.5 rounded-xl border text-left font-mono transition-all duration-200 cursor-pointer",
+                          transition === t.id
+                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold shadow-xs"
+                            : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                        )}
+                      >
+                        <span className="text-xs font-bold block">{t.label}</span>
+                        <span className="text-[9px] opacity-75 block truncate mt-0.5">{t.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 1C. Video Staging: Motion Transfer Mode */}
+            {masterMode === "video" && videoSubMode === "motion_transfer" && (
+              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#111114] shadow-sm p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+                  <div className="flex items-center gap-2">
+                    <RotateCw className="h-4 w-4 text-emerald-500" />
+                    <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                      Motion Transfer Stage
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    Target Character + Source Motion Track
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Target Still Image */}
+                  <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-zinc-700 dark:text-zinc-300 uppercase flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Target Character Image
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openVaultPicker("start")}
+                        className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        Vault
+                      </button>
+                    </div>
+
+                    {startImage ? (
+                      <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
+                        <img src={getMediaUrl(startImage)} alt="Target Character" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                        <button
+                          type="button"
+                          onClick={() => setStartImage("")}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white cursor-pointer shadow-sm transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => startFileInputRef.current?.click()}
+                        className="w-full min-h-[160px] border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 rounded-xl flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-emerald-500 cursor-pointer transition-colors bg-white/40 dark:bg-zinc-900/40"
+                      >
+                        <Upload className="w-4 h-4 text-emerald-500" />
+                        <span>Select Target Character Image</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Source Motion Video */}
+                  <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-2.5">
+                    <span className="text-[10px] font-mono uppercase font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                      Source Motion Video
+                    </span>
+
+                    {sourceVideoUrl ? (
+                      <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-black flex items-center justify-center p-1.5">
+                        <video src={getMediaUrl(sourceVideoUrl)} controls className="max-h-[240px] w-auto max-w-full object-contain mx-auto rounded-lg" />
+                        <button
+                          type="button"
+                          onClick={() => setSourceVideoUrl("")}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white cursor-pointer shadow-sm transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => videoFileInputRef.current?.click()}
+                        className="w-full min-h-[160px] border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 rounded-xl flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-emerald-500 cursor-pointer transition-colors bg-white/40 dark:bg-zinc-900/40"
+                      >
+                        {uploadingVideo ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
+                        <span>Upload Source Motion Video (MP4)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 1D. Image Staging: Reference Variations Mode */}
+            {masterMode === "image" && imageSubMode === "image_variations" && (
+              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#111114] shadow-sm p-5 sm:p-6 space-y-4 max-w-2xl mx-auto">
+                <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Repeat className="h-4 w-4 text-emerald-500" />
+                    <span className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                      Reference Image Variations
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openVaultPicker("ref")}
+                    className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                  >
+                    Vault
+                  </button>
+                </div>
+
+                {refImage ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-sm flex items-center justify-center p-2 min-h-[180px] max-h-[380px] w-full">
+                    <img
+                      src={getMediaUrl(refImage)}
+                      alt="Reference"
+                      className="max-h-[360px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
+                    />
+                    <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>REFERENCE IMAGE ACTIVE</span>
+                    </div>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-xs">
+                      <button
+                        type="button"
+                        onClick={() => refFileInputRef.current?.click()}
+                        className="px-3.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Replace Reference</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRefImage("")}
+                        className="p-2 rounded-xl bg-rose-500/80 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                        title="Remove Reference"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => refFileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setRefDragOver(true);
+                    }}
+                    onDragLeave={() => setRefDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setRefDragOver(false);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f) handleRefImageUpload(f);
+                    }}
+                    className={cn(
+                      "group relative rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300 border-2 border-dashed",
+                      refDragOver
+                        ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                        : "border-zinc-300 dark:border-zinc-800 hover:border-emerald-500/80 bg-gradient-to-r from-zinc-50 to-zinc-100/50 dark:from-[#11111a] dark:to-[#0c0c14]"
+                    )}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800/80 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-all">
+                        {uploadingRefImage ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                        ) : (
+                          <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-xs sm:text-sm font-heading font-bold text-zinc-900 dark:text-white truncate">
+                          {uploadingRefImage ? "Uploading Reference Image..." : "Tap to browse or drop Reference Image"}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-mono truncate">
+                          Neural style, character anchor & composition guidance
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          refFileInputRef.current?.click();
+                        }}
+                        className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all shadow-xs cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Browse</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openVaultPicker("ref");
+                        }}
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono hover:text-emerald-500 transition-colors cursor-pointer"
+                      >
+                        <FolderArchive className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Vault</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. Text to Video or Text to Image Hero Greeting */}
+            {((masterMode === "image" && imageSubMode === "text_to_image") || (masterMode === "video" && videoSubMode === "text_to_video")) && (
               <div className="space-y-6 text-center py-10">
                 <div className="space-y-3 max-w-lg mx-auto">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.08] text-[10px] font-mono text-zinc-800 dark:text-zinc-200 uppercase tracking-widest font-semibold">
@@ -1113,6 +1548,7 @@ function StudioContent() {
                 </div>
               </div>
             )}
+
 
             {/* 3. Voice Staging Canvas */}
             {masterMode === "voice" && (

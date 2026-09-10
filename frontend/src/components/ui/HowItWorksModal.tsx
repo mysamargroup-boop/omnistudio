@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Sparkles,
@@ -166,26 +167,31 @@ const GUIDE_STEPS = [
 
 export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: HowItWorksModalProps) {
   const [currentStep, setCurrentStep] = useState(initialStep);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setCurrentStep(initialStep);
   }, [initialStep]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const step = GUIDE_STEPS.find((s) => s.id === currentStep) || GUIDE_STEPS[0];
   const StepIcon = step.icon;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta"
+        className="relative w-full max-w-3xl rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between bg-zinc-50/50 dark:bg-black/30">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
@@ -194,7 +200,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
                   OMNISTUDIO GUIDE
                 </span>
                 <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                <span className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase">
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
                   5-STEP WORKFLOW
                 </span>
               </div>
@@ -222,7 +228,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
               className={cn(
                 "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0",
                 currentStep === s.id
-                  ? "bg-violet-600 text-white font-bold shadow-sm"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
                   : "bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/[0.1]"
               )}
             >
@@ -340,6 +346,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

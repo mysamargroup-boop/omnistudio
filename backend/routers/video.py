@@ -223,6 +223,120 @@ def get_resolution(res: str, aspect: str) -> tuple:
     res_map = RESOLUTION_MAP.get(res, RESOLUTION_MAP["1080p"])
     return res_map.get(aspect, res_map["16:9"])
 
+@router.get("/models")
+@limiter.limit("60/minute")
+async def list_video_models(request: Request):
+    """Returns dynamic list of video models with active status based on configured API keys."""
+    import os
+    try:
+        from database import load_settings_into_runtime
+        load_settings_into_runtime()
+    except Exception:
+        pass
+
+    gemini_key = os.environ.get("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
+    replicate_token = os.environ.get("REPLICATE_API_TOKEN") or getattr(settings, "REPLICATE_API_TOKEN", "")
+    openai_key = os.environ.get("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "")
+
+    has_gemini = bool(gemini_key and str(gemini_key).strip())
+    has_replicate = bool(replicate_token and str(replicate_token).strip())
+    has_openai = bool(openai_key and str(openai_key).strip())
+
+    return {
+        "models": [
+            {
+                "value": "ffmpeg_local",
+                "label": "Local Ken Burns / Morph",
+                "description": "Fast Local FFmpeg (100% Free)",
+                "badge": "FREE LOCAL",
+                "category": "Hardware Engine",
+                "active": True,
+                "is_free": True
+            },
+            {
+                "value": "google_veo",
+                "label": "Google Veo 3.1 / 2 (DeepMind)",
+                "description": "High-Definition 4K Video Generation (Google Cloud AI)",
+                "badge": "ACTIVE" if has_gemini else "KEY REQ",
+                "category": "Featured Cloud",
+                "active": has_gemini,
+                "is_free": False
+            },
+            {
+                "value": "kling_2.0",
+                "label": "Kling AI 2.0 Pro",
+                "description": "Photorealistic Physics & High Dynamic Kinematics",
+                "badge": "PRO" if has_replicate else "KEY REQ",
+                "category": "Featured Cloud",
+                "active": has_replicate,
+                "is_free": False
+            },
+            {
+                "value": "runway_gen3",
+                "label": "Runway Gen-3 Alpha Turbo",
+                "description": "Ultra-Realistic Cinema Motion Coherence & Camera Controls",
+                "badge": "CINEMA" if has_replicate else "KEY REQ",
+                "category": "Featured Cloud",
+                "active": has_replicate,
+                "is_free": False
+            },
+            {
+                "value": "luma_dream",
+                "label": "Luma Dream Machine 1.5",
+                "description": "Consistent 3D Camera Parallax & Fluid Dynamics",
+                "badge": "CLOUD" if has_replicate else "KEY REQ",
+                "category": "Cloud SOTA",
+                "active": has_replicate,
+                "is_free": False
+            },
+            {
+                "value": "minimax_video",
+                "label": "Minimax Hailuo Video-01",
+                "description": "Cinematic Resolution & Natural Human Kinetics",
+                "badge": "SOTA" if has_replicate else "KEY REQ",
+                "category": "Cloud SOTA",
+                "active": has_replicate,
+                "is_free": False
+            },
+            {
+                "value": "seedance_v1",
+                "label": "ByteDance Seedance 1.0",
+                "description": "High-Fidelity Character & Dance Choreography",
+                "badge": "KEY REQ",
+                "category": "Cloud SOTA",
+                "active": False,
+                "is_free": False
+            },
+            {
+                "value": "hunyuan_video",
+                "label": "Tencent HunyuanVideo",
+                "description": "Open-Weights High Definition Video Diffusion",
+                "badge": "OPEN",
+                "category": "Open Weights",
+                "active": False,
+                "is_free": False
+            },
+            {
+                "value": "openai_sora",
+                "label": "OpenAI Sora",
+                "description": "World Simulator & Complex Multi-Shot Kinematics",
+                "badge": "CLOUD" if has_openai else "KEY REQ",
+                "category": "Cloud SOTA",
+                "active": has_openai,
+                "is_free": False
+            },
+            {
+                "value": "pika_v2",
+                "label": "Pika 2.0",
+                "description": "Creative Stylized Motion & Kinetic Lens Effects",
+                "badge": "KEY REQ",
+                "category": "Cloud SOTA",
+                "active": False,
+                "is_free": False
+            }
+        ]
+    }
+
 @router.post("/director-agent")
 @limiter.limit("20/minute")
 async def video_director_agent(req: DirectorAgentRequest, request: Request):

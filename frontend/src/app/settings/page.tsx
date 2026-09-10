@@ -30,6 +30,10 @@ import {
   Play,
   Volume2,
   VolumeX,
+  Download,
+  Upload,
+  Activity,
+  FileText,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn, formatBytes } from "@/lib/utils";
@@ -108,6 +112,70 @@ export default function SettingsPage() {
       setPrefsSaved(true);
       setTimeout(() => setPrefsSaved(false), 2500);
     } catch {}
+  };
+
+  // AI Benchmark & Latency Ping States
+  const [latencyResult, setLatencyResult] = useState<{ status: string; latency_ms: number; server?: string; version?: string } | null>(null);
+  const [benchmarking, setBenchmarking] = useState(false);
+
+  const runLatencyBenchmark = async () => {
+    try {
+      setBenchmarking(true);
+      const res = await api.pingLatency();
+      setLatencyResult(res);
+    } catch {
+      setLatencyResult({ status: "error", latency_ms: -1, server: "Connection Timeout" });
+    } finally {
+      setBenchmarking(false);
+    }
+  };
+
+  // Cache & Temp Directory Purge States
+  const [clearingCache, setClearingCache] = useState(false);
+  const [cacheClearResult, setCacheClearResult] = useState<{ success: boolean; message: string; freed_mb?: number; files_removed?: number } | null>(null);
+
+  const handleClearCache = async () => {
+    try {
+      setClearingCache(true);
+      const res = await api.clearCache();
+      setCacheClearResult(res);
+      setTimeout(() => setCacheClearResult(null), 6000);
+    } catch (err: any) {
+      setCacheClearResult({ success: false, message: err?.message || "Cache purge failed" });
+    } finally {
+      setClearingCache(false);
+    }
+  };
+
+  // JSON Configuration Backup & Export/Import
+  const exportPreferencesJson = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(preferences, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `omnistudio-preferences-${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const importPreferencesJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        const updated = { ...preferences, ...parsed };
+        setPreferences(updated);
+        localStorage.setItem("omnistudio_preferences", JSON.stringify(updated));
+        setPrefsSaved(true);
+        setTimeout(() => setPrefsSaved(false), 2500);
+      } catch {
+        alert("Invalid JSON configuration file format.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
   const fetchStatus = async () => {
@@ -308,7 +376,7 @@ export default function SettingsPage() {
   const trashBytes = trashData?.total_bytes || 0;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-7 pb-16 font-jakarta tab-content-enter">
+    <div className="max-w-7xl mx-auto space-y-7 pb-16 px-4 sm:px-6 font-jakarta tab-content-enter">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
         <div>
@@ -659,6 +727,123 @@ export default function SettingsPage() {
               <p className="text-zinc-500 leading-relaxed">
                 All generated assets (images, videos, audio) are instantly served from the high-speed Hostinger 100GB NVMe SSD at <code className="text-zinc-700 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/[0.06] px-1 rounded">/outputs/...</code>.
               </p>
+            </div>
+          </div>
+
+          {/* AI Gateway Diagnostics & System Cache Cleaner */}
+          <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
+              <div className="flex items-center gap-2.5">
+                <Activity className="h-4 w-4 text-emerald-500" />
+                <div>
+                  <h2 className="text-sm font-heading font-bold text-zinc-950 dark:text-white uppercase tracking-wider">
+                    API Gateway Latency & Storage Maintenance
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Live round-trip benchmark to VPS backend and non-destructive scratch buffer purging.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* 1. Real-Time API Latency Benchmark */}
+              <div className="p-4 rounded-xl bg-zinc-50/70 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                    AI Engine Latency
+                  </span>
+                  {latencyResult && (
+                    <span className={cn(
+                      "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
+                      latencyResult.latency_ms > 0 && latencyResult.latency_ms < 100
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : latencyResult.latency_ms >= 100
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                    )}>
+                      {latencyResult.latency_ms >= 0 ? `${latencyResult.latency_ms} ms Latency` : "Error"}
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-zinc-500">
+                  Measures HTTP round-trip latency to the backend API cluster running on Hostinger VPS port 8050.
+                </p>
+
+                {latencyResult && (
+                  <div className="p-3 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Status:</span>
+                      <span className="text-emerald-500 font-bold">{latencyResult.status.toUpperCase()}</span>
+                    </div>
+                    {latencyResult.server && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Engine:</span>
+                        <span className="text-zinc-800 dark:text-zinc-200">{latencyResult.server}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Response Speed:</span>
+                      <span className="font-bold text-zinc-900 dark:text-white">{latencyResult.latency_ms} ms</span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={runLatencyBenchmark}
+                  disabled={benchmarking}
+                  className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {benchmarking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{benchmarking ? "Benchmarking Engine..." : "Run AI Latency Benchmark"}</span>
+                </button>
+              </div>
+
+              {/* 2. System Cache Cleaner */}
+              <div className="p-4 rounded-xl bg-zinc-50/70 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                    <HardDrive className="w-3.5 h-3.5 text-cyan-500" />
+                    Temp Storage & Cache Cleaner
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    Safe Purge
+                  </span>
+                </div>
+
+                <p className="text-xs text-zinc-500">
+                  Safely clears temporary ffmpeg render scratch files and temp cache. Permanent assets in Vault and Supabase are 100% protected.
+                </p>
+
+                {cacheClearResult && (
+                  <div className={cn(
+                    "p-3 rounded-lg border text-xs font-mono space-y-1",
+                    cacheClearResult.success
+                      ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                      : "bg-rose-50 dark:bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+                  )}>
+                    <p className="font-bold">{cacheClearResult.message}</p>
+                    {cacheClearResult.freed_mb !== undefined && (
+                      <p className="text-[11px] opacity-80">
+                        Reclaimed: {cacheClearResult.freed_mb} MB • Purged files: {cacheClearResult.files_removed}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleClearCache}
+                  disabled={clearingCache}
+                  className="w-full py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {clearingCache ? <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" /> : <Trash2 className="w-3.5 h-3.5 text-cyan-500" />}
+                  <span>{clearingCache ? "Purging Scratch Files..." : "Purge Temporary Cache Files"}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1226,6 +1411,39 @@ export default function SettingsPage() {
                   >
                     {preferences.skipConfirmModal ? "SKIP MODAL" : "SHOW MODAL"}
                   </button>
+                </div>
+              </div>
+
+              {/* Configuration Portability: JSON Export & Import */}
+              <div className="space-y-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div>
+                  <label className="text-sm font-semibold text-zinc-900 dark:text-white block">
+                    Configuration Backup & Migration (JSON)
+                  </label>
+                  <p className="text-xs text-zinc-500">
+                    Export your studio preferences, custom camera vectors, and prompt directives to a portable JSON file or restore on another device.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={exportPreferencesJson}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 text-xs font-mono font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export Configuration (.json)</span>
+                  </button>
+
+                  <label className="flex items-center gap-2 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold transition-all cursor-pointer shadow-xs">
+                    <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Import Configuration (.json)</span>
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      className="hidden"
+                      onChange={importPreferencesJson}
+                    />
+                  </label>
                 </div>
               </div>
             </div>

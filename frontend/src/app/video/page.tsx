@@ -1132,13 +1132,12 @@ function VideoStudioContent() {
                     />
 
                     {startImage ? (
-                      /* Crisp Preview Card when Image is Uploaded */
-                      <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 h-52 sm:h-56 bg-zinc-950 group shadow-sm flex items-center justify-center">
-                        <LazyImage
+                      /* Crisp Preview Card when Image is Uploaded - Displays in natural uploaded size and aspect ratio */
+                      <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-sm flex items-center justify-center p-2 min-h-[180px] max-h-[380px] w-full">
+                        <img
                           src={getMediaUrl(startImage)}
                           alt="Start Frame"
-                          aspectRatio="aspect-video"
-                          className="w-full h-full object-contain"
+                          className="max-h-[360px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
                         />
                         <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -1265,12 +1264,15 @@ function VideoStudioContent() {
                         </div>
 
                         {startImage ? (
-                          <div className="relative rounded-xl overflow-hidden h-36 border border-zinc-200 dark:border-zinc-800 bg-zinc-950 group">
-                            <LazyImage src={getMediaUrl(startImage)} alt="Start" aspectRatio="aspect-video" className="w-full h-full object-contain" />
+                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
+                            <img src={getMediaUrl(startImage)} alt="Start Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/30">
+                              01 START
+                            </div>
                             <button
                               type="button"
                               onClick={() => setStartImage("")}
-                              className="absolute top-2 right-2 p-1 rounded-md bg-black/60 hover:bg-rose-500 text-white transition-colors cursor-pointer"
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -1278,7 +1280,7 @@ function VideoStudioContent() {
                         ) : (
                           <div
                             onClick={() => startFileInputRef.current?.click()}
-                            className="w-full h-36 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
+                            className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
                           >
                             <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 transition-transform">
                               {uploadingStartImage ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
@@ -1318,12 +1320,15 @@ function VideoStudioContent() {
                         />
 
                         {endImage ? (
-                          <div className="relative rounded-xl overflow-hidden h-36 border border-zinc-200 dark:border-zinc-800 bg-zinc-950 group">
-                            <LazyImage src={getMediaUrl(endImage)} alt="End" aspectRatio="aspect-video" className="w-full h-full object-contain" />
+                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
+                            <img src={getMediaUrl(endImage)} alt="End Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 text-[9px] font-mono font-bold text-teal-400 border border-teal-500/30">
+                              02 END
+                            </div>
                             <button
                               type="button"
                               onClick={() => setEndImage("")}
-                              className="absolute top-2 right-2 p-1 rounded-md bg-black/60 hover:bg-rose-500 text-white transition-colors cursor-pointer"
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -1331,7 +1336,7 @@ function VideoStudioContent() {
                         ) : (
                           <div
                             onClick={() => endFileInputRef.current?.click()}
-                            className="w-full h-36 rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
+                            className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
                           >
                             <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 transition-transform">
                               {uploadingEndImage ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
@@ -1468,12 +1473,12 @@ function VideoStudioContent() {
                         TARGET STILL IMAGE
                       </label>
                       {startImage ? (
-                        <div className="relative rounded-xl overflow-hidden h-36 border border-zinc-200 dark:border-zinc-800 bg-zinc-950">
-                          <LazyImage src={getMediaUrl(startImage)} alt="Target" aspectRatio="aspect-video" className="w-full h-full object-contain" />
+                        <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
+                          <img src={getMediaUrl(startImage)} alt="Target" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
                           <button
                             type="button"
                             onClick={() => setStartImage("")}
-                            className="absolute top-2 right-2 p-1 rounded-md bg-black/60 hover:bg-rose-500 text-white cursor-pointer"
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white cursor-pointer shadow-sm transition-colors"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -1482,7 +1487,7 @@ function VideoStudioContent() {
                         <button
                           type="button"
                           onClick={() => startFileInputRef.current?.click()}
-                          className="w-full h-36 border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 rounded-xl flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-emerald-500 cursor-pointer transition-colors"
+                          className="w-full min-h-[160px] border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 rounded-xl flex flex-col items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-emerald-500 cursor-pointer transition-colors bg-white/40 dark:bg-zinc-900/40"
                         >
                           <Upload className="w-4 h-4 text-emerald-500" />
                           <span>Select Target Character Image</span>
@@ -1507,12 +1512,12 @@ function VideoStudioContent() {
                         disabled={uploadingVideo}
                       />
                       {sourceVideoUrl ? (
-                        <div className="relative rounded-xl overflow-hidden h-36 border border-zinc-200 dark:border-zinc-800 bg-black">
-                          <video src={getMediaUrl(sourceVideoUrl)} controls className="w-full h-full object-contain" />
+                        <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-black flex items-center justify-center p-1.5">
+                          <video src={getMediaUrl(sourceVideoUrl)} controls className="max-h-[240px] w-auto max-w-full object-contain mx-auto rounded-lg" />
                           <button
                             type="button"
                             onClick={() => setSourceVideoUrl("")}
-                            className="absolute top-2 right-2 p-1 rounded-md bg-black/60 hover:bg-rose-500 text-white cursor-pointer"
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white cursor-pointer shadow-sm transition-colors"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>

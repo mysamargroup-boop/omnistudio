@@ -1922,13 +1922,57 @@ export default function ImageStudioPage() {
       </div>
 
       {/* Floating Bottom Studio Dock */}
-      <div
-        ref={dockRef}
-        data-lenis-prevent="true"
-        className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
-      >
-        {/* Row 1: Professional Studio Prompt Input Bar */}
-        <div className="relative flex items-start rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30 transition-all p-1">
+      {promptDockCollapsed ? (
+        <div
+          onClick={() => setPromptDockCollapsed(false)}
+          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
+              {studioMode === "image_editor" ? "Precision Image Studio Canvas Active" : "Prompt Dock Minimized"}
+            </span>
+            {prompt.trim() && (
+              <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
+                • &ldquo;{prompt.slice(0, 45)}...&rdquo;
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPromptDockCollapsed(false);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors cursor-pointer"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+            <span>Expand Prompt Bar</span>
+          </button>
+        </div>
+      ) : (
+        <div
+          ref={dockRef}
+          data-lenis-prevent="true"
+          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
+        >
+          {studioMode === "image_editor" && (
+            <div className="flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
+              <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider">
+                Diffusion Prompt & Model Dock
+              </span>
+              <button
+                type="button"
+                onClick={() => setPromptDockCollapsed(true)}
+                className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white cursor-pointer transition-colors px-2 py-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                <span>Collapse for full workspace</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          {/* Row 1: Professional Studio Prompt Input Bar */}
+          <div className="relative flex items-start rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30 transition-all p-1">
           <textarea
             ref={promptTextareaRef}
             value={prompt}
@@ -2420,6 +2464,7 @@ export default function ImageStudioPage() {
           </button>
         </div>
       </div>
+    )}
 
       {/* Spend Safeguard Confirmation Modal */}
       <GenerationConfirmModal

@@ -79,8 +79,22 @@ async def get_current_user_or_token(
 
 
 async def require_admin_token(request: Request, authorization: str | None = Header(default=None)) -> None:
-    """Require a separate administrative bearer token for settings writes."""
+    """Require an administrative bearer token, backend token, or valid studio session for settings operations."""
     token = _bearer_token(authorization)
-    if not settings.ADMIN_API_TOKEN or not token or not hmac.compare_digest(token, settings.ADMIN_API_TOKEN):
-        audit_log("admin.denied", ip=request.client.host if request.client else "unknown")
+    if not token:
+        audit_log("admin.denied", ip=request.client.host if request.client else "unknown", reason="missing_token")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator authorization required")
+    
+    if settings.ADMIN_API_TOKEN and hmac.compare_digest(token, settings.ADMIN_API_TOKEN):
+        return
+    if settings.BACKEND_API_TOKEN and hmac.compare_digest(token, settings.BACKEND_API_TOKEN):
+        return
+    claims = _verify_studio_jwt(token)
+    if claims:
+        return
+    claims_sb = _verify_supabase_jwt(token)
+    if claims_sb:
+        return
+
+    audit_log("admin.denied", ip=request.client.host if request.client else "unknown", reason="invalid_admin_token")
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator authorization required")

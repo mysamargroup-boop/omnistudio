@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles, BookOpen } from 'lucide-react';
+import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles, BookOpen, Activity } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/ThemeProvider';
@@ -16,6 +16,7 @@ const NAV_TABS = [
   { id: 'audio', label: 'Voice', path: '/voice', hasDropdown: true },
   { id: 'pipeline', label: 'Agent', path: '/pipeline', badge: 'AI' },
   { id: 'vault', label: 'Vault', path: '/vault' },
+  { id: 'usage', label: 'Usage', path: '/usage', badge: 'SPEND' },
   { id: 'settings', label: 'Settings', path: '/settings' },
 ];
 
@@ -307,6 +308,13 @@ export default function Header() {
                   >
                     <UserIcon className="w-3.5 h-3.5 text-zinc-400" />
                     <span>Account & BYOK Settings</span>
+                  </button>
+                  <button
+                    onClick={() => { setUserMenuOpen(false); router.push('/usage'); }}
+                    className="w-full flex items-center gap-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.04] px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-left"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Usage & Spend Telemetry</span>
                   </button>
                 </div>
 

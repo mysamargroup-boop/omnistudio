@@ -20,6 +20,7 @@ import {
   HardDrive,
   RefreshCw,
   Sparkles,
+  Activity,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -122,6 +123,12 @@ export default function Sidebar() {
           label: "Asset Vault",
           icon: FolderArchive,
           badge: assetCount !== null ? `${assetCount}` : undefined,
+        },
+        {
+          href: "/usage",
+          label: "Usage & Spend History",
+          icon: Activity,
+          badge: "SPEND",
         },
         { href: "/settings", label: "BYOK & Settings", icon: Sliders, badge: "KEYS" },
       ],

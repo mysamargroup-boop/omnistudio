@@ -99,10 +99,93 @@ class TranslateTextRequest(BaseModel):
             raise ValueError("Text cannot exceed 5000 characters")
         return s
 
+@router.get("/models")
+@limiter.limit("60/minute")
+async def list_voice_models(request: Request):
+    try:
+        from database import load_settings_into_runtime
+        load_settings_into_runtime()
+    except Exception:
+        pass
+
+    has_elevenlabs = bool(settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip())
+    has_openai = bool(settings.OPENAI_API_KEY and str(settings.OPENAI_API_KEY).strip())
+
+    return {
+        "providers": [
+            {
+                "value": "edge",
+                "label": "Edge Neural (Free)",
+                "description": "100% Free high-speed neural voiceover with zero API key required",
+                "active": True,
+                "is_free": True,
+                "badge": "FREE ACTIVE"
+            },
+            {
+                "value": "elevenlabs",
+                "label": "ElevenLabs Studio (Pro)",
+                "description": "Ultra-realistic expressive emotional voices (Requires ElevenLabs Key)",
+                "active": has_elevenlabs,
+                "is_free": False,
+                "badge": "ACTIVE" if has_elevenlabs else "KEY REQ"
+            },
+            {
+                "value": "openai",
+                "label": "OpenAI TTS (Standard)",
+                "description": "Natural sounding voice synthesis (Requires OpenAI Key)",
+                "active": has_openai,
+                "is_free": False,
+                "badge": "ACTIVE" if has_openai else "KEY REQ"
+            }
+        ],
+        "models": [
+            {
+                "value": "seed_audio",
+                "label": "Seed Audio 1.0",
+                "provider": "edge",
+                "active": True,
+                "badge": "FREE"
+            },
+            {
+                "value": "eleven_v3",
+                "label": "Eleven v3 Multilingual",
+                "provider": "elevenlabs",
+                "active": has_elevenlabs,
+                "badge": "ACTIVE" if has_elevenlabs else "KEY REQ"
+            },
+            {
+                "value": "eleven_turbo",
+                "label": "Eleven Turbo v2.5",
+                "provider": "elevenlabs",
+                "active": has_elevenlabs,
+                "badge": "ACTIVE" if has_elevenlabs else "KEY REQ"
+            },
+            {
+                "value": "qwen_audio",
+                "label": "Qwen Audio 3.0",
+                "provider": "edge",
+                "active": True,
+                "badge": "FREE"
+            },
+            {
+                "value": "minimax",
+                "label": "MiniMax Speech 2.8 HD",
+                "provider": "edge",
+                "active": True,
+                "badge": "FREE"
+            }
+        ]
+    }
+
 @router.post("/generate")
 @limiter.limit("15/minute")
 async def generate_voice(req: VoiceRequest, request: Request):
     if req.provider == "elevenlabs":
+        if not (settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip()):
+            return {
+                "success": False,
+                "error": "ElevenLabs API key is not configured in Settings! Please add your ELEVENLABS_API_KEY in BYOK Settings, or switch to Microsoft Edge Neural (100% Free & Active)."
+            }
         res = await generate_elevenlabs_speech(
             text=req.text, voice_id=req.voice_id, model_id=req.model,
             stability=req.stability, similarity_boost=req.similarity_boost

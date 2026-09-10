@@ -38,17 +38,17 @@ const LANGUAGES: DropdownOption[] = [
 ];
 
 const PROVIDERS: DropdownOption[] = [
-  { value: 'edge', label: 'Edge Neural (Free)' },
-  { value: 'elevenlabs', label: 'ElevenLabs (Pro)' },
-  { value: 'openai', label: 'OpenAI TTS (Standard)' }
+  { value: 'edge', label: 'Edge Neural (Free)', active: true },
+  { value: 'elevenlabs', label: 'ElevenLabs (Pro)', active: false },
+  { value: 'openai', label: 'OpenAI TTS (Standard)', active: false }
 ];
 
 const MODELS: DropdownOption[] = [
-  { value: 'seed_audio', label: 'Seed Audio 1.0' },
-  { value: 'eleven_v3', label: 'Eleven v3' },
-  { value: 'qwen_audio', label: 'Qwen Audio 3.0' },
-  { value: 'minimax', label: 'MiniMax Speech 2.8 HD' },
-  { value: 'seed_speech', label: 'Seed Speech' }
+  { value: 'seed_audio', label: 'Seed Audio 1.0', active: true },
+  { value: 'eleven_v3', label: 'Eleven v3', active: false },
+  { value: 'qwen_audio', label: 'Qwen Audio 3.0', active: true },
+  { value: 'minimax', label: 'MiniMax Speech 2.8 HD', active: true },
+  { value: 'seed_speech', label: 'Seed Speech', active: true }
 ];
 
 const VOICES = {
@@ -80,30 +80,61 @@ export default function VoiceStudioPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [outputAudioUrl, setOutputAudioUrl] = useState<string | null>(null);
 
-  // Tab 1: TTS State
+  // Dynamic Models & Active Key Status
+  const [providersList, setProvidersList] = useState<DropdownOption[]>(PROVIDERS);
+  const [modelsList, setModelsList] = useState<DropdownOption[]>(MODELS);
+  const [keyStatus, setKeyStatus] = useState<{ elevenlabs: boolean; openai: boolean }>({
+    elevenlabs: false,
+    openai: false
+  });
+
+  // Tab 1: TTS State (Default to 100% Free & Active Edge Neural)
   const [text, setText] = useState('');
-  const [ttsProvider, setTtsProvider] = useState('elevenlabs');
-  const [ttsModel, setTtsModel] = useState('eleven_v3');
-  const [ttsVoice, setTtsVoice] = useState('rachel');
+  const [ttsProvider, setTtsProvider] = useState('edge');
+  const [ttsModel, setTtsModel] = useState('seed_audio');
+  const [ttsVoice, setTtsVoice] = useState('en-US-AriaNeural');
   const [pacing, setPacing] = useState('1.0');
 
   // Tab 2: Voice Change State
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [vcTargetVoice, setVcTargetVoice] = useState('drew');
+  const [vcTargetVoice, setVcTargetVoice] = useState('en-US-GuyNeural');
   const [vcIsVideo, setVcIsVideo] = useState(false);
 
   // Tab 3: Translate State
   const [transText, setTransText] = useState('');
   const [sourceLang, setSourceLang] = useState('en');
-  const [targetLang, setTargetLang] = useState('fr');
-  const [transTtsProvider, setTransTtsProvider] = useState('openai');
-  const [transVoice, setTransVoice] = useState('alloy');
+  const [targetLang, setTargetLang] = useState('hi');
+  const [transTtsProvider, setTransTtsProvider] = useState('edge');
+  const [transVoice, setTransVoice] = useState('en-US-AriaNeural');
   const [videoPath, setVideoPath] = useState('');
   const [translatedResultText, setTranslatedResultText] = useState('');
 
   // Audio Playback State
   const audioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch dynamic voice models and active API key status
+  useEffect(() => {
+    const fetchVoiceModels = async () => {
+      try {
+        const res = await api.getVoiceModels();
+        if (res) {
+          if (Array.isArray(res.providers)) {
+            setProvidersList(res.providers);
+            const hasEl = res.providers.find((p: any) => p.value === 'elevenlabs')?.active || false;
+            const hasOai = res.providers.find((p: any) => p.value === 'openai')?.active || false;
+            setKeyStatus({ elevenlabs: hasEl, openai: hasOai });
+          }
+          if (Array.isArray(res.models)) {
+            setModelsList(res.models);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load dynamic voice models:', err);
+      }
+    };
+    fetchVoiceModels();
+  }, []);
 
   // Unmount cleanup for progress timers and audio element
   useEffect(() => {
@@ -149,6 +180,7 @@ export default function VoiceStudioPage() {
   const requestVoiceConfirm = () => {
     if (!text.trim()) return;
     const isFree = ttsProvider === 'edge';
+    const isKeyConfigured = isFree ? true : (ttsProvider === 'elevenlabs' ? keyStatus.elevenlabs : keyStatus.openai);
     const costUsd = isFree ? 0 : (ttsProvider === 'elevenlabs' ? 0.030 : 0.015);
     const costInr = isFree ? 0 : Math.round(costUsd * 83.5 * 100) / 100;
 
@@ -157,6 +189,10 @@ export default function VoiceStudioPage() {
       modelName: ttsModel,
       provider: ttsProvider === 'edge' ? 'Microsoft Edge Neural (Local)' : ttsProvider === 'elevenlabs' ? 'ElevenLabs v3' : 'OpenAI Audio TTS',
       isFree,
+      isKeyConfigured,
+      keyMissingMessage: !isKeyConfigured
+        ? `${ttsProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} API key is not configured in Settings! Please add your key in BYOK Settings to proceed, or choose Microsoft Edge Neural (100% Free & Active).`
+        : undefined,
       costUsd,
       costInr,
       prompt: text.trim(),
@@ -172,11 +208,16 @@ export default function VoiceStudioPage() {
 
   const requestVoiceChangeConfirm = () => {
     if (!uploadFile) return;
+    const isKeyConfigured = keyStatus.elevenlabs;
     setConfirmDetails({
       serviceType: 'voice',
       modelName: 'ElevenLabs Speech-to-Speech v2',
       provider: 'ElevenLabs STS',
       isFree: false,
+      isKeyConfigured,
+      keyMissingMessage: !isKeyConfigured
+        ? 'ElevenLabs API key is not configured in Settings! Please enter your key in BYOK Settings to proceed with Voice Change.'
+        : undefined,
       costUsd: 0.050,
       costInr: 4.18,
       prompt: `File: ${uploadFile.name} (${(uploadFile.size / 1024 / 1024).toFixed(1)} MB)`,
@@ -260,6 +301,14 @@ export default function VoiceStudioPage() {
         voice_id: ttsVoice,
         model: ttsModel
       });
+      if (response && !response.success) {
+        alert(response.error || "Voice generation failed");
+        setTelemetryLogs((prev) => [
+          ...prev,
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${response.error || 'Generation failed'}` }
+        ]);
+        return;
+      }
       const mediaUrl = response?.url || response?.audio_url;
       if (mediaUrl) {
         setOutputAudioUrl(getMediaUrl(mediaUrl));
@@ -446,21 +495,21 @@ export default function VoiceStudioPage() {
       <div className="mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1 text-xs font-mono tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">
-            <Mic size={14} className="text-violet-500" />
+            <Mic size={14} className="text-emerald-500" />
             <span>ACOUSTIC SUITE 5.0 • NEURAL SPEECH + VOICE CHANGE + TRANSLATE</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-heading font-medium tracking-tight">Audio Production Studio</h1>
         </div>
         <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] px-3 py-1.5 rounded-full shadow-sm text-xs font-mono tracking-widest text-zinc-500 whitespace-nowrap shrink-0">
-          <Sparkles size={12} className="text-violet-500" />
+          <Sparkles size={12} className="text-emerald-500" />
           <span>ENGINES: ELEVENLABS + EDGE NEURAL + OPENAI + SEED AUDIO</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         
-        {/* LEFT PANEL: CONTROLS (Compact & Fixed - No Scroll Needed) */}
-        <div className="lg:col-span-5 flex flex-col gap-3 lg:sticky lg:top-4 self-start max-h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar">
+        {/* LEFT PANEL: CONTROLS (Compact & Pinned Fixed on Desktop) */}
+        <div className="lg:col-span-5 flex flex-col gap-3 lg:sticky lg:top-6 self-start max-h-[calc(100vh-5rem)] overflow-y-auto custom-scrollbar">
           
           {/* Tabs - Single Line Non-Wrapping */}
           <div className="bg-zinc-100 dark:bg-[#0d0d14] p-1 rounded-xl flex flex-nowrap whitespace-nowrap gap-1 w-full border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto scrollbar-hide">
@@ -475,7 +524,7 @@ export default function VoiceStudioPage() {
                 className={cn(
                   "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0",
                   activeTab === tab.id
-                    ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-xs font-bold border border-violet-200 dark:border-violet-500/20"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs font-bold border border-zinc-900 dark:border-white"
                     : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-white/[0.04]"
                 )}
               >
@@ -502,14 +551,14 @@ export default function VoiceStudioPage() {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Enter the text you want to synthesize into speech..."
-                    className="w-full h-24 sm:h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs sm:text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all leading-relaxed"
+                    className="w-full h-24 sm:h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs sm:text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 resize-none transition-all leading-relaxed"
                   />
                   <div className="flex gap-1.5 mt-0.5 overflow-x-auto pb-1 scrollbar-hide custom-scrollbar">
                     {SAMPLE_SCRIPTS.map((script, idx) => (
                       <button 
                         key={idx}
                         onClick={() => setText(script)}
-                        className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-white/[0.04] hover:bg-violet-50 dark:hover:bg-violet-500/10 border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer"
+                        className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-white/[0.04] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer"
                       >
                         Sample {idx + 1}
                       </button>
@@ -521,7 +570,7 @@ export default function VoiceStudioPage() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Provider</label>
                     <Dropdown 
-                      options={PROVIDERS} 
+                      options={providersList} 
                       value={ttsProvider} 
                       onChange={setTtsProvider} 
                       className="w-full"
@@ -530,7 +579,7 @@ export default function VoiceStudioPage() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Model Engine</label>
                     <Dropdown 
-                      options={MODELS} 
+                      options={modelsList} 
                       value={ttsModel} 
                       onChange={setTtsModel} 
                       className="w-full"
@@ -542,7 +591,7 @@ export default function VoiceStudioPage() {
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Voice Persona</label>
                     <Dropdown 
-                      options={VOICES[ttsProvider as keyof typeof VOICES] || VOICES.elevenlabs} 
+                      options={VOICES[ttsProvider as keyof typeof VOICES] || VOICES.edge} 
                       value={ttsVoice} 
                       onChange={setTtsVoice} 
                       className="w-full"
@@ -558,7 +607,7 @@ export default function VoiceStudioPage() {
                           className={cn(
                             "flex-1 rounded-lg text-xs font-mono font-medium transition-colors cursor-pointer",
                             pacing === speed 
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-xs font-bold" 
+                              ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs font-bold" 
                               : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
                           )}
                         >

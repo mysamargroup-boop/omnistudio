@@ -37,16 +37,10 @@ async def generate_elevenlabs_speech(
     filename = f"voice_el_{uuid.uuid4().hex[:8]}.mp3"
     local_path = settings.AUDIO_PATH / filename
     
-    if not settings.ELEVENLABS_API_KEY:
-        # Seamlessly fallback to real Edge TTS so generation never fails
-        await generate_edge_speech(text, voice_id="en-US-GuyNeural", output_path=local_path)
+    if not (settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip()):
         return {
-            "success": True,
-            "simulated": False,
-            "filename": filename,
-            "url": f"/outputs/audio/{filename}",
-            "local_path": str(local_path),
-            "model": "Microsoft Edge Neural Voice (Free Tier)"
+            "success": False,
+            "error": "ElevenLabs API key is not configured. Please add your ELEVENLABS_API_KEY in BYOK Settings or select Microsoft Edge Neural (100% Free & Active)."
         }
         
     try:

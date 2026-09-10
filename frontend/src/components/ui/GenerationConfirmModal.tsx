@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShieldCheck,
   Zap,
@@ -31,6 +32,8 @@ export interface GenerationConfirmDetails {
   costUsd: number;
   costInr: number;
   isFree?: boolean;
+  isKeyConfigured?: boolean;
+  keyMissingMessage?: string;
 }
 
 interface Props {
@@ -49,6 +52,11 @@ export default function GenerationConfirmModal({
   loading = false,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Keyboard shortcut: Escape to close, Ctrl/Cmd+Enter to confirm
   useEffect(() => {
@@ -56,17 +64,18 @@ export default function GenerationConfirmModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !loading) {
         onClose();
-      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading && details?.isKeyConfigured !== false) {
         onConfirm();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, loading, onClose, onConfirm]);
+  }, [isOpen, loading, onClose, onConfirm, details?.isKeyConfigured]);
 
-  if (!isOpen || !details) return null;
+  if (!isOpen || !details || !mounted) return null;
 
   const isFree = details.isFree || details.costUsd === 0;
+  const isKeyMissing = details.isKeyConfigured === false;
 
   const handleCopyPrompt = () => {
     if (!details.prompt) return;
@@ -93,15 +102,17 @@ export default function GenerationConfirmModal({
   const serviceMeta = getServiceMeta(details.serviceType);
   const ServiceIcon = serviceMeta.icon;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       {/* Background ambient glow halo */}
       <div
         className={cn(
           'absolute w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none transition-all',
           isFree
             ? 'bg-emerald-500/20'
-            : 'bg-violet-500/20'
+            : isKeyMissing
+            ? 'bg-rose-500/20'
+            : 'bg-emerald-500/20'
         )}
       />
 
@@ -316,7 +327,17 @@ export default function GenerationConfirmModal({
           </div>
 
           {/* Security & Billing Notice */}
-          {!isFree ? (
+          {isKeyMissing ? (
+            <div className="flex items-start gap-2.5 text-[11px] text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/[0.08] border border-rose-200 dark:border-rose-500/30 p-3.5 rounded-2xl leading-relaxed font-mono">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+              <div>
+                <strong className="block font-bold mb-0.5">API Key Not Configured</strong>
+                <span>
+                  {details.keyMissingMessage || `The API key for ${details.provider} is not configured in Settings. Please add your key in BYOK Settings to proceed, or select a free active engine.`}
+                </span>
+              </div>
+            </div>
+          ) : !isFree ? (
             <div className="flex items-start gap-2.5 text-[11px] text-zinc-600 dark:text-zinc-400 bg-amber-50 dark:bg-amber-500/[0.04] border border-amber-200 dark:border-amber-500/20 p-3 rounded-2xl leading-relaxed font-mono">
               <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
               <span>
@@ -355,11 +376,13 @@ export default function GenerationConfirmModal({
               <button
                 type="button"
                 onClick={onConfirm}
-                disabled={loading}
+                disabled={loading || isKeyMissing}
                 className={cn(
                   'w-1/2 sm:w-auto relative flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-mono font-bold rounded-xl transition-all shadow-md cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed',
                   isFree
                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                    : isKeyMissing
+                    ? 'bg-zinc-300 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500 shadow-none'
                     : 'bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950'
                 )}
               >
@@ -370,7 +393,7 @@ export default function GenerationConfirmModal({
                   </>
                 ) : (
                   <>
-                    <span>Confirm & Generate</span>
+                    <span>{isKeyMissing ? 'Key Required' : 'Confirm & Generate'}</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </>
                 )}
@@ -379,6 +402,7 @@ export default function GenerationConfirmModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
