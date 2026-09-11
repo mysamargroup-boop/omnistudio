@@ -151,11 +151,27 @@ export default function VoiceStudioPage() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
 
   const toggleMute = () => {
     if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+      const nextMuted = !isMuted;
+      audioRef.current.muted = nextMuted;
+      setIsMuted(nextMuted);
+    }
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    setVolume(newVol);
+    if (audioRef.current) {
+      audioRef.current.volume = newVol;
+      if (newVol === 0) {
+        audioRef.current.muted = true;
+        setIsMuted(true);
+      } else if (isMuted) {
+        audioRef.current.muted = false;
+        setIsMuted(false);
+      }
     }
   };
 
@@ -460,24 +476,6 @@ export default function VoiceStudioPage() {
     }
   };
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
-    
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-    
-    return () => {
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [audioRef.current]);
 
   const togglePlayback = () => {
     if (!audioRef.current) return;
@@ -779,14 +777,26 @@ export default function VoiceStudioPage() {
             
             <div className="p-4 border-b border-black/[0.06] dark:border-white/[0.06] flex justify-between items-center bg-white/50 dark:bg-[#0d0d14]/50 backdrop-blur-sm">
               <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-medium">Output Monitor</span>
-              <div className="flex gap-2">
-                <button 
-                  onClick={toggleMute}
-                  className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer" 
-                  title={isMuted ? "Unmute" : "Mute"}
-                >
-                  {isMuted ? <VolumeX size={14} className="text-red-500" /> : <Volume2 size={14} />}
-                </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.04]">
+                  <button 
+                    onClick={toggleMute}
+                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer" 
+                    title={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                  >
+                    {isMuted || volume === 0 ? <VolumeX size={14} className="text-red-500" /> : <Volume2 size={14} />}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                    className="w-16 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
+                  />
+                </div>
                 <button 
                   onClick={handleExportAudio}
                   className={cn(
@@ -849,8 +859,15 @@ export default function VoiceStudioPage() {
                     })}
                   </div>
                   
-                  {/* Hidden audio element */}
-                  <audio ref={audioRef} src={outputAudioUrl} className="hidden" />
+                  {/* Audio element with reactive event bindings */}
+                  <audio 
+                    ref={audioRef} 
+                    src={outputAudioUrl} 
+                    className="hidden" 
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
+                  />
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 text-zinc-300 dark:text-zinc-700">

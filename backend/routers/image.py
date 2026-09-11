@@ -364,6 +364,12 @@ async def generate_image(req: ImageRequest, request: Request):
     if req.enhance_prompt:
         composed_prompt = await enhance_prompt(composed_prompt, req.enhance_style)
 
+    try:
+        from services.brand_kit_service import apply_brand_kit_to_prompt
+        composed_prompt = apply_brand_kit_to_prompt(composed_prompt)
+    except Exception as bke:
+        logger.debug(f"Brand kit prompt injection skipped: {bke}")
+
     batch_count = min(max(req.count or 1, 1), 4)
 
     if batch_count == 1:

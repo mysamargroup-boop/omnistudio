@@ -90,6 +90,9 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
   const [negativeGuidelines, setNegativeGuidelines] = useState("");
   const [applyToGeneration, setApplyToGeneration] = useState(true);
 
+  const toValidHex = (val: string, fallback: string = "#10b981") =>
+    /^#[0-9A-Fa-f]{6}$/.test(val) ? val : fallback;
+
   useEffect(() => {
     async function fetchKit() {
       setLoading(true);
@@ -358,7 +361,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900">
               <input
                 type="color"
-                value={primaryColor}
+                value={toValidHex(primaryColor, "#10b981")}
                 onChange={(e) => setPrimaryColor(e.target.value)}
                 className="w-6 h-6 rounded-md border-0 cursor-pointer bg-transparent"
               />
@@ -376,7 +379,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900">
               <input
                 type="color"
-                value={secondaryColor}
+                value={toValidHex(secondaryColor, "#71717a")}
                 onChange={(e) => setSecondaryColor(e.target.value)}
                 className="w-6 h-6 rounded-md border-0 cursor-pointer bg-transparent"
               />
@@ -394,7 +397,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900">
               <input
                 type="color"
-                value={accentColor}
+                value={toValidHex(accentColor, "#06b6d4")}
                 onChange={(e) => setAccentColor(e.target.value)}
                 className="w-6 h-6 rounded-md border-0 cursor-pointer bg-transparent"
               />
@@ -412,7 +415,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900">
               <input
                 type="color"
-                value={backgroundColor}
+                value={toValidHex(backgroundColor, "#09090b")}
                 onChange={(e) => setBackgroundColor(e.target.value)}
                 className="w-6 h-6 rounded-md border-0 cursor-pointer bg-transparent"
               />

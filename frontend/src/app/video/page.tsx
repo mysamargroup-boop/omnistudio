@@ -387,6 +387,8 @@ function VideoStudioContent() {
   const [durationPopoverOpen, setDurationPopoverOpen] = useState(false);
   const [qualityPopoverOpen, setQualityPopoverOpen] = useState(false);
 
+  const dockRef = useRef<HTMLDivElement>(null);
+
   const closeAllPopovers = () => {
     setModelPopoverOpen(false);
     setRatioPopoverOpen(false);
@@ -394,6 +396,16 @@ function VideoStudioContent() {
     setDurationPopoverOpen(false);
     setQualityPopoverOpen(false);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
+        closeAllPopovers();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Dynamic Video Models State with Active Flags
   const [availableModels, setAvailableModels] = useState<VideoModelOption[]>(VIDEO_MODELS);
@@ -787,19 +799,36 @@ function VideoStudioContent() {
     ]);
 
     const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
-    const effectiveStartImage = !startImage.trim() && activeCharacter?.isLocked && activeCharacter?.imageUrl ? activeCharacter.imageUrl : startImage;
+    const isCharLockActive = Boolean(characterLockActive && activeCharacter?.isLocked);
+    const effectiveStartImage = (!startImage.trim() && isCharLockActive && activeCharacter?.imageUrl) ? activeCharacter.imageUrl : startImage;
 
-    // Character Consistency Directives
-    const consistencyDirectives: string[] = [];
-    if (lockFace) consistencyDirectives.push("exact facial geometry and likeness");
-    if (lockDress) consistencyDirectives.push("exact clothing costume and fabric texture");
-    if (lockJewelry) consistencyDirectives.push("consistent jewelry ornaments and accessories");
-    if (lockBackground) consistencyDirectives.push("consistent background environment and atmosphere");
-    const consistencyString = consistencyDirectives.length > 0 ? `[Consistency Lock: ${consistencyDirectives.join(", ")}]. ` : "";
+    // Character Consistency Directives (strictly conditioned on active Character Lock)
+    let characterContext = "";
+    let effectiveNegative = negativePrompt.trim();
 
-    const characterContext = (activeCharacter?.isLocked && characterLockActive && activeCharacter?.prompt)
-      ? `[Featuring Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ${consistencyString}`
-      : consistencyString;
+    if (isCharLockActive) {
+      const consistencyDirectives: string[] = [];
+      if (lockFace) consistencyDirectives.push("exact facial geometry and likeness");
+      if (lockDress) consistencyDirectives.push("exact clothing costume and fabric texture");
+      if (lockJewelry) consistencyDirectives.push("consistent jewelry ornaments and accessories");
+      if (lockBackground) consistencyDirectives.push("consistent background environment and atmosphere");
+      const consistencyString = consistencyDirectives.length > 0 ? `[Consistency Lock: ${consistencyDirectives.join(", ")}]. ` : "";
+
+      characterContext = activeCharacter?.prompt
+        ? `[Featuring Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ${consistencyString}`
+        : consistencyString;
+
+      // Negative Prompt with Consistency Enhancements
+      const negativeDirectives: string[] = [];
+      if (lockFace) negativeDirectives.push("morphed face, mismatched face, distorted facial features");
+      if (lockDress) negativeDirectives.push("changing clothes, different costume, mismatched dress");
+      if (lockJewelry) negativeDirectives.push("missing jewelry, disappearing ornaments, changing necklace");
+      if (negativeDirectives.length > 0) {
+        effectiveNegative = effectiveNegative
+          ? `${effectiveNegative}, ${negativeDirectives.join(", ")}`
+          : negativeDirectives.join(", ");
+      }
+    }
 
     let promptDirectiveText = "";
     try {
@@ -813,18 +842,6 @@ function VideoStudioContent() {
     } catch {}
 
     const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
-
-    // Negative Prompt with Consistency Enhancements
-    let effectiveNegative = negativePrompt.trim();
-    const negativeDirectives: string[] = [];
-    if (lockFace) negativeDirectives.push("morphed face, mismatched face, distorted facial features");
-    if (lockDress) negativeDirectives.push("changing clothes, different costume, mismatched dress");
-    if (lockJewelry) negativeDirectives.push("missing jewelry, disappearing ornaments, changing necklace");
-    if (negativeDirectives.length > 0) {
-      effectiveNegative = effectiveNegative
-        ? `${effectiveNegative}, ${negativeDirectives.join(", ")}`
-        : negativeDirectives.join(", ");
-    }
 
     // Initialize Render Queue Record
     const newJobId = "job_" + Date.now();
@@ -1797,12 +1814,15 @@ function VideoStudioContent() {
           )}
 
           {/* Prompt Control Bar Fixed at Bottom of Canvas */}
-          <div className={cn(
-            "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4",
-            sidebarOpen
-              ? "left-0 lg:left-64 right-0 lg:right-96 max-w-4xl mx-auto"
-              : "left-0 lg:left-64 right-0 max-w-4xl mx-auto"
-          )}>
+          <div
+            ref={dockRef}
+            className={cn(
+              "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4",
+              sidebarOpen
+                ? "left-0 lg:left-64 right-0 lg:right-96 max-w-4xl mx-auto"
+                : "left-0 lg:left-64 right-0 max-w-4xl mx-auto"
+            )}
+          >
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3">
               {/* Active Character Lock Pill (Reference Image 1) */}
               {activeCharacter?.isLocked && (

@@ -288,9 +288,9 @@ async def edit_video(
 
     # Map audio output
     if a_curr is not None:
-        cmd.extend(["-map", f"[{a_curr}]"])
-    elif mute_original and bg_audio_idx == -1:
-        # Fully muted, no bg audio -> no audio
+        cmd.extend(["-map", f"[{a_curr}]", "-c:a", "aac", "-b:a", "192k"])
+    else:
+        # Fully muted or source has no audio and no bg music -> strip audio cleanly
         cmd.append("-an")
 
     cmd.extend([

@@ -68,7 +68,7 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
                 className={cn(
                   "text-[11px] sm:text-xs font-bold font-mono tracking-wider uppercase block",
                   isCurrent
-                    ? "text-white"
+                    ? "text-white dark:text-zinc-950"
                     : "text-zinc-800 dark:text-zinc-200"
                 )}
               >
@@ -80,7 +80,7 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
                 className={cn(
                   "text-[10px] sm:text-[11px] block mt-1 tracking-tight font-sans truncate max-w-full",
                   isCurrent
-                    ? "text-zinc-200 font-medium"
+                    ? "text-zinc-300 dark:text-zinc-700 font-medium"
                     : "text-zinc-500 dark:text-zinc-400"
                 )}
               >

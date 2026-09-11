@@ -774,8 +774,11 @@ export default function ImageStudioPage() {
       if (res && res.success) {
         setResult(res);
         setLastExportedResult(res);
-        // Instant direct download of the processed image in selected format
-        handleDirectDownload(res.url, res.filename);
+        if (res.url) {
+          if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
+          setEditorImageUrl(res.url);
+          setShowBeforeAfter(true);
+        }
       } else {
         alert(res?.detail || res?.error || "Image edit failed");
       }

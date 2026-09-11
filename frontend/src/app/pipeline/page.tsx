@@ -317,6 +317,12 @@ function PipelineContent() {
     } catch (e: any) {
       if (e.name === "AbortError") {
         setStatusText("Pipeline compilation cancelled.");
+        setCurrentStep(-1);
+        setProgress(0);
+        setTelemetryLogs((prev) => [
+          ...prev,
+          { timestamp: new Date().toTimeString().split(" ")[0], message: "Pipeline execution cancelled by user." }
+        ]);
       } else {
         setResult({ success: false, error: e.message });
         setStatusText("Pipeline compilation error");
@@ -881,6 +887,12 @@ function PipelineContent() {
 
           {!loading && !result && (
             <div className="text-center py-12 space-y-3">
+              {statusText === "Pipeline compilation cancelled." && (
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-mono font-bold mb-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Pipeline compilation was cancelled</span>
+                </div>
+              )}
               <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center mx-auto text-zinc-400">
                 <Clapperboard className="w-6 h-6" />
               </div>

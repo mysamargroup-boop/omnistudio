@@ -52,7 +52,7 @@ class GenerateThumbnailRequest(BaseModel):
     platform_format: str = "youtube_16_9"
     source_image_path: Optional[str] = None
     category_badge: Optional[str] = "AI MASTERCLASS"
-    accent_color: Optional[str] = "#6366F1"
+    accent_color: Optional[str] = "#10B981"
 
 class RepurposeRequest(BaseModel):
     title: str = ""
