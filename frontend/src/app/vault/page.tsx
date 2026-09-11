@@ -95,6 +95,7 @@ export default function VaultPage() {
   const [lightboxZoom, setLightboxZoom] = useState<number>(1);
   const [lightboxCopied, setLightboxCopied] = useState<boolean>(false);
   const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [mediaAspects, setMediaAspects] = useState<Record<string, { ratio: number; label: string }>>({});
 
   // Context Menu & Rename states matching Reference Images
   const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
@@ -741,8 +742,8 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Media Masonry Grid */}
-      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+      {/* Stable Media Grid with Native Aspect Ratio Preservation */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {activeFiles.map((file, i) => {
           const selected = isSelected(file.type, file.filename);
           const isImage = file.type === "images";
@@ -769,42 +770,63 @@ export default function VaultPage() {
                 }
               }}
               className={cn(
-                "group relative rounded-2xl overflow-hidden bg-zinc-950 border border-black/[0.08] dark:border-white/[0.08] shadow-sm hover:shadow-2xl transition-all duration-300 break-inside-avoid mb-4 select-none cursor-pointer",
+                "group relative rounded-2xl overflow-hidden bg-zinc-950 border border-black/[0.08] dark:border-white/[0.08] shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer animate-in fade-in duration-500 fill-mode-both flex flex-col justify-between",
                 selected && "ring-2 ring-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               )}
             >
-              {/* Media Display */}
-              <div
-                className="w-full relative overflow-hidden"
-              >
+              {/* Media Display with Exact Native Aspect Ratio */}
+              <div className="w-full relative overflow-hidden bg-black/95 flex items-center justify-center min-h-[190px] max-h-[360px]">
                 {isImage && (
                   <img
                     src={getMediaUrl(file.url)}
                     alt={file.filename}
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-500"
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      if (img.naturalWidth && img.naturalHeight) {
+                        const r = img.naturalWidth / img.naturalHeight;
+                        let lbl = "IMG";
+                        if (r >= 1.6) lbl = "16:9";
+                        else if (r <= 0.65) lbl = "9:16";
+                        else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
+                        else if (r > 0.65 && r < 0.95) lbl = "4:5";
+                        else lbl = `${img.naturalWidth}×${img.naturalHeight}`;
+                        setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
+                      }
+                    }}
+                    className="w-full h-auto max-h-[360px] block object-contain group-hover:scale-[1.02] transition-transform duration-500"
                   />
                 )}
 
                 {isVideo && (
-                  <div className="relative w-full">
+                  <div className="relative w-full h-full flex items-center justify-center">
                     <video
                       src={getMediaUrl(file.url)}
                       playsInline
                       loop
-                      preload="none"
-                      className="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
+                      muted
+                      preload="metadata"
+                      onLoadedMetadata={(e) => {
+                        const v = e.currentTarget;
+                        if (v.videoWidth && v.videoHeight) {
+                          const r = v.videoWidth / v.videoHeight;
+                          let lbl = "VIDEO";
+                          if (r >= 1.6) lbl = "16:9";
+                          else if (r <= 0.65) lbl = "9:16";
+                          else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
+                          else if (r > 0.65 && r < 0.95) lbl = "4:5";
+                          else lbl = `${v.videoWidth}×${v.videoHeight}`;
+                          setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
+                        }
+                      }}
+                      className="w-full h-auto max-h-[360px] block object-contain group-hover:scale-[1.02] transition-transform duration-500 pointer-events-none"
                     />
-                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 text-[9px] font-mono text-cyan-300 flex items-center gap-1 pointer-events-none z-10">
-                      <Film className="w-2.5 h-2.5" />
-                      <span>VIDEO</span>
-                    </div>
                   </div>
                 )}
 
                 {isAudio && (
-                  <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[140px]">
+                  <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[190px]">
                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
                       <Mic className="w-6 h-6" />
                     </div>
@@ -813,7 +835,27 @@ export default function VaultPage() {
                 )}
 
                 {/* Subtle gradient vignette at bottom */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-80 pointer-events-none" />
+
+                {/* Type & Native Aspect Ratio Badge */}
+                <div className="absolute top-3 left-11 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 text-[9px] font-mono text-zinc-300 flex items-center gap-1 pointer-events-none z-20 shadow-sm">
+                  {isVideo ? (
+                    <>
+                      <Film className="w-2.5 h-2.5 text-cyan-400" />
+                      <span className="text-cyan-300 font-semibold">{mediaAspects[file.filename]?.label || "VIDEO"}</span>
+                    </>
+                  ) : isImage ? (
+                    <>
+                      <ImageIcon className="w-2.5 h-2.5 text-emerald-400" />
+                      <span className="text-zinc-200 font-semibold">{mediaAspects[file.filename]?.label || "IMAGE"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-2.5 h-2.5 text-rose-400" />
+                      <span className="text-rose-300 font-semibold">AUDIO</span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Multi-Select Trigger (Top Left) */}

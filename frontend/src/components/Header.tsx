@@ -98,20 +98,20 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="mx-auto flex items-center justify-between h-13 glass-dock border border-black/[0.06] dark:border-white/[0.06] rounded-2xl px-3 sm:px-5 shadow-sm w-full max-w-6xl select-none">
+    <header className="mx-auto flex items-center justify-between h-13 glass-dock border border-black/[0.06] dark:border-white/[0.06] rounded-2xl px-2.5 sm:px-4 shadow-sm w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1440px] select-none transition-all">
       {/* Left: Mobile Trigger & Brand */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
-          className="lg:hidden p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+          className="lg:hidden p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0"
           title="Open Menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <Link href="/" className="flex items-center gap-2 cursor-pointer group whitespace-nowrap shrink-0">
-          <div className="w-6 h-6 rounded-lg bg-zinc-950 dark:bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+          <div className="w-6 h-6 rounded-lg bg-zinc-950 dark:bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
             <Zap className="w-3.5 h-3.5 text-white dark:text-zinc-950" />
           </div>
           <span className="font-heading font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
@@ -122,7 +122,7 @@ export default function Header() {
 
       {/* Middle: Clean Navigation Tabs with Dropdowns */}
       <nav 
-        className="hidden md:flex items-center h-full relative gap-0.5"
+        className="hidden md:flex items-center h-full relative gap-0.5 shrink min-w-0"
         onMouseLeave={() => setActiveDropdown(null)}
       >
         {NAV_TABS.map((tab) => {
@@ -130,13 +130,13 @@ export default function Header() {
           return (
             <div 
               key={tab.id}
-              className="relative flex items-center h-full"
+              className="relative flex items-center h-full shrink-0"
               onMouseEnter={() => tab.hasDropdown ? setActiveDropdown(tab.id) : setActiveDropdown(null)}
             >
               <Link
                 href={tab.path}
                 className={cn(
-                  'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
+                  'flex items-center gap-1 px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
                   isActive 
                     ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs' 
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
@@ -145,7 +145,7 @@ export default function Header() {
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span className={cn(
-                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded",
+                    "text-[9px] font-mono font-bold px-1 py-0.2 rounded leading-none",
                     isActive
                       ? "bg-white/20 dark:bg-zinc-900/20 text-white dark:text-zinc-950"
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
@@ -232,10 +232,10 @@ export default function Header() {
       </nav>
 
       {/* Right Controls: Online Status + Theme + Auth + Create CTA */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Live Engine Status */}
         <div 
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-xs font-medium"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-[11px] font-medium shrink-0"
           title={isOnline ? 'All AI backend services running' : 'Backend offline'}
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -244,45 +244,46 @@ export default function Header() {
             )}
             <span className={cn('relative inline-flex rounded-full h-1.5 w-1.5', isOnline ? 'bg-emerald-500' : 'bg-rose-500')} />
           </span>
-          <span className="text-zinc-600 dark:text-zinc-400 text-xs">
+          <span className="text-zinc-600 dark:text-zinc-400 font-mono">
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
 
-        {/* How It Works Guide Trigger */}
+        {/* Brand Kit Trigger */}
         <button
           onClick={() => setBrandKitOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
+          className="flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
           title="Brand Kit & Visual Identity"
         >
-          <Palette className="w-3.5 h-3.5 text-indigo-500" />
-          <span className="hidden md:inline">Brand Kit</span>
+          <Palette className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+          <span className="hidden xl:inline">Brand Kit</span>
         </button>
 
+        {/* How It Works Guide Trigger */}
         <button
           onClick={() => setHowItWorksOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
+          className="flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
           title="Studio Workflow & Model Guide"
         >
-          <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-          <span className="hidden md:inline">How It Works</span>
+          <BookOpen className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <span className="hidden xl:inline">How It Works</span>
         </button>
 
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+          className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white shrink-0 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"
           title="Toggle Theme"
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {theme === 'dark' ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
         </button>
 
         {/* Primary CTA Button */}
         <button 
           onClick={() => router.push('/pipeline')}
-          className="flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
+          className="flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-2.5 sm:px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
           <span>Create</span>
         </button>
 

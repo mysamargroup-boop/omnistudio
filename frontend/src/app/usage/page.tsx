@@ -302,51 +302,61 @@ export default function UsagePage() {
           </div>
 
           {/* Card 4: Multi-Provider AI Engine Suite */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-200 shadow-sm">
-            <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2.5">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Activity className="h-4 w-4 text-emerald-500" /> Active AI Engines
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-4 sm:p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-200 shadow-sm">
+            <div className="flex items-center justify-between text-xs font-mono mb-2.5 gap-2">
+              <span className="flex items-center gap-1.5 uppercase tracking-wider font-semibold text-zinc-700 dark:text-zinc-300 truncate">
+                <Activity className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> AI Engines
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap shrink-0">
                 MULTI-PROVIDER
               </span>
             </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                  <span className={cn("w-1.5 h-1.5 rounded-full", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
-                  OpenAI (GPT-4o, DALL-E)
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2 text-xs font-mono py-0.5">
+                <span className="font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 min-w-0 truncate">
+                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
+                  <span className="truncate" title="OpenAI GPT-4o, DALL-E">OpenAI (GPT-4o)</span>
                 </span>
-                <span className={cn("text-[10px] font-bold", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400")}>
-                  {configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "ACTIVE (BYOK)" : "STANDBY"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                  <span className={cn("w-1.5 h-1.5 rounded-full", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
-                  Google AI (Gemini 2.5, Veo)
-                </span>
-                <span className={cn("text-[10px] font-bold", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400")}>
-                  {configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "ACTIVE (BYOK)" : "STANDBY"}
+                <span className={cn("text-[10px] font-bold whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded font-mono", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400")}>
+                  {configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "ACTIVE" : "STANDBY"}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Edge Neural TTS (Audio)
+              <div className="flex items-center justify-between gap-2 text-xs font-mono py-0.5">
+                <span className="font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 min-w-0 truncate">
+                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
+                  <span className="truncate" title="Google Gemini 2.5, Veo">Google (Gemini)</span>
                 </span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">100% FREE</span>
+                <span className={cn("text-[10px] font-bold whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded font-mono", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400")}>
+                  {configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "ACTIVE" : "STANDBY"}
+                </span>
               </div>
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  FFmpeg 8.1 Motion Engine
+              <div className="flex items-center justify-between gap-2 text-xs font-mono py-0.5">
+                <span className="font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="truncate" title="Edge Neural Audio TTS">Edge Neural TTS</span>
                 </span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">LOCAL FREE</span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 font-mono">
+                  100% FREE
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-xs font-mono py-0.5">
+                <span className="font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="truncate" title="FFmpeg 8.1 Motion Engine">FFmpeg 8.1 Local</span>
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 font-mono">
+                  LOCAL FREE
+                </span>
               </div>
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-mono flex items-center gap-1 pt-1.5 border-t border-black/[0.04] dark:border-white/[0.04]">
-              <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Sovereign Single-Tenant Studio
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2.5 font-mono flex items-center justify-between pt-2 border-t border-black/[0.04] dark:border-white/[0.04]">
+              <span className="flex items-center gap-1 truncate text-zinc-700 dark:text-zinc-300">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                <span className="truncate">Multimodal AI Suite</span>
+              </span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider shrink-0">
+                ACTIVE
+              </span>
             </div>
           </div>
         </div>
