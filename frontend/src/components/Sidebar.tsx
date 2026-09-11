@@ -23,8 +23,10 @@ import {
   Activity,
   Share2,
   Palette,
+  UserCheck,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import Spinner from "@/components/ui/Spinner";
 
 interface NavItem {
   href: string;
@@ -48,6 +50,7 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState<string>("");
   const [currentSearch, setCurrentSearch] = useState<string>("");
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -80,6 +83,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     setMobileOpen(false);
+    setPendingHref(null);
   }, [pathname]);
 
   const fetchTelemetry = async () => {
@@ -123,6 +127,7 @@ export default function Sidebar() {
         { href: "/image", label: "Image Studio", icon: ImageIcon, badge: "DIFFUSION" },
         { href: "/video", label: "Video Studio", icon: Video, badge: "MOTION" },
         { href: "/voice", label: "Voice Studio", icon: Mic, badge: "NEURAL" },
+        { href: "/character", label: "Character Studio", icon: UserCheck, badge: "LOCK" },
       ],
     },
     {
@@ -188,11 +193,18 @@ export default function Sidebar() {
         <div className="p-2.5 px-3 shrink-0">
           <button
             type="button"
-            onClick={() => router.push("/pipeline")}
+            onClick={() => {
+              if (pathname !== "/pipeline") setPendingHref("/pipeline");
+              router.push("/pipeline");
+            }}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer"
           >
-            <Zap className="h-3.5 w-3.5 fill-current" />
-            <span>NEW PRODUCTION</span>
+            {pendingHref === "/pipeline" ? (
+              <Spinner size="xs" variant="emerald" />
+            ) : (
+              <Zap className="h-3.5 w-3.5 fill-current" />
+            )}
+            <span>{pendingHref === "/pipeline" ? "LAUNCHING..." : "NEW PRODUCTION"}</span>
           </button>
         </div>
 
@@ -213,33 +225,48 @@ export default function Sidebar() {
                   : isSettingsLink 
                   ? (pathname === "/settings" && !isBrandKitActive) 
                   : (pathname === item.href);
+                const isPending = pendingHref === item.href && !isActive;
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={() => {
+                      if (pathname !== item.href) {
+                        setPendingHref(item.href);
+                      }
                       if (isSettingsLink) {
                         setCurrentSearch("");
                       }
                     }}
                     className={cn(
-                      "group flex items-center gap-2.5 font-jakarta mx-2 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 relative",
+                      "group flex items-center gap-2.5 font-jakarta mx-2 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 relative cursor-pointer",
                       isActive
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
+                        : isPending
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/40 ring-2 ring-emerald-500/10 shadow-xs"
                         : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
                     )}
                   >
-                    <item.icon
-                      className={cn(
-                        "h-3.5 w-3.5 shrink-0 transition-colors",
-                        isActive
-                          ? "text-white dark:text-zinc-950"
-                          : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
-                      )}
-                    />
+                    {isPending ? (
+                      <Spinner size="xs" variant="emerald" className="shrink-0" />
+                    ) : (
+                      <item.icon
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0 transition-colors",
+                          isActive
+                            ? "text-white dark:text-zinc-950"
+                            : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
+                        )}
+                      />
+                    )}
                     <span className="truncate">{item.label}</span>
-                    {item.badge && (
+                    {isPending ? (
+                      <span className="rounded-full px-1.5 py-0.2 text-[8px] font-mono ml-auto shrink-0 bg-emerald-500 text-black font-bold animate-pulse">
+                        OPENING...
+                      </span>
+                    ) : item.badge ? (
                       <span
                         className={cn(
                           "rounded-full px-1.5 py-0.2 text-[9px] font-mono ml-auto shrink-0",
@@ -250,7 +277,7 @@ export default function Sidebar() {
                       >
                         {item.badge}
                       </span>
-                    )}
+                    ) : null}
                   </Link>
                 );
               })}

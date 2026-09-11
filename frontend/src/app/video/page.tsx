@@ -25,7 +25,6 @@ import {
   Sliders,
   Sparkle,
   Film,
-  Clapperboard,
   RotateCw,
   Upload,
   Dices,
@@ -51,6 +50,9 @@ import {
   RotateCcw,
   AlertCircle,
   Palette,
+  Lock,
+  Shirt,
+  Users,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -62,9 +64,6 @@ import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/vi
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
 import BrandKitModal from "@/components/brand/BrandKitModal";
-import MotionRigVectorPad, { MotionRigConfig, DEFAULT_MOTION_RIG } from "@/components/video/MotionRigVectorPad";
-import ViewportHudOverlay from "@/components/video/ViewportHudOverlay";
-import StoryboardTimelineStrip, { StoryboardShot } from "@/components/video/StoryboardTimelineStrip";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
@@ -321,6 +320,7 @@ function VideoStudioContent() {
             j.status === "rendering" ? { ...j, status: "failed", error: "Session interrupted" } : j
           );
           setRenderJobs(normalized);
+          localStorage.setItem("omnistudio_video_render_queue", JSON.stringify(normalized.slice(0, 50)));
         }
       }
     } catch {}
@@ -384,65 +384,6 @@ function VideoStudioContent() {
   const [seed, setSeed] = useState("");
   const [modelSearchQuery, setModelSearchQuery] = useState("");
 
-  // 6-Axis Motion Rig & Virtual Optics Configuration
-  const [motionRigConfig, setMotionRigConfig] = useState<MotionRigConfig>(DEFAULT_MOTION_RIG);
-
-  // Viewport HUD Overlay & Anamorphic Scope Toggles
-  const [showHud, setShowHud] = useState(true);
-  const [showGrid, setShowGrid] = useState(false);
-  const [showScope, setShowScope] = useState(false);
-
-  // Storyboard & Sequence Timeline Strip
-  const [showStoryboard, setShowStoryboard] = useState(false);
-  const [activeStoryboardShotId, setActiveStoryboardShotId] = useState<string | null>("shot-1");
-
-  // Prompt Token Matrix Chips
-  const [tokenChips, setTokenChips] = useState<Array<{ text: string; weight: number }>>([
-    { text: "anamorphic", weight: 1.3 },
-    { text: "chiaroscuro", weight: 1.4 },
-    { text: "volumetric steam", weight: 1.2 },
-  ]);
-  const [newTokenInput, setNewTokenInput] = useState("");
-  const [showAddToken, setShowAddToken] = useState(false);
-
-  // Master Finishing Suite Controls
-  const [aiMotionInterpolation, setAiMotionInterpolation] = useState(false);
-  const [spatialLatentUpscale, setSpatialLatentUpscale] = useState(false);
-  const [filmGrainHalation, setFilmGrainHalation] = useState(0.35);
-
-  const handleRemoveToken = (index: number) => {
-    setTokenChips((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddToken = () => {
-    const raw = newTokenInput.trim();
-    if (!raw) return;
-    const parts = raw.split(":");
-    const text = parts[0].trim();
-    const rawWeight = parts[1] !== undefined ? parseFloat(parts[1]) : 1.1;
-    const weight = isNaN(rawWeight) ? 1.1 : Math.max(0, Math.min(2.0, rawWeight));
-    if (text) {
-      setTokenChips((prev) => [...prev, { text, weight: Math.round(weight * 10) / 10 }]);
-      setNewTokenInput("");
-      setShowAddToken(false);
-    }
-  };
-
-  const handleSelectStoryboardShot = (shot: StoryboardShot) => {
-    setActiveStoryboardShotId(shot.id);
-    if (shot.prompt) setPrompt(shot.prompt);
-    if (shot.duration) setDuration(shot.duration);
-    if (shot.thumbnailUrl) setStartImage(shot.thumbnailUrl);
-    if (shot.videoUrl) {
-      setResult({
-        success: true,
-        url: shot.videoUrl,
-        filename: shot.title,
-        duration: shot.duration,
-      });
-    }
-  };
-
   // Inline Bottom Dock Popover States
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
   const [ratioPopoverOpen, setRatioPopoverOpen] = useState(false);
@@ -462,7 +403,8 @@ function VideoStudioContent() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-popover-content="true"]') && !target.closest('[data-popover-trigger="true"]')) {
         closeAllPopovers();
       }
     };
@@ -694,6 +636,7 @@ function VideoStudioContent() {
         setPrecisionEditorUrl(url);
         setPrecisionEditorFilename(file.name);
         setPrecisionEditorOpen(true);
+        setSidebarOpen(false);
       }
     } catch (err) {
       console.error("Failed to upload video for editor:", err);
@@ -904,15 +847,7 @@ function VideoStudioContent() {
       }
     } catch {}
 
-    const tokenParts = tokenChips.map((t) => `${t.text}:${t.weight}`);
-    const tokenString = tokenParts.length > 0 ? tokenParts.join(", ") : "";
-    const promptSegments = [
-      characterContext ? characterContext.trim().replace(/,\s*$/, "") : "",
-      prompt ? prompt.trim().replace(/^,\s*|,\s*$/g, "") : "",
-      promptDirectiveText ? promptDirectiveText.trim().replace(/^,\s*|,\s*$/g, "") : "",
-      tokenString,
-    ].filter(Boolean);
-    const finalPrompt = promptSegments.join(", ").trim();
+    const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
 
     // Initialize Render Queue Record
     const newJobId = "job_" + Date.now();
@@ -987,15 +922,6 @@ function VideoStudioContent() {
         seed: seed ? parseInt(seed, 10) : undefined,
         model,
         character_name: activeCharacter?.isLocked ? activeCharacter.name : undefined,
-        focal_lens: motionRigConfig.focalLens,
-        aperture: motionRigConfig.aperture,
-        shutter_angle: motionRigConfig.shutterAngle,
-        color_lut: motionRigConfig.colorLut,
-        orbit_x: motionRigConfig.orbitX,
-        orbit_y: motionRigConfig.orbitY,
-        push_speed: motionRigConfig.pushSpeed,
-        crane_elevation: motionRigConfig.craneElevation,
-        dutch_roll: motionRigConfig.dutchRoll,
       };
 
       const data = await api.generateVideo(payload);
@@ -1021,21 +947,57 @@ function VideoStudioContent() {
           videoUrl: data.url,
           thumbnailUrl: data.thumbnail_url || initialJob.thumbnailUrl,
         };
-        persistJobs(renderJobs.map((j) => (j.id === newJobId ? completedJob : j)));
+        setRenderJobs((prev) => {
+          const next = prev.map((j) => (j.id === newJobId ? completedJob : j));
+          try {
+            localStorage.setItem("omnistudio_video_render_queue", JSON.stringify(next.slice(0, 50)));
+          } catch {}
+          return next;
+        });
+      } else {
+        const errorMsg = (data && data.error) ? data.error : "Video generation failed or timed out";
+        setStageTitle("SYNTHESIS FAILED");
+        setStatusMessage(errorMsg);
+        setTelemetryLogs((prev) => [
+          ...prev,
+          { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${errorMsg}` },
+        ]);
+        const failedJob = {
+          ...initialJob,
+          status: "failed" as const,
+          stage: "Synthesis Failed",
+          error: errorMsg,
+        };
+        setRenderJobs((prev) => {
+          const next = prev.map((j) => (j.id === newJobId ? failedJob : j));
+          try {
+            localStorage.setItem("omnistudio_video_render_queue", JSON.stringify(next.slice(0, 50)));
+          } catch {}
+          return next;
+        });
       }
     } catch (e: any) {
-      setResult({ success: false, error: e.message });
+      const errorMsg = e.message || "Synthesis failed";
+      setResult({ success: false, error: errorMsg });
+      setStageTitle("SYNTHESIS FAILED");
+      setStatusMessage(errorMsg);
       setTelemetryLogs((prev) => [
         ...prev,
-        { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` },
+        { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${errorMsg}` },
       ]);
       const failedJob = {
         ...initialJob,
         status: "failed" as const,
         stage: "Synthesis Failed",
-        error: e.message || "Synthesis failed",
+        error: errorMsg,
       };
-      persistJobs(renderJobs.map((j) => (j.id === newJobId ? failedJob : j)));
+      setRenderJobs((prev) => {
+        const next = prev.map((j) => (j.id === newJobId ? failedJob : j));
+        try {
+          localStorage.setItem("omnistudio_video_render_queue", JSON.stringify(next.slice(0, 50)));
+        } catch {}
+        return next;
+      });
     } finally {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -1129,7 +1091,10 @@ function VideoStudioContent() {
 
           <button
             type="button"
-            onClick={() => setMode("video_editor")}
+            onClick={() => {
+              setMode("video_editor");
+              setSidebarOpen(false);
+            }}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
               mode === "video_editor"
@@ -1194,22 +1159,6 @@ function VideoStudioContent() {
             <span className="hidden lg:inline">Guide</span>
           </button>
 
-          {/* Storyboard Sequence Timeline Button */}
-          <button
-            type="button"
-            onClick={() => setShowStoryboard(!showStoryboard)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
-              showStoryboard
-                ? "bg-emerald-600 text-white border-transparent font-bold shadow-xs"
-                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-            )}
-            title="Toggle Multi-Shot Storyboard Timeline Strip"
-          >
-            <Clapperboard className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="font-semibold">Storyboard</span>
-          </button>
-
           {/* Render Queue (Midjourney Jobs) Button */}
           <button
             type="button"
@@ -1232,7 +1181,7 @@ function VideoStudioContent() {
             <Film className="w-3.5 h-3.5 text-emerald-500" />
             <span className="font-semibold">Queue</span>
             {renderJobs.some((j) => j.status === "rendering") ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
             ) : renderJobs.length > 0 ? (
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold">
                 {renderJobs.length}
@@ -1241,28 +1190,30 @@ function VideoStudioContent() {
           </button>
 
           {/* Right Sidebar Toggle Button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (sidebarOpen && sidebarTab === "settings") {
-                setSidebarOpen(false);
-              } else {
-                setSidebarOpen(true);
-                setSidebarTab("settings");
-              }
-            }}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
-              sidebarOpen && sidebarTab === "settings"
-                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold"
-                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50"
-            )}
-            title="Toggle Settings Sidebar"
-          >
-            <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="font-semibold">Settings</span>
-            {sidebarOpen && sidebarTab === "settings" ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
-          </button>
+          {mode !== "video_editor" && !precisionEditorOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                if (sidebarOpen && sidebarTab === "settings") {
+                  setSidebarOpen(false);
+                } else {
+                  setSidebarOpen(true);
+                  setSidebarTab("settings");
+                }
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
+                sidebarOpen && sidebarTab === "settings"
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold"
+                  : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50"
+              )}
+              title="Toggle Settings Sidebar"
+            >
+              <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="font-semibold">Settings</span>
+              {sidebarOpen && sidebarTab === "settings" ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1331,26 +1282,7 @@ function VideoStudioContent() {
                       } catch {}
                     }}
                   />
-
-                  {/* Cinematic Viewport Telemetry HUD & Optical Reticle Overlay */}
-                  <ViewportHudOverlay
-                    showHud={showHud}
-                    onToggleHud={() => setShowHud(!showHud)}
-                    showGrid={showGrid}
-                    onToggleGrid={() => setShowGrid(!showGrid)}
-                    showScope={showScope}
-                    onToggleScope={() => setShowScope(!showScope)}
-                    aspectRatio={aspectRatio}
-                    fps={fps}
-                    resolution={resolution}
-                    characterName={activeCharacter?.name}
-                    orbitX={motionRigConfig.orbitX}
-                    orbitY={motionRigConfig.orbitY}
-                    motionLabel={activeMotion.label}
-                    focalLens={motionRigConfig.focalLens}
-                  />
-
-                  <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
                     <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
                       {result.mode?.toUpperCase() || "CINEMATIC"} • {fps} FPS • {aspectRatio}
                     </span>
@@ -1388,6 +1320,7 @@ function VideoStudioContent() {
                         setPrecisionEditorUrl(result.url);
                         setPrecisionEditorFilename(result.filename || "generated_video.mp4");
                         setPrecisionEditorOpen(true);
+                        setSidebarOpen(false);
                       }}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-mono font-bold transition-colors cursor-pointer"
                     >
@@ -1489,28 +1422,11 @@ function VideoStudioContent() {
                           alt="Start Frame"
                           className="max-h-[360px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
                         />
-                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm z-30">
+                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                           <span>START FRAME ACTIVE</span>
                         </div>
-                        {/* Cinematic Viewport Telemetry HUD & Optical Reticle Overlay */}
-                        <ViewportHudOverlay
-                          showHud={showHud}
-                          onToggleHud={() => setShowHud(!showHud)}
-                          showGrid={showGrid}
-                          onToggleGrid={() => setShowGrid(!showGrid)}
-                          showScope={showScope}
-                          onToggleScope={() => setShowScope(!showScope)}
-                          aspectRatio={aspectRatio}
-                          fps={fps}
-                          resolution={resolution}
-                          characterName={activeCharacter?.name}
-                          orbitX={motionRigConfig.orbitX}
-                          orbitY={motionRigConfig.orbitY}
-                          motionLabel={activeMotion.label}
-                          focalLens={motionRigConfig.focalLens}
-                        />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-xs z-30">
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-xs">
                           <button
                             type="button"
                             onClick={() => startFileInputRef.current?.click()}
@@ -1938,60 +1854,81 @@ function VideoStudioContent() {
                 )}
               </div>
             )}
-
-            {/* 6. Studio Storyboard Multi-Shot Sequence Timeline Strip */}
-            <div className="pt-2">
-              <StoryboardTimelineStrip
-                isOpen={showStoryboard}
-                onToggleOpen={() => setShowStoryboard(!showStoryboard)}
-                activeShotId={activeStoryboardShotId}
-                onSelectShot={handleSelectStoryboardShot}
-              />
-            </div>
           </div>
 
-          {/* Backdrop to dismiss any open popovers on outside click */}
+          {/* Backdrop to dismiss any open popovers on outside click anywhere on the page */}
           {(modelPopoverOpen || ratioPopoverOpen || motionPopoverOpen || durationPopoverOpen || qualityPopoverOpen) && (
-            <div className="fixed inset-0 z-30" onClick={closeAllPopovers} />
+            <div className="fixed inset-0 z-30 bg-black/10 dark:bg-black/25 backdrop-blur-[0.5px]" onClick={closeAllPopovers} />
           )}
 
-          {/* Prompt Control Bar Fixed at Bottom of Canvas */}
+          {/* Prompt Control Bar Fixed at Bottom of Canvas (Auto-shrinks when sidebar is open) */}
           <div
             ref={dockRef}
             className={cn(
-              "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4",
+              "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center",
               sidebarOpen
-                ? "left-0 lg:left-64 right-0 lg:right-96 max-w-4xl mx-auto"
-                : "left-0 lg:left-64 right-0 max-w-4xl mx-auto"
+                ? "left-0 lg:left-64 right-0 lg:right-96"
+                : "left-0 lg:left-64 right-0"
             )}
           >
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3">
-              {/* Active Character Lock Pill (Reference Image 1) */}
+            <div
+              className={cn(
+                "w-full p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3 transition-all duration-300",
+                sidebarOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-5xl xl:max-w-6xl"
+              )}
+            >
+              {/* Active Character Lock Pill (Reference Image 1) with ON/OFF Toggle */}
               {activeCharacter?.isLocked && (
-                <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     {activeCharacter.imageUrl && (
                       <img
                         src={getMediaUrl(activeCharacter.imageUrl)}
                         alt={activeCharacter.name}
-                        className="w-7 h-7 rounded-lg object-cover border border-emerald-500 shadow-xs"
+                        className="w-7 h-7 rounded-lg object-cover border border-emerald-500 shadow-xs shrink-0"
                       />
                     )}
-                    <div>
-                      <span className="font-bold font-heading text-xs block">{activeCharacter.name}</span>
-                      <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80">
+                    <div className="min-w-0">
+                      <span className="font-bold font-heading text-xs block truncate">{activeCharacter.name}</span>
+                      <span className="text-[10px] font-mono text-emerald-700/80 dark:text-emerald-300/80 block truncate">
                         Character identity locked for consistent generations
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Character Lock Toggle Switch with visual slider icon and ON/OFF */}
+                    <button
+                      type="button"
+                      onClick={() => setCharacterLockActive(!characterLockActive)}
+                      className={cn(
+                        "flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
+                        characterLockActive
+                          ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+                          : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
+                      )}
+                      title={characterLockActive ? "Character Lock is Active (Click to turn OFF)" : "Character Lock is Disabled (Click to turn ON)"}
+                    >
+                      <span className="text-[10px] uppercase font-bold tracking-wider">Lock</span>
+                      <div className={cn(
+                        "w-7 h-4 rounded-full p-0.5 transition-colors relative flex items-center",
+                        characterLockActive ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"
+                      )}>
+                        <div className={cn(
+                          "w-3 h-3 rounded-full bg-white transition-transform transform shadow-sm",
+                          characterLockActive ? "translate-x-3" : "translate-x-0"
+                        )} />
+                      </div>
+                      <span className={cn("text-[10px] font-bold font-mono", characterLockActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500")}>
+                        {characterLockActive ? "ON" : "OFF"}
+                      </span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
                         setSidebarOpen(true);
                         setOpenSections((prev) => ({ ...prev, character: true }));
                       }}
-                      className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 transition-colors cursor-pointer"
+                      className="text-[11px] font-mono px-2 py-1 rounded-lg bg-white/70 dark:bg-zinc-800/80 hover:bg-white dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer border border-black/[0.06] dark:border-white/[0.06]"
                     >
                       Change
                     </button>
@@ -2077,19 +2014,31 @@ function VideoStudioContent() {
                       type="button"
                       onClick={() => setCharacterLockActive(!characterLockActive)}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95 border",
+                        "flex items-center gap-2 px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95 border select-none",
                         characterLockActive
                           ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
                           : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-500"
                       )}
-                      title={characterLockActive ? "Character Lock is Active (Click to disable for next generation)" : "Character Lock is Disabled (Click to activate)"}
+                      title={characterLockActive ? "Character Lock is Active (Click to turn OFF for next generation)" : "Character Lock is Disabled (Click to turn ON)"}
                     >
                       {characterLockActive ? (
-                        <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
+                        <UserCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                       ) : (
-                        <UserX className="h-3.5 w-3.5 text-zinc-400" />
+                        <UserX className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
                       )}
-                      <span>Character: {activeCharacter.name} ({characterLockActive ? "ON" : "OFF"})</span>
+                      <span className="truncate max-w-[120px]">{activeCharacter.name}</span>
+                      <div className={cn(
+                        "w-6 h-3.5 rounded-full p-0.5 transition-colors relative flex items-center shrink-0",
+                        characterLockActive ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"
+                      )}>
+                        <div className={cn(
+                          "w-2.5 h-2.5 rounded-full bg-white transition-transform transform shadow-xs",
+                          characterLockActive ? "translate-x-2.5" : "translate-x-0"
+                        )} />
+                      </div>
+                      <span className={cn("text-[10px] font-bold font-mono shrink-0", characterLockActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500")}>
+                        {characterLockActive ? "ON" : "OFF"}
+                      </span>
                     </button>
                   ) : (
                     <button
@@ -2139,72 +2088,6 @@ function VideoStudioContent() {
                 </div>
               )}
 
-              {/* Prompt Token Matrix Chips */}
-              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Tokens:
-                </span>
-                {tokenChips.map((token, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-2xs group"
-                  >
-                    <span>{token.text}</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">:{token.weight}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveToken(idx)}
-                      className="text-zinc-400 hover:text-rose-500 transition-colors ml-0.5"
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  </span>
-                ))}
-                {showAddToken ? (
-                  <div className="inline-flex items-center gap-1">
-                    <input
-                      type="text"
-                      value={newTokenInput}
-                      onChange={(e) => setNewTokenInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddToken();
-                        } else if (e.key === "Escape") {
-                          setShowAddToken(false);
-                        }
-                      }}
-                      placeholder="token:1.2"
-                      className="w-24 px-2 py-0.5 text-[10px] font-mono rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-emerald-500/50 text-zinc-900 dark:text-white focus:outline-hidden"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddToken}
-                      className="px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-mono font-bold hover:bg-emerald-500 transition-colors cursor-pointer"
-                    >
-                      Add
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddToken(false)}
-                      className="p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddToken(true)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 transition-colors cursor-pointer"
-                  >
-                    <span>+ Add Token</span>
-                  </button>
-                )}
-              </div>
-
               {/* Textarea */}
               <div className="relative">
                 <textarea
@@ -2233,9 +2116,11 @@ function VideoStudioContent() {
                   <div className="relative">
                     <button
                       type="button"
+                      data-popover-trigger="true"
                       onClick={() => {
+                        const next = !modelPopoverOpen;
                         closeAllPopovers();
-                        setModelPopoverOpen(!modelPopoverOpen);
+                        setModelPopoverOpen(next);
                       }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-heading font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
@@ -2251,6 +2136,7 @@ function VideoStudioContent() {
 
                     {modelPopoverOpen && (
                       <div
+                        data-popover-content="true"
                         data-lenis-prevent="true"
                         className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
                       >
@@ -2334,9 +2220,11 @@ function VideoStudioContent() {
                   <div className="relative">
                     <button
                       type="button"
+                      data-popover-trigger="true"
                       onClick={() => {
+                        const next = !ratioPopoverOpen;
                         closeAllPopovers();
-                        setRatioPopoverOpen(!ratioPopoverOpen);
+                        setRatioPopoverOpen(next);
                       }}
                       className={cn(
                         "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
@@ -2351,6 +2239,7 @@ function VideoStudioContent() {
 
                     {ratioPopoverOpen && (
                       <div
+                        data-popover-content="true"
                         data-lenis-prevent="true"
                         className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
                       >
@@ -2387,9 +2276,11 @@ function VideoStudioContent() {
                   <div className="relative">
                     <button
                       type="button"
+                      data-popover-trigger="true"
                       onClick={() => {
+                        const next = !motionPopoverOpen;
                         closeAllPopovers();
-                        setMotionPopoverOpen(!motionPopoverOpen);
+                        setMotionPopoverOpen(next);
                       }}
                       className={cn(
                         "flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-jakarta font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
@@ -2405,6 +2296,7 @@ function VideoStudioContent() {
 
                     {motionPopoverOpen && (
                       <div
+                        data-popover-content="true"
                         data-lenis-prevent="true"
                         className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
                       >
@@ -2449,9 +2341,11 @@ function VideoStudioContent() {
                   <div className="relative">
                     <button
                       type="button"
+                      data-popover-trigger="true"
                       onClick={() => {
+                        const next = !durationPopoverOpen;
                         closeAllPopovers();
-                        setDurationPopoverOpen(!durationPopoverOpen);
+                        setDurationPopoverOpen(next);
                       }}
                       className={cn(
                         "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
@@ -2466,6 +2360,7 @@ function VideoStudioContent() {
 
                     {durationPopoverOpen && (
                       <div
+                        data-popover-content="true"
                         data-lenis-prevent="true"
                         className="absolute bottom-full left-0 mb-2 w-60 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
                       >
@@ -2523,9 +2418,11 @@ function VideoStudioContent() {
                   <div className="relative">
                     <button
                       type="button"
+                      data-popover-trigger="true"
                       onClick={() => {
+                        const next = !qualityPopoverOpen;
                         closeAllPopovers();
-                        setQualityPopoverOpen(!qualityPopoverOpen);
+                        setQualityPopoverOpen(next);
                       }}
                       className={cn(
                         "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
@@ -2540,6 +2437,7 @@ function VideoStudioContent() {
 
                     {qualityPopoverOpen && (
                       <div
+                        data-popover-content="true"
                         data-lenis-prevent="true"
                         className="absolute bottom-full left-0 mb-2 w-60 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
                       >
@@ -2626,7 +2524,7 @@ function VideoStudioContent() {
         )}
 
         {/* Right Settings Sidebar (Collapsible with Stacked Close Accordions & Independent Scroll) */}
-        {sidebarOpen && (
+        {sidebarOpen && !precisionEditorOpen && mode !== "video_editor" && (
           <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-lg z-10">
             {/* Sidebar Header with Stacked Close Toggle All */}
             {/* Sidebar Header with Segmented Switch: Settings vs Render Queue */}
@@ -2658,7 +2556,7 @@ function VideoStudioContent() {
                   <Film className="w-3 h-3 text-emerald-500" />
                   <span>Queue</span>
                   {renderJobs.some((j) => j.status === "rendering") ? (
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   ) : renderJobs.length > 0 ? (
                     <span className="text-[9px] px-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
                       {renderJobs.length}
@@ -2739,13 +2637,37 @@ function VideoStudioContent() {
                                   </p>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setActiveCharacter(null)}
-                                className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-                              >
-                                Unlock
-                              </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setCharacterLockActive(!characterLockActive)}
+                                  className={cn(
+                                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
+                                    characterLockActive
+                                      ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+                                      : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
+                                  )}
+                                  title={characterLockActive ? "Lock is ON (Click to turn OFF)" : "Lock is OFF (Click to turn ON)"}
+                                >
+                                  <div className={cn(
+                                    "w-5 h-3 rounded-full p-0.5 transition-colors relative flex items-center",
+                                    characterLockActive ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"
+                                  )}>
+                                    <div className={cn(
+                                      "w-2 h-2 rounded-full bg-white transition-transform transform shadow-xs",
+                                      characterLockActive ? "translate-x-2" : "translate-x-0"
+                                    )} />
+                                  </div>
+                                  <span>{characterLockActive ? "ON" : "OFF"}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveCharacter(null)}
+                                  className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                                >
+                                  Unlock
+                                </button>
+                              </div>
                             </div>
                             <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-jakarta line-clamp-2 leading-relaxed">
                               {activeCharacter.prompt}
@@ -2803,37 +2725,39 @@ function VideoStudioContent() {
                         )}
 
                         {/* Mode Switch: Archetypes vs Custom Identity */}
-                        <div className="flex rounded-lg bg-zinc-200/80 dark:bg-zinc-800/80 p-0.5 border border-zinc-300/60 dark:border-zinc-700/60">
+                        <div className="flex rounded-xl bg-zinc-200/70 dark:bg-zinc-800/70 p-1 border border-zinc-300/50 dark:border-zinc-700/50 gap-1">
                           <button
                             type="button"
                             onClick={() => setCharSelectTab("presets")}
                             className={cn(
-                              "flex-1 py-1 text-[10px] font-mono rounded-md font-bold transition-all cursor-pointer",
+                              "flex-1 py-1.5 px-2 text-[11px] font-mono rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5",
                               charSelectTab === "presets"
                                 ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-xs"
                                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
                             )}
                           >
-                            Archetypes (6)
+                            <Users className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Archetypes ({ARCHETYPES.length})</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setCharSelectTab("custom")}
                             className={cn(
-                              "flex-1 py-1 text-[10px] font-mono rounded-md font-bold transition-all cursor-pointer",
+                              "flex-1 py-1.5 px-2 text-[11px] font-mono rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5",
                               charSelectTab === "custom"
                                 ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
                                 : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
                             )}
                           >
-                            + Custom Character
+                            <UserPlus className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>+ Custom Character</span>
                           </button>
                         </div>
 
                         {/* Predefined Archetypes */}
                         {charSelectTab === "presets" && (
-                          <div className="space-y-1.5">
-                            <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto custom-scrollbar pr-0.5">
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto custom-scrollbar pr-0.5">
                               {ARCHETYPES.map((arch) => {
                                 const isSelected = activeCharacter?.id === arch.id && activeCharacter?.isLocked;
                                 return (
@@ -2852,17 +2776,28 @@ function VideoStudioContent() {
                                       });
                                     }}
                                     className={cn(
-                                      "p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col gap-1.5",
+                                      "p-2.5 rounded-xl text-left transition-all cursor-pointer border flex flex-col gap-1.5 relative group",
                                       isSelected
-                                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
-                                        : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+                                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/40 shadow-xs"
+                                        : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60"
                                     )}
                                   >
-                                    <div className="flex items-center gap-1.5">
-                                      <img src={arch.avatar} alt={arch.name} className="w-6 h-6 rounded-md object-cover border border-black/10 dark:border-white/10" />
-                                      <span className="text-[11px] font-bold font-heading truncate">{arch.name}</span>
+                                    <div className="flex items-center gap-2">
+                                      <img
+                                        src={arch.avatar}
+                                        alt={arch.name}
+                                        className="w-7 h-7 rounded-lg object-cover border border-black/10 dark:border-white/10 shrink-0"
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <span className="text-[11px] font-bold font-heading truncate block">{arch.name}</span>
+                                        <span className="text-[9px] text-zinc-400 line-clamp-1 block">{arch.description}</span>
+                                      </div>
                                     </div>
-                                    <span className="text-[9px] text-zinc-500 line-clamp-1">{arch.description}</span>
+                                    {isSelected && (
+                                      <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-black flex items-center justify-center">
+                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                      </div>
+                                    )}
                                   </button>
                                 );
                               })}
@@ -2872,21 +2807,36 @@ function VideoStudioContent() {
 
                         {/* Custom Character Creator */}
                         {charSelectTab === "custom" && (
-                          <div className="space-y-2 pt-1">
-                            <input
-                              type="text"
-                              value={customCharName}
-                              onChange={(e) => setCustomCharName(e.target.value)}
-                              placeholder="Character name (e.g. Captain Nova)..."
-                              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                            <textarea
-                              value={customCharPrompt}
-                              onChange={(e) => setCustomCharPrompt(e.target.value)}
-                              placeholder="Visual description (hair, costume, facial traits, age)..."
-                              rows={2}
-                              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
-                            />
+                          <div className="space-y-3 pt-1">
+                            {/* Input: Name */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
+                                <User className="w-3 h-3 text-emerald-500" />
+                                <span>Character Persona Name</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={customCharName}
+                                onChange={(e) => setCustomCharName(e.target.value)}
+                                placeholder="e.g. Captain Nova / Elena Vance..."
+                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 transition-all"
+                              />
+                            </div>
+
+                            {/* Input: Description */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-emerald-500" />
+                                <span>Visual Traits & Styling Prompt</span>
+                              </label>
+                              <textarea
+                                value={customCharPrompt}
+                                onChange={(e) => setCustomCharPrompt(e.target.value)}
+                                placeholder="Visual description: platinum braided hair, cyberpunk leather trench coat, neon amber eyes, athletic build..."
+                                rows={2}
+                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1.5 focus:ring-emerald-500 resize-none transition-all"
+                              />
+                            </div>
 
                             {/* Image Upload for Custom Character */}
                             <input
@@ -2912,16 +2862,19 @@ function VideoStudioContent() {
                               }}
                             />
                             {customCharImage ? (
-                              <div className="relative rounded-lg overflow-hidden border border-emerald-500/40 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2 p-1.5">
+                              <div className="relative rounded-xl overflow-hidden border border-emerald-500/40 bg-zinc-100/90 dark:bg-zinc-800/90 flex items-center gap-2.5 p-2 shadow-xs">
                                 <img
                                   src={getMediaUrl(customCharImage)}
                                   alt="Custom character"
-                                  className="w-8 h-8 rounded object-cover border border-white/10"
+                                  className="w-10 h-10 rounded-lg object-cover border border-emerald-500/40 shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
-                                    Face Reference Attached
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
+                                      Reference Image Attached
+                                    </span>
+                                  </div>
                                   <span className="text-[9px] font-mono text-zinc-400 truncate block">
                                     {customCharImage.split("/").pop()}
                                   </span>
@@ -2929,7 +2882,8 @@ function VideoStudioContent() {
                                 <button
                                   type="button"
                                   onClick={() => setCustomCharImage("")}
-                                  className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                                  className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                                  title="Remove image"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -2939,63 +2893,118 @@ function VideoStudioContent() {
                                 type="button"
                                 onClick={() => charFileInputRef.current?.click()}
                                 disabled={uploadingCharImage}
-                                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[11px] font-mono transition-colors cursor-pointer"
+                                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 bg-zinc-50/50 dark:bg-zinc-900/40 text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[11px] font-mono transition-colors cursor-pointer"
                               >
                                 {uploadingCharImage ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
                                 ) : (
-                                  <Upload className="w-3.5 h-3.5" />
+                                  <Upload className="w-3.5 h-3.5 text-emerald-500" />
                                 )}
-                                <span>{uploadingCharImage ? "Uploading Image..." : "Upload Face / Reference Image"}</span>
+                                <span>{uploadingCharImage ? "Uploading Image..." : "Upload Face / Identity Reference"}</span>
                               </button>
                             )}
 
-                            {/* Fine-Grained Consistency Checkboxes */}
-                            <div className="pt-1.5 space-y-1">
-                              <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-400 block font-semibold">
-                                Consistency Lock Settings:
+                            {/* Fine-Grained Consistency Interactive Cards */}
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block font-bold">
+                                Lock Consistency Matrix:
                               </span>
-                              <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono bg-zinc-100/70 dark:bg-zinc-800/40 p-2 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={lockFace}
-                                    onChange={(e) => setLockFace(e.target.checked)}
-                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
-                                  />
-                                  <span>Lock Face</span>
-                                </label>
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={lockDress}
-                                    onChange={(e) => setLockDress(e.target.checked)}
-                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
-                                  />
-                                  <span>Lock Dress</span>
-                                </label>
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={lockJewelry}
-                                    onChange={(e) => setLockJewelry(e.target.checked)}
-                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
-                                  />
-                                  <span>Lock Jewelry</span>
-                                </label>
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={lockBackground}
-                                    onChange={(e) => setLockBackground(e.target.checked)}
-                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
-                                  />
-                                  <span>Lock Background</span>
-                                </label>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {/* Card 1: Face */}
+                                <button
+                                  type="button"
+                                  onClick={() => setLockFace(!lockFace)}
+                                  className={cn(
+                                    "p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5",
+                                    lockFace
+                                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-100"
+                                      : "bg-zinc-100/60 dark:bg-zinc-800/40 border-zinc-200/70 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <User className={cn("w-3.5 h-3.5 shrink-0", lockFace ? "text-emerald-500" : "text-zinc-400")} />
+                                    <span className="text-[10px] font-mono font-bold truncate">Face</span>
+                                  </div>
+                                  <span className={cn(
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0",
+                                    lockFace ? "bg-emerald-500 text-black" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-400"
+                                  )}>
+                                    {lockFace ? "ON" : "OFF"}
+                                  </span>
+                                </button>
+
+                                {/* Card 2: Dress */}
+                                <button
+                                  type="button"
+                                  onClick={() => setLockDress(!lockDress)}
+                                  className={cn(
+                                    "p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5",
+                                    lockDress
+                                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-100"
+                                      : "bg-zinc-100/60 dark:bg-zinc-800/40 border-zinc-200/70 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Shirt className={cn("w-3.5 h-3.5 shrink-0", lockDress ? "text-emerald-500" : "text-zinc-400")} />
+                                    <span className="text-[10px] font-mono font-bold truncate">Costume</span>
+                                  </div>
+                                  <span className={cn(
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0",
+                                    lockDress ? "bg-emerald-500 text-black" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-400"
+                                  )}>
+                                    {lockDress ? "ON" : "OFF"}
+                                  </span>
+                                </button>
+
+                                {/* Card 3: Jewelry */}
+                                <button
+                                  type="button"
+                                  onClick={() => setLockJewelry(!lockJewelry)}
+                                  className={cn(
+                                    "p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5",
+                                    lockJewelry
+                                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-100"
+                                      : "bg-zinc-100/60 dark:bg-zinc-800/40 border-zinc-200/70 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <Sparkles className={cn("w-3.5 h-3.5 shrink-0", lockJewelry ? "text-emerald-500" : "text-zinc-400")} />
+                                    <span className="text-[10px] font-mono font-bold truncate">Jewelry</span>
+                                  </div>
+                                  <span className={cn(
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0",
+                                    lockJewelry ? "bg-emerald-500 text-black" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-400"
+                                  )}>
+                                    {lockJewelry ? "ON" : "OFF"}
+                                  </span>
+                                </button>
+
+                                {/* Card 4: Background */}
+                                <button
+                                  type="button"
+                                  onClick={() => setLockBackground(!lockBackground)}
+                                  className={cn(
+                                    "p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5",
+                                    lockBackground
+                                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-100"
+                                      : "bg-zinc-100/60 dark:bg-zinc-800/40 border-zinc-200/70 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <ImageIcon className={cn("w-3.5 h-3.5 shrink-0", lockBackground ? "text-emerald-500" : "text-zinc-400")} />
+                                    <span className="text-[10px] font-mono font-bold truncate">Background</span>
+                                  </div>
+                                  <span className={cn(
+                                    "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0",
+                                    lockBackground ? "bg-emerald-500 text-black" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-400"
+                                  )}>
+                                    {lockBackground ? "ON" : "OFF"}
+                                  </span>
+                                </button>
                               </div>
                             </div>
 
-                            {/* Sticky Docked Action Button - NEVER pushed down or cut off */}
+                            {/* Sticky Docked Action Button - Ultra-Modern Gradient */}
                             <div className="sticky bottom-0 pt-2 pb-0.5 bg-zinc-50/95 dark:bg-[#0c0c14]/95 backdrop-blur-xs z-10 border-t border-zinc-200/60 dark:border-zinc-800/60">
                               <button
                                 type="button"
@@ -3011,9 +3020,10 @@ function VideoStudioContent() {
                                     isLocked: true,
                                   });
                                 }}
-                                className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
                               >
-                                Lock Custom Character
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>Lock Custom Character</span>
                               </button>
                             </div>
                           </div>
@@ -3063,16 +3073,8 @@ function VideoStudioContent() {
                         <span>2.0x (Extreme)</span>
                       </div>
                       <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed pt-1 font-jakarta">
-                        Controls camera velocity and dynamic kinematics. Vector rig & optics fine-tuned below.
+                        Controls camera velocity and dynamic kinematics. Motion trajectory is selected via the prompt dock below.
                       </p>
-                    </div>
-
-                    {/* 6-Axis Cinema Motion Rig & Virtual Optics */}
-                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
-                      <MotionRigVectorPad
-                        config={motionRigConfig}
-                        onChange={setMotionRigConfig}
-                      />
                     </div>
                   </div>
                 )}
@@ -3163,68 +3165,6 @@ function VideoStudioContent() {
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
-
-                    {/* Master Finishing Suite */}
-                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2.5">
-                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase block">
-                        Master Finishing Suite
-                      </span>
-                      
-                      {/* AI Motion Interpolation */}
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold block">Motion Interpolation</span>
-                          <span className="text-[10px] text-zinc-400 font-jakarta">Optical flow 60fps interpolation</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setAiMotionInterpolation(!aiMotionInterpolation)}
-                          className={cn(
-                            "w-8 h-4 rounded-full transition-colors relative cursor-pointer shrink-0",
-                            aiMotionInterpolation ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
-                          )}
-                        >
-                          <div className={cn("w-3 h-3 rounded-full bg-white transition-transform absolute top-0.5", aiMotionInterpolation ? "left-4.5" : "left-0.5")} />
-                        </button>
-                      </div>
-
-                      {/* Spatial Latent Upscale */}
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                        <div>
-                          <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold block">Latent Ultra-Upscale</span>
-                          <span className="text-[10px] text-zinc-400 font-jakarta">RealESRGAN 2x cinema latent pass</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setSpatialLatentUpscale(!spatialLatentUpscale)}
-                          className={cn(
-                            "w-8 h-4 rounded-full transition-colors relative cursor-pointer shrink-0",
-                            spatialLatentUpscale ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
-                          )}
-                        >
-                          <div className={cn("w-3 h-3 rounded-full bg-white transition-transform absolute top-0.5", spatialLatentUpscale ? "left-4.5" : "left-0.5")} />
-                        </button>
-                      </div>
-
-                      {/* Kodak 5219 Film Grain & Halation */}
-                      <div className="space-y-1.5 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
-                          <span>Kodak 5219 Film Grain</span>
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                            {Math.round(filmGrainHalation * 100)}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          value={filmGrainHalation}
-                          onChange={(e) => setFilmGrainHalation(parseFloat(e.target.value))}
-                          className="w-full accent-emerald-500 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
-                        />
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -3278,7 +3218,7 @@ function VideoStudioContent() {
                     )}
                   >
                     <div className="flex items-center gap-1">
-                      {tab.pulse && tab.count > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />}
+                      {tab.pulse && tab.count > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                       <span className="truncate">{tab.label}</span>
                     </div>
                     <span className={cn(

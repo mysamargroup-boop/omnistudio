@@ -188,7 +188,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta cursor-default"
+        className="relative w-full max-w-5xl xl:max-w-6xl rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] font-jakarta cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -207,7 +207,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
                   5-STEP WORKFLOW
                 </span>
               </div>
-              <h2 className="text-xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
                 How OmniStudio Works
               </h2>
             </div>
@@ -223,15 +223,15 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
         </div>
 
         {/* Step Navigation Pills */}
-        <div className="flex items-center gap-1.5 p-3 px-5 border-b border-black/[0.06] dark:border-white/[0.06] bg-zinc-100/60 dark:bg-[#06060a] overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-2 p-3 px-6 border-b border-black/[0.06] dark:border-white/[0.06] bg-zinc-100/60 dark:bg-[#06060a] overflow-x-auto custom-scrollbar">
           {GUIDE_STEPS.map((s) => (
             <button
               key={s.id}
               onClick={() => setCurrentStep(s.id)}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0",
+                "flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0",
                 currentStep === s.id
-                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs scale-105"
                   : "bg-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/[0.1]"
               )}
             >
@@ -246,31 +246,31 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
         {/* Step Content Area */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
           {/* Step Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-black">
-                <StepIcon className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 rounded-2xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm">
+                <StepIcon className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
+                <h3 className="text-lg font-heading font-bold text-zinc-950 dark:text-white">
                   {step.title}
                 </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta">
+                <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-jakarta">
                   {step.subtitle}
                 </p>
               </div>
             </div>
-            <span className="self-start sm:self-center text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-zinc-300 font-semibold">
+            <span className="self-start sm:self-center text-xs font-mono px-3 py-1 rounded-full bg-black/5 dark:bg-white/10 text-zinc-700 dark:text-zinc-300 font-semibold">
               STEP {step.id} OF 5
             </span>
           </div>
 
-          <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-jakarta">
+          <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-jakarta">
             {step.summary}
           </p>
 
           {/* Highlights Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {step.highlights.map((h, idx) => (
               <div
                 key={idx}

@@ -5,11 +5,11 @@ import {
   Trash2,
   Flame,
   X,
-  Loader2,
   RotateCcw,
 } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import Spinner from "@/components/ui/Spinner";
 
 export interface DeleteModalItem {
   filename: string;
@@ -203,7 +203,7 @@ export default function DeleteConfirmModal({
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Spinner size="xs" variant="white" />
                 <span>PROCESSING...</span>
               </>
             ) : isRestore ? (

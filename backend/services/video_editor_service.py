@@ -173,8 +173,19 @@ async def edit_video(
     if text_overlay and text_overlay.strip():
         clean_text = text_overlay.strip().replace(":", "\\:").replace("'", "\\'").replace('"', '\\"')
         y_pos = "h-th-40" if text_position == "bottom" else ("40" if text_position == "top" else "(h-th)/2")
+        font_arg = ""
+        for font_candidate in [
+            r"C\:/Windows/Fonts/arial.ttf",
+            r"C\:/Windows/Fonts/segoeui.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf"
+        ]:
+            raw_path = font_candidate.replace(r"\:", ":")
+            if os.path.exists(raw_path):
+                font_arg = f"fontfile='{font_candidate}':"
+                break
         drawtext_filter = (
-            f"drawtext=text='{clean_text}':x=(w-tw)/2:y={y_pos}:"
+            f"drawtext={font_arg}text='{clean_text}':x=(w-tw)/2:y={y_pos}:"
             f"fontsize=36:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=10"
         )
         filter_complex.append(f"[{v_curr}]{drawtext_filter}[v_txt]")

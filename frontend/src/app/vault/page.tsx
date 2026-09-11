@@ -47,6 +47,7 @@ import LazyImage from "@/components/ui/LazyImage";
 import ShareModal from "@/components/ui/ShareModal";
 import CreateCollectionModal from "@/components/ui/CreateCollectionModal";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
+import Spinner from "@/components/ui/Spinner";
 
 type Tab = "all" | "favorites" | "final" | "videos" | "images" | "audio" | "trash";
 
@@ -96,6 +97,8 @@ export default function VaultPage() {
   const [lightboxCopied, setLightboxCopied] = useState<boolean>(false);
   const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [mediaAspects, setMediaAspects] = useState<Record<string, { ratio: number; label: string }>>({});
+  const [loadedMedia, setLoadedMedia] = useState<Record<string, boolean>>({});
+  const [lightboxLoading, setLightboxLoading] = useState<boolean>(true);
 
   // Context Menu & Rename states matching Reference Images
   const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
@@ -365,6 +368,7 @@ export default function VaultPage() {
     setLightboxZoom(1);
     setImgNaturalSize(null);
     setLightboxCopied(false);
+    setLightboxLoading(true);
   };
 
   const copyLightboxUrl = async () => {
@@ -610,7 +614,7 @@ export default function VaultPage() {
             className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
             title="Refresh Vault & Storage"
           >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            {loading ? <Spinner size="xs" variant="emerald" /> : <RefreshCw className="h-4 w-4" />}
           </button>
         </div>
       </div>
@@ -797,91 +801,164 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Stable Media Grid with Native Aspect Ratio Preservation */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {activeFiles.map((file, i) => {
-          const selected = isSelected(file.type, file.filename);
-          const isImage = file.type === "images";
-          const isVideo = file.type === "videos" || file.type === "final";
-          const isAudio = file.type === "audio";
-          const isMenuOpen = activeMenuKey === file.filename;
+      {/* Loading Skeleton Animation when vault is syncing or opening */}
+      {loading && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
+            <div className="flex items-center gap-2.5">
+              <Spinner size="sm" variant="emerald" />
+              <span className="text-zinc-800 dark:text-zinc-200 font-semibold tracking-wide">
+                Synchronizing Asset Vault & Media Repository...
+              </span>
+            </div>
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider hidden sm:inline">
+              OMNISTUDIO REPOSITORY
+            </span>
+          </div>
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            {[
+              "aspect-video",
+              "aspect-[9/16]",
+              "aspect-square",
+              "aspect-[4/5]",
+              "aspect-[9/16]",
+              "aspect-video",
+              "aspect-[4/5]",
+              "aspect-square",
+            ].map((aspect, idx) => (
+              <div
+                key={`vault-skeleton-${idx}`}
+                className="break-inside-avoid inline-block w-full mb-4 rounded-2xl bg-zinc-950 overflow-hidden shadow-sm align-top"
+              >
+                <div
+                  className={cn(
+                    "w-full relative overflow-hidden bg-zinc-900/90 flex items-center justify-center animate-pulse",
+                    aspect
+                  )}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-pulse" />
+                  <ImageIcon className="w-8 h-8 text-zinc-800 animate-pulse" />
+                </div>
+                <div className="p-3 bg-zinc-950 space-y-2 border-t border-white/5">
+                  <div className="h-3 w-3/4 rounded bg-zinc-800/80 animate-pulse" />
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="h-2 w-16 rounded bg-zinc-800/60 animate-pulse" />
+                    <div className="h-2 w-12 rounded bg-zinc-800/60 animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-          return (
-            <div
-              key={`${file.type}-${file.filename}-${i}`}
-              onClick={() => openLightbox(file)}
-              onMouseEnter={(e) => {
-                const v = e.currentTarget.querySelector("video");
-                if (v) {
-                  v.muted = true;
-                  v.play().catch(() => {});
-                }
-              }}
-              onMouseLeave={(e) => {
-                const v = e.currentTarget.querySelector("video");
-                if (v) {
-                  v.pause();
-                  v.currentTime = 0;
-                }
-              }}
-              className={cn(
-                "group relative rounded-2xl bg-zinc-950 border border-black/[0.08] dark:border-white/[0.08] shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer animate-in fade-in duration-500 fill-mode-both flex flex-col justify-between",
-                isMenuOpen ? "overflow-visible z-50" : "overflow-hidden z-10",
-                selected && "ring-2 ring-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-              )}
-            >
-              {/* Media Display with Exact Native Aspect Ratio */}
-              <div className="w-full relative overflow-hidden rounded-t-2xl bg-black/95 flex items-center justify-center min-h-[190px] max-h-[360px]">
-                {isImage && (
-                  <img
-                    src={getMediaUrl(file.url)}
-                    alt={file.filename}
-                    loading="lazy"
-                    decoding="async"
-                    onLoad={(e) => {
-                      const img = e.currentTarget;
-                      if (img.naturalWidth && img.naturalHeight) {
-                        const r = img.naturalWidth / img.naturalHeight;
-                        let lbl = "IMG";
-                        if (r >= 1.6) lbl = "16:9";
-                        else if (r <= 0.65) lbl = "9:16";
-                        else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
-                        else if (r > 0.65 && r < 0.95) lbl = "4:5";
-                        else lbl = `${img.naturalWidth}×${img.naturalHeight}`;
-                        setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
-                      }
-                    }}
-                    className="w-full h-auto max-h-[360px] block object-contain group-hover:scale-[1.02] transition-transform duration-500"
-                  />
+      {/* Stable Media Display with True Masonry Layout & Smooth Faded Image Transitions */}
+      {!loading && (
+        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          {activeFiles.map((file, i) => {
+            const selected = isSelected(file.type, file.filename);
+            const isImage = file.type === "images";
+            const isVideo = file.type === "videos" || file.type === "final";
+            const isAudio = file.type === "audio";
+            const isMenuOpen = activeMenuKey === file.filename;
+
+            return (
+              <div
+                key={`${file.type}-${file.filename}-${i}`}
+                onClick={() => openLightbox(file)}
+                onMouseEnter={(e) => {
+                  const v = e.currentTarget.querySelector("video");
+                  if (v) {
+                    v.muted = true;
+                    v.play().catch(() => {});
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  const v = e.currentTarget.querySelector("video");
+                  if (v) {
+                    v.pause();
+                    v.currentTime = 0;
+                  }
+                }}
+                className={cn(
+                  "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer overflow-hidden border-0",
+                  isMenuOpen ? "overflow-visible z-50" : "overflow-hidden z-10",
+                  selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                 )}
+              >
+                {/* Media Display with Faded Smooth Transition & Aspect Ratio */}
+                <div className="w-full relative overflow-hidden rounded-t-2xl bg-zinc-900/90 flex items-center justify-center min-h-[160px]">
+                  {/* Shimmer skeleton placeholder while image/video is loading */}
+                  {!loadedMedia[file.filename] && !isAudio && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 animate-pulse flex items-center justify-center pointer-events-none">
+                      <ImageIcon className="w-6 h-6 text-zinc-700 animate-pulse opacity-60" />
+                    </div>
+                  )}
 
-                {isVideo && (
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <video
+                  {isImage && (
+                    <img
                       src={getMediaUrl(file.url)}
-                      playsInline
-                      loop
-                      muted
-                      preload="metadata"
-                      onLoadedMetadata={(e) => {
-                        const v = e.currentTarget;
-                        if (v.videoWidth && v.videoHeight) {
-                          const r = v.videoWidth / v.videoHeight;
-                          let lbl = "VIDEO";
+                      alt={file.filename}
+                      loading="lazy"
+                      decoding="async"
+                      onLoad={(e) => {
+                        const img = e.currentTarget;
+                        if (img.naturalWidth && img.naturalHeight) {
+                          const r = img.naturalWidth / img.naturalHeight;
+                          let lbl = "IMG";
                           if (r >= 1.6) lbl = "16:9";
                           else if (r <= 0.65) lbl = "9:16";
                           else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
                           else if (r > 0.65 && r < 0.95) lbl = "4:5";
-                          else lbl = `${v.videoWidth}×${v.videoHeight}`;
+                          else lbl = `${img.naturalWidth}×${img.naturalHeight}`;
                           setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
                         }
+                        setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
                       }}
-                      className="w-full h-auto max-h-[360px] block object-contain group-hover:scale-[1.02] transition-transform duration-500 pointer-events-none"
+                      className={cn(
+                        "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-700 ease-out will-change-[opacity,transform]",
+                        loadedMedia[file.filename]
+                          ? "opacity-100 scale-100 filter-none"
+                          : "opacity-0 scale-[1.02] blur-xs"
+                      )}
                     />
-                  </div>
-                )}
+                  )}
 
-                {isAudio && (
+                  {isVideo && (
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      <video
+                        src={getMediaUrl(file.url)}
+                        playsInline
+                        loop
+                        muted
+                        preload="metadata"
+                        onLoadedData={() => {
+                          setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
+                        }}
+                        onLoadedMetadata={(e) => {
+                          const v = e.currentTarget;
+                          if (v.videoWidth && v.videoHeight) {
+                            const r = v.videoWidth / v.videoHeight;
+                            let lbl = "VIDEO";
+                            if (r >= 1.6) lbl = "16:9";
+                            else if (r <= 0.65) lbl = "9:16";
+                            else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
+                            else if (r > 0.65 && r < 0.95) lbl = "4:5";
+                            else lbl = `${v.videoWidth}×${v.videoHeight}`;
+                            setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
+                          }
+                        }}
+                        className={cn(
+                          "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-700 ease-out pointer-events-none will-change-[opacity,transform]",
+                          loadedMedia[file.filename]
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-[1.02]"
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {isAudio && (
                   <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[190px]">
                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
                       <Mic className="w-6 h-6" />
@@ -922,14 +999,17 @@ export default function VaultPage() {
                   toggleSelect(file.type, file.filename);
                 }}
                 className={cn(
-                  "absolute top-3 left-3 z-30 p-1.5 rounded-lg backdrop-blur-md border transition-all cursor-pointer",
+                  "absolute top-3 left-3 z-30 w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md",
                   selected
-                    ? "bg-emerald-500 text-white border-emerald-400 opacity-100"
-                    : "bg-black/50 text-white/70 border-white/10 opacity-0 group-hover:opacity-100 hover:bg-black/80"
+                    ? "bg-emerald-500 text-white ring-2 ring-white/90 scale-105 opacity-100 shadow-emerald-500/40"
+                    : cn(
+                        "bg-black/40 backdrop-blur-md border-2 border-white/70 hover:border-white hover:bg-black/60 hover:scale-110",
+                        selectedKeys.size > 0 ? "opacity-90" : "opacity-0 group-hover:opacity-100"
+                      )
                 )}
-                title={selected ? "Deselect" : "Select"}
+                title={selected ? "Deselect item" : "Select item"}
               >
-                {selected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                {selected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
               </button>
 
               {/* Top Right Floating Capsule: Heart (Favorite) + Three-Dots (Options) */}
@@ -1227,8 +1307,8 @@ export default function VaultPage() {
           );
         })}
 
-        {activeFiles.length === 0 && !loading && (
-          <div className="col-span-full text-center py-20 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 space-y-2">
+        {activeFiles.length === 0 && (
+          <div className="col-span-full break-inside-avoid w-full text-center py-20 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 space-y-2">
             {tab === "trash" ? (
                <Trash2 className="h-10 w-10 text-zinc-400 dark:text-zinc-600 mx-auto" />
             ) : (
@@ -1245,6 +1325,7 @@ export default function VaultPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Floating Bulk Action Bar (when 1 or more selected) */}
       {selectedKeys.size > 0 && (
@@ -1421,12 +1502,25 @@ export default function VaultPage() {
                     setLightboxAsset(lightboxFiles[currentLightboxIndex - 1]);
                     setLightboxZoom(1);
                     setImgNaturalSize(null);
+                    setLightboxLoading(true);
                   }}
-                  className="absolute left-6 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                  className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
                   title="Previous Media (Left Arrow)"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
+              )}
+
+              {/* Centered Professional Loading Animation when opening large media */}
+              {lightboxLoading && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs pointer-events-none animate-in fade-in duration-200">
+                  <div className="p-6 rounded-3xl bg-zinc-950/80 border border-white/10 shadow-2xl flex flex-col items-center gap-3">
+                    <Spinner size="xl" variant="emerald" />
+                    <p className="text-xs font-mono font-medium text-zinc-300 tracking-wider uppercase">
+                      Opening High-Res Media...
+                    </p>
+                  </div>
+                </div>
               )}
 
               {/* High-Resolution Zoomable Image Display */}
@@ -1445,8 +1539,13 @@ export default function VaultPage() {
                         width: target.naturalWidth,
                         height: target.naturalHeight,
                       });
+                      setLightboxLoading(false);
                     }}
-                    className="max-h-[75vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none"
+                    onError={() => setLightboxLoading(false)}
+                    className={cn(
+                      "max-h-[75vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none transition-all duration-500 ease-out",
+                      lightboxLoading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
+                    )}
                   />
                 </div>
               )}
@@ -1463,7 +1562,13 @@ export default function VaultPage() {
                     autoPlay
                     playsInline
                     loop
-                    className="max-h-[75vh] max-w-[85vw] object-contain rounded-2xl shadow-2xl border border-white/10 bg-black"
+                    onLoadedData={() => setLightboxLoading(false)}
+                    onCanPlay={() => setLightboxLoading(false)}
+                    onError={() => setLightboxLoading(false)}
+                    className={cn(
+                      "max-h-[75vh] max-w-[85vw] object-contain rounded-2xl shadow-2xl border border-white/10 bg-black transition-all duration-500 ease-out",
+                      lightboxLoading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
+                    )}
                   />
                 </div>
               )}
@@ -1478,7 +1583,13 @@ export default function VaultPage() {
                     <Mic className="w-10 h-10" />
                   </div>
                   <p className="text-sm font-mono font-bold truncate max-w-xs">{lightboxAsset.filename}</p>
-                  <audio src={getMediaUrl(lightboxAsset.url)} controls className="w-full" autoPlay />
+                  <audio
+                    src={getMediaUrl(lightboxAsset.url)}
+                    controls
+                    className="w-full"
+                    autoPlay
+                    onCanPlay={() => setLightboxLoading(false)}
+                  />
                 </div>
               )}
 
@@ -1491,8 +1602,9 @@ export default function VaultPage() {
                     setLightboxAsset(lightboxFiles[currentLightboxIndex + 1]);
                     setLightboxZoom(1);
                     setImgNaturalSize(null);
+                    setLightboxLoading(true);
                   }}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
                   title="Next Media (Right Arrow)"
                 >
                   <ChevronRight className="w-6 h-6" />
@@ -1726,7 +1838,7 @@ export default function VaultPage() {
                 disabled={renaming || !renameNewName.trim()}
                 className="px-4 py-2 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-xs font-mono font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
-                {renaming && <RefreshCw className="w-3 h-3 animate-spin" />}
+                {renaming && <Spinner size="xs" variant="current" />}
                 <span>Save Changes</span>
               </button>
             </div>

@@ -67,10 +67,53 @@ Respond ONLY with a valid JSON object matching this schema:
                 "simulated": False
             }
         except Exception as e:
-            # Fall through to algorithmic director if OpenAI errors
+            # Fall through to Gemini or algorithmic director if OpenAI errors
             pass
 
-    # Intelligent Algorithmic Director Copilot (Fallback when no OpenAI key)
+    # Tier 2: Gemini 2.5 Flash Director Copilot
+    try:
+        from services.gemini_service import get_gemini_key, generate_gemini_text
+        if get_gemini_key():
+            gemini_director_prompt = f"""You are a master Hollywood cinematography and visual effects director.
+Your job is to take a creator's raw concept and choreograph it for AI video generation.
+Target Video Engine: {target_video_model}
+Generation Mode: {generation_mode}
+Style: {style}
+Aspect Ratio: {aspect_ratio}
+Creator's Scene Concept: "{idea}"
+
+Respond ONLY with a valid JSON object matching this schema:
+{{
+  "enhanced_prompt": "Ultra-detailed visual prompt describing the scene, motion dynamics, subject velocity, micro-movements, environmental particles, and cinematic texture (under 75 words)",
+  "camera_direction": "one of: zoom_in, zoom_out, pan_left, pan_right, tilt_up, tilt_down, orbit, subtle",
+  "transition_type": "one of: smooth_morph, cross_dissolve, zoom_blend, directional_wipe",
+  "recommended_fps": 30,
+  "negative_prompt": "video-specific negative prompt to eliminate jitter, morphing artifacts, flickering, unnatural anatomical distortion, low resolution, watermark",
+  "lighting_directive": "specific lighting notes e.g. Volumetric golden hour rim light, soft diffuse key light, anamorphic streak flares",
+  "director_notes": "1-2 sentences from the director explaining the dramatic intent and camera motivation"
+}}"""
+            gemini_res = await generate_gemini_text(gemini_director_prompt)
+            if gemini_res.get("success") and gemini_res.get("text"):
+                text = gemini_res["text"].strip()
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    data = json.loads(match.group(0))
+                    return {
+                        "success": True,
+                        "enhanced_prompt": data.get("enhanced_prompt", idea),
+                        "camera_direction": data.get("camera_direction", "zoom_in"),
+                        "transition_type": data.get("transition_type", "smooth_morph"),
+                        "recommended_fps": data.get("recommended_fps", 30),
+                        "negative_prompt": data.get("negative_prompt", "jitter, blurry, distorted anatomy, morphing defects, flickering, text, watermark"),
+                        "lighting_directive": data.get("lighting_directive", "Cinematic volumetric lighting, 8k raytracing"),
+                        "director_notes": data.get("director_notes", "Camera smoothly frames the primary focal point with natural kinetic energy."),
+                        "model_used": "Google Gemini 2.5 Flash Director Copilot",
+                        "simulated": False
+                    }
+    except Exception:
+        pass
+
+    # Intelligent Algorithmic Director Copilot (Fallback when no OpenAI/Gemini key)
     camera_map = {
         "action": "pan_right",
         "portrait": "zoom_in",

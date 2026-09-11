@@ -2,6 +2,11 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --font-sans: var(--font-montserrat), 'Montserrat', sans-serif;
+  --font-mono: var(--font-mono), monospace;
+}
+
 :root {
   --font-heading: var(--font-montserrat), 'Montserrat', sans-serif;
   --font-body: var(--font-montserrat), 'Montserrat', sans-serif;
@@ -19,12 +24,12 @@
 }
 
 :root:where(.dark) {
-  --bg-primary: #09090b;
-  --bg-secondary: #111114;
-  --bg-surface: #16161a;
-  --bg-elevated: #1c1c22;
-  --border-subtle: rgba(255,255,255,0.08);
-  --border-default: rgba(255,255,255,0.14);
+  --bg-primary: #0B0B0C;
+  --bg-secondary: #131314;
+  --bg-surface: #1A1A1C;
+  --bg-elevated: #1A1A1C;
+  --border-subtle: #2A2A2D;
+  --border-default: #2A2A2D;
   --accent: #fafafa;
   --accent-hover: #e4e4e7;
 }
@@ -243,7 +248,7 @@ code, pre, kbd, .font-mono {
 .hf-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.02);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }

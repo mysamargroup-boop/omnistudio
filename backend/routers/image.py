@@ -232,6 +232,20 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
                 logger.warning("Neural variation attempt failed: %s", e)
 
     if not variations:
+        try:
+            from services.usage_tracker import log_generation
+            log_generation(
+                service_type="image",
+                provider="openai",
+                model="Neural Variation Engine",
+                prompt=f"Multi-angle variations ({batch_count}x) for {Path(req.reference_image_path).name}",
+                status="failed",
+                specs={"batch_size": batch_count, "variation_strength": req.variation_strength},
+                output_url="",
+                error="Failed to generate variations using the configured API providers."
+            )
+        except Exception:
+            pass
         return {"success": False, "error": "Failed to generate variations using the configured API providers."}
 
     try:
@@ -375,19 +389,21 @@ async def generate_image(req: ImageRequest, request: Request):
     if batch_count == 1:
         single_res = await _generate_single_pass(req, composed_prompt, seed_offset=0)
         if not single_res.get("success"):
-            return single_res
-        result = dict(single_res)
-        result["images"] = [{
-            "url": single_res.get("url"),
-            "filename": single_res.get("filename"),
-            "local_path": single_res.get("local_path"),
-            "model": single_res.get("model", req.model),
-            "seed": single_res.get("seed")
-        }]
-        result["count"] = 1
+            result = single_res
+        else:
+            result = dict(single_res)
+            result["images"] = [{
+                "url": single_res.get("url"),
+                "filename": single_res.get("filename"),
+                "local_path": single_res.get("local_path"),
+                "model": single_res.get("model", req.model),
+                "seed": single_res.get("seed")
+            }]
+            result["count"] = 1
     else:
         # Multi-image generation
         images = []
+        last_error = "Batch generation failed"
         for i in range(batch_count):
             sub_res = await _generate_single_pass(req, composed_prompt, seed_offset=i)
             if sub_res.get("success"):
@@ -398,15 +414,14 @@ async def generate_image(req: ImageRequest, request: Request):
                     "model": sub_res.get("model", req.model),
                     "seed": sub_res.get("seed")
                 })
-            elif not images and i == 0:
-                # If first one failed, return error
-                return sub_res
+            else:
+                last_error = sub_res.get("error", "Generation variation error")
 
         if not images:
-            return {"success": False, "error": "Batch generation failed for all variations"}
-
-        result = {
-            "success": True,
+            result = {"success": False, "error": last_error}
+        else:
+            result = {
+                "success": True,
             "count": len(images),
             "images": images,
             "url": images[0]["url"],
@@ -437,10 +452,26 @@ async def generate_image(req: ImageRequest, request: Request):
 
     return result
 
+class PromptEnhanceRequest(BaseModel):
+    prompt: Optional[str] = ""
+    enhance_style: Optional[str] = None
+    style: Optional[str] = None
+
 @router.post("/enhance-prompt")
-async def enhance_prompt_endpoint(req: ImageRequest):
-    enhanced = await enhance_prompt(req.prompt, req.enhance_style)
-    return {"original": req.prompt, "enhanced": enhanced, "style": req.enhance_style}
+async def enhance_prompt_endpoint(req: PromptEnhanceRequest):
+    raw_prompt = (req.prompt or "").strip()
+    if not raw_prompt:
+        raw_prompt = "Cinematic sequence, dramatic atmospheric lighting, 8k photorealistic"
+
+    selected_style = req.enhance_style or req.style or "cinematic"
+    enhanced = await enhance_prompt(raw_prompt, selected_style)
+    return {
+        "success": True,
+        "original": raw_prompt,
+        "enhanced": enhanced,
+        "enhanced_prompt": enhanced,
+        "style": selected_style
+    }
 
 class AdvancedEditRequest(BaseModel):
     image_path: str

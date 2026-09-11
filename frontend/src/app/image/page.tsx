@@ -377,12 +377,9 @@ export default function ImageStudioPage() {
   }, []);
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
-        setModelPopoverOpen(false);
-        setRatioPopoverOpen(false);
-        setQualityPopoverOpen(false);
-        setResolutionPopoverOpen(false);
-        setOpticsPopoverOpen(false);
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-popover-content="true"]') && !target.closest('[data-popover-trigger="true"]')) {
+        closeAllPopovers();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -2612,9 +2609,35 @@ export default function ImageStudioPage() {
                       <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
                         Character Consistency Locks:
                       </span>
-                      <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                        Active on Render
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const anyOn = lockFace || lockDress || lockJewelry || lockBackground;
+                          const nextVal = !anyOn;
+                          setLockFace(nextVal);
+                          setLockDress(nextVal);
+                          setLockJewelry(nextVal);
+                          setLockBackground(nextVal);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
+                          (lockFace || lockDress || lockJewelry || lockBackground)
+                            ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+                            : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
+                        )}
+                        title={(lockFace || lockDress || lockJewelry || lockBackground) ? "Character Locks ON (Click to turn all OFF)" : "Character Locks OFF (Click to turn all ON)"}
+                      >
+                        <div className={cn(
+                          "w-5 h-3 rounded-full p-0.5 transition-colors relative flex items-center",
+                          (lockFace || lockDress || lockJewelry || lockBackground) ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"
+                        )}>
+                          <div className={cn(
+                            "w-2 h-2 rounded-full bg-white transition-transform transform shadow-xs",
+                            (lockFace || lockDress || lockJewelry || lockBackground) ? "translate-x-2" : "translate-x-0"
+                          )} />
+                        </div>
+                        <span>{(lockFace || lockDress || lockJewelry || lockBackground) ? "ON" : "OFF"}</span>
+                      </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                       <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer">
@@ -2833,14 +2856,14 @@ export default function ImageStudioPage() {
 
       {/* Outside-click backdrop to dismiss any open dock popover */}
       {(modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) && (
-        <div className="fixed inset-0 z-30" onClick={closeAllPopovers} />
+        <div className="fixed inset-0 z-30 bg-black/10 dark:bg-black/25 backdrop-blur-[0.5px]" onClick={closeAllPopovers} />
       )}
 
       {/* Floating Bottom Studio Dock */}
       {promptDockCollapsed ? (
         <div
           onClick={() => setPromptDockCollapsed(false)}
-          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
+          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -2869,7 +2892,7 @@ export default function ImageStudioPage() {
         <div
           ref={dockRef}
           data-lenis-prevent="true"
-          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
+          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
         >
           {studioMode === "image_editor" && (
             <div className="flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
@@ -3061,9 +3084,11 @@ export default function ImageStudioPage() {
             <div className="relative">
               <button
                 type="button"
+                data-popover-trigger="true"
                 onClick={() => {
+                  const next = !modelPopoverOpen;
                   closeAllPopovers();
-                  setModelPopoverOpen(!modelPopoverOpen);
+                  setModelPopoverOpen(next);
                 }}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-heading font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
@@ -3080,6 +3105,7 @@ export default function ImageStudioPage() {
               {/* Model Selector Upward Popover */}
               {modelPopoverOpen && (
                 <div
+                  data-popover-content="true"
                   data-lenis-prevent="true"
                   className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
                 >
@@ -3173,9 +3199,11 @@ export default function ImageStudioPage() {
             <div className="relative">
               <button
                 type="button"
+                data-popover-trigger="true"
                 onClick={() => {
+                  const next = !ratioPopoverOpen;
                   closeAllPopovers();
-                  setRatioPopoverOpen(!ratioPopoverOpen);
+                  setRatioPopoverOpen(next);
                 }}
                 className={cn(
                   "flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm min-w-[68px]",
@@ -3190,7 +3218,10 @@ export default function ImageStudioPage() {
               </button>
 
               {ratioPopoverOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 space-y-1 animate-slide-up">
+                <div
+                  data-popover-content="true"
+                  className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 space-y-1 animate-slide-up"
+                >
                   <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">
                     Aspect Ratio
                   </div>
@@ -3221,9 +3252,11 @@ export default function ImageStudioPage() {
             <div className="relative">
               <button
                 type="button"
+                data-popover-trigger="true"
                 onClick={() => {
+                  const next = !qualityPopoverOpen;
                   closeAllPopovers();
-                  setQualityPopoverOpen(!qualityPopoverOpen);
+                  setQualityPopoverOpen(next);
                 }}
                 className={cn(
                   "flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm min-w-[84px]",
@@ -3238,7 +3271,10 @@ export default function ImageStudioPage() {
               </button>
 
               {qualityPopoverOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 space-y-1 animate-slide-up">
+                <div
+                  data-popover-content="true"
+                  className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 space-y-1 animate-slide-up"
+                >
                   <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">
                     Quality Profile
                   </div>
@@ -3269,9 +3305,11 @@ export default function ImageStudioPage() {
             <div className="relative">
               <button
                 type="button"
+                data-popover-trigger="true"
                 onClick={() => {
+                  const next = !resolutionPopoverOpen;
                   closeAllPopovers();
-                  setResolutionPopoverOpen(!resolutionPopoverOpen);
+                  setResolutionPopoverOpen(next);
                 }}
                 className={cn(
                   "flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm min-w-[76px]",
@@ -3286,7 +3324,10 @@ export default function ImageStudioPage() {
               </button>
 
               {resolutionPopoverOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 space-y-1 animate-slide-up">
+                <div
+                  data-popover-content="true"
+                  className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 space-y-1 animate-slide-up"
+                >
                   <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 uppercase tracking-wider">
                     Output Resolution
                   </div>
@@ -3317,9 +3358,11 @@ export default function ImageStudioPage() {
             <div className="relative">
               <button
                 type="button"
+                data-popover-trigger="true"
                 onClick={() => {
+                  const next = !opticsPopoverOpen;
                   closeAllPopovers();
-                  setOpticsPopoverOpen(!opticsPopoverOpen);
+                  setOpticsPopoverOpen(next);
                 }}
                 className={cn(
                   "hidden sm:flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
@@ -3334,7 +3377,10 @@ export default function ImageStudioPage() {
               </button>
 
               {opticsPopoverOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 space-y-2 font-mono text-xs animate-slide-up">
+                <div
+                  data-popover-content="true"
+                  className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 space-y-2 font-mono text-xs animate-slide-up"
+                >
                   <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
                     Focal Length & Lens
                   </div>

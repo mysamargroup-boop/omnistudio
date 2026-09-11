@@ -214,9 +214,10 @@ function PipelineContent() {
     if (!topic.trim()) return;
     setEnhancing(true);
     try {
-      const data = await api.enhancePrompt({ prompt: topic, style });
-      if (data && data.enhanced_prompt) {
-        setTopic(data.enhanced_prompt);
+      const data = await api.enhancePrompt({ prompt: topic, style, enhance_style: style });
+      const enhancedText = data?.enhanced_prompt || data?.enhanced;
+      if (enhancedText) {
+        setTopic(enhancedText);
       } else {
         setTopic(
           (prev) =>
@@ -665,7 +666,13 @@ function PipelineContent() {
                   <textarea
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone..."
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" && e.ctrlKey) || (e.key === "Enter" && e.metaKey)) {
+                        e.preventDefault();
+                        requestPipelineConfirm();
+                      }
+                    }}
+                    placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone (Press Ctrl+Enter to Generate)..."
                     className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed"
                   />
 

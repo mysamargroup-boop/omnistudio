@@ -58,7 +58,10 @@ def image_to_video_motion(
     height: int = 720,
     crf: str = "18",
     preset: str = "fast",
-    loop: bool = False
+    loop: bool = False,
+    quality: str = "balanced",
+    motion_intensity: float = 1.0,
+    **kwargs
 ) -> Path:
     """
     Transform a static image into a cinematic animated video clip using FFmpeg filtergraphs.

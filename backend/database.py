@@ -670,11 +670,55 @@ def db_save_generation(
     try:
         with db_session() as conn:
             cur = conn.cursor()
-            cur.execute("""
-                INSERT OR REPLACE INTO generations 
-                (id, service_type, provider, model_used, prompt, negative_prompt, duration_sec, parameters, output_url, cost_usd, cost_inr, saved_usd, status, error_message)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (generation_id, service_type, provider, model_used, prompt, negative_prompt, duration_sec, json.dumps(parameters or {}), output_url, cost_usd, cost_inr, saved_usd, status, error_message))
+            cur.execute("PRAGMA table_info(generations)")
+            existing_cols = {row[1] for row in cur.fetchall()}
+
+            cols = ["id", "model_used", "output_url"]
+            vals = [generation_id, model_used or "unknown", output_url or ""]
+
+            if "service_type" in existing_cols:
+                cols.append("service_type")
+                vals.append(service_type or "general")
+            if "type" in existing_cols:
+                cols.append("type")
+                vals.append(service_type or "general")
+            if "provider" in existing_cols:
+                cols.append("provider")
+                vals.append(provider or "local")
+            if "prompt" in existing_cols:
+                cols.append("prompt")
+                vals.append(prompt or "")
+            if "negative_prompt" in existing_cols:
+                cols.append("negative_prompt")
+                vals.append(negative_prompt or "")
+            if "duration_sec" in existing_cols:
+                cols.append("duration_sec")
+                vals.append(duration_sec or 0.0)
+            if "parameters" in existing_cols:
+                cols.append("parameters")
+                vals.append(json.dumps(parameters or {}))
+            if "cost_usd" in existing_cols:
+                cols.append("cost_usd")
+                vals.append(cost_usd or 0.0)
+            if "cost_inr" in existing_cols:
+                cols.append("cost_inr")
+                vals.append(cost_inr or 0.0)
+            if "saved_usd" in existing_cols:
+                cols.append("saved_usd")
+                vals.append(saved_usd or 0.0)
+            if "status" in existing_cols:
+                cols.append("status")
+                vals.append(status or "success")
+            if "error_message" in existing_cols:
+                cols.append("error_message")
+                vals.append(error_message)
+
+            placeholders = ", ".join(["?"] * len(cols))
+            col_names = ", ".join(cols)
+            cur.execute(f"""
+                INSERT OR REPLACE INTO generations ({col_names})
+                VALUES ({placeholders})
+            """, tuple(vals))
             conn.commit()
     except Exception as e:
         db_logger.error("[SQLite Error] Save generation: %s", e)

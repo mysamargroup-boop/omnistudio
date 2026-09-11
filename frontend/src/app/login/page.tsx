@@ -24,6 +24,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import Spinner from "@/components/ui/Spinner";
 
 type TabType = "pin" | "email";
 type EmailAuthMode = "password" | "otp";
@@ -555,7 +556,7 @@ export default function LoginPage() {
                   <div className="min-h-[28px] flex items-center justify-center">
                     {isPinVerifying && (
                       <div className="inline-flex items-center gap-2 text-xs text-amber-300/90 font-medium">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                        <Spinner size="xs" variant="current" className="text-amber-400" />
                         <span>Verifying studio credentials...</span>
                       </div>
                     )}
@@ -589,7 +590,7 @@ export default function LoginPage() {
                     <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
                     {isPinVerifying ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-[#07070a]" />
+                      <Spinner size="sm" variant="current" className="text-[#07070a]" />
                     ) : (
                       <>
                         <Shield className="w-4 h-4 text-[#07070a]" />

@@ -57,6 +57,12 @@ def safe_resolve_output_path(user_provided_path: str, media_type: str, *, must_e
         raise HTTPException(status_code=400, detail="Security error: null bytes are not allowed")
 
     raw = decoded.replace("\\", "/")
+    dir_str = str(directory.resolve()).replace("\\", "/")
+    if raw.lower().startswith(dir_str.lower() + "/"):
+        raw = raw[len(dir_str) + 1:]
+    elif raw.lower().startswith(dir_str.lower()):
+        raw = raw[len(dir_str):].lstrip("/")
+
     prefix = f"/outputs/{media_type}/"
     if raw.startswith(prefix):
         raw = raw[len(prefix):]

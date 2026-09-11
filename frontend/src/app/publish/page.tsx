@@ -3,11 +3,10 @@
 import React, { useState, useEffect, Suspense, useRef } from "react";
 import { 
   Share2, Send, Calendar, Sparkles, Layers, Image as ImageIcon, Video, 
-  Clock, CheckCircle2, AlertCircle, RefreshCw, BarChart3, TrendingUp,
-  Sliders, Plus, Trash2, Copy, Check, ExternalLink, Zap, Users,
-  Globe, MessageSquare, Flame, Smartphone, ChevronRight, Eye, Heart,
-  Repeat, ArrowRight, ShieldCheck, Download, Upload, FolderArchive, X,
-  Film, Play, Search, FileVideo, Radio, CheckCheck, Key
+  Clock, CheckCircle2, AlertCircle, RefreshCw, BarChart3, TrendingUp, Plus, Trash2, Copy, Check, ExternalLink, Zap, Users,
+  Globe, Flame, Smartphone,
+  Repeat, ShieldCheck, Download, Upload, FolderArchive, X, Play, Search, Key,
+  Heart, MessageCircle, Bookmark, ThumbsUp, ThumbsDown, Repeat2, MoreHorizontal, Music
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -639,25 +638,31 @@ function PublishStudioContent() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#07080a] text-zinc-900 dark:text-zinc-100 flex flex-col">
-      {/* Top Header Banner */}
-      <header className="border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-[#090a0f]/80 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] tracking-widest uppercase font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-              OMNISTUDIO 5.0 // MULTI-CHANNEL DISTRIBUTION
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              15 Platforms Synced
-            </span>
+      {/* Top Header Banner - Fixed / Sticky on Scroll with Unified Professional Icons */}
+      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#07080a]/95 backdrop-blur-xl sticky top-[56px] sm:top-[64px] z-30 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-row items-center justify-between gap-3 shadow-xs transition-all">
+        {/* Single-line Brand + Badge + Status */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-nowrap overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+              <Share2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h1 className="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-zinc-950 dark:text-white whitespace-nowrap">
+              Publish Studio
+            </h1>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-1 flex items-center gap-2.5">
-            <Share2 className="w-6 h-6 text-emerald-500" />
-            Publish Studio
-          </h1>
+
+          <span className="text-[9px] sm:text-[10px] tracking-wider uppercase font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 sm:px-2.5 py-0.5 rounded-md inline-flex items-center whitespace-nowrap shrink-0">
+            OMNISTUDIO 5.0 // MULTI-CHANNEL DISTRIBUTION
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="hidden xs:inline">15 Platforms Synced</span>
+            <span className="xs:hidden">15 Synced</span>
+          </span>
         </div>
 
-        {/* Action Pills / Mode Navigation */}
+        {/* Action Pills / Mode Navigation - Unified Professional Palette */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-zinc-100 dark:bg-zinc-900/90 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800">
           <button
             onClick={() => setActiveTab("compose")}
@@ -668,7 +673,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <Send className="w-3.5 h-3.5 text-emerald-500" />
+            <Send className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             1-Click Compose
           </button>
           <button
@@ -680,7 +685,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+            <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Calendar ({posts.length})
           </button>
           <button
@@ -692,7 +697,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             AI Social Manager
           </button>
           <button
@@ -704,7 +709,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <Zap className="w-3.5 h-3.5 text-emerald-500" />
+            <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Creator Mode
           </button>
           <button
@@ -716,7 +721,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <Repeat className="w-3.5 h-3.5 text-cyan-500" />
+            <Repeat className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Repurposer
           </button>
           <button
@@ -728,7 +733,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
+            <ImageIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Thumbnails
           </button>
           <button
@@ -740,7 +745,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-zinc-400" />
+            <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Analytics
           </button>
           <button
@@ -752,7 +757,7 @@ function PublishStudioContent() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
-            <Globe className="w-3.5 h-3.5 text-blue-500" />
+            <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Channels ({accounts.length})
           </button>
         </div>
@@ -897,6 +902,7 @@ function PublishStudioContent() {
                         <SocialIcon
                           platform={plat.id}
                           size={32}
+                          monochrome={true}
                           className="w-8 h-8 rounded-lg mb-1.5 shadow-xs transition-transform group-hover:scale-105"
                         />
                         <span className="text-[11px] font-semibold truncate w-full">{plat.name}</span>
@@ -1463,8 +1469,8 @@ function PublishStudioContent() {
 
             {/* Right Column: Live Omnichannel Preview Mockup */}
             <div className="lg:col-span-5 space-y-4 sticky top-24">
-              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 shadow-xs">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Smartphone className="w-4 h-4 text-emerald-500" />
                     <h3 className="text-xs font-bold uppercase tracking-wider">Live Platform Simulator</h3>
@@ -1479,141 +1485,454 @@ function PublishStudioContent() {
                       return {
                         value: pid,
                         label: plat?.name || pid,
-                        icon: <SocialIcon platform={pid} size={15} showBg={false} />,
+                        icon: <SocialIcon platform={pid} size={15} showBg={false} monochrome={true} />,
                         badge: plat?.aspect,
                       };
                     })}
-                    triggerClassName="py-1 min-w-[150px]"
+                    triggerClassName="py-1 min-w-[140px]"
                     align="right"
                   />
                 </div>
 
-                {/* Mock Phone Frame */}
-                <div className="bg-white dark:bg-black rounded-2xl border border-zinc-300 dark:border-zinc-800 shadow-xl overflow-hidden text-xs">
-                  {/* Mock App Header */}
-                  <div className="px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-black flex items-center justify-center text-[10px] font-bold">
-                        OS
-                      </div>
-                      <div>
-                        <div className="font-bold text-[11px] leading-tight">OmniStudio Creator</div>
-                        <div className="text-[9px] text-zinc-400">Sponsored • Just now</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold">
-                      <SocialIcon platform={previewPlatform} size={15} className="w-3.5 h-3.5 rounded" />
-                      <span className="text-zinc-800 dark:text-zinc-200">{PLATFORMS.find(p => p.id === previewPlatform)?.name}</span>
-                    </div>
-                  </div>
-
-                  {/* Mock Media Display */}
-                  <div className="aspect-video bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500 group">
-                    {mediaUrl ? (
-                      <>
-                        {mediaType === "video" ? (
-                          <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
-                        ) : (
-                          <img src={getMediaUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover" />
+                {/* Quick 1-Click Platform Switcher Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2.5 pt-0.5">
+                  {selectedPlatforms.slice(0, 6).map(pid => {
+                    const isAct = previewPlatform === pid;
+                    const plat = PLATFORMS.find(p => p.id === pid);
+                    return (
+                      <button
+                        key={pid}
+                        type="button"
+                        onClick={() => setPreviewPlatform(pid)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border",
+                          isAct
+                            ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/20"
+                            : "border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 bg-white dark:bg-zinc-900/80"
                         )}
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-[10px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
-                          >
-                            <Upload className="w-3 h-3 text-emerald-400" /> Replace
-                          </button>
-                          <span className="text-zinc-600">|</span>
-                          <button
-                            type="button"
-                            onClick={openVaultPicker}
-                            className="text-[10px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
-                          >
-                            <FolderArchive className="w-3 h-3 text-amber-400" /> Vault
-                          </button>
-                        </div>
-                      </>
+                      >
+                        <SocialIcon platform={pid} size={12} showBg={false} monochrome={true} />
+                        <span>{plat?.name || pid}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* 1. TIKTOK 9:16 VERTICAL SIMULATOR                             */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                {previewPlatform === "tiktok" && (
+                  <div className="relative w-full aspect-[9/16] max-h-[560px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
+                    {/* Background Media */}
+                    {mediaUrl ? (
+                      mediaType === "video" ? (
+                        <video src={getMediaUrl(mediaUrl)} controls className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <img src={getMediaUrl(mediaUrl)} alt="TikTok" className="absolute inset-0 w-full h-full object-cover" />
+                      )
                     ) : (
-                      <div className="text-center p-5 flex flex-col items-center justify-center gap-2">
-                        <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500">
-                          <ImageIcon className="w-5 h-5 text-emerald-500" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-semibold text-zinc-300">Visual Media Canvas</div>
-                          <div className="text-[10px] text-zinc-500">Aspect Ratio: {PLATFORMS.find(p => p.id === previewPlatform)?.aspect}</div>
-                        </div>
-                        <div className="flex items-center gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-xs"
-                          >
-                            <Upload className="w-3 h-3" /> Upload
-                          </button>
-                          <button
-                            type="button"
-                            onClick={openVaultPicker}
-                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
-                          >
-                            <FolderArchive className="w-3 h-3 text-amber-400" /> Vault
-                          </button>
-                        </div>
+                      <div className="absolute inset-0 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+                        <SocialIcon platform="tiktok" size={36} monochrome={true} className="mb-2 text-zinc-400" />
+                        <span className="text-xs font-bold text-zinc-300">TikTok 9:16 Vertical Stage</span>
+                        <span className="text-[10px] text-zinc-500 mt-1">Select media in composer to view preview</span>
                       </div>
                     )}
-                  </div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none" />
 
-                  {/* Mock Caption Body */}
-                  <div className="p-4 space-y-2 bg-white dark:bg-zinc-950">
-                    <div className="flex items-center justify-between text-[11px] text-zinc-400 border-b border-zinc-100 dark:border-zinc-900 pb-2">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        {activeAdapted.tone || "Algorithmic Adaptation"}
-                      </span>
-                      <span className={cn(
-                        "font-mono text-[10px]",
-                        activeAdapted.character_count > activeAdapted.max_chars ? "text-rose-500 font-bold" : "text-emerald-500"
-                      )}>
-                        {activeAdapted.character_count} / {activeAdapted.max_chars} chars
-                      </span>
+                    {/* TikTok Top Header */}
+                    <div className="relative z-10 px-4 pt-3 flex items-center justify-between text-xs font-semibold drop-shadow-md">
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-300 opacity-60">Following</span>
+                        <span className="text-white font-bold border-b-2 border-white pb-0.5">For You</span>
+                      </div>
+                      <Search className="w-4 h-4 text-white drop-shadow" />
                     </div>
 
-                    <div className="whitespace-pre-line text-zinc-800 dark:text-zinc-200 text-xs leading-relaxed max-h-56 overflow-y-auto pr-1">
+                    {/* TikTok Right Action Rail */}
+                    <div className="absolute right-2.5 bottom-16 z-10 flex flex-col items-center gap-3 text-white drop-shadow-lg">
+                      {/* Avatar with Follow Plus */}
+                      <div className="relative">
+                        <div className="w-9 h-9 rounded-full border-2 border-white bg-emerald-500 text-black font-bold flex items-center justify-center text-[10px] shadow-md">
+                          OS
+                        </div>
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
+                          +
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Heart className="w-6 h-6 text-white hover:text-rose-500 transition cursor-pointer drop-shadow-md" />
+                        <span className="text-[10px] font-bold mt-0.5">24.8K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <MessageCircle className="w-6 h-6 text-white hover:text-emerald-400 transition cursor-pointer drop-shadow-md" />
+                        <span className="text-[10px] font-bold mt-0.5">1.2K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Bookmark className="w-6 h-6 text-white hover:text-amber-400 transition cursor-pointer drop-shadow-md" />
+                        <span className="text-[10px] font-bold mt-0.5">4.5K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Share2 className="w-6 h-6 text-white hover:text-blue-400 transition cursor-pointer drop-shadow-md" />
+                        <span className="text-[10px] font-bold mt-0.5">890</span>
+                      </div>
+                      {/* Rotating Vinyl Record */}
+                      <div className="w-8 h-8 rounded-full bg-zinc-900 border-2 border-zinc-700 flex items-center justify-center animate-spin mt-1" style={{ animationDuration: "5s" }}>
+                        <Music className="w-3.5 h-3.5 text-zinc-300" />
+                      </div>
+                    </div>
+
+                    {/* TikTok Bottom Text Overlay */}
+                    <div className="relative z-10 px-3 pb-3 space-y-1.5 drop-shadow-lg max-w-[78%]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs">@omnistudio.ai</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+                      </div>
+                      <p className="text-[11px] text-zinc-100 leading-snug line-clamp-3">
+                        {activeAdapted.caption}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-300 pt-0.5">
+                        <Music className="w-3 h-3 animate-pulse" />
+                        <span className="truncate">Original Sound - OmniStudio Creative Engine</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* 2. YOUTUBE SHORTS 9:16 SIMULATOR                              */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                {previewPlatform === "youtube_shorts" && (
+                  <div className="relative w-full aspect-[9/16] max-h-[560px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
+                    {/* Media */}
+                    {mediaUrl ? (
+                      mediaType === "video" ? (
+                        <video src={getMediaUrl(mediaUrl)} controls className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <img src={getMediaUrl(mediaUrl)} alt="Shorts" className="absolute inset-0 w-full h-full object-cover" />
+                      )
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+                        <SocialIcon platform="youtube_shorts" size={36} monochrome={true} className="mb-2 text-zinc-400" />
+                        <span className="text-xs font-bold text-zinc-300">YouTube Shorts 9:16 Canvas</span>
+                        <span className="text-[10px] text-zinc-500 mt-1">Upload keyframe to test Shorts view</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none" />
+
+                    {/* Top Header */}
+                    <div className="relative z-10 px-4 pt-3 flex items-center justify-between text-xs font-semibold drop-shadow-md">
+                      <span className="font-bold tracking-wider text-xs">SHORTS</span>
+                      <div className="flex items-center gap-3">
+                        <Search className="w-4 h-4 text-white" />
+                        <MoreHorizontal className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+
+                    {/* Right Rail */}
+                    <div className="absolute right-2.5 bottom-16 z-10 flex flex-col items-center gap-3.5 text-white drop-shadow-lg">
+                      <div className="flex flex-col items-center">
+                        <ThumbsUp className="w-5.5 h-5.5 text-white hover:text-emerald-400 transition cursor-pointer drop-shadow" />
+                        <span className="text-[10px] font-bold mt-0.5">38K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <ThumbsDown className="w-5.5 h-5.5 text-white hover:text-rose-400 transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-medium mt-0.5">Dislike</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <MessageCircle className="w-5.5 h-5.5 text-white hover:text-blue-400 transition cursor-pointer drop-shadow" />
+                        <span className="text-[10px] font-bold mt-0.5">620</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Share2 className="w-5.5 h-5.5 text-white transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-medium mt-0.5">Share</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Repeat2 className="w-5.5 h-5.5 text-white transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-medium mt-0.5">Remix</span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Channel Info */}
+                    <div className="relative z-10 px-3 pb-3 space-y-1.5 drop-shadow-lg max-w-[78%]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-emerald-500 text-black font-bold flex items-center justify-center text-[10px]">
+                          OS
+                        </div>
+                        <span className="font-bold text-xs">@OmniStudioOfficial</span>
+                        <button type="button" className="px-2 py-0.5 rounded-full bg-white text-black text-[10px] font-bold hover:bg-zinc-200 transition">
+                          Subscribe
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-zinc-100 leading-snug line-clamp-2">
+                        {postTitle || activeAdapted.caption}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* 3. X / TWITTER POST SIMULATOR                                 */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                {previewPlatform === "twitter" && (
+                  <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-4 text-xs shadow-xl space-y-3">
+                    {/* Tweet Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-full bg-emerald-500 text-black font-bold flex items-center justify-center text-xs">
+                          OS
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 font-bold text-zinc-900 dark:text-white">
+                            <span>OmniStudio AI</span>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
+                          </div>
+                          <div className="text-[10px] text-zinc-500">@OmniStudioAI • 8m</div>
+                        </div>
+                      </div>
+                      <SocialIcon platform="twitter" size={16} monochrome={true} showBg={false} />
+                    </div>
+
+                    {/* Tweet Text */}
+                    <div className="text-zinc-800 dark:text-zinc-200 text-xs leading-relaxed whitespace-pre-line">
                       {activeAdapted.caption}
                     </div>
 
-                    {/* Hashtag Chips */}
-                    {activeAdapted.hashtags && activeAdapted.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {activeAdapted.hashtags.slice(0, 8).map((tag: string, idx: number) => (
-                          <span key={idx} className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                            {tag}
-                          </span>
-                        ))}
+                    {/* Media Container */}
+                    {mediaUrl && (
+                      <div className="aspect-video w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950 relative">
+                        {mediaType === "video" ? (
+                          <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={getMediaUrl(mediaUrl)} alt="X preview" className="w-full h-full object-cover" />
+                        )}
                       </div>
                     )}
 
-                    {/* Growth Tip Pill */}
-                    {activeAdapted.growth_tip && (
-                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] mt-2 flex items-start gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
-                        <span><strong>Algorithm Tip:</strong> {activeAdapted.growth_tip}</span>
-                      </div>
-                    )}
-
-                    {/* Copy Caption Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(activeAdapted.caption);
-                        setCopiedCaption(true);
-                        setTimeout(() => setCopiedCaption(false), 2000);
-                      }}
-                      className="w-full py-1.5 mt-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      {copiedCaption ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedCaption ? "Copied to Clipboard" : "Copy Platform Caption"}
-                    </button>
+                    {/* Tweet Metrics Bar */}
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-900 text-zinc-500 text-[11px]">
+                      <span className="flex items-center gap-1 hover:text-blue-500 transition cursor-pointer">
+                        <MessageCircle className="w-3.5 h-3.5" /> 142
+                      </span>
+                      <span className="flex items-center gap-1 hover:text-emerald-500 transition cursor-pointer">
+                        <Repeat2 className="w-3.5 h-3.5" /> 489
+                      </span>
+                      <span className="flex items-center gap-1 hover:text-rose-500 transition cursor-pointer">
+                        <Heart className="w-3.5 h-3.5" /> 3.8K
+                      </span>
+                      <span className="flex items-center gap-1 hover:text-blue-500 transition cursor-pointer">
+                        <Bookmark className="w-3.5 h-3.5" /> 912
+                      </span>
+                      <span className="flex items-center gap-1 hover:text-zinc-400 transition cursor-pointer">
+                        <Share2 className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
                   </div>
+                )}
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* 4. LINKEDIN PROFESSIONAL FEED SIMULATOR                       */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                {(previewPlatform === "linkedin_personal" || previewPlatform === "linkedin_company") && (
+                  <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 text-xs shadow-xl space-y-3">
+                    {/* LinkedIn Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-500 text-black font-bold flex items-center justify-center text-xs">
+                          OS
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1 font-bold text-zinc-900 dark:text-white">
+                            <span>OmniStudio AI</span>
+                            <span className="text-[10px] text-zinc-400 font-normal">• 1st</span>
+                          </div>
+                          <div className="text-[10px] text-zinc-500">Autonomous Media Engine • Enterprise Grade</div>
+                          <div className="text-[9px] text-zinc-400">1h • Edited • 🌐</div>
+                        </div>
+                      </div>
+                      <SocialIcon platform="linkedin" size={16} monochrome={true} showBg={false} />
+                    </div>
+
+                    {/* LinkedIn Text */}
+                    <div className="text-zinc-800 dark:text-zinc-200 text-xs leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
+                      {activeAdapted.caption}
+                    </div>
+
+                    {/* Media */}
+                    {mediaUrl && (
+                      <div className="aspect-[16/9] w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950 relative">
+                        {mediaType === "video" ? (
+                          <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={getMediaUrl(mediaUrl)} alt="LinkedIn preview" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Reaction Summary */}
+                    <div className="flex items-center justify-between pt-1 text-[10px] text-zinc-500 border-b border-zinc-100 dark:border-zinc-900 pb-2">
+                      <span className="flex items-center gap-1">
+                        <span>👍 💡 ❤️</span>
+                        <span>548</span>
+                      </span>
+                      <span>42 comments • 18 reposts</span>
+                    </div>
+
+                    {/* LinkedIn Action Strip */}
+                    <div className="grid grid-cols-4 gap-1 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 pt-1 text-center">
+                      <button type="button" className="flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer">
+                        <ThumbsUp className="w-3.5 h-3.5" /> Like
+                      </button>
+                      <button type="button" className="flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer">
+                        <MessageCircle className="w-3.5 h-3.5" /> Comment
+                      </button>
+                      <button type="button" className="flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer">
+                        <Repeat2 className="w-3.5 h-3.5" /> Repost
+                      </button>
+                      <button type="button" className="flex items-center justify-center gap-1 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition cursor-pointer">
+                        <Send className="w-3.5 h-3.5" /> Send
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* 5. INSTAGRAM & DEFAULT FEED CARD SIMULATOR                    */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                {previewPlatform !== "tiktok" && previewPlatform !== "youtube_shorts" && previewPlatform !== "twitter" && previewPlatform !== "linkedin_personal" && previewPlatform !== "linkedin_company" && (
+                  <div className="bg-white dark:bg-black rounded-2xl border border-zinc-300 dark:border-zinc-800 shadow-xl overflow-hidden text-xs">
+                    {/* Header */}
+                    <div className="px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-[1.5px] shrink-0">
+                          <div className="w-full h-full rounded-full bg-white dark:bg-black flex items-center justify-center font-bold text-[9px]">
+                            OS
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-[11px] leading-tight">omnistudio.ai</div>
+                          <div className="text-[9px] text-zinc-400">Sponsored • Studio Edition</div>
+                        </div>
+                      </div>
+                      <SocialIcon platform={previewPlatform} size={16} monochrome={true} showBg={false} />
+                    </div>
+
+                    {/* Media Display */}
+                    <div className="aspect-square bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500 group">
+                      {mediaUrl ? (
+                        <>
+                          {mediaType === "video" ? (
+                            <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={getMediaUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover" />
+                          )}
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="text-[10px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
+                            >
+                              <Upload className="w-3 h-3 text-emerald-400" /> Replace
+                            </button>
+                            <span className="text-zinc-600">|</span>
+                            <button
+                              type="button"
+                              onClick={openVaultPicker}
+                              className="text-[10px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
+                            >
+                              <FolderArchive className="w-3 h-3 text-amber-400" /> Vault
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center p-5 flex flex-col items-center justify-center gap-2">
+                          <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500">
+                            <ImageIcon className="w-5 h-5 text-emerald-500" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-zinc-300">Visual Media Canvas</div>
+                            <div className="text-[10px] text-zinc-500">Aspect Ratio: {PLATFORMS.find(p => p.id === previewPlatform)?.aspect}</div>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-xs"
+                            >
+                              <Upload className="w-3 h-3" /> Upload
+                            </button>
+                            <button
+                              type="button"
+                              onClick={openVaultPicker}
+                              className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
+                            >
+                              <FolderArchive className="w-3 h-3 text-amber-400" /> Vault
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Instagram Action Strip */}
+                    <div className="px-3 pt-2.5 flex items-center justify-between text-zinc-800 dark:text-zinc-200">
+                      <div className="flex items-center gap-3">
+                        <Heart className="w-5 h-5 hover:text-rose-500 transition cursor-pointer" />
+                        <MessageCircle className="w-5 h-5 hover:text-blue-500 transition cursor-pointer" />
+                        <Send className="w-5 h-5 hover:text-emerald-500 transition cursor-pointer" />
+                      </div>
+                      <Bookmark className="w-5 h-5 hover:text-amber-500 transition cursor-pointer" />
+                    </div>
+
+                    {/* Caption Body */}
+                    <div className="p-3 pt-2 space-y-1 bg-white dark:bg-black">
+                      <div className="font-bold text-[11px] text-zinc-900 dark:text-zinc-100">
+                        Liked by creative_hub and 1,842 others
+                      </div>
+                      <div className="text-zinc-800 dark:text-zinc-200 text-xs leading-relaxed max-h-40 overflow-y-auto pr-1 whitespace-pre-line">
+                        <span className="font-bold mr-1.5 text-zinc-900 dark:text-white">omnistudio.ai</span>
+                        {activeAdapted.caption}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 pt-1 cursor-pointer">
+                        View all 48 comments
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* Simulator Footer Details & 1-Click Copy                       */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400 px-1">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      {activeAdapted.tone || "Algorithmic Adaptation"}
+                    </span>
+                    <span className={cn(
+                      "font-mono text-[10px]",
+                      activeAdapted.character_count > activeAdapted.max_chars ? "text-rose-500 font-bold" : "text-emerald-500"
+                    )}>
+                      {activeAdapted.character_count} / {activeAdapted.max_chars} chars
+                    </span>
+                  </div>
+
+                  {activeAdapted.growth_tip && (
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+                      <span><strong>Algorithm Tip:</strong> {activeAdapted.growth_tip}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(activeAdapted.caption);
+                      setCopiedCaption(true);
+                      setTimeout(() => setCopiedCaption(false), 2000);
+                    }}
+                    className="w-full py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {copiedCaption ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedCaption ? "Copied to Clipboard!" : "Copy Platform-Formatted Caption"}
+                  </button>
                 </div>
               </div>
             </div>

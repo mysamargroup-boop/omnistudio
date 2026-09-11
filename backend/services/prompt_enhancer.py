@@ -53,7 +53,9 @@ async def enhance_prompt(prompt: str, style: str = "cinematic") -> str:
         logger.debug("Gemini prompt expansion fallback unavailable: %s", e)
             
     # Algorithmic cinematic prompt enhancer
-    clean_prompt = prompt.strip().rstrip(".")
+    clean_prompt = (prompt or "").strip().rstrip(".,; ")
+    if not clean_prompt:
+        return f"Cinematic sequence, {modifier}"
     enhanced = f"{clean_prompt}, {modifier}"
     return enhanced
 

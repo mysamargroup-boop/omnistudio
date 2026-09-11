@@ -47,6 +47,13 @@ import {
   Share2,
   Clock,
   Sparkle,
+  Diamond,
+  Key,
+  SlidersHorizontal,
+  FolderOpen,
+  Search,
+  X,
+  Info,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -59,8 +66,20 @@ export interface PrecisionVideoEditorProps {
   onSaved?: (newAsset: any) => void;
 }
 
+export interface VideoKeyframe {
+  id: string;
+  time: number; // in seconds
+  scale: number; // 0.5 to 3.0
+  positionX: number; // -50% to +50%
+  positionY: number; // -50% to +50%
+  rotation: number; // -180 to 180 deg
+  opacity: number; // 0.0 to 1.0
+  easing: "linear" | "ease_in_out";
+}
+
 type EditorTab =
   | "trim"
+  | "keyframes"
   | "speed"
   | "aspect"
   | "color"
@@ -186,6 +205,20 @@ export default function PrecisionVideoEditor({
   const [exportResolution, setExportResolution] = useState<"720p" | "1080p" | "2k" | "4k">("1080p");
   const [exportFormat, setExportFormat] = useState<"mp4" | "mov" | "gif">("mp4");
 
+  // 13. Asset Vault Picker State
+  const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
+  const [vaultTarget, setVaultTarget] = useState<"main" | "concat">("main");
+  const [vaultVideos, setVaultVideos] = useState<any[]>([]);
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [vaultSearch, setVaultSearch] = useState("");
+
+  // 14. Drag and Drop Feedback States
+  const [isDraggingMain, setIsDraggingMain] = useState(false);
+  const [isDraggingBgAudio, setIsDraggingBgAudio] = useState(false);
+  const [isDraggingWatermark, setIsDraggingWatermark] = useState(false);
+  const [isDraggingConcat, setIsDraggingConcat] = useState(false);
+  const [isDraggingProductImg, setIsDraggingProductImg] = useState(false);
+
   // Undo / Redo History
   interface EditorSnapshot {
     startTime: number;
@@ -274,15 +307,97 @@ export default function PrecisionVideoEditor({
   const [renderedResult, setRenderedResult] = useState<any>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
 
-  // Sync video duration on loadedmetadata
+  // Native video dimensions & resolution label
+  const [naturalWidth, setNaturalWidth] = useState<number>(1920);
+  const [naturalHeight, setNaturalHeight] = useState<number>(1080);
+  const [videoDimensionLabel, setVideoDimensionLabel] = useState<string>("");
+
+  // Keyframes State
+  const [keyframes, setKeyframes] = useState<VideoKeyframe[]>([]);
+  const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+
+  // Sync video duration & dimensions on loadedmetadata
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       const dur = videoRef.current.duration || 5.0;
+      const vw = videoRef.current.videoWidth || 1920;
+      const vh = videoRef.current.videoHeight || 1080;
+      setNaturalWidth(vw);
+      setNaturalHeight(vh);
+      setVideoDimensionLabel(`${vw}×${vh}`);
       setDuration(dur);
       if (endTime === 5.0 || endTime > dur) {
         setEndTime(dur);
       }
     }
+  };
+
+  // Keyframe Interpolation Logic
+  const interpKeyframe = (() => {
+    if (keyframes.length === 0) {
+      return { scale: 1.0, positionX: 0, positionY: 0, rotation: 0, opacity: 1.0 };
+    }
+    const sorted = [...keyframes].sort((a, b) => a.time - b.time);
+    if (currentTime <= sorted[0].time) {
+      return sorted[0];
+    }
+    if (currentTime >= sorted[sorted.length - 1].time) {
+      return sorted[sorted.length - 1];
+    }
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const kf1 = sorted[i];
+      const kf2 = sorted[i + 1];
+      if (currentTime >= kf1.time && currentTime <= kf2.time) {
+        const dt = kf2.time - kf1.time;
+        let t = dt > 0 ? (currentTime - kf1.time) / dt : 0;
+        if (kf2.easing === "ease_in_out") {
+          t = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        }
+        return {
+          scale: kf1.scale + (kf2.scale - kf1.scale) * t,
+          positionX: kf1.positionX + (kf2.positionX - kf1.positionX) * t,
+          positionY: kf1.positionY + (kf2.positionY - kf1.positionY) * t,
+          rotation: kf1.rotation + (kf2.rotation - kf1.rotation) * t,
+          opacity: kf1.opacity + (kf2.opacity - kf1.opacity) * t,
+        };
+      }
+    }
+    return sorted[0];
+  })();
+
+  const activeOrNearestKeyframe = keyframes.find((k) => Math.abs(k.time - currentTime) < 0.15) ||
+    (selectedKeyframeId ? keyframes.find((k) => k.id === selectedKeyframeId) : null);
+
+  const addOrUpdateKeyframeAtPlayhead = () => {
+    const playheadTime = Number(currentTime.toFixed(2));
+    const existing = keyframes.find((k) => Math.abs(k.time - playheadTime) < 0.15);
+    if (existing) {
+      setSelectedKeyframeId(existing.id);
+      setActiveTab("keyframes");
+    } else {
+      const newKf: VideoKeyframe = {
+        id: "kf_" + Math.random().toString(36).substring(2, 9),
+        time: playheadTime,
+        scale: 1.25,
+        positionX: 0,
+        positionY: 0,
+        rotation: 0,
+        opacity: 1.0,
+        easing: "ease_in_out",
+      };
+      setKeyframes((prev) => [...prev, newKf].sort((a, b) => a.time - b.time));
+      setSelectedKeyframeId(newKf.id);
+      setActiveTab("keyframes");
+    }
+  };
+
+  const deleteKeyframe = (id: string) => {
+    setKeyframes((prev) => prev.filter((k) => k.id !== id));
+    if (selectedKeyframeId === id) setSelectedKeyframeId(null);
+  };
+
+  const updateKeyframeProperty = (id: string, prop: keyof VideoKeyframe, val: any) => {
+    setKeyframes((prev) => prev.map((k) => (k.id === id ? { ...k, [prop]: val } : k)));
   };
 
   // Video time update listener
@@ -452,6 +567,49 @@ export default function PrecisionVideoEditor({
       setUploadProgress(null);
     }
   };
+
+  // Asset Vault Picker Handlers
+  const openVaultPicker = async (target: "main" | "concat" = "main") => {
+    setVaultTarget(target);
+    setVaultPickerOpen(true);
+    setVaultLoading(true);
+    try {
+      const res = await api.getVaultVideos();
+      const files = res?.files || (Array.isArray(res) ? res : []);
+      setVaultVideos(files);
+    } catch (err) {
+      console.error("Failed to load vault videos:", err);
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const handleSelectFromVault = (asset: { filename: string; url: string }) => {
+    if (vaultTarget === "concat") {
+      setConcatClips((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substring(2, 9),
+          url: asset.url,
+          name: asset.filename,
+        },
+      ]);
+    } else {
+      setVideoUrl(asset.url);
+      setFilename(asset.filename);
+      setStartTime(0);
+      setEndTime(5.0);
+      setCurrentTime(0);
+      setIsPlaying(false);
+      setKeyframes([]);
+      setSplitPoints([]);
+    }
+    setVaultPickerOpen(false);
+  };
+
+  const filteredVaultVideos = vaultVideos.filter((v) =>
+    (v.filename || "").toLowerCase().includes(vaultSearch.toLowerCase())
+  );
 
   // AI Actions: Auto Captions
   const handleGenerateCaptions = async () => {
@@ -692,6 +850,16 @@ export default function PrecisionVideoEditor({
 
           <button
             type="button"
+            onClick={() => openVaultPicker("main")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-zinc-800 hover:border-amber-500/40 bg-zinc-900/60 hover:bg-zinc-800 text-amber-400 hover:text-amber-300 text-xs font-mono transition-all cursor-pointer"
+            title="Open Video from Asset Vault"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Vault</span>
+          </button>
+
+          <button
+            type="button"
             onClick={resetAllEdits}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-zinc-800 hover:border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-mono transition-all cursor-pointer"
             title="Reset edits"
@@ -749,14 +917,14 @@ export default function PrecisionVideoEditor({
             <div className="relative w-full h-full flex flex-col items-center justify-center min-h-0">
               {/* Aspect Container */}
               <div
+                style={aspectRatio === "original" && naturalWidth && naturalHeight ? { aspectRatio: `${naturalWidth} / ${naturalHeight}` } : undefined}
                 className={cn(
-                  "relative rounded-xl overflow-hidden bg-black border border-zinc-800 shadow-xl flex items-center justify-center transition-all duration-300 max-h-[35vh] w-auto max-w-full",
+                  "relative rounded-xl overflow-hidden bg-black border border-zinc-800 shadow-xl flex items-center justify-center transition-all duration-300 max-h-[36vh] w-auto max-w-full",
                   aspectRatio === "16:9" && "aspect-video",
                   aspectRatio === "9:16" && "aspect-[9/16]",
                   aspectRatio === "1:1" && "aspect-square",
                   aspectRatio === "4:3" && "aspect-[4/3]",
-                  aspectRatio === "21:9" && "aspect-[21/9]",
-                  aspectRatio === "original" && "aspect-video"
+                  aspectRatio === "21:9" && "aspect-[21/9]"
                 )}
               >
                 <video
@@ -765,8 +933,13 @@ export default function PrecisionVideoEditor({
                   onLoadedMetadata={handleLoadedMetadata}
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={() => setIsPlaying(false)}
-                  style={{ filter: getLiveCssFilter() }}
-                  className="w-full h-full object-contain cursor-pointer max-h-[35vh]"
+                  style={{
+                    filter: getLiveCssFilter(),
+                    transform: `scale(${interpKeyframe.scale}) translate(${interpKeyframe.positionX}%, ${interpKeyframe.positionY}%) rotate(${interpKeyframe.rotation}deg)`,
+                    opacity: interpKeyframe.opacity,
+                    transition: isPlaying ? "none" : "transform 0.15s ease-out, opacity 0.15s ease-out",
+                  }}
+                  className="w-full h-full object-contain cursor-pointer max-h-[36vh]"
                   onClick={togglePlay}
                 />
 
@@ -839,6 +1012,17 @@ export default function PrecisionVideoEditor({
                   <span className="text-white font-bold">{formatTime(currentTime)}</span>
                   <span className="text-zinc-600">/</span>
                   <span>{formatTime(duration)}</span>
+                  {videoDimensionLabel && (
+                    <span className="px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 text-[10px]">
+                      {videoDimensionLabel} ({aspectRatio === "original" ? "Native" : aspectRatio})
+                    </span>
+                  )}
+                  {keyframes.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 text-[10px] flex items-center gap-1 font-bold">
+                      <Diamond className="w-2.5 h-2.5 fill-violet-400 text-violet-400" />
+                      <span>{keyframes.length} KF</span>
+                    </span>
+                  )}
                   {speed !== 1.0 && (
                     <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px]">
                       {speed}x
@@ -874,37 +1058,123 @@ export default function PrecisionVideoEditor({
               </div>
             </div>
           ) : (
-            /* Empty State */
-            <div className="flex flex-col items-center justify-center p-6 text-center max-w-sm">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleMainVideoUpload(f);
-                  e.target.value = "";
-                }}
-              />
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 hover:scale-105 transition-transform cursor-pointer shadow-lg shadow-emerald-500/5"
-              >
-                <Upload className="w-6 h-6" />
+            /* Empty State / Upload Progress */
+            uploadProgress !== null ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center max-w-sm w-full animate-in fade-in duration-200">
+                <div className="relative w-24 h-24 mb-4 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-4 border-zinc-800" />
+                  <div
+                    className="absolute inset-0 rounded-full border-4 border-emerald-500 transition-all duration-150"
+                    style={{
+                      clipPath: `polygon(50% 50%, 50% 0%, ${uploadProgress >= 25 ? "100% 0%," : ""}${uploadProgress >= 50 ? "100% 100%," : ""}${uploadProgress >= 75 ? "0% 100%," : ""}${uploadProgress > 0 ? `${uploadProgress <= 25 ? 50 + 2 * uploadProgress : 100}%` : "50%"} ${uploadProgress > 50 ? (uploadProgress <= 75 ? 100 - 4 * (uploadProgress - 50) : 0) : 0}%)`
+                    }}
+                  />
+                  <div className="flex flex-col items-center">
+                    <span className="text-2xl font-mono font-extrabold text-emerald-400">{uploadProgress}%</span>
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase">Uploaded</span>
+                  </div>
+                </div>
+                <h3 className="text-sm font-heading font-bold text-white mb-1.5 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                  <span>Uploading {uploadType}...</span>
+                </h3>
+                <p className="text-xs font-mono text-zinc-400 mb-3 text-center">
+                  Decoding media stream & initializing timeline tracks...
+                </p>
+                <div className="w-full max-w-xs h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800 p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-200 shadow-sm shadow-emerald-500/50"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
               </div>
-              <h2 className="text-sm font-heading font-bold text-white mb-1">Load Video into Precision Editor</h2>
-              <p className="text-xs font-mono text-zinc-400 mb-4 leading-relaxed">
-                Upload MP4, MOV, or WEBM from disk to begin multi-track timeline editing.
-              </p>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+            ) : (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingMain(true);
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingMain(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingMain(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingMain(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f && (f.type.startsWith("video/") || f.name.endsWith(".mp4") || f.name.endsWith(".mov") || f.name.endsWith(".webm"))) {
+                    handleMainVideoUpload(f);
+                  } else if (f) {
+                    alert("Please drop a valid video file (MP4, MOV, WEBM).");
+                  }
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-8 text-center max-w-md w-full rounded-2xl border transition-all duration-200",
+                  isDraggingMain
+                    ? "border-2 border-dashed border-emerald-400 bg-emerald-500/15 scale-[1.02] shadow-2xl shadow-emerald-500/20"
+                    : "border-zinc-800/80 bg-zinc-900/30 hover:border-zinc-700"
+                )}
               >
-                Browse Video File
-              </button>
-            </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleMainVideoUpload(f);
+                    e.target.value = "";
+                  }}
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "w-16 h-16 rounded-2xl flex items-center justify-center mb-3 transition-transform cursor-pointer shadow-lg",
+                    isDraggingMain
+                      ? "bg-emerald-500 text-black animate-bounce"
+                      : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:scale-105 shadow-emerald-500/5"
+                  )}
+                >
+                  <Upload className="w-7 h-7" />
+                </div>
+                <h2 className="text-sm font-heading font-bold text-white mb-1">
+                  {isDraggingMain ? "Drop Video to Open" : "Load Video into Precision Editor"}
+                </h2>
+                <p className="text-xs font-mono text-zinc-400 mb-5 leading-relaxed max-w-xs">
+                  {isDraggingMain
+                    ? "Release mouse to immediately load this video into timeline"
+                    : "Drag & drop video from computer, browse local disk, or select from Asset Vault."}
+                </p>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Browse File</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openVaultPicker("main")}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500/50 text-amber-400 font-heading font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    <span>Select from Vault</span>
+                  </button>
+                </div>
+              </div>
+            )
           )}
         </div>
 
@@ -913,18 +1183,19 @@ export default function PrecisionVideoEditor({
           {/* Top Category Tabs Bar */}
           <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-4 gap-1 p-1.5 bg-[#09090e] border-b border-zinc-800 overflow-x-auto no-scrollbar flex-shrink-0">
             {[
-              { id: "trim", label: "Trim & Cut", icon: Scissors },
-              { id: "speed", label: "Speed", icon: Gauge },
-              { id: "aspect", label: "Aspect", icon: Crop },
-              { id: "color", label: "Color", icon: Palette },
-              { id: "audio", label: "Audio", icon: Volume2 },
-              { id: "captions", label: "AI Captions", icon: FileText },
-              { id: "ai_audio", label: "AI Audio", icon: Mic },
-              { id: "ai_ads", label: "AI Ads", icon: Clapperboard },
-              { id: "overlay", label: "Overlay", icon: Type },
-              { id: "chroma", label: "BG Remove", icon: Pipette },
-              { id: "concat", label: "Merge", icon: Film },
-              { id: "export", label: "Export", icon: Share2 },
+              { id: "trim", label: "Trim & Cut", icon: Scissors, accent: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
+              { id: "keyframes", label: "Keyframe", icon: Diamond, accent: "text-violet-400 bg-violet-500/10 border-violet-500/30", badge: keyframes.length > 0 ? `${keyframes.length}` : "PRO" },
+              { id: "speed", label: "Speed", icon: Gauge, accent: "text-amber-400 bg-amber-500/10 border-amber-500/30" },
+              { id: "aspect", label: "Aspect", icon: Crop, accent: "text-sky-400 bg-sky-500/10 border-sky-500/30" },
+              { id: "color", label: "Color", icon: Palette, accent: "text-rose-400 bg-rose-500/10 border-rose-500/30" },
+              { id: "audio", label: "Audio", icon: Volume2, accent: "text-blue-400 bg-blue-500/10 border-blue-500/30" },
+              { id: "captions", label: "AI Captions", icon: FileText, accent: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
+              { id: "ai_audio", label: "AI Audio", icon: Mic, accent: "text-teal-400 bg-teal-500/10 border-teal-500/30" },
+              { id: "ai_ads", label: "AI Ads", icon: Clapperboard, accent: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30" },
+              { id: "overlay", label: "Overlay", icon: Type, accent: "text-orange-400 bg-orange-500/10 border-orange-500/30" },
+              { id: "chroma", label: "BG Remove", icon: Pipette, accent: "text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30" },
+              { id: "concat", label: "Merge", icon: Film, accent: "text-zinc-300 bg-zinc-800 border-zinc-700" },
+              { id: "export", label: "Export", icon: Share2, accent: "text-emerald-300 bg-emerald-900/30 border-emerald-500/40" },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -934,14 +1205,26 @@ export default function PrecisionVideoEditor({
                   type="button"
                   onClick={() => setActiveTab(tab.id as EditorTab)}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg text-[9px] font-mono transition-all cursor-pointer whitespace-nowrap",
+                    "relative flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[9px] font-mono transition-all cursor-pointer border group",
                     isActive
-                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-xs font-bold"
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
+                      ? "bg-zinc-800/90 border-emerald-500/50 text-white shadow-xs font-bold"
+                      : "bg-zinc-900/40 border-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 hover:border-zinc-700"
                   )}
                 >
-                  <Icon className="w-3 h-3" />
-                  <span className="truncate">{tab.label}</span>
+                  <div className={cn(
+                    "p-1 rounded-lg transition-all",
+                    isActive
+                      ? tab.accent
+                      : "text-zinc-400 group-hover:text-zinc-200"
+                  )}>
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="truncate max-w-[65px]">{tab.label}</span>
+                  {tab.badge && (
+                    <span className="absolute top-0.5 right-0.5 text-[7px] font-extrabold px-1 py-0.2 rounded-full bg-violet-500/30 text-violet-300 border border-violet-500/40">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -949,6 +1232,176 @@ export default function PrecisionVideoEditor({
 
           {/* Tab Content Body (Scrolls Internally) */}
           <div className="p-3.5 space-y-3.5 flex-1 overflow-y-auto custom-scrollbar">
+            {/* 1.5 KEYFRAME MOTION & ANIMATION TAB */}
+            {activeTab === "keyframes" && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold uppercase text-white flex items-center gap-1.5">
+                    <Diamond className="w-3.5 h-3.5 text-violet-400 fill-violet-400/20" />
+                    Keyframe Motion & Transform
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    {keyframes.length} Keyframe{keyframes.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                      <span className="text-xs font-mono text-zinc-300">
+                        Playhead: <strong className="text-emerald-400">{currentTime.toFixed(2)}s</strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addOrUpdateKeyframeAtPlayhead}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-mono font-bold shadow-md shadow-violet-600/20 transition-all cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{activeOrNearestKeyframe ? "Update Keyframe" : "+ Add Keyframe"}</span>
+                    </button>
+                  </div>
+
+                  {activeOrNearestKeyframe ? (
+                    <div className="space-y-3 pt-2.5 border-t border-zinc-800">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className="text-violet-400 font-bold flex items-center gap-1">
+                          <Diamond className="w-3 h-3 fill-violet-400" /> Keyframe @ {activeOrNearestKeyframe.time.toFixed(2)}s
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => deleteKeyframe(activeOrNearestKeyframe.id)}
+                          className="text-zinc-500 hover:text-red-400 text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" /> Remove
+                        </button>
+                      </div>
+
+                      {/* Scale / Zoom Slider */}
+                      <div>
+                        <div className="flex justify-between text-[10px] font-mono text-zinc-400 mb-1">
+                          <span>Scale / Zoom</span>
+                          <span className="text-white font-bold">{activeOrNearestKeyframe.scale.toFixed(2)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2.5"
+                          step="0.05"
+                          value={activeOrNearestKeyframe.scale}
+                          onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "scale", parseFloat(e.target.value))}
+                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                        />
+                      </div>
+
+                      {/* Pan X Slider */}
+                      <div>
+                        <div className="flex justify-between text-[10px] font-mono text-zinc-400 mb-1">
+                          <span>Pan X (Horizontal)</span>
+                          <span className="text-white font-bold">{activeOrNearestKeyframe.positionX > 0 ? `+${activeOrNearestKeyframe.positionX}%` : `${activeOrNearestKeyframe.positionX}%`}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          step="1"
+                          value={activeOrNearestKeyframe.positionX}
+                          onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "positionX", parseInt(e.target.value))}
+                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                        />
+                      </div>
+
+                      {/* Pan Y Slider */}
+                      <div>
+                        <div className="flex justify-between text-[10px] font-mono text-zinc-400 mb-1">
+                          <span>Pan Y (Vertical)</span>
+                          <span className="text-white font-bold">{activeOrNearestKeyframe.positionY > 0 ? `+${activeOrNearestKeyframe.positionY}%` : `${activeOrNearestKeyframe.positionY}%`}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          step="1"
+                          value={activeOrNearestKeyframe.positionY}
+                          onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "positionY", parseInt(e.target.value))}
+                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                        />
+                      </div>
+
+                      {/* Rotation Slider */}
+                      <div>
+                        <div className="flex justify-between text-[10px] font-mono text-zinc-400 mb-1">
+                          <span>Rotation Angle</span>
+                          <span className="text-white font-bold">{activeOrNearestKeyframe.rotation}°</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-45"
+                          max="45"
+                          step="1"
+                          value={activeOrNearestKeyframe.rotation}
+                          onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "rotation", parseInt(e.target.value))}
+                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                        />
+                      </div>
+
+                      {/* Opacity Slider */}
+                      <div>
+                        <div className="flex justify-between text-[10px] font-mono text-zinc-400 mb-1">
+                          <span>Opacity</span>
+                          <span className="text-white font-bold">{Math.round(activeOrNearestKeyframe.opacity * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={activeOrNearestKeyframe.opacity}
+                          onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "opacity", parseFloat(e.target.value))}
+                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-lg bg-zinc-950/60 border border-dashed border-zinc-800 text-center">
+                      <p className="text-[11px] font-mono text-zinc-400">
+                        No keyframe at playhead position ({currentTime.toFixed(2)}s). Click "+ Add Keyframe" to animate scale, position, or opacity.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Keyframe List Chips */}
+                {keyframes.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase text-zinc-400 block">Keyframe Markers ({keyframes.length})</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {keyframes.slice().sort((a, b) => a.time - b.time).map((kf) => (
+                        <button
+                          key={kf.id}
+                          type="button"
+                          onClick={() => {
+                            seekTo(kf.time);
+                            setSelectedKeyframeId(kf.id);
+                          }}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer border",
+                            Math.abs(currentTime - kf.time) < 0.1
+                              ? "bg-violet-500/20 text-violet-300 border-violet-500/50 shadow-xs"
+                              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+                          )}
+                        >
+                          <Diamond className="w-2.5 h-2.5 fill-violet-400 text-violet-400" />
+                          <span>{kf.time.toFixed(2)}s</span>
+                          <span className="text-[8px] text-zinc-500">({kf.scale.toFixed(1)}x)</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {/* 1. TRIM & CUT TAB */}
             {activeTab === "trim" && (
               <div className="space-y-3">
@@ -1340,14 +1793,28 @@ export default function PrecisionVideoEditor({
                         }
                       }}
                     />
-                    <button
-                      type="button"
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingProductImg(true); }}
+                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingProductImg(false); }}
+                      onDrop={async (e) => {
+                        e.preventDefault(); e.stopPropagation(); setIsDraggingProductImg(false);
+                        const f = e.dataTransfer.files?.[0];
+                        if (f && f.type.startsWith("image/")) {
+                          const res = await api.uploadImage(f);
+                          if (res.url) setAdProductImgUrl(res.url);
+                        }
+                      }}
                       onClick={() => adProductImgRef.current?.click()}
-                      className="w-full py-2 rounded-xl bg-zinc-900 border border-dashed border-zinc-700 hover:border-emerald-500 text-xs font-mono text-zinc-300 flex items-center justify-center gap-2 cursor-pointer"
+                      className={cn(
+                        "w-full py-2.5 rounded-xl border border-dashed text-xs font-mono flex items-center justify-center gap-2 cursor-pointer transition-all",
+                        isDraggingProductImg
+                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-300 scale-[1.01]"
+                          : "border-zinc-700 bg-zinc-900 hover:border-emerald-500 text-zinc-300"
+                      )}
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>{adProductImgUrl ? "Product Photo Loaded" : "Upload Product Photo"}</span>
-                    </button>
+                      <span>{isDraggingProductImg ? "Drop Image Here" : (adProductImgUrl ? "Product Photo Loaded" : "Upload / Drop Product Photo")}</span>
+                    </div>
                   </div>
 
                   <button
@@ -1418,14 +1885,29 @@ export default function PrecisionVideoEditor({
                         e.target.value = "";
                       }}
                     />
-                    <button
-                      type="button"
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(true); }}
+                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(false); }}
+                      onDrop={(e) => {
+                        e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(false);
+                        const f = e.dataTransfer.files?.[0];
+                        if (f && (f.type.startsWith("audio/") || f.name.endsWith(".mp3") || f.name.endsWith(".wav") || f.name.endsWith(".m4a") || f.name.endsWith(".aac"))) {
+                          handleBgAudioUpload(f);
+                        } else if (f) {
+                          alert("Please drop a valid audio file (MP3, WAV, M4A, AAC).");
+                        }
+                      }}
                       onClick={() => bgAudioInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs font-mono text-zinc-300 cursor-pointer"
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer",
+                        isDraggingBgAudio
+                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-300 scale-[1.01]"
+                          : "border-zinc-800 bg-zinc-900 hover:border-zinc-700 text-zinc-300"
+                      )}
                     >
                       <Music className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{bgAudioUrl ? "Change Background Music" : "Upload Background Music (MP3)"}</span>
-                    </button>
+                      <span>{isDraggingBgAudio ? "Drop Audio Track Here" : (bgAudioUrl ? "Change Background Music" : "Upload / Drop Music (MP3, WAV)")}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1457,14 +1939,29 @@ export default function PrecisionVideoEditor({
                     e.target.value = "";
                   }}
                 />
-                <button
-                  type="button"
+                <div
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingWatermark(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingWatermark(false); }}
+                  onDrop={(e) => {
+                    e.preventDefault(); e.stopPropagation(); setIsDraggingWatermark(false);
+                    const f = e.dataTransfer.files?.[0];
+                    if (f && f.type.startsWith("image/")) {
+                      handleWatermarkUpload(f);
+                    } else if (f) {
+                      alert("Please drop a valid image file (PNG, JPG, SVG, WebP).");
+                    }
+                  }}
                   onClick={() => watermarkInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 cursor-pointer"
+                  className={cn(
+                    "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer",
+                    isDraggingWatermark
+                      ? "border-emerald-400 bg-emerald-500/20 text-emerald-300 scale-[1.01]"
+                      : "border-zinc-800 bg-zinc-900 hover:border-zinc-700 text-zinc-300"
+                  )}
                 >
                   <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{watermarkUrl ? "Replace Logo Watermark" : "Upload Logo Watermark (PNG)"}</span>
-                </button>
+                  <span>{isDraggingWatermark ? "Drop Logo Here" : (watermarkUrl ? "Replace Logo Watermark" : "Upload / Drop Logo (PNG, SVG)")}</span>
+                </div>
               </div>
             )}
 
@@ -1493,27 +1990,61 @@ export default function PrecisionVideoEditor({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold uppercase text-white flex items-center gap-1.5">
                     <Film className="w-3.5 h-3.5 text-emerald-400" />
-                    Multi-Video Sequence Concat
+                    Multi-Video Concat
                   </span>
-                  <input
-                    ref={concatInputRef}
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleConcatAdd(f);
-                      e.target.value = "";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => concatInputRef.current?.click()}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-mono cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Video</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      ref={concatInputRef}
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleConcatAdd(f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => concatInputRef.current?.click()}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-mono cursor-pointer transition-all"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Upload</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openVaultPicker("concat")}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-[11px] font-mono border border-zinc-700 cursor-pointer transition-all"
+                    >
+                      <FolderOpen className="w-3 h-3" />
+                      <span>Vault</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Drag and Drop Zone for Concat Clips */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingConcat(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingConcat(false); }}
+                  onDrop={(e) => {
+                    e.preventDefault(); e.stopPropagation(); setIsDraggingConcat(false);
+                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("video/"));
+                    for (const f of files) {
+                      handleConcatAdd(f);
+                    }
+                  }}
+                  onClick={() => concatInputRef.current?.click()}
+                  className={cn(
+                    "p-2.5 rounded-xl border border-dashed text-center transition-all cursor-pointer",
+                    isDraggingConcat
+                      ? "border-emerald-400 bg-emerald-500/20 scale-[1.01]"
+                      : "border-zinc-800 bg-zinc-900/40 hover:border-zinc-700"
+                  )}
+                >
+                  <p className="text-[11px] font-mono text-zinc-400">
+                    {isDraggingConcat ? "Drop video clips to append" : "Drag & drop video clips here, or choose from Vault"}
+                  </p>
                 </div>
 
                 <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
@@ -1596,45 +2127,77 @@ export default function PrecisionVideoEditor({
       </div>
 
       {/* ─── Bottom Multi-Track Professional Timeline Dock (Pinned, Never Cut Off) ─── */}
-      <div className="flex-shrink-0 bg-[#0a0a10] border-t border-zinc-800 p-2 sm:p-2.5 space-y-1.5 z-10 select-none">
+      <div className="flex-shrink-0 bg-[#09090f] border-t border-zinc-800 p-2 sm:p-2.5 space-y-2 z-10 select-none">
         {/* Timeline Control Bar */}
         <div className="flex items-center justify-between px-1 text-xs font-mono">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={togglePlay}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95"
             >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
               <span>{isPlaying ? "Pause" : "Play"}</span>
             </button>
             <button
               type="button"
               onClick={() => seekTo(0)}
-              className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
               title="Jump to Start"
             >
-              <ChevronsLeft className="w-4 h-4" />
+              <ChevronsLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => stepFrame(-1)}
+              className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              title="Step -1 Frame"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => stepFrame(1)}
+              className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              title="Step +1 Frame"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               onClick={splitAtPlayhead}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer text-[11px]"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer text-[11px]"
               title="Split video at current playhead"
             >
               <Scissors className="w-3 h-3 text-emerald-400" />
               <span>Split</span>
             </button>
+            <button
+              type="button"
+              onClick={addOrUpdateKeyframeAtPlayhead}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-500/30 bg-violet-950/40 hover:bg-violet-900/50 text-violet-300 hover:text-white transition-all cursor-pointer text-[11px] shadow-xs"
+              title="Add Keyframe at Playhead"
+            >
+              <Diamond className="w-3 h-3 fill-violet-400 text-violet-400" />
+              <span>+ Keyframe</span>
+            </button>
           </div>
 
-          {/* Timecode */}
-          <div className="font-bold font-mono text-zinc-200 tracking-wider text-xs">
-            <span className="text-emerald-400">{formatTime(currentTime)}</span> / {formatTime(duration)}
+          {/* Timecode & Range */}
+          <div className="flex items-center gap-3 font-mono text-xs">
+            <div className="px-2.5 py-0.5 rounded-lg bg-black/60 border border-zinc-800 text-zinc-200">
+              <span className="text-emerald-400 font-bold">{formatTime(currentTime)}</span>
+              <span className="text-zinc-600 mx-1">/</span>
+              <span className="text-zinc-400">{formatTime(duration)}</span>
+            </div>
+            <span className="hidden md:inline text-[10px] text-zinc-500">
+              Range: {startTime.toFixed(2)}s - {endTime.toFixed(2)}s ({((endTime - startTime) / speed).toFixed(2)}s)
+            </span>
           </div>
 
           {/* Zoom Slider */}
-          <div className="flex items-center gap-2 text-zinc-400">
-            <ZoomOut className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono">
+            <ZoomOut className="w-3 h-3" />
             <input
               type="range"
               min="1"
@@ -1642,94 +2205,329 @@ export default function PrecisionVideoEditor({
               step="0.5"
               value={timelineZoom}
               onChange={(e) => setTimelineZoom(parseFloat(e.target.value))}
-              className="w-16 accent-emerald-500 cursor-pointer"
+              className="w-16 accent-emerald-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
             />
-            <ZoomIn className="w-3.5 h-3.5" />
+            <ZoomIn className="w-3 h-3" />
           </div>
         </div>
 
-        {/* Multi-Track Timeline Canvas */}
-        <div
-          ref={timelineContainerRef}
-          onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const targetTime = (clickX / rect.width) * duration;
-            seekTo(targetTime);
-          }}
-          className="relative w-full h-24 bg-[#060609] rounded-xl border border-zinc-800 overflow-hidden cursor-pointer select-none"
-        >
-          {/* Track 0: Time Ruler */}
-          <div className="absolute top-0 left-0 right-0 h-4 bg-zinc-900/80 border-b border-zinc-800 flex items-center px-2 text-[8px] font-mono text-zinc-500 pointer-events-none justify-between">
-            <span>0.00s</span>
-            <span>{(duration * 0.25).toFixed(1)}s</span>
-            <span>{(duration * 0.5).toFixed(1)}s</span>
-            <span>{(duration * 0.75).toFixed(1)}s</span>
-            <span>{duration.toFixed(1)}s</span>
-          </div>
-
-          {/* Track 1: Video Track */}
-          <div className="absolute top-4.5 left-0 right-0 h-5 px-1.5 flex items-center">
-            <div className="relative w-full h-full bg-zinc-900/80 rounded border border-zinc-800 flex items-center">
-              {/* Active Trim Range */}
-              <div
-                className="absolute top-0 bottom-0 bg-emerald-500/20 border-y border-emerald-500/50 flex items-center justify-between pointer-events-none"
-                style={{
-                  left: `${(startTime / duration) * 100}%`,
-                  width: `${((endTime - startTime) / duration) * 100}%`,
-                }}
-              />
-              {/* Split Markers */}
-              {splitPoints.map((sp, idx) => (
-                <div
-                  key={idx}
-                  className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-xs z-10 pointer-events-none"
-                  style={{ left: `${(sp / duration) * 100}%` }}
-                />
-              ))}
-              <span className="text-[8px] font-mono text-zinc-400 pl-2 pointer-events-none">VIDEO: {filename}</span>
+        {/* Multi-Track Timeline Canvas with Track Headers */}
+        <div className="flex rounded-xl border border-zinc-800 bg-[#06060a] overflow-hidden">
+          {/* Left Track Headers Column */}
+          <div className="w-24 sm:w-28 flex-shrink-0 bg-zinc-950/90 border-r border-zinc-800 flex flex-col text-[9px] font-mono text-zinc-400 select-none">
+            {/* Ruler Header */}
+            <div className="h-5 px-2 border-b border-zinc-800/80 flex items-center gap-1 bg-zinc-900/60 text-zinc-500 font-bold">
+              <Clock className="w-2.5 h-2.5" />
+              <span>TIME</span>
             </div>
-          </div>
-
-          {/* Track 2: Audio & BGM Track */}
-          <div className="absolute top-10.5 left-0 right-0 h-4 px-1.5 flex items-center">
-            <div className="relative w-full h-full bg-zinc-950 rounded border border-zinc-800 flex items-center px-2">
-              <span className="text-[8px] font-mono text-emerald-500/80 pointer-events-none">
-                AUDIO: {muteOriginal ? "MUTED" : `${Math.round(originalVolume * 100)}%`} {bgAudioUrl ? "+ BGM" : ""}
-              </span>
-            </div>
-          </div>
-
-          {/* Track 3: Subtitles & Captions Track */}
-          <div className="absolute top-15.5 left-0 right-0 h-4 px-1.5 flex items-center">
-            <div className="relative w-full h-full bg-zinc-950 rounded border border-zinc-800 flex items-center">
-              {captions.map((c, i) => (
-                <div
-                  key={i}
-                  className="absolute top-0 bottom-0 bg-amber-500/25 border-x border-amber-500/40 rounded px-1 overflow-hidden truncate text-[7px] font-mono text-amber-300 pointer-events-none"
-                  style={{
-                    left: `${(c.start / duration) * 100}%`,
-                    width: `${Math.max(2, ((c.end - c.start) / duration) * 100)}%`,
-                  }}
-                >
-                  {c.text}
-                </div>
-              ))}
-              {captions.length === 0 && (
-                <span className="text-[8px] font-mono text-zinc-600 pl-2 pointer-events-none">SUBTITLES: (Empty)</span>
+            {/* V1 Video Header */}
+            <div className="h-9 px-2 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/30">
+              <div className="flex items-center gap-1 text-emerald-400 font-bold truncate">
+                <Film className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span>V1 Video</span>
+              </div>
+              {keyframes.length > 0 && (
+                <span className="text-[8px] font-bold text-violet-400 bg-violet-500/15 px-1 rounded">
+                  {keyframes.length}◆
+                </span>
               )}
             </div>
+            {/* A1 Audio Header */}
+            <div className="h-7 px-2 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/20 group/a1 relative">
+              <div className="flex items-center gap-1 text-cyan-400 font-bold truncate">
+                <Music className="w-3 h-3 text-cyan-400 shrink-0" />
+                <span>A1 Audio</span>
+                <span
+                  className="text-[9px] font-mono text-zinc-500 hover:text-cyan-400 cursor-help px-1 rounded bg-zinc-800/60"
+                  title="A1 = Master Audio Track. Visualizes soundtrack waveform, controls video volume levels (0-100%), 1-click mute/unmute, and background music (BGM) mixing."
+                >
+                  INFO
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[8px] font-mono text-zinc-400">
+                  {muteOriginal ? "MUTED" : `${Math.round(originalVolume * 100)}%`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMuteOriginal(!muteOriginal)}
+                  className="text-zinc-500 hover:text-white"
+                  title={muteOriginal ? "Unmute Master Audio" : "Mute Master Audio"}
+                >
+                  {muteOriginal ? <VolumeX className="w-2.5 h-2.5 text-red-400" /> : <Volume2 className="w-2.5 h-2.5" />}
+                </button>
+              </div>
+            </div>
+            {/* T1 Subtitles / Overlay Header */}
+            <div className="h-7 px-2 flex items-center gap-1 text-amber-400 font-bold bg-zinc-900/10 truncate">
+              <Type className="w-3 h-3 text-amber-400 shrink-0" />
+              <span>T1 Text</span>
+            </div>
           </div>
 
-          {/* Scrubber Playhead */}
+          {/* Right Tracks Scrubber Canvas */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none flex flex-col items-center"
-            style={{ left: `${(currentTime / duration) * 100}%` }}
+            ref={timelineContainerRef}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const clickX = Math.max(0, e.clientX - rect.left);
+              const targetTime = (clickX / rect.width) * duration;
+              seekTo(targetTime);
+            }}
+            className="relative flex-1 h-28 bg-[#040407] overflow-hidden cursor-pointer select-none"
           >
-            <div className="w-2.5 h-2.5 -mt-0.5 bg-red-500 rounded-full shadow-md" />
+            {/* Track 0: Time Ruler */}
+            <div className="absolute top-0 left-0 right-0 h-5 bg-zinc-900/90 border-b border-zinc-800 flex items-center px-2 text-[8px] font-mono text-zinc-400 pointer-events-none justify-between">
+              <span>0.00s</span>
+              <span>{(duration * 0.2).toFixed(1)}s</span>
+              <span>{(duration * 0.4).toFixed(1)}s</span>
+              <span>{(duration * 0.6).toFixed(1)}s</span>
+              <span>{(duration * 0.8).toFixed(1)}s</span>
+              <span>{duration.toFixed(1)}s</span>
+            </div>
+
+            {/* Track 1: Video Track with Filmstrip & Keyframe Diamonds */}
+            <div className="absolute top-5 left-0 right-0 h-9 px-1 py-0.5 flex items-center border-b border-zinc-800/60">
+              <div className="relative w-full h-full bg-zinc-900/80 rounded border border-zinc-800 overflow-hidden flex items-center">
+                {/* Visual Filmstrip Pattern */}
+                <div className="absolute inset-0 flex opacity-20 pointer-events-none">
+                  {Array.from({ length: 16 }).map((_, i) => (
+                    <div key={i} className="flex-1 border-r border-zinc-700/60 h-full flex items-center justify-center text-[7px] text-zinc-600 font-mono">
+                      #{i + 1}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active In/Out Trim Range Highlight */}
+                <div
+                  className="absolute top-0 bottom-0 bg-emerald-500/20 border-x-2 border-emerald-400 pointer-events-none flex items-center justify-between"
+                  style={{
+                    left: `${(startTime / duration) * 100}%`,
+                    width: `${((endTime - startTime) / duration) * 100}%`,
+                  }}
+                >
+                  <span className="text-[7px] font-mono text-emerald-300 pl-1 font-bold">IN</span>
+                  <span className="text-[7px] font-mono text-emerald-300 pr-1 font-bold">OUT</span>
+                </div>
+
+                {/* Split Cuts Markers */}
+                {splitPoints.map((sp, idx) => (
+                  <div
+                    key={idx}
+                    className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-sm shadow-amber-400/50 z-20 pointer-events-none"
+                    style={{ left: `${(sp / duration) * 100}%` }}
+                  >
+                    <div className="w-1.5 h-1.5 -ml-0.5 bg-amber-400 rounded-full" />
+                  </div>
+                ))}
+
+                {/* Keyframe Markers (Diamond Pins) */}
+                {keyframes.map((kf) => (
+                  <div
+                    key={kf.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      seekTo(kf.time);
+                      setSelectedKeyframeId(kf.id);
+                      setActiveTab("keyframes");
+                    }}
+                    className="absolute top-1 bottom-1 z-30 flex items-center justify-center -translate-x-1/2 cursor-pointer group"
+                    style={{ left: `${(kf.time / duration) * 100}%` }}
+                    title={`Keyframe at ${kf.time.toFixed(2)}s (Scale: ${kf.scale}x)`}
+                  >
+                    <div className={cn(
+                      "w-3 h-3 rotate-45 border transition-transform group-hover:scale-125",
+                      selectedKeyframeId === kf.id || Math.abs(currentTime - kf.time) < 0.1
+                        ? "bg-violet-400 border-white shadow-md shadow-violet-500/50 scale-110"
+                        : "bg-violet-600 border-violet-300/80"
+                    )} />
+                  </div>
+                ))}
+
+                <span className="text-[8px] font-mono text-zinc-300 pl-2 pointer-events-none truncate z-10">
+                  {filename} {keyframes.length > 0 ? `• ${keyframes.length} Keyframe${keyframes.length === 1 ? "" : "s"}` : ""}
+                </span>
+              </div>
+            </div>
+
+            {/* Track 2: Audio Track with Waveform Visualizer */}
+            <div className="absolute top-14 left-0 right-0 h-7 px-1 py-0.5 flex items-center border-b border-zinc-800/60">
+              <div className="relative w-full h-full bg-zinc-950 rounded border border-zinc-800/80 overflow-hidden flex items-center px-1">
+                {/* Simulated Audio Waveform Bars */}
+                <div className="absolute inset-0 flex items-center justify-between px-2 gap-0.5 opacity-60 pointer-events-none">
+                  {Array.from({ length: 48 }).map((_, i) => {
+                    const hPercent = 20 + Math.abs(Math.sin(i * 0.45 + 0.2)) * 65;
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "flex-1 rounded-full transition-all",
+                          muteOriginal ? "bg-zinc-700" : "bg-gradient-to-t from-cyan-600 to-teal-400"
+                        )}
+                        style={{ height: `${muteOriginal ? 10 : hPercent}%` }}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="text-[8px] font-mono text-cyan-300/90 z-10 pointer-events-none truncate pl-1">
+                  AUDIO: {muteOriginal ? "MUTED" : `${Math.round(originalVolume * 100)}% VOL`} {bgAudioUrl ? "+ BGM TRACK" : ""}
+                </span>
+              </div>
+            </div>
+
+            {/* Track 3: Subtitles / Captions Track */}
+            <div className="absolute top-21 left-0 right-0 h-7 px-1 py-0.5 flex items-center">
+              <div className="relative w-full h-full bg-zinc-950 rounded border border-zinc-800/80 overflow-hidden flex items-center">
+                {captions.map((c, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-0.5 bottom-0.5 bg-amber-500/25 border border-amber-500/40 rounded px-1.5 overflow-hidden truncate text-[7px] font-mono text-amber-300 pointer-events-none flex items-center"
+                    style={{
+                      left: `${(c.start / duration) * 100}%`,
+                      width: `${Math.max(2, ((c.end - c.start) / duration) * 100)}%`,
+                    }}
+                  >
+                    {c.text}
+                  </div>
+                ))}
+                {captions.length === 0 && textOverlay && (
+                  <div className="absolute top-0.5 bottom-0.5 left-0 right-0 bg-orange-500/20 border border-orange-500/40 rounded px-1.5 text-[7px] font-mono text-orange-300 flex items-center truncate">
+                    OVERLAY: {textOverlay}
+                  </div>
+                )}
+                {captions.length === 0 && !textOverlay && (
+                  <span className="text-[8px] font-mono text-zinc-600 pl-2 pointer-events-none">
+                    NO CAPTIONS / OVERLAYS (Select "AI Captions" tab)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Scrubber Playhead Laser & Tag */}
+            <div
+              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-40 pointer-events-none flex flex-col items-center shadow-lg shadow-red-500/50"
+              style={{ left: `${(currentTime / duration) * 100}%` }}
+            >
+              <div className="w-3 h-2.5 -mt-0.5 bg-red-500 rounded-b-sm flex items-center justify-center shadow-md shadow-red-500/80">
+                <div className="w-1 h-1 bg-white rounded-full" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Asset Vault Video Picker Modal */}
+      {vaultPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="w-full max-w-3xl bg-[#0d0d16] border border-zinc-800 rounded-2xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-xs">
+                  <FolderOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-heading font-bold text-white flex items-center gap-2">
+                    Select from Asset Vault
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      {vaultTarget === "concat" ? "Concat Track" : "Master Track"}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] font-mono text-zinc-400">
+                    {vaultTarget === "concat"
+                      ? "Pick a video clip from your vault to append into the merge sequence"
+                      : "Choose any generated or saved video to load directly into the precision timeline"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVaultPickerOpen(false)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="py-3 flex-shrink-0">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search vault videos by name..."
+                  value={vaultSearch}
+                  onChange={(e) => setVaultSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-mono text-white placeholder-zinc-500 focus:outline-hidden focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            {/* Video Cards Grid */}
+            <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1">
+              {vaultLoading ? (
+                <div className="py-16 flex flex-col items-center justify-center gap-2.5 text-zinc-400 text-xs font-mono">
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                  <span>Scanning Asset Vault for video files...</span>
+                </div>
+              ) : filteredVaultVideos.length === 0 ? (
+                <div className="py-16 flex flex-col items-center justify-center gap-2 text-center text-zinc-500 text-xs font-mono">
+                  <Film className="w-10 h-10 text-zinc-700 mb-1" />
+                  <p className="font-semibold text-zinc-400">No matching video assets found</p>
+                  <p className="text-[10px] text-zinc-600 max-w-xs">
+                    Try another search term or upload a video file directly from your device.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {filteredVaultVideos.map((item) => (
+                    <div
+                      key={item.filename}
+                      onClick={() => handleSelectFromVault(item)}
+                      className="group cursor-pointer rounded-xl border border-zinc-800 hover:border-emerald-500/60 bg-zinc-900/50 hover:bg-zinc-850 p-2.5 transition-all flex flex-col gap-2 hover:shadow-xl hover:shadow-emerald-500/5"
+                    >
+                      <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center border border-zinc-800/80 group-hover:border-emerald-500/40 transition-colors">
+                        <video
+                          src={getMediaUrl(item.url)}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                          muted
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-mono font-bold shadow-md active:scale-95 transition-transform">
+                            {vaultTarget === "concat" ? "+ Append Clip" : "Load into Timeline"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-mono text-zinc-200 truncate font-semibold group-hover:text-emerald-300 transition-colors" title={item.filename}>
+                          {item.filename}
+                        </p>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-0.5">
+                          <span>{item.size_mb ? `${item.size_mb} MB` : (item.size_bytes ? `${Math.round(item.size_bytes / 1024)} KB` : "Video")}</span>
+                          <span className="text-emerald-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">1-Click Load →</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-zinc-800 flex items-center justify-between text-xs font-mono text-zinc-400 flex-shrink-0">
+              <span>{filteredVaultVideos.length} vault {filteredVaultVideos.length === 1 ? "video" : "videos"} available</span>
+              <button
+                type="button"
+                onClick={() => setVaultPickerOpen(false)}
+                className="px-3 py-1.5 rounded-xl border border-zinc-800 hover:bg-zinc-800 text-zinc-300 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

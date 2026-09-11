@@ -26,6 +26,26 @@ export interface SocialIconProps {
   className?: string;
   size?: number;
   showBg?: boolean;
+  monochrome?: boolean;
+}
+
+function renderPlatformSvg(p: string, iconSize: number, iconClass: string) {
+  if (p === "instagram" || p === "ig" || p === "insta") return <FaInstagram size={iconSize} className={iconClass} />;
+  if (p === "tiktok" || p === "tt") return <FaTiktok size={iconSize} className={iconClass} />;
+  if (p === "youtube_shorts" || p === "yt_shorts" || p === "shorts") return <SiYoutubeshorts size={iconSize} className={iconClass} />;
+  if (p === "youtube_video" || p === "youtube_videos" || p === "youtube" || p === "yt") return <FaYoutube size={iconSize} className={iconClass} />;
+  if (p === "twitter" || p === "x" || p === "x_twitter") return <FaXTwitter size={iconSize} className={iconClass} />;
+  if (p === "linkedin_personal" || p === "linkedin" || p === "li") return <FaLinkedin size={iconSize} className={iconClass} />;
+  if (p === "linkedin_company" || p === "linkedin_org") return <FaLinkedin size={iconSize} className={iconClass} />;
+  if (p === "facebook_pages" || p === "facebook" || p === "fb") return <FaFacebook size={iconSize} className={iconClass} />;
+  if (p === "facebook_groups" || p === "fb_groups") return <FaFacebook size={iconSize} className={iconClass} />;
+  if (p === "threads") return <FaThreads size={iconSize} className={iconClass} />;
+  if (p === "pinterest" || p === "pin") return <FaPinterest size={iconSize} className={iconClass} />;
+  if (p === "snapchat_spotlight" || p === "snapchat" || p === "sc") return <FaSnapchat size={iconSize} className={iconClass} />;
+  if (p === "telegram_channels" || p === "telegram" || p === "tg") return <FaTelegram size={iconSize} className={iconClass} />;
+  if (p === "whatsapp_channels" || p === "whatsapp" || p === "wa") return <FaWhatsapp size={iconSize} className={iconClass} />;
+  if (p === "google_business" || p === "google" || p === "gbp") return <FaStore size={iconSize} className={iconClass} />;
+  return <span className="font-mono font-bold text-[10px]">{p.slice(0, 2).toUpperCase()}</span>;
 }
 
 export default function SocialIcon({
@@ -33,10 +53,32 @@ export default function SocialIcon({
   className = "w-5 h-5",
   size = 20,
   showBg = true,
+  monochrome = false,
 }: SocialIconProps) {
   const p = platform.toLowerCase();
-
   const iconSize = showBg ? Math.round(size * 0.58) : size;
+
+  if (monochrome) {
+    if (showBg) {
+      return (
+        <div
+          style={{ width: size, height: size }}
+          className={cn(
+            "rounded-xl flex items-center justify-center shrink-0 border transition-all duration-200",
+            "bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200/80 dark:border-zinc-700/60 text-zinc-700 dark:text-zinc-300 shadow-xs",
+            className
+          )}
+        >
+          {renderPlatformSvg(p, iconSize, "shrink-0")}
+        </div>
+      );
+    }
+    return (
+      <span className={cn("inline-flex items-center justify-center text-zinc-700 dark:text-zinc-300 shrink-0", className)}>
+        {renderPlatformSvg(p, size, "shrink-0")}
+      </span>
+    );
+  }
 
   // 1. INSTAGRAM
   if (p === "instagram" || p === "ig" || p === "insta") {

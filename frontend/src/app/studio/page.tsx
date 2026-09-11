@@ -12,10 +12,13 @@ import {
   Loader2,
   Download,
   FolderArchive,
+  Zap,
   X,
   Check,
   Search,
   ChevronUp,
+  ChevronDown,
+  Minimize2,
   Sliders,
   Maximize2,
   Clock,
@@ -163,6 +166,7 @@ function StudioContent() {
   const [durationPopoverOpen, setDurationPopoverOpen] = useState(false);
   const [voicePopoverOpen, setVoicePopoverOpen] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [dockMinimized, setDockMinimized] = useState(false);
 
   // Modals
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
@@ -316,17 +320,23 @@ function StudioContent() {
 
   // 1-Click AI Prompt Enhancer
   const handleEnhancePrompt = async () => {
-    if (!prompt.trim()) {
+    const currentPrompt = prompt.trim();
+    if (!currentPrompt) {
       setPrompt("Cinematic visual sequence, dramatic atmospheric lighting, photorealistic 8k");
       return;
     }
     setDirecting(true);
     try {
-      const res = await api.enhancePrompt({ prompt, enhance_style: "cinematic" });
+      const res = await api.enhancePrompt({ prompt: currentPrompt, enhance_style: "cinematic", style: "cinematic" });
       const enhanced = res?.enhanced || res?.enhanced_prompt;
-      if (enhanced) setPrompt(enhanced);
+      if (enhanced) {
+        setPrompt(enhanced);
+      } else {
+        setPrompt(`${currentPrompt}, shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, cinematic lighting, photorealistic 8k`);
+      }
     } catch (e: any) {
       console.error("Enhance prompt error:", e);
+      setPrompt(`${currentPrompt}, shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, cinematic lighting, photorealistic 8k`);
     } finally {
       setDirecting(false);
     }
@@ -767,7 +777,7 @@ function StudioContent() {
       </div>
 
       {/* Center Viewport / Canvas (Adapts dynamically to Mode with Smooth Transition) */}
-      <div key={masterMode} className="flex-1 flex flex-col justify-center items-center py-6 px-4 w-full max-w-5xl mx-auto tab-content-enter">
+      <div key={masterMode} className="flex-1 flex flex-col justify-start items-center pt-4 pb-80 sm:pb-96 px-4 w-full max-w-5xl mx-auto tab-content-enter">
         {/* Loading Progress State */}
         {loading && (
           <div className="w-full max-w-2xl py-12 space-y-6 animate-in fade-in duration-200">
@@ -1594,13 +1604,62 @@ function StudioContent() {
       </div>
 
       {/* Floating Bottom Studio Dock (All Options in One Place) */}
-      <div
-        ref={dockRef}
-        data-lenis-prevent="true"
-        className="glass-dock fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#111114]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
-      >
-        {/* Row 1: Integrated Prompt Input Bar */}
-        <div className="relative flex items-start gap-2">
+      {dockMinimized ? (
+        <div
+          ref={dockRef}
+          data-lenis-prevent="true"
+          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-fit max-w-xl bg-white/95 dark:bg-[#111114]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.08] rounded-full shadow-2xl px-4 py-2 flex items-center gap-3 transition-all duration-200 pointer-events-auto"
+        >
+          <div className="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-zinc-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-bold text-zinc-900 dark:text-white uppercase">{masterMode}</span>
+            <span className="text-zinc-400">•</span>
+            <span className="max-w-[160px] truncate text-zinc-500">{prompt || "No prompt"}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setDockMinimized(false)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-xs font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+          >
+            <ChevronUp className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Expand Prompt</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={requestExecutionConfirm}
+            className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-xs font-bold font-mono uppercase tracking-wide shadow-xs cursor-pointer"
+          >
+            <Zap className="w-3 h-3 text-emerald-400 fill-emerald-400" />
+            <span>Generate</span>
+          </button>
+        </div>
+      ) : (
+        <div
+          ref={dockRef}
+          data-lenis-prevent="true"
+          className="glass-dock fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#111114]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
+        >
+          {/* Header Bar with Minimize Button */}
+          <div className="flex items-center justify-between pb-1 border-b border-black/[0.04] dark:border-white/[0.04]">
+            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="uppercase font-bold text-zinc-700 dark:text-zinc-300">Prompt Console ({masterMode})</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDockMinimized(true)}
+              className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 px-2 py-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              title="Minimize prompt bar to see full workspace"
+            >
+              <span>Minimize</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Row 1: Integrated Prompt Input Bar */}
+          <div className="relative flex items-start gap-2">
           <textarea
             ref={promptTextareaRef}
             value={prompt}
@@ -1622,6 +1681,16 @@ function StudioContent() {
           />
 
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
+            {prompt.trim() && (
+              <button
+                type="button"
+                onClick={() => setPrompt("")}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title="Clear prompt"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={handleEnhancePrompt}
@@ -1951,6 +2020,7 @@ function StudioContent() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Vault Picker Modal */}
       {vaultOpen && (

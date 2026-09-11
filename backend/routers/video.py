@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, Request, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 from limiter import limiter
 import uuid
@@ -458,20 +458,41 @@ async def generate_video(req: VideoRequest, request: Request):
         fps_int = int(req.fps)
         motion_intensity = float(req.motion_intensity)
     except (TypeError, ValueError):
-        return {"success": False, "error": "Invalid numeric parameter types for duration/fps/motion_intensity"}
+        clip_duration = 4.0
+        fps_int = 24
+        motion_intensity = 1.0
+
     clip_duration = min(max(clip_duration, 1.0), 60.0)
     fps_int = min(max(fps_int, 1), 120)
     motion_intensity = min(max(motion_intensity, 0.1), 3.0)
-    
+
+    def record_failure(err_msg: str) -> Dict[str, Any]:
+        try:
+            from services.usage_tracker import log_generation
+            prov = "google" if "veo" in req.model.lower() else ("local" if "ffmpeg" in req.model.lower() else "cloud")
+            log_generation(
+                service_type="video",
+                provider=prov,
+                model=req.model,
+                prompt=req.prompt or f"Motion: {req.motion_type} on keyframe",
+                status="failed",
+                specs={"duration": clip_duration, "resolution": f"{w}x{h}", "fps": fps_int, "motion": req.motion_type},
+                output_url="",
+                error=err_msg
+            )
+        except Exception as log_err:
+            logger.warning("Failed to record video generation failure log: %s", log_err)
+        return {"success": False, "error": err_msg}
+
     # ─── Mode: Motion Transfer ───
     if req.mode == "motion_transfer":
         start_resolved = resolve_path(start_img)
         source_video = resolve_path(req.source_video_path) if req.source_video_path else None
         
         if not start_resolved or not start_resolved.exists():
-            return {"success": False, "error": f"Target image not found: {start_img}"}
+            return record_failure(f"Target image not found: {start_img}")
         if not source_video or not source_video.exists():
-            return {"success": False, "error": f"Source motion video not found: {req.source_video_path}"}
+            return record_failure(f"Source motion video not found: {req.source_video_path}")
         
         filename = f"mt_{uuid.uuid4().hex[:8]}.mp4"
         output_path = settings.VIDEOS_PATH / filename
@@ -496,7 +517,7 @@ async def generate_video(req: VideoRequest, request: Request):
             result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, timeout=180)
             
             if result.returncode != 0:
-                return {"success": False, "error": f"Motion transfer FFmpeg error: {result.stderr[:300]}"}
+                return record_failure(f"Motion transfer FFmpeg error: {result.stderr[:300]}")
             
             try:
                 from services.usage_tracker import log_generation
@@ -525,7 +546,7 @@ async def generate_video(req: VideoRequest, request: Request):
                 "loop": req.loop
             }
         except Exception as e:
-            return {"success": False, "error": f"Motion transfer failed: {str(e)}"}
+            return record_failure(f"Motion transfer failed: {str(e)}")
 
     # ─── Compose Optical & Motion Rig Directives ───
     optical_directives = []
@@ -561,24 +582,17 @@ async def generate_video(req: VideoRequest, request: Request):
         elif settings.OPENAI_API_KEY:
             img_res = await generate_openai_image(effective_prompt, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024")
         else:
-            return {
-                "success": False,
-                "error": "Text-to-Video from scratch requires an OpenAI or Replicate API key in Settings. Alternatively, select an image from your Vault or upload a keyframe to render with 100% free Local FFmpeg acceleration."
-            }
+            return record_failure(
+                "Text-to-Video from scratch requires an OpenAI or Replicate API key in Settings. Alternatively, select an image from your Vault or upload a keyframe to render with 100% free Local FFmpeg acceleration."
+            )
             
         if not img_res or not img_res.get("success", True) or img_res.get("error"):
             err_msg = img_res.get("error") if isinstance(img_res, dict) else "Failed to generate initial keyframe"
-            return {
-                "success": False,
-                "error": f"Initial keyframe generation failed: {err_msg}"
-            }
+            return record_failure(f"Initial keyframe generation failed: {err_msg}")
 
         start_img = img_res.get("local_path") or img_res.get("url")
         if not start_img:
-            return {
-                "success": False,
-                "error": "Failed to obtain valid initial frame for text-to-video synthesis."
-            }
+            return record_failure("Failed to obtain valid initial frame for text-to-video synthesis.")
 
     # ─── Mode: Multi-Frame Keyframe Sequence ───
     if (req.mode == "multi_frame" or (req.image_paths and len(req.image_paths) > 1)) and req.image_paths:
@@ -588,7 +602,7 @@ async def generate_video(req: VideoRequest, request: Request):
             if rp and rp.exists():
                 resolved_imgs.append(rp)
         if len(resolved_imgs) < 2:
-            return {"success": False, "error": "Multi-Frame sequence requires at least 2 valid image keyframes."}
+            return record_failure("Multi-Frame sequence requires at least 2 valid image keyframes.")
 
         filename = f"seq_{uuid.uuid4().hex[:8]}.mp4"
         output_path = settings.VIDEOS_PATH / filename
@@ -639,9 +653,9 @@ async def generate_video(req: VideoRequest, request: Request):
         end_resolved = resolve_path(req.end_image_path)
         
         if not start_resolved or not start_resolved.exists():
-            return {"success": False, "error": f"First frame not found: {start_img}"}
+            return record_failure(f"First frame not found: {start_img}")
         if not end_resolved or not end_resolved.exists():
-            return {"success": False, "error": f"Last frame not found: {req.end_image_path}"}
+            return record_failure(f"Last frame not found: {req.end_image_path}")
             
         filename = f"morph_{uuid.uuid4().hex[:8]}.mp4"
         output_path = settings.VIDEOS_PATH / filename
@@ -691,7 +705,7 @@ async def generate_video(req: VideoRequest, request: Request):
     # ─── Mode: Single Keyframe Motion (First Frame) ───
     start_resolved = resolve_path(start_img)
     if not start_resolved or not start_resolved.exists():
-        return {"success": False, "error": f"Keyframe image not found: {start_img}"}
+        return record_failure(f"Keyframe image not found: {start_img}")
 
     # Veo Dispatcher
     if "veo" in req.model.lower():

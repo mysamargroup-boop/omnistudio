@@ -205,7 +205,7 @@ export default function UsagePage() {
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#06060a] text-zinc-900 dark:text-zinc-100 font-jakarta pb-24 pt-4 selection:bg-violet-500/30">
       
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div className="relative z-10 max-w-[1700px] w-full mx-auto px-4 sm:px-6 lg:px-10 space-y-8">
         {/* Header Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-6 pt-2">
           <div>
@@ -218,7 +218,7 @@ export default function UsagePage() {
             <h1 className="text-3xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white flex items-center gap-3">
               Usage & Cost Analytics
             </h1>
-            <p className="text-sm text-zinc-500 mt-1 max-w-2xl">
+            <p className="text-sm text-zinc-500 mt-1 max-w-3xl">
               Real-time audit of every generation event, exact spending breakdowns, and official model price benchmarks.
             </p>
           </div>
@@ -266,21 +266,25 @@ export default function UsagePage() {
         {/* KPI Cards Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Spend */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-zinc-400 dark:hover:border-zinc-700 transition-all duration-200 shadow-sm">
+          <div className="bg-gradient-to-br from-amber-500/[0.03] via-white dark:via-[#0d0d14] to-transparent border border-zinc-200/80 dark:border-white/[0.08] hover:border-amber-500/40 rounded-2xl p-5 relative overflow-hidden group transition-all duration-200 shadow-sm hover:shadow-md">
             <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Coins className="h-4 w-4 text-zinc-700 dark:text-zinc-300" /> Total Spend
+              <span className="flex items-center gap-2 uppercase tracking-wider font-semibold text-zinc-800 dark:text-zinc-200">
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  <Coins className="h-4 w-4" />
+                </span>
+                Total Spend
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold border border-zinc-200 dark:border-zinc-700">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 ACTIVE
               </span>
             </div>
-            <div className="text-3xl font-heading font-black text-zinc-950 dark:text-white tracking-tight mt-1">
+            <div className="text-3xl font-heading font-black tracking-tight mt-1 bg-gradient-to-r from-zinc-950 via-zinc-800 to-amber-700 dark:from-white dark:via-zinc-100 dark:to-amber-300 bg-clip-text text-transparent">
               {summary ? formatCost(summary.total_spend_usd, summary.total_spend_inr) : '₹0.00'}
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-2">
+            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-2.5 font-mono">
               <span>Equivalent:</span>
-              <span className="text-zinc-700 dark:text-zinc-300 font-mono">
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                 {summary
                   ? currency === 'INR'
                     ? `$${summary.total_spend_usd.toFixed(3)} USD`
@@ -291,62 +295,85 @@ export default function UsagePage() {
           </div>
 
           {/* Card 2: Total Generations */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-blue-500/40 transition-all duration-200 shadow-sm">
+          <div className="bg-gradient-to-br from-blue-500/[0.04] via-white dark:via-[#0d0d14] to-transparent border border-blue-500/30 dark:border-blue-500/30 hover:border-blue-500/60 rounded-2xl p-5 relative overflow-hidden group transition-all duration-200 shadow-sm hover:shadow-md ring-1 ring-blue-500/10">
             <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Zap className="h-4 w-4 text-blue-500" /> Generations Run
+              <span className="flex items-center gap-2 uppercase tracking-wider font-semibold text-zinc-800 dark:text-zinc-200">
+                <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  <Zap className="h-4 w-4" />
+                </span>
+                Generations Run
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 AUDITED
               </span>
             </div>
-            <div className="text-3xl font-heading font-black text-zinc-950 dark:text-white tracking-tight mt-1">
+            <div className="text-3xl font-heading font-black text-blue-600 dark:text-blue-400 tracking-tight mt-1">
               {summary ? summary.total_generations : 0}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-zinc-500 mt-2">
-              <span>Img: {summary?.by_service?.image?.count || 0}</span>
-              <span>•</span>
-              <span>Vid: {summary?.by_service?.video?.count || 0}</span>
-              <span>•</span>
-              <span>Audio: {summary?.by_service?.voice?.count || 0}</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono mt-2.5 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/20 font-bold">
+                Img: {summary?.by_service?.image?.count || 0}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 font-bold">
+                Vid: {summary?.by_service?.video?.count || 0}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/20 font-bold">
+                Audio: {summary?.by_service?.voice?.count || 0}
+              </span>
             </div>
           </div>
 
           {/* Card 3: Free Savings via Local Hardware */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-200 shadow-sm">
+          <div className="bg-gradient-to-br from-emerald-500/[0.05] via-white dark:via-[#0d0d14] to-transparent border border-emerald-500/30 dark:border-emerald-500/20 hover:border-emerald-500/50 rounded-2xl p-5 relative overflow-hidden group transition-all duration-200 shadow-sm hover:shadow-md ring-1 ring-emerald-500/10">
             <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" /> In-House Savings
+              <span className="flex items-center gap-2 uppercase tracking-wider font-semibold text-zinc-800 dark:text-zinc-200">
+                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <ShieldCheck className="h-4 w-4" />
+                </span>
+                In-House Savings
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 SAVED
               </span>
             </div>
             <div className="text-3xl font-heading font-black text-emerald-600 dark:text-emerald-400 tracking-tight mt-1">
               {summary ? formatCost(summary.total_saved_usd, summary.total_saved_inr) : '₹0.00'}
             </div>
-            <div className="text-[11px] text-zinc-500 mt-2">
-              Saved using Local FFmpeg 8.1 & Edge Neural TTS
+            <div className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-2.5 font-jakarta flex items-center gap-1 flex-wrap">
+              <span>Saved via</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono text-[10px]">
+                Local FFmpeg 8.1
+              </span>
+              <span>&</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono text-[10px]">
+                Edge Neural TTS
+              </span>
             </div>
           </div>
 
           {/* Card 4: Multi-Provider AI Engine Suite */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-4 sm:p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-200 shadow-sm">
+          <div className="bg-gradient-to-br from-teal-500/[0.03] via-white dark:via-[#0d0d14] to-transparent border border-teal-500/30 dark:border-teal-500/20 hover:border-teal-500/50 rounded-2xl p-4 sm:p-5 relative overflow-hidden group transition-all duration-200 shadow-sm hover:shadow-md">
             <div className="flex items-center justify-between text-xs font-mono mb-2.5 gap-2">
-              <span className="flex items-center gap-1.5 uppercase tracking-wider font-semibold text-zinc-700 dark:text-zinc-300 truncate">
-                <Activity className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> AI Engines
+              <span className="flex items-center gap-2 uppercase tracking-wider font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                <span className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shrink-0">
+                  <Activity className="h-3.5 w-3.5" />
+                </span>
+                AI Engines
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap shrink-0">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 whitespace-nowrap shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
                 MULTI-PROVIDER
               </span>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2 text-xs font-mono py-0.5">
                 <span className="font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 min-w-0 truncate">
                   <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
                   <span className="truncate" title="OpenAI GPT-4o, DALL-E">OpenAI (GPT-4o)</span>
                 </span>
-                <span className={cn("text-[10px] font-bold whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded font-mono", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400")}>
+                <span className={cn("text-[10px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md font-mono border", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border-zinc-200 dark:border-zinc-700")}>
                   {configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "ACTIVE" : "STANDBY"}
                 </span>
               </div>
@@ -355,7 +382,7 @@ export default function UsagePage() {
                   <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
                   <span className="truncate" title="Google Gemini 2.5, Veo">Google (Gemini)</span>
                 </span>
-                <span className={cn("text-[10px] font-bold whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded font-mono", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400")}>
+                <span className={cn("text-[10px] font-bold whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md font-mono border", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border-zinc-200 dark:border-zinc-700")}>
                   {configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "ACTIVE" : "STANDBY"}
                 </span>
               </div>
@@ -364,7 +391,7 @@ export default function UsagePage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                   <span className="truncate" title="Edge Neural Audio TTS">Edge Neural TTS</span>
                 </span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 font-mono">
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 font-mono">
                   100% FREE
                 </span>
               </div>
@@ -373,17 +400,17 @@ export default function UsagePage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                   <span className="truncate" title="FFmpeg 8.1 Motion Engine">FFmpeg 8.1 Local</span>
                 </span>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 font-mono">
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/20 font-mono">
                   LOCAL FREE
                 </span>
               </div>
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2.5 font-mono flex items-center justify-between pt-2 border-t border-black/[0.04] dark:border-white/[0.04]">
-              <span className="flex items-center gap-1 truncate text-zinc-700 dark:text-zinc-300">
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2.5 font-mono flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-white/[0.06]">
+              <span className="flex items-center gap-1.5 truncate text-zinc-800 dark:text-zinc-200 font-semibold">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                 <span className="truncate">Multimodal AI Suite</span>
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider shrink-0">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider shrink-0 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                 ACTIVE
               </span>
             </div>
@@ -547,31 +574,31 @@ export default function UsagePage() {
               </div>
             </div>
 
-            {/* Table */}
+            {/* Table with strict Montserrat font styling */}
             <div className="overflow-x-auto rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0d0d14] shadow-sm">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-zinc-50 dark:bg-[#111118] text-zinc-500 font-mono text-[10px] uppercase tracking-wider border-b border-black/[0.08] dark:border-white/[0.08]">
+              <table className="w-full text-left text-xs" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
+                <thead className="bg-zinc-50 dark:bg-[#111118] text-zinc-500 text-[11px] uppercase tracking-wider border-b border-black/[0.08] dark:border-white/[0.08]" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
                   <tr>
-                    <th className="py-3 px-4 font-semibold">Time</th>
-                    <th className="py-3 px-4 font-semibold">Service & Provider</th>
-                    <th className="py-3 px-4 font-semibold">Model Engine</th>
-                    <th className="py-3 px-4 font-semibold">Prompt / Specs</th>
-                    <th className="py-3 px-4 text-right font-semibold">Spend</th>
-                    <th className="py-3 px-4 text-center font-semibold">Status</th>
-                    <th className="py-3 px-4 text-right font-semibold">Action</th>
+                    <th className="py-3 px-4 font-bold">Time</th>
+                    <th className="py-3 px-4 font-bold">Service & Provider</th>
+                    <th className="py-3 px-4 font-bold">Model Engine</th>
+                    <th className="py-3 px-4 font-bold">Prompt / Specs</th>
+                    <th className="py-3 px-4 text-right font-bold">Spend</th>
+                    <th className="py-3 px-4 text-center font-bold">Status</th>
+                    <th className="py-3 px-4 text-right font-bold">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04] font-sans">
+                <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04]" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-zinc-500 font-mono">
-                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-violet-500" />
-                        Loading generation records...
+                      <td colSpan={7} className="py-12 text-center text-zinc-500">
+                        <Spinner size="lg" variant="violet" className="mx-auto mb-2" />
+                        <p className="font-semibold text-xs text-zinc-600 dark:text-zinc-400">Loading generation records...</p>
                       </td>
                     </tr>
                   ) : filteredHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-zinc-500 font-mono">
+                      <td colSpan={7} className="py-12 text-center text-zinc-500 font-medium">
                         No generation records found. Run an image, video, or voice generation to see telemetry.
                       </td>
                     </tr>
@@ -584,7 +611,7 @@ export default function UsagePage() {
                           className="hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group"
                         >
                           {/* Time */}
-                          <td className="py-3.5 px-4 font-mono text-zinc-500 whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-zinc-500 whitespace-nowrap font-medium text-xs">
                             {item.display_time || item.timestamp.slice(11, 19)}
                           </td>
 
@@ -595,31 +622,31 @@ export default function UsagePage() {
                               {item.service_type === 'video' && <Video className="h-4 w-4 text-blue-500" />}
                               {item.service_type === 'voice' && <Mic className="h-4 w-4 text-emerald-500" />}
                               {item.service_type === 'pipeline' && <Layers className="h-4 w-4 text-amber-500" />}
-                              <span className="font-semibold text-zinc-900 dark:text-zinc-200 uppercase text-[11px] font-mono">
+                              <span className="font-bold text-zinc-900 dark:text-zinc-200 uppercase text-[11px] tracking-wide">
                                 {item.service_type}
                               </span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.06] font-mono text-zinc-500 border border-black/[0.04] dark:border-white/[0.04]">
+                              <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.06] font-semibold text-zinc-600 dark:text-zinc-400 border border-black/[0.04] dark:border-white/[0.04]">
                                 {item.provider}
                               </span>
                             </div>
                           </td>
 
                           {/* Model Engine */}
-                          <td className="py-3.5 px-4 font-mono text-zinc-700 dark:text-zinc-300 font-medium whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-zinc-800 dark:text-zinc-200 font-semibold whitespace-nowrap text-xs">
                             {item.model}
                           </td>
 
                           {/* Prompt & Specs */}
-                          <td className="py-3.5 px-4 max-w-md">
+                          <td className="py-3.5 px-4 max-w-xl">
                             <div
                               onClick={() => setSelectedPromptModal(item.full_prompt || item.prompt)}
-                              className="text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                              className="text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-violet-600 dark:hover:text-violet-400 transition-colors font-medium"
                               title="Click to view full prompt"
                             >
                               "{item.prompt || 'No prompt specified'}"
                             </div>
                             {item.specs && Object.keys(item.specs).length > 0 && (
-                              <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-zinc-500">
+                              <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500 font-medium">
                                 {item.specs.resolution && <span>Res: {item.specs.resolution}</span>}
                                 {item.specs.duration && <span>• {item.specs.duration}s</span>}
                                 {item.specs.motion && <span>• Motion: {item.specs.motion}</span>}
@@ -630,17 +657,17 @@ export default function UsagePage() {
                           </td>
 
                           {/* Spend */}
-                          <td className="py-3.5 px-4 text-right whitespace-nowrap font-mono">
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             {isFree ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 text-[11px]">
+                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20 text-[11px]">
                                 FREE (₹0)
                               </span>
                             ) : (
                               <div>
-                                <span className="font-bold text-zinc-950 dark:text-white text-xs">
+                                <span className="font-extrabold text-zinc-950 dark:text-white text-xs">
                                   {formatCost(item.cost_usd, item.cost_inr)}
                                 </span>
-                                <div className="text-[10px] text-zinc-500">
+                                <div className="text-[10px] text-zinc-500 font-medium">
                                   {currency === 'INR' ? `$${item.cost_usd.toFixed(3)}` : `₹${item.cost_inr.toFixed(2)}`}
                                 </div>
                               </div>
@@ -650,12 +677,12 @@ export default function UsagePage() {
                           {/* Status */}
                           <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             {item.status === 'success' ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                 SUCCESS
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-500/20">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-500/20">
                                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                                 FAILED
                               </span>
@@ -669,13 +696,13 @@ export default function UsagePage() {
                                 href={getMediaUrl(item.output_url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
                               >
                                 <span>Inspect</span>
                                 <ExternalLink className="h-3 w-3" />
                               </a>
                             ) : (
-                              <span className="text-zinc-400 text-[10px] font-mono">—</span>
+                              <span className="text-zinc-400 text-xs font-semibold">—</span>
                             )}
                           </td>
                         </tr>
@@ -721,36 +748,36 @@ export default function UsagePage() {
               ))}
             </div>
 
-            {/* Comprehensive Rates Table */}
+            {/* Comprehensive Rates Table with strict Montserrat font */}
             <div className="overflow-x-auto rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0d0d14] shadow-sm">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-zinc-50 dark:bg-[#111118] text-zinc-500 font-mono text-[10px] uppercase tracking-wider border-b border-black/[0.08] dark:border-white/[0.08]">
+              <table className="w-full text-left text-xs" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
+                <thead className="bg-zinc-50 dark:bg-[#111118] text-zinc-500 text-[11px] uppercase tracking-wider border-b border-black/[0.08] dark:border-white/[0.08]" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
                   <tr>
-                    <th className="py-3.5 px-4 font-semibold">Provider</th>
-                    <th className="py-3.5 px-4 font-semibold">Model Engine</th>
-                    <th className="py-3.5 px-4 font-semibold">Category</th>
-                    <th className="py-3.5 px-4 font-semibold">Billing Metric</th>
-                    <th className="py-3.5 px-4 text-right font-semibold">Cost (USD)</th>
-                    <th className="py-3.5 px-4 text-right font-semibold">Cost (INR)</th>
-                    <th className="py-3.5 px-4 font-semibold">Free Quota / Tier</th>
-                    <th className="py-3.5 px-4 font-semibold">How Billing Works & Spends Analysis</th>
+                    <th className="py-3.5 px-4 font-bold">Provider</th>
+                    <th className="py-3.5 px-4 font-bold">Model Engine</th>
+                    <th className="py-3.5 px-4 font-bold">Category</th>
+                    <th className="py-3.5 px-4 font-bold">Billing Metric</th>
+                    <th className="py-3.5 px-4 text-right font-bold">Cost (USD)</th>
+                    <th className="py-3.5 px-4 text-right font-bold">Cost (INR)</th>
+                    <th className="py-3.5 px-4 font-bold">Free Quota / Tier</th>
+                    <th className="py-3.5 px-4 font-bold">How Billing Works & Spends Analysis</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04] font-sans">
+                <tbody className="divide-y divide-black/[0.04] dark:divide-white/[0.04]" style={{ fontFamily: 'var(--font-montserrat), Montserrat, sans-serif' }}>
                   {filteredRateCards.map((rc, idx) => {
                     const isZero = rc.cost_usd === 0;
                     return (
                       <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors">
                         {/* Provider */}
-                        <td className="py-4 px-4 whitespace-nowrap font-mono font-semibold text-zinc-700 dark:text-zinc-300">
+                        <td className="py-4 px-4 whitespace-nowrap font-semibold text-zinc-700 dark:text-zinc-300 text-xs">
                           <span
                             className={cn(
-                              'px-2 py-0.5 rounded-md text-[10px] border',
+                              'px-2.5 py-1 rounded-md text-[10px] font-bold border',
                               rc.provider.includes('Google') && 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
                               rc.provider.includes('OpenAI') && 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
                               rc.provider.includes('Replicate') && 'bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/20',
                               rc.provider.includes('Eleven') && 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
-                              rc.provider.includes('Local') && 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 border-black/[0.08] dark:border-white/[0.08] font-bold'
+                              rc.provider.includes('Local') && 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 border-black/[0.08] dark:border-white/[0.08] font-extrabold'
                             )}
                           >
                             {rc.provider}
@@ -758,22 +785,22 @@ export default function UsagePage() {
                         </td>
 
                         {/* Model */}
-                        <td className="py-4 px-4 font-mono font-bold text-zinc-950 dark:text-white whitespace-nowrap">
+                        <td className="py-4 px-4 font-bold text-zinc-950 dark:text-white whitespace-nowrap text-xs">
                           {rc.model}
                         </td>
 
                         {/* Category */}
-                        <td className="py-4 px-4 font-mono text-zinc-500 whitespace-nowrap">
+                        <td className="py-4 px-4 text-zinc-500 whitespace-nowrap font-medium text-xs">
                           {rc.category}
                         </td>
 
                         {/* Billing Metric */}
-                        <td className="py-4 px-4 font-mono text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                        <td className="py-4 px-4 text-zinc-700 dark:text-zinc-300 whitespace-nowrap font-medium text-xs">
                           {rc.unit}
                         </td>
 
                         {/* Cost USD */}
-                        <td className="py-4 px-4 text-right whitespace-nowrap font-mono font-bold">
+                        <td className="py-4 px-4 text-right whitespace-nowrap font-bold text-xs">
                           {isZero ? (
                             <span className="text-emerald-600 dark:text-emerald-400">$0.00</span>
                           ) : (
@@ -782,7 +809,7 @@ export default function UsagePage() {
                         </td>
 
                         {/* Cost INR */}
-                        <td className="py-4 px-4 text-right whitespace-nowrap font-mono font-bold">
+                        <td className="py-4 px-4 text-right whitespace-nowrap font-bold text-xs">
                           {isZero ? (
                             <span className="text-emerald-600 dark:text-emerald-400">₹0.00 (FREE)</span>
                           ) : (
@@ -791,21 +818,21 @@ export default function UsagePage() {
                         </td>
 
                         {/* Free Quota */}
-                        <td className="py-4 px-4 font-mono text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-[11px]">
+                        <td className="py-4 px-4 text-xs text-zinc-600 dark:text-zinc-400 whitespace-nowrap font-medium">
+                          <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] text-[11px] font-semibold">
                             {rc.free_tier}
                           </span>
                         </td>
 
                         {/* Billing Mechanism & Explanation */}
-                        <td className="py-4 px-4 text-xs text-zinc-500 max-w-md leading-relaxed">
+                        <td className="py-4 px-4 text-xs text-zinc-500 max-w-xl leading-relaxed font-medium">
                           {rc.billing_mechanism}
                           <div className="mt-1">
                             <a
                               href={rc.official_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors inline-flex items-center gap-1 font-mono font-medium"
+                              className="text-[11px] text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors inline-flex items-center gap-1 font-semibold"
                             >
                               <span>Official Docs</span>
                               <ExternalLink className="h-2.5 w-2.5" />
