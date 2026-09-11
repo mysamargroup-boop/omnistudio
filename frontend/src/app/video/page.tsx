@@ -421,11 +421,9 @@ function VideoStudioContent() {
   // Right Sidebar & Stacked Accordions State (Default Collapsed)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSections, setOpenSections] = useState({
-    character: true,
-    model: true,
-    motion: true,
-    specs: true,
-    render: true,
+    character: false,
+    motion: false,
+    render: false,
   });
 
   // Real Upload Progress Tracking (0-100%)
@@ -445,9 +443,7 @@ function VideoStudioContent() {
     const allOpen = Object.values(openSections).every(Boolean);
     setOpenSections({
       character: !allOpen,
-      model: !allOpen,
       motion: !allOpen,
-      specs: !allOpen,
       render: !allOpen,
     });
   };
@@ -2403,7 +2399,7 @@ function VideoStudioContent() {
 
         {/* Right Settings Sidebar (Collapsible with Stacked Close Accordions & Independent Scroll) */}
         {sidebarOpen && (
-          <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full overflow-hidden transition-all duration-300 shadow-lg z-10">
+          <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-lg z-10">
             {/* Sidebar Header with Stacked Close Toggle All */}
             {/* Sidebar Header with Segmented Switch: Settings vs Render Queue */}
             <div className="flex-shrink-0 p-2.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70">
@@ -2468,7 +2464,7 @@ function VideoStudioContent() {
             {/* If Settings Tab is active: Scrollable Accordions Container */}
             {sidebarTab === "settings" && (
               <>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
+                <div data-lenis-prevent="true" className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
                   {/* Section 0: Character Lock & Consistency (Native Right Sidebar) */}
                   <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
                     <button
@@ -2798,93 +2794,7 @@ function VideoStudioContent() {
                     )}
                   </div>
 
-              {/* Section 1: AI Model & Engine (Active in GREEN) */}
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => toggleSection("model")}
-                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <Film className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>AI VIDEO MODEL</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full font-bold truncate max-w-[110px]",
-                      activeModel.active === false
-                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                    )}>
-                      {activeModel.active === false ? "KEY REQ" : activeModel.badge || (activeModel.value === "ffmpeg_local" ? "100% FREE" : "ACTIVE")}
-                    </span>
-                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.model && "rotate-180")} />
-                  </div>
-                </button>
-
-                {openSections.model && (
-                  <div className="p-3 pt-0 space-y-2 border-t border-zinc-100 dark:border-zinc-800/50">
-                    <div className="relative my-2">
-                      <Search className="w-3 h-3 text-zinc-400 absolute left-2.5 top-2.5" />
-                      <input
-                        type="text"
-                        value={modelSearchQuery}
-                        onChange={(e) => setModelSearchQuery(e.target.value)}
-                        placeholder="Search model..."
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-7 pr-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-
-                    <div className="max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
-                      {filteredModels.map((m) => {
-                        const isSelected = model === m.value;
-                        const isInactive = m.active === false;
-                        return (
-                          <button
-                            key={m.value}
-                            type="button"
-                            disabled={isInactive}
-                            onClick={() => {
-                              if (!isInactive) setModel(m.value);
-                            }}
-                            className={cn(
-                              "w-full p-2.5 rounded-xl text-left transition-all duration-150 flex items-start justify-between gap-2",
-                              isInactive ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
-                              isSelected && !isInactive
-                                ? "border border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
-                                : (!isInactive && "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-transparent")
-                            )}
-                          >
-                            <div className="space-y-0.5 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className={cn("text-xs font-bold font-heading truncate", isSelected && !isInactive && "text-emerald-700 dark:text-emerald-400")}>
-                                  {m.label}
-                                </span>
-                                {isInactive ? (
-                                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700">
-                                    INACTIVE
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                    {m.badge || (m.value === "ffmpeg_local" ? "FREE LOCAL" : "ACTIVE")}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-zinc-400 truncate">
-                                {isInactive ? "API key not configured in Settings" : m.description}
-                              </p>
-                            </div>
-                            {isSelected && !isInactive && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 2: Camera Motion (Default: None / Static) */}
+              {/* Section 1: Camera Kinematics & Motion Dynamics */}
               <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
                 <button
                   type="button"
@@ -2893,11 +2803,11 @@ function VideoStudioContent() {
                 >
                   <div className="flex items-center gap-2">
                     <Compass className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>CAMERA MOTION</span>
+                    <span>MOTION KINEMATICS</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
-                      {activeMotion.label}
+                      {activeMotion.label} • {motionIntensity}x
                     </span>
                     <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.motion && "rotate-180")} />
                   </div>
@@ -2905,34 +2815,10 @@ function VideoStudioContent() {
 
                 {openSections.motion && (
                   <div className="p-3 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800/50">
-                    <div className="grid grid-cols-2 gap-1.5 my-2">
-                      {MOTIONS.map((m) => {
-                        const Icon = m.icon;
-                        const isSelected = motion === m.id;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => setMotion(m.id)}
-                            className={cn(
-                              "flex items-center gap-1.5 p-2 rounded-lg text-left text-xs transition-all cursor-pointer",
-                              isSelected
-                                ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 font-bold shadow-xs"
-                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-800/60"
-                            )}
-                          >
-                            <Icon className={cn("w-3.5 h-3.5 shrink-0", isSelected ? "text-emerald-500" : "text-zinc-400")} />
-                            <span className="truncate">{m.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Motion Intensity Slider */}
-                    <div className="space-y-1.5 pt-1">
+                    <div className="space-y-2 pt-2">
                       <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
-                        <span>Motion Intensity</span>
-                        <span className="font-bold text-zinc-900 dark:text-white">{motionIntensity}x</span>
+                        <span>Velocity / Motion Intensity</span>
+                        <span className="font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">{motionIntensity}x</span>
                       </div>
                       <input
                         type="range"
@@ -2943,79 +2829,43 @@ function VideoStudioContent() {
                         onChange={(e) => setMotionIntensity(parseFloat(e.target.value))}
                         className="w-full accent-emerald-500 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
                       />
+                      <div className="flex justify-between text-[9px] font-mono text-zinc-400">
+                        <span>0.5x (Subtle)</span>
+                        <span>1.0x (Standard)</span>
+                        <span>2.0x (Extreme)</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed pt-1 font-jakarta">
+                        Controls camera velocity and dynamic kinematics. Motion trajectory is selected via the prompt dock below.
+                      </p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Section 3: Aspect Ratio, Resolution & FPS */}
+              {/* Section 2: Advanced Output & Compiler */}
               <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
                 <button
                   type="button"
-                  onClick={() => toggleSection("specs")}
+                  onClick={() => toggleSection("render")}
                   className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>FORMAT & RESOLUTION</span>
+                    <Repeat className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>ADVANCED COMPILER</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
-                      {aspectRatio} • {resolution}
+                      {fps} FPS {loop ? "• LOOP" : ""}
                     </span>
-                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.specs && "rotate-180")} />
+                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.render && "rotate-180")} />
                   </div>
                 </button>
 
-                {openSections.specs && (
+                {openSections.render && (
                   <div className="p-3 pt-0 space-y-3.5 border-t border-zinc-100 dark:border-zinc-800/50">
-                    {/* Aspect Ratio */}
-                    <div className="space-y-1.5 my-2">
-                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Aspect Ratio</span>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {ASPECT_RATIOS.map((ar) => (
-                          <button
-                            key={ar.value}
-                            type="button"
-                            onClick={() => setAspectRatio(ar.value)}
-                            className={cn(
-                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
-                              aspectRatio === ar.value
-                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
-                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                            )}
-                          >
-                            {ar.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Resolution */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Resolution</span>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {RESOLUTIONS.map((res) => (
-                          <button
-                            key={res.value}
-                            type="button"
-                            onClick={() => setResolution(res.value)}
-                            className={cn(
-                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
-                              resolution === res.value
-                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
-                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                            )}
-                          >
-                            {res.value.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* Framerate */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Framerate (FPS)</span>
+                    <div className="space-y-1.5 pt-2">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Framerate (FPS Profile)</span>
                       <div className="grid grid-cols-3 gap-1.5">
                         {FPS_PROFILES.map((f) => (
                           <button
@@ -3025,7 +2875,7 @@ function VideoStudioContent() {
                             className={cn(
                               "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
                               fps === f.value
-                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold shadow-xs"
                                 : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                             )}
                           >
@@ -3034,86 +2884,21 @@ function VideoStudioContent() {
                         ))}
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Section 4: Duration, Quality & Seed */}
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => toggleSection("render")}
-                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <Repeat className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>DURATION & RENDER</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
-                      {duration}s • {quality}
-                    </span>
-                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.render && "rotate-180")} />
-                  </div>
-                </button>
-
-                {openSections.render && (
-                  <div className="p-3 pt-0 space-y-3.5 border-t border-zinc-100 dark:border-zinc-800/50">
-                    {/* Duration Presets */}
-                    <div className="space-y-1.5 my-2">
-                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Duration (Seconds)</span>
-                      <div className="grid grid-cols-6 gap-1">
-                        {DURATION_PRESETS.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => setDuration(d)}
-                            className={cn(
-                              "py-1 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
-                              duration === d
-                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
-                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                            )}
-                          >
-                            {d}s
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Quality Profile */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase">Render Quality</span>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {QUALITY_PROFILES.map((qp) => (
-                          <button
-                            key={qp.value}
-                            type="button"
-                            onClick={() => setQuality(qp.value)}
-                            className={cn(
-                              "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
-                              quality === qp.value
-                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold"
-                                : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                            )}
-                          >
-                            {qp.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Loop Toggle */}
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    {/* Seamless Loop Toggle */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                       <div className="flex items-center gap-2">
                         <Repeat className="w-3.5 h-3.5 text-emerald-500" />
-                        <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold">Loop Seamlessly</span>
+                        <div>
+                          <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold block">Loop Seamlessly</span>
+                          <span className="text-[10px] text-zinc-400 font-jakarta">Matches first and last frame for infinite replay</span>
+                        </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setLoop(!loop)}
                         className={cn(
-                          "w-8 h-4 rounded-full transition-colors relative cursor-pointer",
+                          "w-8 h-4 rounded-full transition-colors relative cursor-pointer shrink-0",
                           loop ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
                         )}
                       >

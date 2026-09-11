@@ -171,11 +171,11 @@ export default function Sidebar() {
         </div>
 
         {/* Quick Action Button */}
-        <div className="p-3 shrink-0">
+        <div className="p-2.5 px-3 shrink-0">
           <button
             type="button"
             onClick={() => router.push("/pipeline")}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer"
           >
             <Zap className="h-3.5 w-3.5 fill-current" />
             <span>NEW PRODUCTION</span>
@@ -185,11 +185,11 @@ export default function Sidebar() {
         {/* Navigation Groups */}
         <div className="overflow-y-auto flex-1 hide-scrollbar">
           {navGroups.map((group) => (
-            <div key={group.label} className="mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-600 px-3 pt-5 pb-1.5 block">
+            <div key={group.label} className="mb-1">
+              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-600 px-3 pt-3 pb-1 block">
                 {group.label}
               </span>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -197,7 +197,7 @@ export default function Sidebar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "group flex items-center gap-3 font-jakarta mx-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 relative",
+                      "group flex items-center gap-2.5 font-jakarta mx-2 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 relative",
                       isActive
                         ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
                         : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
@@ -205,7 +205,7 @@ export default function Sidebar() {
                   >
                     <item.icon
                       className={cn(
-                        "h-4 w-4 shrink-0 transition-colors",
+                        "h-3.5 w-3.5 shrink-0 transition-colors",
                         isActive
                           ? "text-white dark:text-zinc-950"
                           : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
@@ -215,7 +215,7 @@ export default function Sidebar() {
                     {item.badge && (
                       <span
                         className={cn(
-                          "rounded-full px-2 py-0.5 text-[9px] font-mono ml-auto shrink-0",
+                          "rounded-full px-1.5 py-0.2 text-[9px] font-mono ml-auto shrink-0",
                           isActive
                             ? "bg-white/20 dark:bg-zinc-900/20 text-white dark:text-zinc-950 font-bold"
                             : "bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400"
@@ -233,87 +233,72 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Advanced Diagnostics HUD Card */}
-      <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0">
-        <div className="rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] p-3 space-y-2 font-mono text-[10px]">
-          <div className="flex items-center justify-between text-zinc-800 dark:text-zinc-300">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Radio className="h-3 w-3 text-emerald-500 animate-pulse" />
-              SYSTEM ACTIVE
+      {/* Ultra-Compact Diagnostics & Meta Footer */}
+      <div className="p-2.5 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0 space-y-1.5 font-mono">
+        <div className="rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] px-2.5 py-1.5 flex items-center justify-between text-[10px]">
+          <div className="flex items-center gap-1.5">
+            <Radio className="h-2.5 w-2.5 text-emerald-500 animate-pulse shrink-0" />
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">ONLINE</span>
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
+            <span className="text-zinc-500 dark:text-zinc-400 text-[9px]">
+              {assetCount !== null ? `${assetCount} ASSETS` : "VAULT READY"}
             </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={fetchTelemetry}
-                className="p-0.5 rounded text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-white transition-colors cursor-pointer"
-                title="Refresh Status"
-              >
-                <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDetails(!showDetails)}
-                className="p-0.5 rounded text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-white transition-colors cursor-pointer"
-                title="Toggle System Specs"
-              >
-                <ChevronDown
-                  className={cn("h-3 w-3 transition-transform duration-200", showDetails && "rotate-180")}
-                />
-              </button>
-            </div>
           </div>
-
-          <div className="space-y-0.5 text-zinc-500 text-[9px] border-t border-black/[0.04] dark:border-white/[0.04] pt-1.5">
-            <div className="flex justify-between">
-              <span>STORAGE:</span>
-              <span className="text-zinc-700 dark:text-zinc-400">{assetCount !== null ? `${assetCount} ASSETS` : "VAULT READY"}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>COMPILER:</span>
-              <span className="text-zinc-700 dark:text-zinc-400">FFMPEG 8.1 1080P</span>
-            </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={fetchTelemetry}
+              className="p-0.5 rounded text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-white transition-colors cursor-pointer"
+              title="Refresh Status"
+            >
+              <RefreshCw className={cn("h-2.5 w-2.5", isRefreshing && "animate-spin")} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDetails(!showDetails)}
+              className="p-0.5 rounded text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-white transition-colors cursor-pointer"
+              title="Toggle Details"
+            >
+              <ChevronDown className={cn("h-2.5 w-2.5 transition-transform duration-200", showDetails && "rotate-180")} />
+            </button>
           </div>
-
-          {showDetails && (
-            <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-1.5 text-[9px] text-zinc-600 dark:text-zinc-400 animate-in fade-in duration-150">
-              <div className="flex justify-between">
-                <span>VOICE ENGINE:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">EDGE NEURAL (ACTIVE)</span>
-              </div>
-              <div className="flex justify-between">
-                <span>LATENT SAMPLER:</span>
-                <span className="text-zinc-800 dark:text-zinc-300">DALL-E 3 & FLUX</span>
-              </div>
-              <div className="pt-1 flex items-center justify-between border-t border-black/[0.04] dark:border-white/[0.04]">
-                <a
-                  href="/docs"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white flex items-center gap-1 transition-colors"
-                >
-                  <Terminal className="h-2.5 w-2.5" />
-                  <span>API SWAGGER DOCS</span>
-                  <ExternalLink className="h-2.5 w-2.5" />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Real-time date and time display without seconds */}
-          {currentDateTime && (
-            <div className="pt-1 border-t border-black/[0.04] dark:border-white/[0.04] text-[9px] font-mono text-zinc-500 dark:text-zinc-400 text-center tracking-wider">
-              {currentDateTime}
-            </div>
-          )}
         </div>
 
-        {/* Studio footer meta links */}
-        <div className="flex items-center justify-center gap-3 pt-2 pb-1 text-[9px] font-mono text-zinc-400 dark:text-zinc-500">
-          <Link href="/how-it-works" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Guide</Link>
-          <span>•</span>
-          <Link href="/privacy" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Privacy</Link>
-          <span>•</span>
-          <Link href="/terms" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Terms</Link>
+        {showDetails && (
+          <div className="rounded-xl bg-zinc-50/80 dark:bg-[#111118]/80 border border-black/[0.06] dark:border-white/[0.06] p-2 space-y-1 text-[9px] text-zinc-600 dark:text-zinc-400 animate-in fade-in duration-150">
+            <div className="flex justify-between">
+              <span>COMPILER:</span>
+              <span className="text-zinc-700 dark:text-zinc-300">FFMPEG 1080P</span>
+            </div>
+            <div className="flex justify-between">
+              <span>VOICE ENGINE:</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">EDGE NEURAL</span>
+            </div>
+            <div className="flex justify-between">
+              <span>DIFFUSION:</span>
+              <span className="text-zinc-700 dark:text-zinc-300">FLUX / DALL-E</span>
+            </div>
+            {currentDateTime && (
+              <div className="text-center pt-1 border-t border-black/[0.04] dark:border-white/[0.04] text-[8px] text-zinc-400">
+                {currentDateTime}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Compact meta footer */}
+        <div className="flex items-center justify-between px-1 text-[9px] text-zinc-400 dark:text-zinc-500">
+          <div className="flex items-center gap-2">
+            <Link href="/how-it-works" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Guide</Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Privacy</Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors">Terms</Link>
+          </div>
+          <a href="/docs" target="_blank" rel="noreferrer" className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors flex items-center gap-0.5">
+            <span>Docs</span>
+            <ExternalLink className="h-2 w-2" />
+          </a>
         </div>
       </div>
     </aside>
