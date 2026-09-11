@@ -60,6 +60,18 @@ def db_session():
         except Exception as e:
             db_logger.debug("Error closing SQLite connection: %s", e)
 
+@contextmanager
+def get_db_cursor():
+    """Context manager providing an active SQLite cursor with automatic commit/rollback."""
+    with db_session() as conn:
+        cur = conn.cursor()
+        try:
+            yield cur
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
 def init_database():
     """Initialize database tables for SQLite or execute schema on PostgreSQL"""
     if is_postgres():
@@ -163,6 +175,71 @@ def init_database():
                     filename TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (collection_id, filename)
+                );
+                CREATE TABLE IF NOT EXISTS social_accounts (
+                    id TEXT PRIMARY KEY,
+                    platform TEXT NOT NULL,
+                    platform_account_id TEXT,
+                    account_name TEXT NOT NULL,
+                    username TEXT,
+                    avatar_url TEXT,
+                    access_token TEXT,
+                    status TEXT DEFAULT 'connected',
+                    connected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    metadata TEXT DEFAULT '{}'
+                );
+                CREATE TABLE IF NOT EXISTS publish_posts (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT,
+                    media_urls TEXT DEFAULT '[]',
+                    media_type TEXT DEFAULT 'image',
+                    thumbnail_url TEXT,
+                    platforms TEXT NOT NULL DEFAULT '[]',
+                    status TEXT DEFAULT 'draft',
+                    scheduled_at DATETIME,
+                    published_at DATETIME,
+                    status_by_platform TEXT DEFAULT '{}',
+                    platform_post_ids TEXT DEFAULT '{}',
+                    ai_adaptation TEXT DEFAULT '{}',
+                    approval_status TEXT DEFAULT 'approved',
+                    workspace_id TEXT DEFAULT 'default',
+                    campaign_id TEXT,
+                    is_recycled INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS publish_templates (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    platforms TEXT NOT NULL DEFAULT '[]',
+                    caption_template TEXT,
+                    hashtag_template TEXT,
+                    default_schedule_offset INTEGER DEFAULT 0,
+                    tags TEXT DEFAULT '[]',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS social_analytics (
+                    id TEXT PRIMARY KEY,
+                    post_id TEXT,
+                    platform TEXT NOT NULL,
+                    views INTEGER DEFAULT 0,
+                    reach INTEGER DEFAULT 0,
+                    engagement_rate REAL DEFAULT 0.0,
+                    likes INTEGER DEFAULT 0,
+                    comments INTEGER DEFAULT 0,
+                    shares INTEGER DEFAULT 0,
+                    saves INTEGER DEFAULT 0,
+                    watch_time_sec REAL DEFAULT 0.0,
+                    followers_growth INTEGER DEFAULT 0,
+                    recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS publish_workspaces (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    client_name TEXT DEFAULT '',
+                    approval_required INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
                 """)
 

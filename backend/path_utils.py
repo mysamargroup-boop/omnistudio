@@ -18,6 +18,7 @@ MEDIA_DIRECTORIES: dict[str, Path] = {
     "audio": settings.AUDIO_PATH,
     "final": settings.FINAL_PATH,
     "brand_kit": settings.OUTPUTS_PATH / "brand_kit",
+    "publish": settings.OUTPUTS_PATH / "publish",
     "trash/images": settings.TRASH_PATH / "images",
     "trash/videos": settings.TRASH_PATH / "videos",
     "trash/audio": settings.TRASH_PATH / "audio",

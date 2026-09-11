@@ -431,4 +431,54 @@ export const api = {
   },
   getRateCards: () => fetchApi<any>("/api/analytics/rates"),
   clearUsageHistory: () => fetchApi<any>("/api/analytics/clear", { method: "POST" }),
+
+  // Publish Studio & Multi-Platform Distribution
+  getPublishPlatforms: () => fetchApi<any>("/api/publish/platforms"),
+  getConnectedAccounts: () => fetchApi<any>("/api/publish/accounts"),
+  connectAccount: (data: { platform: string; account_name: string; username?: string }) =>
+    fetchApi<any>("/api/publish/accounts/connect", { method: "POST", body: JSON.stringify(data) }),
+  disconnectAccount: (accountId: string) =>
+    fetchApi<any>(`/api/publish/accounts/${accountId}`, { method: "DELETE" }),
+  aiOptimizePublishContent: (data: { title?: string; content: string; platforms: string[]; media_type?: string }) =>
+    fetchApi<any>("/api/publish/optimize", { method: "POST", body: JSON.stringify(data) }),
+  generatePublishThumbnail: (data: { title: string; platform_format?: string; source_image_path?: string; category_badge?: string; accent_color?: string }) =>
+    fetchApi<any>("/api/publish/thumbnails", { method: "POST", body: JSON.stringify(data) }),
+  repurposePublishContent: (data: { title?: string; content: string; media_url?: string }) =>
+    fetchApi<any>("/api/publish/repurpose", { method: "POST", body: JSON.stringify(data) }),
+  aiSocialMediaManagerPlan: (data: { campaign_goal: string; target_audience?: string; duration_days?: number }) =>
+    fetchApi<any>("/api/publish/ai-manager", { method: "POST", body: JSON.stringify(data) }),
+  runCreatorMode: (data: { concept: string; media_url?: string }) =>
+    fetchApi<any>("/api/publish/creator-mode", { method: "POST", body: JSON.stringify(data) }),
+  createPublishPost: (data: any) =>
+    fetchApi<any>("/api/publish/posts", { method: "POST", body: JSON.stringify(data) }),
+  getPublishPosts: (params?: { status?: string; workspace_id?: string; platform?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append("status", params.status);
+    if (params?.workspace_id) q.append("workspace_id", params.workspace_id);
+    if (params?.platform) q.append("platform", params.platform);
+    const qs = q.toString();
+    return fetchApi<any>(`/api/publish/posts${qs ? `?${qs}` : ""}`);
+  },
+  getPublishPost: (postId: string) =>
+    fetchApi<any>(`/api/publish/posts/${postId}`),
+  deletePublishPost: (postId: string) =>
+    fetchApi<any>(`/api/publish/posts/${postId}`, { method: "DELETE" }),
+  publishPostNow: (postId: string) =>
+    fetchApi<any>(`/api/publish/posts/${postId}/publish-now`, { method: "POST" }),
+  approvePublishPost: (postId: string, approved: boolean = true) =>
+    fetchApi<any>(`/api/publish/posts/${postId}/approve`, { method: "POST", body: JSON.stringify({ approved }) }),
+  recyclePublishPost: (postId: string) =>
+    fetchApi<any>(`/api/publish/posts/${postId}/recycle`, { method: "POST" }),
+  getPublishCalendar: () =>
+    fetchApi<any>("/api/publish/calendar"),
+  getPublishAnalytics: () =>
+    fetchApi<any>("/api/publish/analytics"),
+  getPublishRecommendations: () =>
+    fetchApi<any>("/api/publish/recommendations"),
+  getPublishTemplates: () =>
+    fetchApi<any>("/api/publish/templates"),
+  savePublishTemplate: (data: any) =>
+    fetchApi<any>("/api/publish/templates", { method: "POST", body: JSON.stringify(data) }),
+  getPublishWorkspaces: () =>
+    fetchApi<any>("/api/publish/workspaces"),
 };

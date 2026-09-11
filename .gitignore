@@ -40,6 +40,7 @@ backend/outputs/videos/*
 backend/outputs/audio/*
 backend/outputs/final/*
 backend/outputs/trash/*
+backend/outputs/publish/*
 backend/outputs/analytics/*
 backend/outputs/brand_kit/*
 scratch/

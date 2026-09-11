@@ -16,6 +16,7 @@ const NAV_TABS = [
   { id: 'video', label: 'Video', path: '/video', hasDropdown: true },
   { id: 'audio', label: 'Voice', path: '/voice', hasDropdown: true },
   { id: 'pipeline', label: 'Agent', path: '/pipeline', badge: 'AI' },
+  { id: 'publish', label: 'Publish', path: '/publish', badge: 'NEW' },
   { id: 'vault', label: 'Vault', path: '/vault' },
   { id: 'usage', label: 'Usage', path: '/usage', badge: 'SPEND' },
   { id: 'settings', label: 'Settings', path: '/settings' },

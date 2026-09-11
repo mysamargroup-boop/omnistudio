@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Sparkles,
   Activity,
+  Share2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -105,6 +106,7 @@ export default function Sidebar() {
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
         { href: "/studio", label: "Studio (All-in-One)", icon: Sparkles, badge: "PRO" },
         { href: "/pipeline", label: "Auto Pipeline", icon: Cpu, badge: "AI AGENT" },
+        { href: "/publish", label: "Publish Studio", icon: Share2, badge: "MULTI-CHANNEL" },
       ],
     },
     {
