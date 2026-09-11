@@ -25,6 +25,7 @@ import {
   Sliders,
   Sparkle,
   Film,
+  Clapperboard,
   RotateCw,
   Upload,
   Dices,
@@ -61,6 +62,9 @@ import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/vi
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
 import BrandKitModal from "@/components/brand/BrandKitModal";
+import MotionRigVectorPad, { MotionRigConfig, DEFAULT_MOTION_RIG } from "@/components/video/MotionRigVectorPad";
+import ViewportHudOverlay from "@/components/video/ViewportHudOverlay";
+import StoryboardTimelineStrip, { StoryboardShot } from "@/components/video/StoryboardTimelineStrip";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
@@ -379,6 +383,64 @@ function VideoStudioContent() {
   const [loop, setLoop] = useState(false);
   const [seed, setSeed] = useState("");
   const [modelSearchQuery, setModelSearchQuery] = useState("");
+
+  // 6-Axis Motion Rig & Virtual Optics Configuration
+  const [motionRigConfig, setMotionRigConfig] = useState<MotionRigConfig>(DEFAULT_MOTION_RIG);
+
+  // Viewport HUD Overlay & Anamorphic Scope Toggles
+  const [showHud, setShowHud] = useState(true);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showScope, setShowScope] = useState(false);
+
+  // Storyboard & Sequence Timeline Strip
+  const [showStoryboard, setShowStoryboard] = useState(false);
+  const [activeStoryboardShotId, setActiveStoryboardShotId] = useState<string | null>("shot-1");
+
+  // Prompt Token Matrix Chips
+  const [tokenChips, setTokenChips] = useState<Array<{ text: string; weight: number }>>([
+    { text: "anamorphic", weight: 1.3 },
+    { text: "chiaroscuro", weight: 1.4 },
+    { text: "volumetric steam", weight: 1.2 },
+  ]);
+  const [newTokenInput, setNewTokenInput] = useState("");
+  const [showAddToken, setShowAddToken] = useState(false);
+
+  // Master Finishing Suite Controls
+  const [aiMotionInterpolation, setAiMotionInterpolation] = useState(false);
+  const [spatialLatentUpscale, setSpatialLatentUpscale] = useState(false);
+  const [filmGrainHalation, setFilmGrainHalation] = useState(0.35);
+
+  const handleRemoveToken = (index: number) => {
+    setTokenChips((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddToken = () => {
+    const raw = newTokenInput.trim();
+    if (!raw) return;
+    const parts = raw.split(":");
+    const text = parts[0].trim();
+    const weight = parts[1] ? parseFloat(parts[1]) || 1.1 : 1.1;
+    if (text) {
+      setTokenChips((prev) => [...prev, { text, weight: Math.round(weight * 10) / 10 }]);
+      setNewTokenInput("");
+      setShowAddToken(false);
+    }
+  };
+
+  const handleSelectStoryboardShot = (shot: StoryboardShot) => {
+    setActiveStoryboardShotId(shot.id);
+    if (shot.prompt) setPrompt(shot.prompt);
+    if (shot.duration) setDuration(shot.duration);
+    if (shot.thumbnailUrl) setStartImage(shot.thumbnailUrl);
+    if (shot.videoUrl) {
+      setResult({
+        success: true,
+        url: shot.videoUrl,
+        filename: shot.title,
+        duration: shot.duration,
+      });
+    }
+  };
 
   // Inline Bottom Dock Popover States
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
@@ -841,7 +903,8 @@ function VideoStudioContent() {
       }
     } catch {}
 
-    const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
+    const tokenString = tokenChips.length > 0 ? `, ${tokenChips.map((t) => `${t.text}:${t.weight}`).join(", ")}` : "";
+    const finalPrompt = (characterContext + prompt + promptDirectiveText + tokenString).trim();
 
     // Initialize Render Queue Record
     const newJobId = "job_" + Date.now();
@@ -916,6 +979,15 @@ function VideoStudioContent() {
         seed: seed ? parseInt(seed, 10) : undefined,
         model,
         character_name: activeCharacter?.isLocked ? activeCharacter.name : undefined,
+        focal_lens: motionRigConfig.focalLens,
+        aperture: motionRigConfig.aperture,
+        shutter_angle: motionRigConfig.shutterAngle,
+        color_lut: motionRigConfig.colorLut,
+        orbit_x: motionRigConfig.orbitX,
+        orbit_y: motionRigConfig.orbitY,
+        push_speed: motionRigConfig.pushSpeed,
+        crane_elevation: motionRigConfig.craneElevation,
+        dutch_roll: motionRigConfig.dutchRoll,
       };
 
       const data = await api.generateVideo(payload);
@@ -1114,6 +1186,22 @@ function VideoStudioContent() {
             <span className="hidden lg:inline">Guide</span>
           </button>
 
+          {/* Storyboard Sequence Timeline Button */}
+          <button
+            type="button"
+            onClick={() => setShowStoryboard(!showStoryboard)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
+              showStoryboard
+                ? "bg-emerald-600 text-white border-transparent font-bold shadow-xs"
+                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            )}
+            title="Toggle Multi-Shot Storyboard Timeline Strip"
+          >
+            <Clapperboard className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-semibold">Storyboard</span>
+          </button>
+
           {/* Render Queue (Midjourney Jobs) Button */}
           <button
             type="button"
@@ -1235,7 +1323,26 @@ function VideoStudioContent() {
                       } catch {}
                     }}
                   />
-                  <div className="absolute top-3 left-3 flex items-center gap-2">
+
+                  {/* Cinematic Viewport Telemetry HUD & Optical Reticle Overlay */}
+                  <ViewportHudOverlay
+                    showHud={showHud}
+                    onToggleHud={() => setShowHud(!showHud)}
+                    showGrid={showGrid}
+                    onToggleGrid={() => setShowGrid(!showGrid)}
+                    showScope={showScope}
+                    onToggleScope={() => setShowScope(!showScope)}
+                    aspectRatio={aspectRatio}
+                    fps={fps}
+                    resolution={resolution}
+                    characterName={activeCharacter?.name}
+                    orbitX={motionRigConfig.orbitX}
+                    orbitY={motionRigConfig.orbitY}
+                    motionLabel={activeMotion.label}
+                    focalLens={motionRigConfig.focalLens}
+                  />
+
+                  <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
                     <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
                       {result.mode?.toUpperCase() || "CINEMATIC"} • {fps} FPS • {aspectRatio}
                     </span>
@@ -1374,11 +1481,28 @@ function VideoStudioContent() {
                           alt="Start Frame"
                           className="max-h-[360px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
                         />
-                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                        <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm z-30">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                           <span>START FRAME ACTIVE</span>
                         </div>
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-xs">
+                        {/* Cinematic Viewport Telemetry HUD & Optical Reticle Overlay */}
+                        <ViewportHudOverlay
+                          showHud={showHud}
+                          onToggleHud={() => setShowHud(!showHud)}
+                          showGrid={showGrid}
+                          onToggleGrid={() => setShowGrid(!showGrid)}
+                          showScope={showScope}
+                          onToggleScope={() => setShowScope(!showScope)}
+                          aspectRatio={aspectRatio}
+                          fps={fps}
+                          resolution={resolution}
+                          characterName={activeCharacter?.name}
+                          orbitX={motionRigConfig.orbitX}
+                          orbitY={motionRigConfig.orbitY}
+                          motionLabel={activeMotion.label}
+                          focalLens={motionRigConfig.focalLens}
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-xs z-30">
                           <button
                             type="button"
                             onClick={() => startFileInputRef.current?.click()}
@@ -1806,6 +1930,16 @@ function VideoStudioContent() {
                 )}
               </div>
             )}
+
+            {/* 6. Studio Storyboard Multi-Shot Sequence Timeline Strip */}
+            <div className="pt-2">
+              <StoryboardTimelineStrip
+                isOpen={showStoryboard}
+                onToggleOpen={() => setShowStoryboard(!showStoryboard)}
+                activeShotId={activeStoryboardShotId}
+                onSelectShot={handleSelectStoryboardShot}
+              />
+            </div>
           </div>
 
           {/* Backdrop to dismiss any open popovers on outside click */}
@@ -1996,6 +2130,72 @@ function VideoStudioContent() {
                   />
                 </div>
               )}
+
+              {/* Prompt Token Matrix Chips */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Tokens:
+                </span>
+                {tokenChips.map((token, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-2xs group"
+                  >
+                    <span>{token.text}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">:{token.weight}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveToken(idx)}
+                      className="text-zinc-400 hover:text-rose-500 transition-colors ml-0.5"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+                {showAddToken ? (
+                  <div className="inline-flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={newTokenInput}
+                      onChange={(e) => setNewTokenInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddToken();
+                        } else if (e.key === "Escape") {
+                          setShowAddToken(false);
+                        }
+                      }}
+                      placeholder="token:1.2"
+                      className="w-24 px-2 py-0.5 text-[10px] font-mono rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-emerald-500/50 text-zinc-900 dark:text-white focus:outline-hidden"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddToken}
+                      className="px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-mono font-bold hover:bg-emerald-500 transition-colors cursor-pointer"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddToken(false)}
+                      className="p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddToken(true)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 transition-colors cursor-pointer"
+                  >
+                    <span>+ Add Token</span>
+                  </button>
+                )}
+              </div>
 
               {/* Textarea */}
               <div className="relative">
@@ -2855,8 +3055,16 @@ function VideoStudioContent() {
                         <span>2.0x (Extreme)</span>
                       </div>
                       <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed pt-1 font-jakarta">
-                        Controls camera velocity and dynamic kinematics. Motion trajectory is selected via the prompt dock below.
+                        Controls camera velocity and dynamic kinematics. Vector rig & optics fine-tuned below.
                       </p>
+                    </div>
+
+                    {/* 6-Axis Cinema Motion Rig & Virtual Optics */}
+                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                      <MotionRigVectorPad
+                        config={motionRigConfig}
+                        onChange={setMotionRigConfig}
+                      />
                     </div>
                   </div>
                 )}
@@ -2946,6 +3154,68 @@ function VideoStudioContent() {
                         placeholder="Random seed (optional)"
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
+                    </div>
+
+                    {/* Master Finishing Suite */}
+                    <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2.5">
+                      <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase block">
+                        Master Finishing Suite
+                      </span>
+                      
+                      {/* AI Motion Interpolation */}
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold block">Motion Interpolation</span>
+                          <span className="text-[10px] text-zinc-400 font-jakarta">Optical flow 60fps interpolation</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAiMotionInterpolation(!aiMotionInterpolation)}
+                          className={cn(
+                            "w-8 h-4 rounded-full transition-colors relative cursor-pointer shrink-0",
+                            aiMotionInterpolation ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
+                          )}
+                        >
+                          <div className={cn("w-3 h-3 rounded-full bg-white transition-transform absolute top-0.5", aiMotionInterpolation ? "left-4.5" : "left-0.5")} />
+                        </button>
+                      </div>
+
+                      {/* Spatial Latent Upscale */}
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <span className="text-xs font-mono text-zinc-800 dark:text-zinc-200 font-semibold block">Latent Ultra-Upscale</span>
+                          <span className="text-[10px] text-zinc-400 font-jakarta">RealESRGAN 2x cinema latent pass</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSpatialLatentUpscale(!spatialLatentUpscale)}
+                          className={cn(
+                            "w-8 h-4 rounded-full transition-colors relative cursor-pointer shrink-0",
+                            spatialLatentUpscale ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
+                          )}
+                        >
+                          <div className={cn("w-3 h-3 rounded-full bg-white transition-transform absolute top-0.5", spatialLatentUpscale ? "left-4.5" : "left-0.5")} />
+                        </button>
+                      </div>
+
+                      {/* Kodak 5219 Film Grain & Halation */}
+                      <div className="space-y-1.5 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                          <span>Kodak 5219 Film Grain</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                            {Math.round(filmGrainHalation * 100)}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={filmGrainHalation}
+                          onChange={(e) => setFilmGrainHalation(parseFloat(e.target.value))}
+                          className="w-full accent-emerald-500 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

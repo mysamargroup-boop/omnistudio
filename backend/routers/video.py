@@ -23,7 +23,7 @@ from pydantic import BaseModel, field_validator
 router = APIRouter(prefix="/api/video", tags=["Video Generation"])
 
 ALLOWED_VIDEO_MODES = {"text_to_video", "first_frame", "first_to_last_frame", "motion_transfer", "multi_frame"}
-ALLOWED_VIDEO_ASPECTS = {"16:9", "9:16", "1:1", "4:3", "21:9", "original"}
+ALLOWED_VIDEO_ASPECTS = {"16:9", "9:16", "1:1", "4:3", "21:9", "2.39:1", "original"}
 ALLOWED_FPS = {24, 30, 60}
 ALLOWED_LUTS = {"noir", "teal_orange", "cyberpunk", "vintage"}
 
@@ -72,6 +72,15 @@ class VideoRequest(BaseModel):
     character_prompt: Optional[str] = None
     character_image: Optional[str] = None
     character_name: Optional[str] = None
+    focal_lens: Optional[str] = None
+    aperture: Optional[str] = None
+    shutter_angle: Optional[str] = None
+    color_lut: Optional[str] = None
+    orbit_x: Optional[float] = None
+    orbit_y: Optional[float] = None
+    push_speed: Optional[float] = None
+    crane_elevation: Optional[float] = None
+    dutch_roll: Optional[float] = None
 
     @field_validator("duration")
     @classmethod
@@ -212,10 +221,10 @@ class EditVideoRequest(BaseModel):
         return v
 
 RESOLUTION_MAP = {
-    "720p":  {"16:9": (1280, 720),  "9:16": (720, 1280),  "1:1": (720, 720),   "21:9": (1680, 720)},
-    "1080p": {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "21:9": (2520, 1080)},
-    "2k":    {"16:9": (2560, 1440), "9:16": (1440, 2560), "1:1": (1440, 1440), "21:9": (3360, 1440)},
-    "4k":    {"16:9": (3840, 2160), "9:16": (2160, 3840), "1:1": (2160, 2160), "21:9": (5040, 2160)},
+    "720p":  {"16:9": (1280, 720),  "9:16": (720, 1280),  "1:1": (720, 720),   "21:9": (1680, 720), "2.39:1": (1720, 720)},
+    "1080p": {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "21:9": (2520, 1080), "2.39:1": (2580, 1080)},
+    "2k":    {"16:9": (2560, 1440), "9:16": (1440, 2560), "1:1": (1440, 1440), "21:9": (3360, 1440), "2.39:1": (3440, 1440)},
+    "4k":    {"16:9": (3840, 2160), "9:16": (2160, 3840), "1:1": (2160, 2160), "21:9": (5040, 2160), "2.39:1": (5160, 2160)},
 }
 
 def get_resolution(res: str, aspect: str) -> tuple:
@@ -518,12 +527,37 @@ async def generate_video(req: VideoRequest, request: Request):
         except Exception as e:
             return {"success": False, "error": f"Motion transfer failed: {str(e)}"}
 
+    # ─── Compose Optical & Motion Rig Directives ───
+    optical_directives = []
+    if req.focal_lens:
+        optical_directives.append(f"shot on {req.focal_lens}")
+    if req.aperture:
+        optical_directives.append(f"{req.aperture} depth of field")
+    if req.shutter_angle:
+        optical_directives.append(f"{req.shutter_angle} motion cadence")
+    if req.color_lut:
+        optical_directives.append(f"{req.color_lut} film stock color grade")
+    if req.orbit_x is not None or req.orbit_y is not None:
+        optical_directives.append(f"camera trajectory orbit X {req.orbit_x or 0}° Y {req.orbit_y or 0}°")
+    if req.push_speed:
+        optical_directives.append(f"dolly push speed {req.push_speed}m/s")
+    if req.crane_elevation:
+        optical_directives.append(f"crane elevation {req.crane_elevation}m")
+    if req.dutch_roll:
+        optical_directives.append(f"dutch roll {req.dutch_roll}°")
+
+    base_p = (req.prompt or "").strip()
+    if optical_directives and base_p:
+        effective_prompt = f"{base_p}, {', '.join(optical_directives)}"
+    else:
+        effective_prompt = base_p
+
     # ─── Mode: Text-to-Video ───
-    if req.mode == "text_to_video" or (not start_img and req.prompt):
+    if req.mode == "text_to_video" or (not start_img and base_p):
         if settings.REPLICATE_API_TOKEN:
-            img_res = await generate_flux_image(req.prompt, aspect_ratio=req.aspect_ratio)
+            img_res = await generate_flux_image(effective_prompt, aspect_ratio=req.aspect_ratio)
         elif settings.OPENAI_API_KEY:
-            img_res = await generate_openai_image(req.prompt, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024")
+            img_res = await generate_openai_image(effective_prompt, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024")
         else:
             return {
                 "success": False,

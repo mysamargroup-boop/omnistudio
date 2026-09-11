@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Space+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#1c1b1d", "outline": "#8e9193", "error": "#ffb4ab", "on-tertiary": "#002a78", "on-secondary": "#2f3038", "surface-dim": "#131315", "tertiary": "#ffffff", "on-primary-container": "#636466", "inverse-surface": "#e5e1e4", "secondary": "#c6c5cf", "inverse-primary": "#5d5e60", "on-secondary-fixed": "#1a1b22", "tertiary-fixed": "#dbe1ff", "outline-variant": "#444749", "secondary-fixed": "#e3e1ec", "on-primary-fixed": "#1a1c1d", "surface-variant": "#353437", "on-tertiary-container": "#1359e2", "surface-container-high": "#2a2a2c", "tertiary-fixed-dim": "#b4c5ff", "on-secondary-container": "#bcbbc5", "secondary-fixed-dim": "#c6c5cf", "on-tertiary-fixed-variant": "#003ea8", "surface-tint": "#c6c6c7", "surface": "#131315", "error-container": "#93000a", "surface-container-lowest": "#0e0e10", "surface-bright": "#39393b", "surface-container": "#201f22", "on-secondary-fixed-variant": "#46464e", "on-tertiary-fixed": "#00174b", "on-surface": "#e5e1e4", "on-primary-fixed-variant": "#454748", "secondary-container": "#4a4b53", "primary": "#ffffff", "on-surface-variant": "#c4c7c9", "primary-fixed-dim": "#c6c6c7", "on-background": "#e5e1e4", "on-error": "#690005", "tertiary-container": "#dbe1ff", "background": "#131315", "on-error-container": "#ffdad6", "inverse-on-surface": "#313032", "on-primary": "#2f3132", "primary-fixed": "#e2e2e3", "surface-container-highest": "#353437", "primary-container": "#e2e2e3" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "margin": "1rem", "gutter": "1rem", "space-lg": "1rem", "space-sm": "0.5rem", "space-md": "0.75rem", "space-xs": "0.25rem", "space-xl": "1.5rem" }, "fontFamily": { "display-lg": [ "Geist" ], "display-lg-mobile": [ "Geist" ], "caption-micro": [ "Geist" ], "label-timecode": [ "Space Mono" ], "headline-sm": [ "Geist" ], "body-lg": [ "Geist" ], "label-code": [ "Space Mono" ], "headline-md": [ "Geist" ], "body-sm": [ "Geist" ] }, "fontSize": { "display-lg": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "600" } ], "display-lg-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "caption-micro": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" } ], "label-timecode": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" } ], "headline-sm": [ "18px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "body-lg": [ "15px", { "lineHeight": "22px", "fontWeight": "400" } ], "label-code": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "400" } ], "headline-md": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "500" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ] } } } };</script></head><body class="bg-background font-body-sm text-body-sm text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-xl border-b border-outline-variant z-50 flex items-center justify-between px-space-md"><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><div class="w-6 h-6 rounded bg-primary flex items-center justify-center text-on-primary font-headline-sm text-headline-sm font-bold">H</div><span class="font-headline-sm text-headline-sm text-primary tracking-tight font-semibold">SYNTHEX<span class="text-outline font-label-code text-caption-micro uppercase ml-space-xs">Pro</span></span></div><div class="h-4 w-px bg-outline-variant"></div><div class="flex items-center gap-space-xs font-body-sm text-body-sm"><span class="text-outline font-label-code text-caption-micro uppercase">PROJ:</span><span class="text-on-surface font-medium">NEURAL_RUNNER_2049</span><span class="material-symbols-outlined text-outline text-[16px]">unfold_more</span></div><div class="h-4 w-px bg-outline-variant hidden xl:block"></div><nav class="hidden xl:flex items-center gap-space-lg h-14" data-active-classes="text-primary border-b border-primary font-medium"><a aria-current="page" class="transition-colors py-4 flex items-center h-full text-primary border-b border-primary font-medium" data-path="vfx-studio" href="#">VFX Studio</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-4 flex items-center h-full" data-path="director-rig" href="#">Director Rig</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-4 flex items-center h-full" data-path="character-cast" href="#">Character Cast</a><a class="text-on-surface-variant hover:text-on-surface transition-colors py-4 flex items-center h-full" data-path="generation-queue" href="#">Generation Queue</a></nav></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-low border border-outline-variant rounded"><div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div><span class="font-label-code text-label-code text-on-surface-variant">H100-NVLINK:</span><span class="font-label-timecode text-label-timecode text-primary">ONLINE</span></div><div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-low border border-outline-variant rounded"><span class="material-symbols-outlined text-outline text-[16px]">bolt</span><span class="font-label-timecode text-label-timecode text-on-surface">1,480 / 2,000</span><span class="font-caption-micro text-caption-micro text-outline uppercase">TOKENS</span></div><a class="flex items-center gap-space-xs px-space-md py-1.5 bg-surface-container border border-outline-variant rounded text-on-surface hover:bg-surface-container-high hover:text-primary transition-all" data-path="export-queue" href="#"><span class="material-symbols-outlined text-[16px]">output</span><span class="font-caption-micro text-caption-micro tracking-wider uppercase font-medium">Export Queue</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed left-0 top-14 bottom-0 w-16 bg-surface-container-lowest border-r border-outline-variant z-40 flex flex-col items-center py-space-sm justify-between"><nav class="flex flex-col items-center gap-space-xs w-full" data-active-classes="bg-surface-container-high text-primary border-l-2 border-primary"><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="text-to-video" href="#" title="Text-to-Video"><span class="material-symbols-outlined text-[20px]">movie_creation</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">TXT2VID</span></a><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="image-to-video" href="#" title="Image-to-Video"><span class="material-symbols-outlined text-[20px]">image</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">IMG2VID</span></a><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="director-rig" href="#" title="Camera Director &amp; Motion Rig"><span class="material-symbols-outlined text-[20px]">videocam</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">RIG</span></a><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="character-cast" href="#" title="Character Consistency &amp; Face Inpaint"><span class="material-symbols-outlined text-[20px]">face</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">CAST</span></a><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="motion-brush" href="#" title="Motion Brush &amp; Depth Masking"><span class="material-symbols-outlined text-[20px]">brush</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">BRUSH</span></a><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="upscaling-interpolation" href="#" title="Upscaling &amp; 4K Interpolation"><span class="material-symbols-outlined text-[20px]">high_density</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">4K RAW</span></a><a class="w-12 h-12 flex flex-col items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="asset-library" href="#" title="Asset Library"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-caption-micro text-[9px] mt-0.5 tracking-tight uppercase">VAULT</span></a></nav><div class="flex flex-col items-center gap-space-xs w-full"><a class="w-12 h-12 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="cluster-settings" href="#" title="Cluster Settings"><span class="material-symbols-outlined text-[20px]">tune</span></a></div></aside><div class="pl-16"><main class="w-full pt-14 min-h-screen bg-background"><div class="flex flex-col w-full">
+<div class="flex items-center justify-between px-space-md py-space-xs bg-surface-container-lowest text-on-surface-variant font-label-code text-caption-micro">
+<div class="flex items-center gap-space-md">
+<span class="flex items-center gap-1.5 text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+        STAGE_A: CAM_DIRECTOR_RIG_ACTIVE
+      </span>
+<span class="text-outline">/</span>
+<span class="text-on-surface">SEQUENCE: SC_04_ALLEY_ENCOUNTER</span>
+<span class="text-outline">/</span>
+<span class="text-on-surface-variant">COLORSPACE: ACEScg (LINEAR)</span>
+</div>
+<div class="flex items-center gap-space-lg">
+<div class="flex items-center gap-2">
+<span class="text-outline">RENDER_ENGINE:</span>
+<span class="text-primary font-medium">HIGGSFIELD_CINEMA_V2.4_PRO</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-outline">VRAM ALLOC:</span>
+<span class="text-primary">68.4 GB / 80 GB (NVLink #0)</span>
+</div>
+<div class="flex items-center gap-1.5 text-primary bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>SEED_SYNCHRONIZED</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-0 w-full min-h-[calc(100vh-6.5rem)] bg-surface-dim">
+<!-- LEFT PANEL: DIRECTOR RIG & PROMPT FORGE -->
+<div class="col-span-12 xl:col-span-3 bg-surface-container-lowest flex flex-col justify-between overflow-y-auto max-h-[calc(100vh-6.5rem)] scrollbar-none p-space-sm space-y-space-sm">
+<div class="space-y-space-sm">
+<!-- Mode Switcher -->
+<div class="bg-surface-container-low p-1 rounded grid grid-cols-4 gap-1 text-center font-label-code text-caption-micro uppercase">
+<button class="py-1 text-on-surface-variant hover:text-primary rounded transition-colors" type="button">TXT2VID</button>
+<button class="py-1 text-on-surface-variant hover:text-primary rounded transition-colors" type="button">IMG2VID</button>
+<button class="py-1 text-on-surface-variant hover:text-primary rounded transition-colors" type="button">VID2VID</button>
+<button class="py-1 bg-surface-container-high text-primary font-medium rounded shadow-sm" type="button">CAM RIG</button>
+</div>
+<!-- Prompt Console -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-xs">
+<div class="flex items-center justify-between text-caption-micro font-label-code text-outline">
+<span class="uppercase tracking-wider">Positive Prompt Matrix</span>
+<span class="text-primary">TOKENS: 48/75</span>
+</div>
+<div class="relative">
+<textarea class="w-full h-24 bg-surface-container-lowest text-on-surface font-body-sm text-body-sm p-space-sm rounded resize-none focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed select-all" spellcheck="false">35mm anamorphic, neon reflections, rain drenched asphalt, cyberpunk operative with glowing neural interface collar, slow orbit push-in, shallow depth of field, chiaroscuro lighting, volumetric steam, 24fps Kodak 5219 texture</textarea>
+<div class="absolute bottom-2 right-2 flex gap-1">
+<span class="bg-surface-container text-caption-micro font-label-code text-outline px-1.5 py-0.5 rounded">WEIGHT: 1.15</span>
+<span class="bg-surface-container text-caption-micro font-label-code text-outline px-1.5 py-0.5 rounded">PARSER: RAW</span>
+</div>
+</div>
+<!-- Prompt Token Chips -->
+<div class="flex flex-wrap gap-1 pt-1 font-label-code text-caption-micro">
+<span class="bg-surface-container px-2 py-0.5 rounded text-on-surface flex items-center gap-1">
+<span>anamorphic:1.3</span>
+<span class="material-symbols-outlined text-[12px] text-outline cursor-pointer hover:text-primary">close</span>
+</span>
+<span class="bg-surface-container px-2 py-0.5 rounded text-on-surface flex items-center gap-1">
+<span>rain:1.1</span>
+<span class="material-symbols-outlined text-[12px] text-outline cursor-pointer hover:text-primary">close</span>
+</span>
+<span class="bg-surface-container px-2 py-0.5 rounded text-on-surface flex items-center gap-1">
+<span>chiaroscuro:1.4</span>
+<span class="material-symbols-outlined text-[12px] text-outline cursor-pointer hover:text-primary">close</span>
+</span>
+<button class="px-1.5 py-0.5 bg-surface-container-high text-outline hover:text-primary rounded text-caption-micro font-label-code" type="button">+ ADD TOKEN</button>
+</div>
+<!-- Negative Prompt Accordion -->
+<details class="group pt-1">
+<summary class="flex items-center justify-between text-caption-micro font-label-code text-outline cursor-pointer select-none py-1 hover:text-on-surface">
+<span class="uppercase">Negative Constraints (Excluded Latents)</span>
+<span class="material-symbols-outlined text-[14px] group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="pt-1">
+<input class="w-full bg-surface-container-lowest text-on-surface-variant font-label-code text-caption-micro p-2 rounded focus:outline-none" type="text" value="cartoon, low poly, artifacting, jitter, motion blur ghosting, flat studio illumination, overexposed"/>
+</div>
+</details>
+</div>
+<!-- 6-Axis Interactive Camera Motion Rig -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-sm">
+<div class="flex items-center justify-between text-caption-micro font-label-code">
+<span class="uppercase text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">videocam</span>
+              6-Axis Motion Rig Trajectory
+            </span>
+<span class="text-primary bg-surface-container px-1.5 py-0.5 rounded">CUSTOM PATH #03</span>
+</div>
+<div class="grid grid-cols-2 gap-2 font-label-code text-caption-micro">
+<!-- 2D Coordinate Vector Pad -->
+<div class="bg-surface-container-lowest rounded p-2 flex flex-col items-center justify-between relative overflow-hidden h-28">
+<div class="w-full flex justify-between text-outline text-[10px]">
+<span>ORBIT X/Y</span>
+<span class="text-primary">+14.2° / -3.8°</span>
+</div>
+<div class="w-full h-16 relative flex items-center justify-center">
+<svg class="w-full h-full text-surface-container-high" viewbox="0 0 100 60">
+<line stroke="currentColor" stroke-dasharray="2 2" stroke-width="0.8" x1="0" x2="100" y1="30" y2="30"></line>
+<line stroke="currentColor" stroke-dasharray="2 2" stroke-width="0.8" x1="50" x2="50" y1="0" y2="60"></line>
+<circle cx="50" cy="30" fill="none" r="22" stroke="currentColor" stroke-width="0.6"></circle>
+<path d="M 30,35 Q 50,15 68,26" fill="none" stroke="#e5e1e4" stroke-width="1.2"></path>
+<circle cx="68" cy="26" fill="#ffffff" r="3"></circle>
+</svg>
+</div>
+<span class="text-outline text-[9px] uppercase tracking-wider">Interactive Vector Lock</span>
+</div>
+<!-- Rig Axis Quick Adjusters -->
+<div class="space-y-1.5 flex flex-col justify-center">
+<div>
+<div class="flex justify-between text-outline text-[10px]">
+<span>PUSH-IN (ZOOM)</span>
+<span class="text-on-surface">3.8 m/s</span>
+</div>
+<div class="w-full bg-surface-container-lowest h-1.5 rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full w-[65%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-outline text-[10px]">
+<span>CRANE ELEVATION</span>
+<span class="text-on-surface">+1.2 m</span>
+</div>
+<div class="w-full bg-surface-container-lowest h-1.5 rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-outline text-[10px]">
+<span>DUTCH ROLL</span>
+<span class="text-on-surface">-4.5 deg</span>
+</div>
+<div class="w-full bg-surface-container-lowest h-1.5 rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full w-[28%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Camera Physics Sub-Row -->
+<div class="grid grid-cols-3 gap-1.5 font-label-code text-caption-micro pt-1">
+<div class="bg-surface-container-lowest p-1.5 rounded">
+<span class="text-outline block text-[9px]">FOCAL LENGTH</span>
+<span class="text-primary font-medium">35mm Prime</span>
+</div>
+<div class="bg-surface-container-lowest p-1.5 rounded">
+<span class="text-outline block text-[9px]">APERTURE</span>
+<span class="text-primary font-medium">T1.5 Master</span>
+</div>
+<div class="bg-surface-container-lowest p-1.5 rounded">
+<span class="text-outline block text-[9px]">SHUTTER ANGLE</span>
+<span class="text-primary font-medium">180.0° Cine</span>
+</div>
+</div>
+</div>
+<!-- Actor Consistency & Reference Lock -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-xs">
+<div class="flex items-center justify-between text-caption-micro font-label-code">
+<span class="uppercase text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">face</span>
+              Identity Seed &amp; Character Lock
+            </span>
+<span class="text-primary font-medium">ID_FIDELITY: 94.2%</span>
+</div>
+<div class="flex items-center gap-space-sm pt-1">
+<div class="w-12 h-12 rounded bg-surface-container-high overflow-hidden shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="Close-up cinematic character reference photograph of a brooding female operative with sharp cheekbones, slick dark cybernetic undercut, subtle temple micro-led implants, and focused intense gaze in high-contrast cinematic key light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF1wMDsgdlFp9Ve0Ndc49x5flp2TfWt1ketuCIn1uqal6FI0TFJvuiDnymztZiu-OAdizgJLnrlm7779GPdkUPmNaW8r0qNhbkH7Gd0p3Tog9pZ2dts5CK8kED0n02L68grOOnK0RIuYd1OrJW-x0Ftq_Bf0wsNmyFBlYCxkWKuBdvDHjsuiWgMsy8dkXO1t6BgYhqu3HbdC1xONxxFz3bI0ipjeY_M1WTA0anI6Vyg8rBB7nAVHnssw"/>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary text-[8px] font-label-code px-1 uppercase font-bold">LOCK</span>
+</div>
+<div class="flex-1 space-y-1 font-label-code text-caption-micro">
+<div class="flex items-center justify-between bg-surface-container-lowest px-2 py-1 rounded">
+<span class="text-outline">SEED_VAL:</span>
+<span class="text-primary tracking-wider">890241944810</span>
+<span class="material-symbols-outlined text-[12px] text-outline cursor-pointer hover:text-primary">cached</span>
+</div>
+<div class="flex items-center justify-between text-[10px] text-outline">
+<span>IDENTITY ANCHOR:</span>
+<span class="text-on-surface">ACTOR_KAYLA_V7</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Generation Parameter Matrix -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-xs font-label-code text-caption-micro">
+<div class="grid grid-cols-2 gap-2">
+<div>
+<span class="text-outline block text-[9px] uppercase">Aspect Ratio</span>
+<div class="flex gap-1 mt-1">
+<button class="flex-1 py-1 bg-surface-container-lowest text-outline hover:text-primary rounded text-center" type="button">16:9</button>
+<button class="flex-1 py-1 bg-surface-container-high text-primary rounded text-center font-medium" type="button">2.39:1</button>
+<button class="flex-1 py-1 bg-surface-container-lowest text-outline hover:text-primary rounded text-center" type="button">9:16</button>
+</div>
+</div>
+<div>
+<span class="text-outline block text-[9px] uppercase">Frame Rate</span>
+<div class="flex gap-1 mt-1">
+<button class="flex-1 py-1 bg-surface-container-high text-primary rounded text-center font-medium" type="button">24 FPS</button>
+<button class="flex-1 py-1 bg-surface-container-lowest text-outline hover:text-primary rounded text-center" type="button">60 FPS</button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1">
+<div>
+<div class="flex justify-between text-[10px] text-outline">
+<span>DURATION</span>
+<span class="text-on-surface">5.0s (120f)</span>
+</div>
+<div class="flex gap-1 mt-1">
+<button class="flex-1 py-1 bg-surface-container-high text-primary rounded text-center font-medium" type="button">5S</button>
+<button class="flex-1 py-1 bg-surface-container-lowest text-outline hover:text-primary rounded text-center" type="button">10S</button>
+<button class="flex-1 py-1 bg-surface-container-lowest text-outline hover:text-primary rounded text-center" type="button">16S</button>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] text-outline">
+<span>MOTION DYNAMICS</span>
+<span class="text-primary font-medium">LVL 7.4</span>
+</div>
+<div class="w-full bg-surface-container-lowest h-2 rounded mt-2.5 overflow-hidden">
+<div class="bg-primary h-full w-[74%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Generation Dock -->
+<div class="pt-space-sm space-y-space-xs bg-surface-container-lowest">
+<div class="flex items-center justify-between font-label-code text-caption-micro text-outline px-1">
+<span>EST. COST: 4.2 COMPUTE UNITS</span>
+<span>QUEUE LATENCY: ~18s</span>
+</div>
+<div class="flex gap-1">
+<div class="bg-surface-container-low px-2 py-2 rounded flex items-center gap-1 font-label-code text-caption-micro text-on-surface">
+<span class="text-outline">BATCH:</span>
+<span class="text-primary font-medium">1X</span>
+</div>
+<button class="flex-1 bg-primary text-on-primary font-body-sm font-semibold tracking-wide py-2 rounded flex items-center justify-center gap-2 hover:bg-surface-variant hover:text-primary transition-all shadow-md" type="button">
+<span class="material-symbols-outlined text-[18px]">movie_creation</span>
+<span>GENERATE 4K SHOT</span>
+</button>
+</div>
+</div>
+</div>
+<!-- CENTER PANEL: CINEMATIC VIEWPORT & MULTI-TRACK TIMELINE -->
+<div class="col-span-12 xl:col-span-6 bg-surface flex flex-col justify-between overflow-hidden">
+<!-- Top Viewport Tools Bar -->
+<div class="flex items-center justify-between px-space-md py-space-xs bg-surface-container-lowest font-label-code text-caption-micro">
+<div class="flex items-center gap-space-md">
+<span class="bg-surface-container px-2 py-0.5 rounded text-primary">ANAMORPHIC SCOPE (2.39:1)</span>
+<span class="text-outline">RASTER: <span class="text-on-surface">3840 x 1608 UHD RAW</span></span>
+<span class="text-outline">COLOR: <span class="text-on-surface">DCI-P3 D65</span></span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1 text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="Toggle Safety Guides" type="button">
+<span class="material-symbols-outlined text-[16px]">crop</span>
+</button>
+<button class="p-1 text-primary rounded bg-surface-container-high" title="Trajectory Vectors Active" type="button">
+<span class="material-symbols-outlined text-[16px]">show_chart</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="Depth Map Scrub" type="button">
+<span class="material-symbols-outlined text-[16px]">layers</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="Full Frame Expand" type="button">
+<span class="material-symbols-outlined text-[16px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Main Cinematic Viewport Canvas -->
+<div class="flex-1 flex items-center justify-center p-space-md bg-surface-container-lowest relative overflow-hidden">
+<!-- 2.39:1 Cinema Letterbox Stage -->
+<div class="relative w-full aspect-[2.39/1] max-w-5xl bg-surface-dim rounded shadow-2xl overflow-hidden flex items-center justify-center">
+<!-- Render Preview Placeholder Image -->
+<img class="w-full h-full object-cover select-none" data-alt="An astonishing photorealistic cyberpunk street alley cinema frame shot on 35mm anamorphic prime lens, featuring a cloaked operative bathed in cyan neon and amber street flares, puddles on cracked concrete reflecting holograms, dense volumetric mist, razor-sharp focus on facial expression, high contrast shadows and ultra-fine cinematic grain." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqZT2awXBdssbQRWW3PqNFJ-4o46LL-fU-qy9VJUUXB2BQqJNHR9iA-ntLz_V-aAOLBmhjzRlyalyW5H-AKmBfFDQlKpV8OJwpKyXfhJI3IvRme6wb_OX2IujS9lOLVSjbjuIADWky_mpm44sn22spGGZhg17TfgH9BOY0McWC5yxODmVbFAp6885ZhBtkp3hBGSohzFKBbZmznpw8EIfI-VWQVwKTvRJDk__Ib_2Zos5bYf11t3yB8g"/>
+<!-- Viewport Safety Overlays & Reticles -->
+<div class="absolute inset-0 pointer-events-none">
+<!-- 90% and 80% Action / Title Safe Hairlines -->
+<div class="absolute inset-[5%] border border-outline-variant/30"></div>
+<div class="absolute inset-[10%] border border-outline-variant/20"></div>
+<!-- Center Crosshair Target -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center">
+<div class="w-full h-px bg-outline/40"></div>
+<div class="h-full w-px bg-outline/40 absolute"></div>
+</div>
+<!-- Camera Path 3D Curved Vector Overlay -->
+<svg class="absolute inset-0 w-full h-full text-primary" preserveaspectratio="none" viewbox="0 0 800 334">
+<path d="M 80,260 C 240,240 380,180 520,130 S 710,90 750,70" fill="none" opacity="0.8" stroke="currentColor" stroke-dasharray="4 3" stroke-width="1.5"></path>
+<!-- Trajectory Nodes -->
+<circle cx="80" cy="260" fill="#ffffff" r="3.5"></circle>
+<circle cx="380" cy="180" fill="#ffffff" opacity="0.6" r="3"></circle>
+<circle cx="520" cy="130" fill="#ffffff" opacity="0.6" r="3"></circle>
+<circle cx="750" cy="70" fill="#ffffff" r="4.5"></circle>
+<text fill="#ffffff" font-family="Space Mono" font-size="10" opacity="0.9" x="90" y="275">CAM_START [T0]</text>
+<text fill="#ffffff" font-family="Space Mono" font-size="10" opacity="0.9" x="640" y="65">CAM_END [T120]</text>
+</svg>
+<!-- Realtime Telemetry HUD Pins -->
+<div class="absolute top-3 left-4 font-label-code text-caption-micro text-primary flex items-center gap-2 bg-surface-container-lowest/80 backdrop-blur-sm px-2 py-1 rounded">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span>BUFFERED: 120/120 FRAMES</span>
+<span class="text-outline">|</span>
+<span class="text-on-surface">SHUTTER: 1/48s</span>
+</div>
+<div class="absolute top-3 right-4 font-label-code text-caption-micro text-on-surface bg-surface-container-lowest/80 backdrop-blur-sm px-2 py-1 rounded">
+<span>TC: 00:00:04:18</span>
+</div>
+<!-- In-Canvas Split A/B Comparison Handle -->
+<div class="absolute top-0 bottom-0 left-[62%] w-px bg-primary shadow-lg pointer-events-auto cursor-ew-resize flex items-center justify-center">
+<div class="w-6 h-6 rounded-full bg-surface-container-lowest border border-outline-variant flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-primary text-[14px]">drag_indicator</span>
+</div>
+<span class="absolute bottom-3 -left-12 font-label-code text-[9px] bg-surface-container-lowest/90 px-1 rounded text-outline uppercase">PRORES RAW</span>
+<span class="absolute bottom-3 left-3 font-label-code text-[9px] bg-surface-container-lowest/90 px-1 rounded text-primary uppercase">UPSCALED 4K</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Playback Transport Controls Strip -->
+<div class="px-space-md py-space-xs bg-surface-container-lowest flex items-center justify-between font-label-code text-caption-micro">
+<div class="flex items-center gap-space-sm">
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="First Frame" type="button">
+<span class="material-symbols-outlined text-[16px]">first_page</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="Step Back 1 Frame" type="button">
+<span class="material-symbols-outlined text-[16px]">fast_rewind</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-primary bg-primary rounded" title="Play / Pause" type="button">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="Step Forward 1 Frame" type="button">
+<span class="material-symbols-outlined text-[16px]">fast_forward</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center text-on-surface-variant hover:text-primary rounded bg-surface-container-low" title="Last Frame" type="button">
+<span class="material-symbols-outlined text-[16px]">last_page</span>
+</button>
+<button class="px-2 py-1 text-primary rounded bg-surface-container-high" title="Loop Mode" type="button">
+<span class="material-symbols-outlined text-[14px]">repeat</span>
+</button>
+</div>
+<!-- Frame Timecode & Playback Speed -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-1">
+<span class="text-outline">SPEED:</span>
+<span class="px-1 py-0.5 rounded bg-surface-container text-on-surface">1.0x</span>
+<span class="px-1 py-0.5 rounded bg-surface-container-lowest text-outline hover:text-primary cursor-pointer">0.5x</span>
+<span class="px-1 py-0.5 rounded bg-surface-container-lowest text-outline hover:text-primary cursor-pointer">2.0x</span>
+</div>
+<div class="h-4 w-px bg-surface-container-high"></div>
+<div class="flex items-center gap-2">
+<span class="text-outline">CUR:</span>
+<span class="text-primary font-medium tracking-wider">FRAME 0112</span>
+<span class="text-outline">/ 0120</span>
+</div>
+</div>
+</div>
+<!-- Multi-Track Sequencer & Keyframe Timeline -->
+<div class="h-56 bg-surface-container-low flex flex-col">
+<!-- Timeline Ruler & Playhead Marker -->
+<div class="h-6 bg-surface-container-lowest flex items-center relative select-none">
+<div class="w-36 shrink-0 px-space-sm font-label-code text-caption-micro text-outline uppercase flex items-center justify-between">
+<span>TRACKS (4)</span>
+<span class="material-symbols-outlined text-[14px]">tune</span>
+</div>
+<!-- Tick ruler markings -->
+<div class="flex-1 h-full relative overflow-hidden flex items-end">
+<div class="w-full flex justify-between px-2 font-label-timecode text-[9px] text-outline">
+<span>00:00:00</span>
+<span>00:00:01</span>
+<span>00:00:02</span>
+<span>00:00:03</span>
+<span>00:00:04</span>
+<span>00:00:05</span>
+</div>
+<!-- Playhead Indicator Wire -->
+<div class="absolute top-0 bottom-0 left-[75%] w-px bg-primary z-20 flex flex-col items-center pointer-events-none">
+<div class="w-2.5 h-2.5 bg-primary -mt-0.5 rotate-45"></div>
+</div>
+</div>
+</div>
+<!-- Sequencer Lanes -->
+<div class="flex-1 overflow-y-auto space-y-1 p-1 font-label-code text-caption-micro">
+<!-- Track 1: Master Video Latent -->
+<div class="flex h-10 bg-surface-container-lowest rounded overflow-hidden items-center">
+<div class="w-36 shrink-0 px-2 flex items-center justify-between text-on-surface bg-surface-container-low h-full">
+<span class="truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-outline">video_file</span>
+                V1_NEURAL_GEN
+              </span>
+<span class="text-[9px] text-primary">MUTE</span>
+</div>
+<div class="flex-1 h-full p-1 relative flex items-center">
+<div class="w-[94%] h-full bg-surface-container-high rounded flex items-center px-3 justify-between relative overflow-hidden">
+<div class="absolute inset-0 opacity-20 bg-gradient-to-r from-surface-tint via-primary to-surface-variant"></div>
+<span class="relative z-10 text-on-surface font-medium">CYBERPUNK_ALLEY_TAKE_01.MP4</span>
+<span class="relative z-10 text-outline text-[10px]">2.39:1 UHD RAW</span>
+</div>
+</div>
+</div>
+<!-- Track 2: Camera Motion Trajectory Keyframes -->
+<div class="flex h-10 bg-surface-container-lowest rounded overflow-hidden items-center">
+<div class="w-36 shrink-0 px-2 flex items-center justify-between text-on-surface bg-surface-container-low h-full">
+<span class="truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">videocam</span>
+                CAM_ORBIT_RIG
+              </span>
+<span class="text-[9px] text-outline">6-AXIS</span>
+</div>
+<div class="flex-1 h-full relative flex items-center px-2">
+<!-- Keyframe Diamonds -->
+<div class="w-full h-1 bg-surface-container relative rounded">
+<div class="absolute -top-1.5 left-[5%] w-3 h-3 rotate-45 bg-primary cursor-pointer shadow-sm" title="Keyframe 1: Start Push"></div>
+<div class="absolute -top-1.5 left-[35%] w-3 h-3 rotate-45 bg-surface-variant cursor-pointer" title="Keyframe 2: Pan Apex"></div>
+<div class="absolute -top-1.5 left-[75%] w-3 h-3 rotate-45 bg-primary ring-2 ring-primary ring-offset-1 ring-offset-surface cursor-pointer" title="Keyframe 3: Selected Dutch Angle"></div>
+<div class="absolute -top-1.5 left-[95%] w-3 h-3 rotate-45 bg-surface-variant cursor-pointer" title="Keyframe 4: Ease Out"></div>
+</div>
+</div>
+</div>
+<!-- Track 3: Depth Masking & Motion Brush -->
+<div class="flex h-10 bg-surface-container-lowest rounded overflow-hidden items-center">
+<div class="w-36 shrink-0 px-2 flex items-center justify-between text-on-surface bg-surface-container-low h-full">
+<span class="truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-outline">brush</span>
+                DEPTH_MASK_ALPHA
+              </span>
+<span class="text-[9px] text-outline">8-BIT</span>
+</div>
+<div class="flex-1 h-full p-1 relative flex items-center">
+<div class="w-[85%] ml-[10%] h-full bg-surface-container rounded flex items-center px-3 justify-between">
+<span class="text-on-surface-variant text-[10px]">SUBJECT_ACTOR_ISOLATION_MASK</span>
+<span class="text-outline text-[9px]">FLOW: 0.88</span>
+</div>
+</div>
+</div>
+<!-- Track 4: Audio Synchronizer -->
+<div class="flex h-10 bg-surface-container-lowest rounded overflow-hidden items-center">
+<div class="w-36 shrink-0 px-2 flex items-center justify-between text-on-surface bg-surface-container-low h-full">
+<span class="truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-outline">graphic_eq</span>
+                A1_FOLEY_ATMOS
+              </span>
+<span class="text-[9px] text-outline">-14LUFS</span>
+</div>
+<div class="flex-1 h-full px-2 relative flex items-center">
+<!-- Audio Waveform Visualization SVG -->
+<svg class="w-full h-6 text-outline" preserveaspectratio="none" viewbox="0 0 400 24">
+<path d="M 0,12 L 20,8 L 30,15 L 45,5 L 60,18 L 75,9 L 90,14 L 110,3 L 130,20 L 150,11 L 170,16 L 190,4 L 210,19 L 230,7 L 250,14 L 270,6 L 290,17 L 310,10 L 330,15 L 350,2 L 370,18 L 390,9 L 400,12" fill="none" opacity="0.6" stroke="currentColor" stroke-width="1.2"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: ASSET INSPECTOR, GENERATION VARIANTS & UPSCALE SUITE -->
+<div class="col-span-12 xl:col-span-3 bg-surface-container-lowest flex flex-col justify-between overflow-y-auto max-h-[calc(100vh-6.5rem)] scrollbar-none p-space-sm space-y-space-sm">
+<div class="space-y-space-sm">
+<!-- Active Shot Deconstruction -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-xs font-label-code text-caption-micro">
+<div class="flex items-center justify-between text-outline">
+<span class="uppercase font-medium">Shot Telemetry &amp; Sampler</span>
+<span class="text-primary">RUN_ID #7721</span>
+</div>
+<div class="space-y-1 pt-1">
+<div class="flex items-center justify-between bg-surface-container-lowest px-2 py-1 rounded">
+<span class="text-outline">SAMPLER METHOD:</span>
+<span class="text-on-surface">DPM++ 2M Karras</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest px-2 py-1 rounded">
+<span class="text-outline">SAMPLING STEPS:</span>
+<span class="text-on-surface">45 / 50</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest px-2 py-1 rounded">
+<span class="text-outline">CFG SCALE:</span>
+<span class="text-primary font-medium">7.5</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest px-2 py-1 rounded">
+<span class="text-outline">MOTION BUCKET ID:</span>
+<span class="text-on-surface">184</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container-lowest px-2 py-1 rounded">
+<span class="text-outline">DYNAMIC LATENT DECAY:</span>
+<span class="text-on-surface">0.038</span>
+</div>
+</div>
+</div>
+<!-- Takes & Variant Gallery -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-xs">
+<div class="flex items-center justify-between font-label-code text-caption-micro">
+<span class="uppercase text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">grid_view</span>
+              Generated Takes (3)
+            </span>
+<button class="text-outline hover:text-primary text-[10px] uppercase" type="button">Compare All</button>
+</div>
+<div class="space-y-2 pt-1">
+<!-- Take 01 (Active) -->
+<div class="p-1.5 rounded bg-surface-container-high flex gap-2 items-center cursor-pointer">
+<div class="w-16 h-10 rounded bg-surface-container-lowest overflow-hidden shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="High contrast thumbnail take 1 showing cyberpunk protagonist under cyan rain flares, intense close camera angle, film noir grading." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA28AzhwanuA59VEXIG_WfOsUOC4wKAx1cGHI_ujm1W2f7hNQEmUuEmHRtwQLv0w74GcIFODF7J9NWd1rr8qacpIcLdpY3NoKjMynrDOhnlUhOaKXQ0jOun9mLfftYeV9LByZmVnPV0XQouaQ5NS3XpsmZIn38XX0DNrAN1JLpIbtLeVFO24CPq-DzDGNOJGlUuy4AYGayBHvdhKHBL8s3_r50JY2ZmCK3CVihoLX-AjjCfHFleFnodPw"/>
+<span class="absolute top-0.5 left-0.5 bg-primary text-on-primary text-[8px] font-label-code px-1 rounded-xs font-bold">A</span>
+</div>
+<div class="flex-1 font-label-code text-caption-micro min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-primary font-medium truncate">TAKE_01 (HERO)</span>
+<span class="text-[9px] text-primary">ACTIVE</span>
+</div>
+<div class="text-outline text-[10px] truncate mt-0.5">Seed 890241944810 • 4K RAW</div>
+</div>
+</div>
+<!-- Take 02 (Rendering In Background) -->
+<div class="p-1.5 rounded bg-surface-container-lowest flex gap-2 items-center cursor-pointer hover:bg-surface-container">
+<div class="w-16 h-10 rounded bg-surface-container-low overflow-hidden shrink-0 relative flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-[18px] animate-spin">progress_activity</span>
+<span class="absolute bottom-0.5 right-0.5 bg-surface-container text-outline text-[8px] font-label-code px-1">78%</span>
+</div>
+<div class="flex-1 font-label-code text-caption-micro min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-on-surface truncate">TAKE_02 (WIDE CRANE)</span>
+<span class="text-[9px] text-outline">DENOISING</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded mt-1.5 overflow-hidden">
+<div class="bg-primary h-full w-[78%]"></div>
+</div>
+</div>
+</div>
+<!-- Take 03 (Queued) -->
+<div class="p-1.5 rounded bg-surface-container-lowest flex gap-2 items-center cursor-pointer hover:bg-surface-container">
+<div class="w-16 h-10 rounded bg-surface-container-low overflow-hidden shrink-0 flex items-center justify-center text-outline">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+</div>
+<div class="flex-1 font-label-code text-caption-micro min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant truncate">TAKE_03 (HIGH ROLL)</span>
+<span class="text-[9px] text-outline">QUEUED</span>
+</div>
+<div class="text-outline text-[10px] truncate mt-0.5">Position #2 in cluster queue</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Post-Processing & Upscale Suite -->
+<div class="bg-surface-container-low rounded p-space-sm space-y-space-xs font-label-code text-caption-micro">
+<div class="flex items-center justify-between text-outline">
+<span class="uppercase font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">auto_fix_high</span>
+              Master Finishing Suite
+            </span>
+<span class="text-primary">GPU ACCEL</span>
+</div>
+<div class="space-y-2 pt-1">
+<!-- Interpolation -->
+<div class="flex items-center justify-between bg-surface-container-lowest p-2 rounded">
+<div>
+<span class="text-on-surface block">AI Motion Interpolation</span>
+<span class="text-outline text-[10px]">24fps Cine → 60fps Ultra Smooth</span>
+</div>
+<input checked="" class="w-4 h-4 rounded bg-surface-container-high border-0 accent-primary cursor-pointer" type="checkbox"/>
+</div>
+<!-- 4K Ultra-Res Enhancer -->
+<div class="flex items-center justify-between bg-surface-container-lowest p-2 rounded">
+<div>
+<span class="text-on-surface block">Spatial Latent Upscale</span>
+<span class="text-outline text-[10px]">1080p Native to 4K DCI Anamorphic</span>
+</div>
+<input checked="" class="w-4 h-4 rounded bg-surface-container-high border-0 accent-primary cursor-pointer" type="checkbox"/>
+</div>
+<!-- Film Stock Emulation -->
+<div class="bg-surface-container-lowest p-2 rounded space-y-1.5">
+<div class="flex items-center justify-between">
+<span class="text-on-surface">Kodak 5219 500T Halation &amp; Grain</span>
+<span class="text-primary font-medium">0.35</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[35%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Export & Timeline Commit Actions -->
+<div class="pt-space-sm space-y-1.5 bg-surface-container-lowest">
+<button class="w-full py-2 bg-surface-container-high text-primary font-body-sm font-medium rounded flex items-center justify-center gap-2 hover:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">view_timeline</span>
+<span>COMMIT SHOT TO MASTER EDIT</span>
+</button>
+<button class="w-full py-2 bg-primary text-on-primary font-body-sm font-semibold rounded flex items-center justify-center gap-2 hover:bg-surface-container-highest hover:text-on-surface transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span>EXPORT PRORES 422 HQ (12.4 GB)</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>
