@@ -240,6 +240,8 @@ export default function ImageStudioPage() {
   const [editorOutputFormat, setEditorOutputFormat] = useState<string>("png"); // png, jpeg, webp
   const [editorActiveTab, setEditorActiveTab] = useState<"filters" | "hsl" | "curves" | "text" | "resize" | "export">("filters");
   const [promptDockCollapsed, setPromptDockCollapsed] = useState<boolean>(false);
+  const [downloadingMaster, setDownloadingMaster] = useState(false);
+  const [lastExportedResult, setLastExportedResult] = useState<any>(null);
 
   // Vault Picker Modal State
   const [vaultOpen, setVaultOpen] = useState(false);
@@ -658,7 +660,9 @@ export default function ImageStudioPage() {
       });
       if (res && res.success) {
         setResult(res);
-        setEditorImageUrl(res.url);
+        setLastExportedResult(res);
+        // Instant direct download of the processed image in selected format
+        handleDirectDownload(res.url, res.filename);
       } else {
         alert(res?.detail || res?.error || "Image edit failed");
       }
@@ -682,12 +686,62 @@ export default function ImageStudioPage() {
     setLoadingVault(false);
   };
 
-  // Copy prompt helper
-  const handleCopyPrompt = () => {
-    if (!prompt) return;
-    navigator.clipboard.writeText(prompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
+  // Direct blob download helper (bypasses cross-origin restrictions on <a download>)
+  const handleDirectDownload = async (mediaUrl: string, targetFilename?: string) => {
+    if (!mediaUrl) return;
+    setDownloadingMaster(true);
+    try {
+      const fullUrl = getMediaUrl(mediaUrl);
+      const res = await fetch(fullUrl);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const cleanFilename = targetFilename || mediaUrl.split("/").pop() || `omnistudio_${Date.now()}.png`;
+      a.download = cleanFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.warn("Direct blob download failed, opening in tab as fallback:", e);
+      window.open(getMediaUrl(mediaUrl), "_blank");
+    } finally {
+      setDownloadingMaster(false);
+    }
+  };
+
+  // Copy prompt helper with fallback for non-secure/mobile/iframe
+  const handleCopyPrompt = async () => {
+    const textToCopy = (currentDisplayImage as any)?.prompt || prompt;
+    if (!textToCopy) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch {
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+    }
   };
 
   // Filtered models for search in popover
@@ -748,26 +802,28 @@ export default function ImageStudioPage() {
 
   const computeLiveFilterStyle = () => {
     const parts: string[] = [];
-    parts.push(`brightness(${100 + editorBrightness + editorLightness}%)`);
-    let c = 100 + editorContrast;
-    if (editorCurvePreset === "s_curve") c += 25;
-    else if (editorCurvePreset === "high_contrast") c += 45;
-    else if (editorCurvePreset === "matte") c -= 15;
-    parts.push(`contrast(${c}%)`);
+    const b = Math.max(10, Math.min(220, 100 + editorBrightness + editorLightness));
+    parts.push(`brightness(${b}%)`);
 
-    let s = 100 + editorSaturation;
-    if (editorCurvePreset === "s_curve") s += 12;
-    else if (editorCurvePreset === "matte") s -= 12;
+    let c = 100 + editorContrast;
+    if (editorCurvePreset === "s_curve") c += 18;
+    else if (editorCurvePreset === "high_contrast") c += 35;
+    else if (editorCurvePreset === "matte") c -= 12;
+    parts.push(`contrast(${Math.max(10, Math.min(250, c))}%)`);
+
+    let s = Math.max(0, Math.min(250, 100 + Math.round(editorSaturation * 1.8)));
+    if (editorCurvePreset === "s_curve") s += 8;
+    else if (editorCurvePreset === "matte") s -= 10;
     parts.push(`saturate(${s}%)`);
 
-    if (editorHue !== 0) {
-      parts.push(`hue-rotate(${editorHue}deg)`);
+    // Unified Hue + Tint + Cool Temperature angle to prevent conflicting rotations
+    const combinedHue = editorHue + Math.round(editorTint * 0.35) + (editorTemperature < 0 ? Math.round(editorTemperature * 0.25) : 0);
+    if (combinedHue !== 0) {
+      parts.push(`hue-rotate(${combinedHue}deg)`);
     }
 
     if (editorTemperature > 0) {
-      parts.push(`sepia(${Math.round(editorTemperature * 0.4)}%)`);
-    } else if (editorTemperature < 0) {
-      parts.push(`hue-rotate(${Math.round(editorTemperature * 0.35)}deg)`);
+      parts.push(`sepia(${Math.min(60, Math.round(editorTemperature * 0.35))}%)`);
     }
 
     if (editorFilter === "noir" || editorFilter === "black_white") {
@@ -775,26 +831,26 @@ export default function ImageStudioPage() {
     } else if (editorFilter === "sepia") {
       parts.push("sepia(80%) contrast(95%)");
     } else if (editorFilter === "cyberpunk") {
-      parts.push("hue-rotate(275deg) saturate(180%) contrast(120%)");
+      parts.push("hue-rotate(275deg) saturate(160%) contrast(115%)");
     } else if (editorFilter === "cinematic") {
-      parts.push("contrast(118%) saturate(125%)");
+      parts.push("contrast(115%) saturate(120%)");
     } else if (editorFilter === "golden_hour") {
-      parts.push("sepia(35%) saturate(130%) contrast(110%)");
+      parts.push("sepia(30%) saturate(125%) contrast(108%)");
     } else if (editorFilter === "vintage") {
-      parts.push("sepia(50%) saturate(80%) contrast(95%)");
+      parts.push("sepia(40%) saturate(85%) contrast(98%)");
     } else if (editorFilter === "editorial") {
-      parts.push("contrast(125%) saturate(105%)");
+      parts.push("contrast(118%) saturate(105%)");
     } else if (editorFilter === "vibrant") {
-      parts.push("saturate(150%) contrast(110%)");
+      parts.push("saturate(140%) contrast(108%)");
     } else if (editorFilter === "pastel") {
-      parts.push("contrast(90%) brightness(108%) saturate(110%)");
+      parts.push("contrast(92%) brightness(106%) saturate(108%)");
     }
 
     return parts.join(" ");
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-32 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
+    <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-72 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Bar: Studio Mode Tabs & Guide Trigger */}
       <div className="flex items-center justify-between gap-4 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4">
         <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
@@ -903,7 +959,7 @@ export default function ImageStudioPage() {
         )}
 
         {/* State B: Result Ready (Single or Multi-Variation Canvas) */}
-        {!loading && !loadingVariations && result && result.success && (
+        {!loading && !loadingVariations && result && result.success && studioMode !== "image_editor" && (
           <div className="w-full space-y-4 animate-in fade-in duration-200">
             {/* Batch Variations Selector Strip */}
             {displayImages.length > 1 && (
@@ -936,147 +992,131 @@ export default function ImageStudioPage() {
               </div>
             )}
 
-            {/* Master Image Viewport (Ultra-Crisp, Ambient Glow & Fullscreen Zoom) */}
-            <div className="relative rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#111118] shadow-sm group flex items-center justify-center min-h-[460px] max-h-[720px] transition-all">
-              {/* Ambient Glow Backdrop */}
-              <div
-                className="absolute inset-0 opacity-20 blur-3xl scale-110 pointer-events-none transition-all duration-700"
-                style={{
-                  backgroundImage: `url(${getMediaUrl(currentDisplayImage.url)})`,
-                  backgroundPosition: "center",
-                  backgroundSize: "cover",
-                }}
-              />
+            {/* Primary High-Resolution Result Canvas */}
+            <div className="relative rounded-3xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08] bg-zinc-950 shadow-2xl flex items-center justify-center group min-h-[420px] max-h-[750px]">
+              {/* Image with Fade-in and Smooth Aspect Ratio Rendering */}
+              <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
+                <img
+                  src={getMediaUrl(currentDisplayImage.url)}
+                  alt={prompt || "Master Generated Image"}
+                  onLoad={() => setImageLoaded(true)}
+                  className={cn(
+                    "max-h-[700px] w-auto max-w-full object-contain rounded-2xl transition-all duration-500 shadow-2xl",
+                    imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-98"
+                  )}
+                />
 
-              {/* Smooth Loader while image file is decoding */}
-              {!imageLoaded && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 dark:bg-[#111118]/50 backdrop-blur-md z-10 animate-in fade-in">
-                  <div className="relative w-10 h-10 flex items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-500/20" />
-                    <Loader2 className="w-7 h-7 animate-spin text-violet-500" />
-                  </div>
-                  <span className="text-xs font-mono text-zinc-600 dark:text-zinc-400 tracking-wider uppercase">Loading High-Definition Master...</span>
-                </div>
-              )}
-
-              <img
-                src={getMediaUrl(currentDisplayImage.url)}
-                alt="Synthesized Output"
-                onLoad={() => setImageLoaded(true)}
-                className={cn(
-                  "w-full h-full object-contain max-h-[720px] z-10 transition-all duration-500 cursor-zoom-in",
-                  imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-[0.98]"
-                )}
-                onClick={() => setLightboxOpen(true)}
-                onError={(e) => {
-                  const filename = currentDisplayImage.filename || currentDisplayImage.url.split("/").pop();
-                  const target = e.currentTarget;
-                  const fallback = getMediaUrl("outputs/images/" + filename);
-                  if (target.src !== fallback) {
-                    target.src = fallback;
-                  }
-                }}
-              />
-
-              {/* Floating Top Left Specs Badge */}
-              <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
-                <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
-                  {activeModel.label} • {resolution.toUpperCase()} • {aspectRatio}
-                </span>
-                {result.simulated && (
-                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
-                    SIMULATED
+                {/* Floating Top Left Model Badge */}
+                <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+                  <span className="text-[10px] font-mono px-3 py-1 rounded-full bg-black/80 text-white border border-white/10 backdrop-blur-md font-semibold flex items-center gap-1.5 shadow-sm">
+                    <Sparkles className="w-3 h-3 text-emerald-400" />
+                    <span>{activeModel.label}</span>
+                    <span className="opacity-60">•</span>
+                    <span>{resolution.toUpperCase()}</span>
+                    {displayImages.length > 1 && (
+                      <>
+                        <span className="opacity-60">•</span>
+                        <span>Var {selectedImageIndex + 1}/{displayImages.length}</span>
+                      </>
+                    )}
                   </span>
-                )}
-              </div>
+                  {result.simulated && (
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
+                      SIMULATED
+                    </span>
+                  )}
+                </div>
 
-              {/* Floating Top Right Zoom Trigger */}
-              <div className="absolute top-3 right-3 z-20">
-                <button
-                  type="button"
-                  onClick={() => setLightboxOpen(true)}
-                  className="p-2 rounded-full bg-white/90 dark:bg-black/70 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md transition-colors cursor-pointer shadow-sm hover:scale-105"
-                  title="Fullscreen Zoom"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Floating Actions on Canvas Bottom */}
-              <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-95 group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditorImageUrl(currentDisplayImage.url);
-                    setStudioMode("image_editor");
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
-                  title="Open in Precision Image Editor"
-                >
-                  <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Edit Image</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCopyPrompt}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
-                  title="Copy Prompt"
-                >
-                  {copiedPrompt ? <Check className="w-3.5 h-3.5 text-violet-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedPrompt ? "Copied" : "Prompt"}</span>
-                </button>
-
-                <a
-                  href={getMediaUrl(currentDisplayImage.url)}
-                  download={currentDisplayImage.filename || `omnistudio_${Date.now()}.png`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-violet-600 text-white hover:bg-violet-500 text-xs font-heading font-bold shadow-md shadow-violet-500/25 cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 hover:scale-105"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Master</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Lightbox Modal (Fullscreen 4K Inspector) */}
-            {lightboxOpen && (
-              <div
-                className="fixed inset-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
-                onClick={() => setLightboxOpen(false)}
-              >
-                <div className="relative max-w-7xl max-h-[95vh] flex flex-col items-center">
+                {/* Floating Top Right Zoom Trigger */}
+                <div className="absolute top-4 right-4 z-20">
                   <button
                     type="button"
-                    onClick={() => setLightboxOpen(false)}
-                    className="absolute -top-12 right-0 p-2 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-zinc-800 dark:text-white transition-colors cursor-pointer"
+                    onClick={() => setLightboxOpen(true)}
+                    className="p-2 rounded-full bg-white/90 dark:bg-black/70 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md transition-colors cursor-pointer shadow-sm hover:scale-105"
+                    title="Fullscreen Zoom"
                   >
-                    <X className="w-6 h-6" />
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Floating Actions on Canvas Bottom (Edit Image, Copy Prompt, Download Master) */}
+                <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 opacity-95 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditorImageUrl(currentDisplayImage.url);
+                      setStudioMode("image_editor");
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    title="Open in Precision Image Editor"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Edit Image</span>
                   </button>
 
-                  <img
-                    src={getMediaUrl(currentDisplayImage.url)}
-                    alt="Master Preview"
-                    className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-black/10 dark:border-white/10"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyPrompt}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    title="Copy Prompt"
+                  >
+                    {copiedPrompt ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedPrompt ? "Copied" : "Prompt"}</span>
+                  </button>
 
-                  <div className="mt-3 flex items-center gap-4 text-xs font-mono text-zinc-600 dark:text-zinc-300">
-                    <span>{activeModel.label} • {resolution.toUpperCase()}</span>
-                    <a
-                      href={getMediaUrl(currentDisplayImage.url)}
-                      download
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-600 text-white font-bold hover:bg-violet-500 transition-colors"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>Download</span>
-                    </a>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDirectDownload(currentDisplayImage.url, currentDisplayImage.filename)}
+                    disabled={downloadingMaster}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold shadow-md shadow-emerald-500/25 cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 hover:scale-105 disabled:opacity-60"
+                    title="Direct Download Master Image"
+                  >
+                    {downloadingMaster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    <span>{downloadingMaster ? "Downloading..." : "Download Master"}</span>
+                  </button>
                 </div>
               </div>
-            )}
+
+              {/* Lightbox Modal (Fullscreen 4K Inspector) */}
+              {lightboxOpen && (
+                <div
+                  className="fixed inset-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
+                  onClick={() => setLightboxOpen(false)}
+                >
+                  <div className="relative max-w-7xl max-h-[95vh] flex flex-col items-center">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxOpen(false)}
+                      className="absolute -top-12 right-0 p-2 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-zinc-800 dark:text-white transition-colors cursor-pointer"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+
+                    <img
+                      src={getMediaUrl(currentDisplayImage.url)}
+                      alt="Master Preview"
+                      className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-black/10 dark:border-white/10"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+
+                    <div className="mt-3 flex items-center gap-4 text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                      <span>{activeModel.label} • {resolution.toUpperCase()}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDirectDownload(currentDisplayImage.url, currentDisplayImage.filename);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1546,6 +1586,29 @@ export default function ImageStudioPage() {
                           <div className="h-2 rounded-full w-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-cyan-400 via-blue-500 via-purple-500 to-red-500 opacity-85" />
                         </div>
 
+                        {/* Saturation Vibrance Slider in HSL */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                              Saturation Vibrance
+                            </span>
+                            <span className="font-bold">{editorSaturation > 0 ? `+${editorSaturation}` : editorSaturation}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-50"
+                            max="50"
+                            value={editorSaturation}
+                            onChange={(e) => setEditorSaturation(Number(e.target.value))}
+                            className="w-full accent-cyan-500 cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] font-mono text-zinc-400">
+                            <span>Muted (-50%)</span>
+                            <span>Punchy Color (+50%)</span>
+                          </div>
+                        </div>
+
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
                             <span>Lightness Shift</span>
@@ -1564,13 +1627,96 @@ export default function ImageStudioPage() {
                     </div>
                   )}
 
-                  {/* Tab 3: Curves Tone Grading */}
+                  {/* Tab 3: Curves Tone Grading with Live Curve Graph */}
                   {editorActiveTab === "curves" && (
-                    <div className="space-y-3 animate-in fade-in duration-150">
-                      <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
-                        Curve Color Grading Presets
-                      </label>
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                            Tone Curve Visualizer
+                          </label>
+                          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold uppercase">
+                            {editorCurvePreset.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        {/* Interactive / Visual SVG Curve Display */}
+                        <div className="relative w-full h-44 rounded-2xl bg-[#09090f] border border-black/[0.1] dark:border-white/[0.1] p-3 shadow-inner overflow-hidden flex flex-col justify-between select-none">
+                          <svg className="w-full h-full overflow-visible" viewBox="0 0 240 130" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="curveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                              </linearGradient>
+                            </defs>
+
+                            {/* 4x4 Grid lines */}
+                            <line x1="60" y1="5" x2="60" y2="125" stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                            <line x1="120" y1="5" x2="120" y2="125" stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
+                            <line x1="180" y1="5" x2="180" y2="125" stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                            <line x1="10" y1="35" x2="230" y2="35" stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                            <line x1="10" y1="65" x2="230" y2="65" stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
+                            <line x1="10" y1="95" x2="230" y2="95" stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+
+                            {/* Linear 45° baseline */}
+                            <line x1="10" y1="125" x2="230" y2="5" stroke="rgba(255,255,255,0.18)" strokeDasharray="4 4" strokeWidth="1" />
+
+                            {/* Area fill under curve */}
+                            <path
+                              d={
+                                editorCurvePreset === "linear"
+                                  ? "M 10,125 L 230,5 L 230,125 Z"
+                                  : editorCurvePreset === "s_curve"
+                                  ? "M 10,125 C 70,128 90,75 120,65 C 150,55 170,8 230,5 L 230,125 Z"
+                                  : editorCurvePreset === "matte"
+                                  ? "M 10,105 C 60,105 100,70 120,65 C 140,60 180,25 230,22 L 230,125 Z"
+                                  : editorCurvePreset === "high_contrast"
+                                  ? "M 10,125 C 65,125 90,95 120,65 C 150,35 175,5 230,5 L 230,125 Z"
+                                  : "M 10,118 C 60,122 95,80 120,65 C 145,50 180,18 230,15 L 230,125 Z"
+                              }
+                              fill="url(#curveGradient)"
+                            />
+
+                            {/* Active Tone Curve Path */}
+                            <path
+                              d={
+                                editorCurvePreset === "linear"
+                                  ? "M 10,125 L 230,5"
+                                  : editorCurvePreset === "s_curve"
+                                  ? "M 10,125 C 70,128 90,75 120,65 C 150,55 170,8 230,5"
+                                  : editorCurvePreset === "matte"
+                                  ? "M 10,105 C 60,105 100,70 120,65 C 140,60 180,25 230,22"
+                                  : editorCurvePreset === "high_contrast"
+                                  ? "M 10,125 C 65,125 90,95 120,65 C 150,35 175,5 230,5"
+                                  : "M 10,118 C 60,122 95,80 120,65 C 145,50 180,18 230,15"
+                              }
+                              fill="none"
+                              stroke="#10b981"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            />
+
+                            {/* Control Nodes */}
+                            <circle cx="10" cy={editorCurvePreset === "matte" ? 105 : editorCurvePreset === "moody" ? 118 : 125} r="3.5" fill="#10b981" />
+                            <circle cx="60" cy={editorCurvePreset === "s_curve" ? 108 : editorCurvePreset === "matte" ? 92 : editorCurvePreset === "high_contrast" ? 110 : 95} r="3.5" fill="#34d399" />
+                            <circle cx="120" cy="65" r="4.5" fill="#10b981" stroke="#ffffff" strokeWidth="1" />
+                            <circle cx="180" cy={editorCurvePreset === "s_curve" ? 28 : editorCurvePreset === "matte" ? 38 : editorCurvePreset === "high_contrast" ? 20 : 35} r="3.5" fill="#34d399" />
+                            <circle cx="230" cy={editorCurvePreset === "matte" ? 22 : editorCurvePreset === "moody" ? 15 : 5} r="3.5" fill="#10b981" />
+                          </svg>
+
+                          {/* Graph Axes Labels */}
+                          <div className="flex items-center justify-between text-[8px] font-mono text-zinc-500 pt-1 border-t border-white/[0.06]">
+                            <span>Shadows (0)</span>
+                            <span>Midtones (128)</span>
+                            <span>Highlights (255)</span>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
+                        <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold block">
+                          Curve Color Grading Presets
+                        </label>
                         {[
                           { id: "linear", name: "Linear (Default)", desc: "Neutral flat tone response without contrast curve" },
                           { id: "s_curve", name: "S-Curve (High Definition)", desc: "Punchy contrast, deeper rich blacks, and luminous highlights" },
@@ -1833,10 +1979,30 @@ export default function ImageStudioPage() {
                       ) : (
                         <>
                           <Sparkles className="w-3.5 h-3.5" />
-                          <span>Save & Export to Vault</span>
+                          <span>Save & Export to Vault ({editorOutputFormat.toUpperCase()})</span>
                         </>
                       )}
                     </button>
+
+                    {lastExportedResult && (
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2 animate-in fade-in">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                            Exported: {lastExportedResult.filename} ({lastExportedResult.format?.toUpperCase() || editorOutputFormat.toUpperCase()})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDirectDownload(lastExportedResult.url, lastExportedResult.filename)}
+                          disabled={downloadingMaster}
+                          className="w-full py-2 rounded-lg bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 font-bold text-xs font-heading flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:opacity-90 transition-all disabled:opacity-50"
+                        >
+                          {downloadingMaster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                          <span>{downloadingMaster ? "Downloading..." : `Download ${lastExportedResult.filename}`}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1920,6 +2086,11 @@ export default function ImageStudioPage() {
           </div>
         )}
       </div>
+
+      {/* Outside-click backdrop to dismiss any open dock popover */}
+      {(modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) && (
+        <div className="fixed inset-0 z-30" onClick={closeAllPopovers} />
+      )}
 
       {/* Floating Bottom Studio Dock */}
       {promptDockCollapsed ? (
@@ -2211,14 +2382,14 @@ export default function ImageStudioPage() {
                   setRatioPopoverOpen(!ratioPopoverOpen);
                 }}
                 className={cn(
-                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  "flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm min-w-[68px]",
                   ratioPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold"
                     : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
                 )}
                 title="Select Aspect Ratio"
               >
-                <Maximize2 className={cn("w-3 h-3", ratioPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <Maximize2 className={cn("w-3 h-3", ratioPopoverOpen ? "text-emerald-500" : "text-zinc-400")} />
                 <span>{aspectRatio}</span>
               </button>
 
@@ -2238,7 +2409,7 @@ export default function ImageStudioPage() {
                       className={cn(
                         "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer border",
                         aspectRatio === r.id
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20 font-bold"
                           : "bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300"
                       )}
                     >
@@ -2259,14 +2430,14 @@ export default function ImageStudioPage() {
                   setQualityPopoverOpen(!qualityPopoverOpen);
                 }}
                 className={cn(
-                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  "flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm min-w-[84px]",
                   qualityPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold"
                     : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
                 )}
                 title="Select Quality Profile"
               >
-                <Sun className={cn("w-3 h-3", qualityPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <Sun className={cn("w-3 h-3", qualityPopoverOpen ? "text-emerald-500" : "text-zinc-400")} />
                 <span className="capitalize">{quality === "ultra" ? "Master 8K" : quality === "hd" ? "High" : "Standard"}</span>
               </button>
 
@@ -2286,7 +2457,7 @@ export default function ImageStudioPage() {
                       className={cn(
                         "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer border",
                         quality === q.id
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20 font-bold"
                           : "bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300"
                       )}
                     >
@@ -2307,14 +2478,14 @@ export default function ImageStudioPage() {
                   setResolutionPopoverOpen(!resolutionPopoverOpen);
                 }}
                 className={cn(
-                  "flex items-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm",
+                  "flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm min-w-[76px]",
                   resolutionPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold"
                     : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
                 )}
                 title="Select Resolution"
               >
-                <Gauge className={cn("w-3 h-3", resolutionPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <Gauge className={cn("w-3 h-3", resolutionPopoverOpen ? "text-emerald-500" : "text-zinc-400")} />
                 <span className="uppercase">{resolution}</span>
               </button>
 
@@ -2334,7 +2505,7 @@ export default function ImageStudioPage() {
                       className={cn(
                         "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer border",
                         resolution === res.id
-                          ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20 font-bold"
                           : "bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300"
                       )}
                     >

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from pathlib import Path
 from limiter import limiter
+import os
 import uuid
 import asyncio
 import shutil
@@ -664,17 +665,24 @@ async def edit_image(req: ImageEditRequest, request: Request):
     try:
         img = Image.open(src_file).convert("RGB")
 
-        # 1. Exposure, Contrast & Saturation Adjustments (Unified single-pass tone mapping)
+        # 1. Exposure, Contrast & Saturation Adjustments (Soft-knee tone mapping to preserve highlights)
         total_brightness_delta = (req.brightness or 0.0) + (req.lightness or 0.0)
         if abs(total_brightness_delta) > 0.5:
             b_mult = 1.0 + (total_brightness_delta / 100.0)
-            enhancer = ImageEnhance.Brightness(img)
-            img = enhancer.enhance(max(0.15, min(b_mult, 2.2)))
+            def soft_brightness_curve(val):
+                scaled = val * b_mult
+                if scaled > 220 and b_mult > 1.0:
+                    excess = scaled - 220
+                    max_headroom = 35.0  # 255 - 220
+                    scaled = 220 + max_headroom * (1.0 - math.exp(-excess / (max_headroom * 1.2)))
+                return int(max(0, min(255, round(scaled))))
+            lut = [soft_brightness_curve(i) for i in range(256)]
+            img = img.point(lut * 3)
 
         if req.contrast is not None and abs(req.contrast) > 0.5:
             c_mult = 1.0 + (req.contrast / 100.0)
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(max(0.2, min(c_mult, 2.5)))
+            img = enhancer.enhance(max(0.2, min(c_mult, 2.2)))
 
         if req.saturation is not None and abs(req.saturation) > 0.5:
             s_mult = 1.0 + (req.saturation / 100.0)
@@ -703,23 +711,23 @@ async def edit_image(req: ImageEditRequest, request: Request):
             t = max(-1.0, min(1.0, req.temperature / 100.0))
             r, g, b = img.split()
             if t > 0:
-                r = r.point(lambda i: min(255, int(i * (1.0 + t * 0.18))))
-                b = b.point(lambda i: max(0, int(i * (1.0 - t * 0.15))))
+                r = r.point(lambda i: min(255, int(i * (1.0 + t * 0.15))))
+                b = b.point(lambda i: max(0, int(i * (1.0 - t * 0.12))))
             else:
-                b = b.point(lambda i: min(255, int(i * (1.0 - t * 0.18))))
-                r = r.point(lambda i: max(0, int(i * (1.0 + t * 0.15))))
+                b = b.point(lambda i: min(255, int(i * (1.0 - t * 0.15))))
+                r = r.point(lambda i: max(0, int(i * (1.0 + t * 0.12))))
             img = Image.merge("RGB", (r, g, b))
 
         if req.tint and abs(req.tint) > 0.5:
             ti = max(-1.0, min(1.0, req.tint / 100.0))
             r, g, b = img.split()
             if ti > 0:
-                r = r.point(lambda i: min(255, int(i * (1.0 + ti * 0.12))))
-                b = b.point(lambda i: min(255, int(i * (1.0 + ti * 0.12))))
-                g = g.point(lambda i: max(0, int(i * (1.0 - ti * 0.12))))
+                r = r.point(lambda i: min(255, int(i * (1.0 + ti * 0.10))))
+                b = b.point(lambda i: min(255, int(i * (1.0 + ti * 0.10))))
+                g = g.point(lambda i: max(0, int(i * (1.0 - ti * 0.10))))
             else:
-                g = g.point(lambda i: min(255, int(i * (1.0 - ti * 0.14))))
-                r = r.point(lambda i: max(0, int(i * (1.0 + ti * 0.06))))
+                g = g.point(lambda i: min(255, int(i * (1.0 - ti * 0.12))))
+                r = r.point(lambda i: max(0, int(i * (1.0 + ti * 0.05))))
             img = Image.merge("RGB", (r, g, b))
 
         # 4. Curve Color Grading Presets
@@ -742,11 +750,11 @@ async def edit_image(req: ImageEditRequest, request: Request):
                 img = enhancer.enhance(1.22)
             elif req.curve_preset == "moody":
                 r, g, b = img.split()
-                r = r.point(lambda i: min(255, int(i * 1.04 + 3)))
-                b = b.point(lambda i: min(255, int(i * 1.05 + (6 if i < 128 else -4))))
+                r = r.point(lambda i: min(255, int(i * 1.03)))
+                b = b.point(lambda i: min(255, int(i * 1.04 + (4 if i < 128 else -3))))
                 img = Image.merge("RGB", (r, g, b))
 
-        # 5. Cinematic & Creative Filters (smooth without highlight blowout)
+        # 5. Cinematic & Creative Filters (smooth proportional without highlight blowout)
         if req.filter in {"black_white", "noir"}:
             img = ImageOps.grayscale(img).convert("RGB")
             enhancer = ImageEnhance.Contrast(img)
@@ -756,37 +764,37 @@ async def edit_image(req: ImageEditRequest, request: Request):
             img = ImageOps.colorize(gray, "#26170a", "#fbe8d0")
         elif req.filter == "cyberpunk":
             r, g, b = img.split()
-            r = r.point(lambda i: min(255, int(i * 1.10 + 6)))
-            b = b.point(lambda i: min(255, int(i * 1.14 + 8)))
+            r = r.point(lambda i: min(255, int(i * 1.08)))
+            b = b.point(lambda i: min(255, int(i * 1.12)))
             img = Image.merge("RGB", (r, g, b))
         elif req.filter == "cinematic":
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.12)
+            img = enhancer.enhance(1.10)
             r, g, b = img.split()
-            g = g.point(lambda i: min(255, int(i * 1.03)))
+            g = g.point(lambda i: min(255, int(i * 1.02)))
             b = b.point(lambda i: max(0, int(i * 0.96)))
             img = Image.merge("RGB", (r, g, b))
         elif req.filter == "golden_hour":
             r, g, b = img.split()
-            r = r.point(lambda i: min(255, int(i * 1.08 + 5)))
-            g = g.point(lambda i: min(255, int(i * 1.03 + 2)))
-            b = b.point(lambda i: max(0, int(i * 0.92)))
+            r = r.point(lambda i: min(255, int(i * 1.06)))
+            g = g.point(lambda i: min(255, int(i * 1.02)))
+            b = b.point(lambda i: max(0, int(i * 0.94)))
             img = Image.merge("RGB", (r, g, b))
         elif req.filter == "vintage":
             enhancer = ImageEnhance.Color(img)
-            img = enhancer.enhance(0.85)
+            img = enhancer.enhance(0.88)
             r, g, b = img.split()
-            r = r.point(lambda i: min(255, int(i * 1.06 + 4)))
-            b = b.point(lambda i: max(0, int(i * 0.94)))
+            r = r.point(lambda i: min(255, int(i * 1.04)))
+            b = b.point(lambda i: max(0, int(i * 0.95)))
             img = Image.merge("RGB", (r, g, b))
         elif req.filter == "editorial":
             enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.15)
+            img = enhancer.enhance(1.12)
             enhancer2 = ImageEnhance.Sharpness(img)
-            img = enhancer2.enhance(1.2)
+            img = enhancer2.enhance(1.15)
         elif req.filter == "vibrant":
             enhancer = ImageEnhance.Color(img)
-            img = enhancer.enhance(1.25)
+            img = enhancer.enhance(1.22)
         elif req.filter == "pastel":
             enhancer = ImageEnhance.Contrast(img)
             img = enhancer.enhance(0.92)

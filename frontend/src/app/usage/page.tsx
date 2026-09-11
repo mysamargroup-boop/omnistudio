@@ -86,6 +86,7 @@ export default function UsagePage() {
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [history, setHistory] = useState<GenerationRecord[]>([]);
   const [rateCards, setRateCards] = useState<RateCard[]>([]);
+  const [configuredKeys, setConfiguredKeys] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -102,15 +103,19 @@ export default function UsagePage() {
     else setLoading(true);
 
     try {
-      const [sumRes, histRes, ratesRes] = await Promise.all([
+      const [sumRes, histRes, ratesRes, keysRes] = await Promise.all([
         api.getUsageSummary(),
         api.getUsageHistory(serviceFilter === 'all' ? undefined : serviceFilter, 100),
-        api.getRateCards()
+        api.getRateCards(),
+        api.getKeys().catch(() => ({ keys_detail: {} }))
       ]);
 
       setSummary(sumRes);
       setHistory(histRes.records || []);
       setRateCards(ratesRes.rates || []);
+      if (keysRes && keysRes.keys_detail) {
+        setConfiguredKeys(keysRes.keys_detail);
+      }
     } catch (err) {
       console.error('Failed to load usage data:', err);
     } finally {
@@ -286,21 +291,52 @@ export default function UsagePage() {
             </div>
           </div>
 
-          {/* Card 4: Top Model / Status */}
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-violet-500/40 transition-all duration-200 shadow-sm">
-            <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2">
+          {/* Card 4: Multi-Provider AI Engine Suite */}
+          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-200 shadow-sm">
+            <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2.5">
               <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                <Activity className="h-4 w-4 text-violet-500" /> Active Provider
+                <Activity className="h-4 w-4 text-emerald-500" /> Active AI Engines
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20">
-                VERIFIED
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                MULTI-PROVIDER
               </span>
             </div>
-            <div className="text-xl font-bold font-heading text-zinc-950 dark:text-white tracking-tight mt-1 truncate pb-1">
-              Google Gemini / Veo
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <span className={cn("w-1.5 h-1.5 rounded-full", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
+                  OpenAI (GPT-4o, DALL-E)
+                </span>
+                <span className={cn("text-[10px] font-bold", configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400")}>
+                  {configuredKeys["OPENAI_API_KEY"]?.configured !== false ? "ACTIVE (BYOK)" : "STANDBY"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <span className={cn("w-1.5 h-1.5 rounded-full", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
+                  Google AI (Gemini 2.5, Veo)
+                </span>
+                <span className={cn("text-[10px] font-bold", configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400")}>
+                  {configuredKeys["GEMINI_API_KEY"]?.configured !== false ? "ACTIVE (BYOK)" : "STANDBY"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Edge Neural TTS (Audio)
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">100% FREE</span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  FFmpeg 8.1 Motion Engine
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">LOCAL FREE</span>
+              </div>
             </div>
-            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-2 font-mono flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" /> Pay-As-You-Go Active
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-mono flex items-center gap-1 pt-1.5 border-t border-black/[0.04] dark:border-white/[0.04]">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Sovereign Single-Tenant Studio
             </div>
           </div>
         </div>
@@ -313,7 +349,7 @@ export default function UsagePage() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer',
                 activeTab === 'history'
-                  ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shadow-sm font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
               )}
             >
@@ -326,7 +362,7 @@ export default function UsagePage() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer',
                 activeTab === 'rates'
-                  ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm font-semibold'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shadow-sm font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
               )}
             >
@@ -363,7 +399,7 @@ export default function UsagePage() {
                     className={cn(
                       'px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap',
                       serviceFilter === s
-                        ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold border border-violet-200 dark:border-violet-500/20'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-500/20'
                         : 'bg-zinc-50 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06]'
                     )}
                   >
@@ -380,7 +416,7 @@ export default function UsagePage() {
                   placeholder="Filter by prompt, model, provider..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all duration-200"
+                  className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all duration-200"
                 />
               </div>
             </div>
@@ -550,7 +586,7 @@ export default function UsagePage() {
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-[11px] font-mono transition-all duration-200 cursor-pointer border',
                     rateCategoryFilter === p.id
-                      ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold border-violet-200 dark:border-violet-500/20'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border-emerald-200 dark:border-emerald-500/20'
                       : 'bg-zinc-50 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 border-black/[0.06] dark:border-white/[0.06]'
                   )}
                 >
@@ -701,8 +737,14 @@ export default function UsagePage() {
 
       {/* Prompt View Modal */}
       {selectedPromptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 cursor-pointer"
+          onClick={() => setSelectedPromptModal(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
               <h3 className="text-sm font-mono font-bold text-zinc-950 dark:text-white uppercase tracking-wider">
                 Full Generation Prompt
