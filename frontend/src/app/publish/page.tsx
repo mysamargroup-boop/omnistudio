@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import SocialIcon from "@/components/social/SocialIcons";
 
 // Platforms metadata with brands and colors
 const PLATFORMS = [
@@ -753,12 +754,11 @@ function PublishStudioContent() {
                         {isSelected && (
                           <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500" />
                         )}
-                        <span 
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white mb-1 shadow-xs"
-                          style={{ backgroundColor: plat.color }}
-                        >
-                          {plat.icon}
-                        </span>
+                        <SocialIcon
+                          platform={plat.id}
+                          size={32}
+                          className="w-8 h-8 rounded-lg mb-1.5 shadow-xs transition-transform group-hover:scale-105"
+                        />
                         <span className="text-[11px] font-semibold truncate w-full">{plat.name}</span>
                         <span className="text-[9px] text-zinc-400 dark:text-zinc-500 truncate w-full">{plat.aspect}</span>
                       </button>
@@ -1079,12 +1079,10 @@ function PublishStudioContent() {
                         <div className="text-[9px] text-zinc-400">Sponsored • Just now</div>
                       </div>
                     </div>
-                    <span 
-                      className="px-2 py-0.5 rounded text-[9px] font-bold text-white"
-                      style={{ backgroundColor: PLATFORMS.find(p => p.id === previewPlatform)?.color }}
-                    >
-                      {PLATFORMS.find(p => p.id === previewPlatform)?.name}
-                    </span>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] font-bold">
+                      <SocialIcon platform={previewPlatform} size={15} className="w-3.5 h-3.5 rounded" />
+                      <span className="text-zinc-800 dark:text-zinc-200">{PLATFORMS.find(p => p.id === previewPlatform)?.name}</span>
+                    </div>
                   </div>
 
                   {/* Mock Media Display */}
@@ -1301,18 +1299,17 @@ function PublishStudioContent() {
                         </p>
 
                         {/* Targeted Platform Icons */}
-                        <div className="flex flex-wrap items-center gap-1 mt-3">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-3">
                           {(Array.isArray(post.platforms) ? post.platforms : []).map((pid: string) => {
                             const meta = PLATFORMS.find(p => p.id === pid);
                             return (
-                              <span
+                              <div
                                 key={pid}
-                                className="w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold text-white"
-                                style={{ backgroundColor: meta?.color || "#10B981" }}
                                 title={meta?.name || pid}
+                                className="hover:scale-110 transition-transform cursor-pointer"
                               >
-                                {meta?.icon || pid.slice(0, 2).toUpperCase()}
-                              </span>
+                                <SocialIcon platform={pid} size={22} className="w-5.5 h-5.5 rounded-md shadow-xs" />
+                              </div>
                             );
                           })}
                         </div>
@@ -1521,7 +1518,8 @@ function PublishStudioContent() {
                             <Clock className="w-3 h-3 text-zinc-400" />
                             {item.recommended_time}
                           </span>
-                          <span className="px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold flex items-center gap-1.5">
+                            <SocialIcon platform={item.platform_name} size={14} className="w-3.5 h-3.5 rounded" />
                             {item.platform_name}
                           </span>
                         </div>
@@ -1645,7 +1643,11 @@ function PublishStudioContent() {
                   {/* Reel Card */}
                   <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold text-emerald-500">
-                      <span>✓ Instagram / TikTok Reel</span>
+                      <span className="flex items-center gap-1.5">
+                        <SocialIcon platform="instagram" size={16} className="w-4 h-4 rounded" />
+                        <SocialIcon platform="tiktok" size={16} className="w-4 h-4 rounded" />
+                        <span>Instagram / TikTok Reel</span>
+                      </span>
                       <span className="text-[10px] text-zinc-400">9:16</span>
                     </div>
                     <div className="text-xs font-semibold">{creatorKit.reel.hook}</div>
@@ -1655,7 +1657,10 @@ function PublishStudioContent() {
                   {/* Short Card */}
                   <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold text-red-500">
-                      <span>✓ YouTube Short</span>
+                      <span className="flex items-center gap-1.5">
+                        <SocialIcon platform="youtube_shorts" size={16} className="w-4 h-4 rounded" />
+                        <span>YouTube Short</span>
+                      </span>
                       <span className="text-[10px] text-zinc-400">9:16</span>
                     </div>
                     <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-3">{creatorKit.short.caption}</p>
@@ -1664,7 +1669,10 @@ function PublishStudioContent() {
                   {/* Carousel Card */}
                   <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold text-blue-500">
-                      <span>✓ LinkedIn Document Carousel</span>
+                      <span className="flex items-center gap-1.5">
+                        <SocialIcon platform="linkedin_personal" size={16} className="w-4 h-4 rounded" />
+                        <span>LinkedIn Document Carousel</span>
+                      </span>
                       <span className="text-[10px] text-zinc-400">5 Slides</span>
                     </div>
                     <div className="text-xs font-semibold">{creatorKit.carousel.summary}</div>
@@ -1673,7 +1681,11 @@ function PublishStudioContent() {
                   {/* Thumbnails Card */}
                   <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold text-emerald-500">
-                      <span>✓ Multi-Format Thumbnails</span>
+                      <span className="flex items-center gap-1.5">
+                        <SocialIcon platform="youtube_videos" size={16} className="w-4 h-4 rounded" />
+                        <SocialIcon platform="pinterest" size={16} className="w-4 h-4 rounded" />
+                        <span>Multi-Format Thumbnails</span>
+                      </span>
                       <span className="text-[10px] text-zinc-400">16:9 & 2:3</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2054,12 +2066,11 @@ function PublishStudioContent() {
                     className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <span
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-xs"
-                        style={{ backgroundColor: plat.color }}
-                      >
-                        {plat.icon}
-                      </span>
+                      <SocialIcon
+                        platform={plat.id}
+                        size={40}
+                        className="w-10 h-10 rounded-xl shadow-xs"
+                      />
                       <div>
                         <div className="font-bold text-xs text-zinc-900 dark:text-zinc-100">{plat.name}</div>
                         <div className="text-[11px] text-zinc-400">
@@ -2104,9 +2115,11 @@ function PublishStudioContent() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-[#0c0d14] p-6 rounded-2xl max-w-md w-full border border-black/[0.08] dark:border-white/[0.08] space-y-4 shadow-2xl cursor-default font-jakarta"
             >
-              <div className="flex items-center gap-2 text-emerald-500">
-                <Share2 className="w-5 h-5" />
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              <div className="flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
+                {connectModalPlatform && (
+                  <SocialIcon platform={connectModalPlatform} size={28} className="w-7 h-7 rounded-lg shadow-xs" />
+                )}
+                <h3 className="text-sm font-bold">
                   Connect {PLATFORMS.find(p => p.id === connectModalPlatform)?.name} Channel
                 </h3>
               </div>

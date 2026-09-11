@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, Request
+from fastapi import APIRouter, UploadFile, File, Form, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
@@ -221,10 +221,10 @@ class EditVideoRequest(BaseModel):
         return v
 
 RESOLUTION_MAP = {
-    "720p":  {"16:9": (1280, 720),  "9:16": (720, 1280),  "1:1": (720, 720),   "21:9": (1680, 720), "2.39:1": (1720, 720)},
-    "1080p": {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "21:9": (2520, 1080), "2.39:1": (2580, 1080)},
-    "2k":    {"16:9": (2560, 1440), "9:16": (1440, 2560), "1:1": (1440, 1440), "21:9": (3360, 1440), "2.39:1": (3440, 1440)},
-    "4k":    {"16:9": (3840, 2160), "9:16": (2160, 3840), "1:1": (2160, 2160), "21:9": (5040, 2160), "2.39:1": (5160, 2160)},
+    "720p":  {"16:9": (1280, 720),  "9:16": (720, 1280),  "1:1": (720, 720),   "4:3": (960, 720),   "21:9": (1680, 720), "2.39:1": (1720, 720)},
+    "1080p": {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "4:3": (1440, 1080), "21:9": (2520, 1080), "2.39:1": (2580, 1080)},
+    "2k":    {"16:9": (2560, 1440), "9:16": (1440, 2560), "1:1": (1440, 1440), "4:3": (1920, 1440), "21:9": (3360, 1440), "2.39:1": (3440, 1440)},
+    "4k":    {"16:9": (3840, 2160), "9:16": (2160, 3840), "1:1": (2160, 2160), "4:3": (2880, 2160), "21:9": (5040, 2160), "2.39:1": (3840, 1608)},
 }
 
 def get_resolution(res: str, aspect: str) -> tuple:
@@ -539,16 +539,18 @@ async def generate_video(req: VideoRequest, request: Request):
         optical_directives.append(f"{req.color_lut} film stock color grade")
     if req.orbit_x is not None or req.orbit_y is not None:
         optical_directives.append(f"camera trajectory orbit X {req.orbit_x or 0}° Y {req.orbit_y or 0}°")
-    if req.push_speed:
+    if req.push_speed is not None:
         optical_directives.append(f"dolly push speed {req.push_speed}m/s")
-    if req.crane_elevation:
+    if req.crane_elevation is not None:
         optical_directives.append(f"crane elevation {req.crane_elevation}m")
-    if req.dutch_roll:
+    if req.dutch_roll is not None:
         optical_directives.append(f"dutch roll {req.dutch_roll}°")
 
     base_p = (req.prompt or "").strip()
     if optical_directives and base_p:
         effective_prompt = f"{base_p}, {', '.join(optical_directives)}"
+    elif optical_directives:
+        effective_prompt = ", ".join(optical_directives)
     else:
         effective_prompt = base_p
 

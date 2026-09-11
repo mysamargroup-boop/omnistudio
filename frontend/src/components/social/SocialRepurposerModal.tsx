@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import SocialIcon from "@/components/social/SocialIcons";
 
 interface SocialRepurposerModalProps {
   isOpen: boolean;
@@ -169,9 +170,12 @@ export default function SocialRepurposerModal({
                       )}
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-pink-500 transition-colors">
-                        {fmt.name}
-                      </h4>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <SocialIcon platform={fmt.platform} size={16} className="w-4 h-4 rounded" />
+                        <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-pink-500 transition-colors">
+                          {fmt.name}
+                        </h4>
+                      </div>
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                         {fmt.resolution} • <span className="font-semibold text-zinc-700 dark:text-zinc-300">{fmt.aspect}</span>
                       </p>
