@@ -141,7 +141,7 @@ export default function Sidebar() {
           badge: "SPEND",
         },
         {
-          href: "/settings?tab=brand_kit",
+          href: "/brand-kit",
           label: "Brand Kit Studio",
           icon: Palette,
           badge: "IDENTITY",
@@ -205,9 +205,9 @@ export default function Sidebar() {
               </span>
               <div className="space-y-0.5">
               {group.items.map((item) => {
-                const isBrandKitLink = item.href.includes("tab=brand_kit");
+                const isBrandKitLink = item.href === "/brand-kit";
                 const isSettingsLink = item.href === "/settings";
-                const isBrandKitActive = pathname === "/settings" && currentSearch.includes("tab=brand_kit");
+                const isBrandKitActive = pathname === "/brand-kit" || (pathname === "/settings" && currentSearch.includes("tab=brand_kit"));
                 const isActive = isBrandKitLink 
                   ? isBrandKitActive 
                   : isSettingsLink 
@@ -219,9 +219,7 @@ export default function Sidebar() {
                     key={item.href}
                     href={item.href}
                     onClick={() => {
-                      if (isBrandKitLink) {
-                        setCurrentSearch("?tab=brand_kit");
-                      } else if (isSettingsLink) {
+                      if (isSettingsLink) {
                         setCurrentSearch("");
                       }
                     }}

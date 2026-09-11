@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import Dropdown from "@/components/ui/Dropdown";
 import { Compass, RotateCcw, Camera } from "lucide-react";
 
 export interface MotionRigConfig {
@@ -268,67 +269,51 @@ export default function MotionRigVectorPad({
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
           {/* Focal Lens */}
-          <div className="p-2 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-1">
-            <span className="text-[9px] uppercase text-zinc-400 block">Focal Lens</span>
-            <select
+          <div className="p-1 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-0.5">
+            <span className="text-[9px] uppercase text-zinc-400 block px-1.5 pt-0.5">Focal Lens</span>
+            <Dropdown
+              size="sm"
               value={config.focalLens}
-              onChange={(e) => onChange({ ...config, focalLens: e.target.value })}
-              className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none cursor-pointer text-xs"
-            >
-              {FOCAL_LENSES.map((l) => (
-                <option key={l.value} value={l.value} className="bg-zinc-900 text-white">
-                  {l.value}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onChange({ ...config, focalLens: val })}
+              options={FOCAL_LENSES.map((l) => ({ value: l.value, label: l.value }))}
+              triggerClassName="bg-transparent border-0 shadow-none px-1.5 py-0.5"
+            />
           </div>
 
           {/* Aperture */}
-          <div className="p-2 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-1">
-            <span className="text-[9px] uppercase text-zinc-400 block">Aperture</span>
-            <select
+          <div className="p-1 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-0.5">
+            <span className="text-[9px] uppercase text-zinc-400 block px-1.5 pt-0.5">Aperture</span>
+            <Dropdown
+              size="sm"
               value={config.aperture}
-              onChange={(e) => onChange({ ...config, aperture: e.target.value })}
-              className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none cursor-pointer text-xs"
-            >
-              {APERTURES.map((a) => (
-                <option key={a.value} value={a.value} className="bg-zinc-900 text-white">
-                  {a.value.split(" ")[0]}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onChange({ ...config, aperture: val })}
+              options={APERTURES.map((a) => ({ value: a.value, label: a.value.split(" ")[0] }))}
+              triggerClassName="bg-transparent border-0 shadow-none px-1.5 py-0.5"
+            />
           </div>
 
           {/* Shutter Angle */}
-          <div className="p-2 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-1">
-            <span className="text-[9px] uppercase text-zinc-400 block">Shutter</span>
-            <select
+          <div className="p-1 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-0.5">
+            <span className="text-[9px] uppercase text-zinc-400 block px-1.5 pt-0.5">Shutter</span>
+            <Dropdown
+              size="sm"
               value={config.shutterAngle}
-              onChange={(e) => onChange({ ...config, shutterAngle: e.target.value })}
-              className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none cursor-pointer text-xs"
-            >
-              {SHUTTER_ANGLES.map((s) => (
-                <option key={s.value} value={s.value} className="bg-zinc-900 text-white">
-                  {s.value.split(" ")[0]}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onChange({ ...config, shutterAngle: val })}
+              options={SHUTTER_ANGLES.map((s) => ({ value: s.value, label: s.value.split(" ")[0] }))}
+              triggerClassName="bg-transparent border-0 shadow-none px-1.5 py-0.5"
+            />
           </div>
 
           {/* Color LUT / Film Stock */}
-          <div className="p-2 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-1">
-            <span className="text-[9px] uppercase text-zinc-400 block">Film / LUT</span>
-            <select
+          <div className="p-1 rounded-xl bg-black/5 dark:bg-zinc-950/60 border border-black/5 dark:border-white/5 space-y-0.5">
+            <span className="text-[9px] uppercase text-zinc-400 block px-1.5 pt-0.5">Film / LUT</span>
+            <Dropdown
+              size="sm"
               value={config.colorLut}
-              onChange={(e) => onChange({ ...config, colorLut: e.target.value })}
-              className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none cursor-pointer text-xs"
-            >
-              {COLOR_LUTS.map((c) => (
-                <option key={c.value} value={c.value} className="bg-zinc-900 text-white">
-                  {c.value.split(" (")[0]}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onChange({ ...config, colorLut: val })}
+              options={COLOR_LUTS.map((c) => ({ value: c.value, label: c.value.split(" (")[0] }))}
+              triggerClassName="bg-transparent border-0 shadow-none px-1.5 py-0.5"
+            />
           </div>
         </div>
       </div>

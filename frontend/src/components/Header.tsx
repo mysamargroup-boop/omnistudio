@@ -319,19 +319,19 @@ export default function Header() {
 
             <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1" />
 
-            <button
-              type="button"
-              onClick={() => { setActiveDropdown(null); setBrandKitOpen(true); }}
+            <Link
+              href="/brand-kit"
+              onClick={() => setActiveDropdown(null)}
               className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer text-left"
             >
               <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-zinc-950 transition-colors">
                 <Palette className="w-4 h-4 text-emerald-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Brand Kit</div>
+                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Brand Kit Studio</div>
                 <p className="text-[10px] text-zinc-500 line-clamp-1">Logos, colors & visual identity</p>
               </div>
-            </button>
+            </Link>
 
             <button
               type="button"

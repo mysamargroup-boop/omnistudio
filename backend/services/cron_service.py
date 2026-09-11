@@ -16,6 +16,10 @@ class CronSchedulerService:
         self.last_run_executed_count = 0
         self.total_executed_since_start = 0
 
+    @property
+    def is_running(self) -> bool:
+        return self._is_running
+
     def start(self):
         if self._is_running:
             return

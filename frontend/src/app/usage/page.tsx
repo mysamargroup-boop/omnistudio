@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { api, getMediaUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import Spinner from '@/components/ui/Spinner';
 
 interface UsageSummary {
   total_generations: number;
@@ -108,24 +109,52 @@ export default function UsagePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPromptModal, setSelectedPromptModal] = useState<string | null>(null);
 
+  // Restore cached telemetry immediately on mount for zero-latency 0ms render
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem('omnistudio_usage_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.summary) setSummary(parsed.summary);
+        if (parsed.history) setHistory(parsed.history);
+        if (parsed.rateCards) setRateCards(parsed.rateCards);
+        setLoading(false);
+      }
+    } catch {}
+  }, []);
+
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    else if (!summary) setLoading(true);
 
     try {
-      const [sumRes, histRes, ratesRes, keysRes] = await Promise.all([
+      // Rapid parallel fetch of usage analytics without waiting on slow Supabase keys
+      const [sumRes, histRes, ratesRes] = await Promise.all([
         api.getUsageSummary(),
         api.getUsageHistory(serviceFilter === 'all' ? undefined : serviceFilter, 100),
         api.getRateCards(),
-        api.getKeys().catch(() => ({ keys_detail: {} }))
       ]);
 
       setSummary(sumRes);
       setHistory(histRes.records || []);
       setRateCards(ratesRes.rates || []);
-      if (keysRes && keysRes.keys_detail) {
-        setConfiguredKeys(keysRes.keys_detail);
-      }
+      setLoading(false);
+
+      // Persist to session cache
+      try {
+        sessionStorage.setItem('omnistudio_usage_cache', JSON.stringify({
+          summary: sumRes,
+          history: histRes.records || [],
+          rateCards: ratesRes.rates || []
+        }));
+      } catch {}
+
+      // Asynchronously fetch key configuration in background without blocking render
+      api.getKeys().then((keysRes) => {
+        if (keysRes && keysRes.keys_detail) {
+          setConfiguredKeys(keysRes.keys_detail);
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('Failed to load usage data:', err);
     } finally {

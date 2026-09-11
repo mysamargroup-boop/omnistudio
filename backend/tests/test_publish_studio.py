@@ -203,3 +203,29 @@ def test_publish_create_post_workflow_and_recycle(auth_headers):
     # 6. Cleanup
     client.delete(f"/api/publish/posts/{post_id}", headers=auth_headers)
     client.delete(f"/api/publish/posts/{rec_post['id']}", headers=auth_headers)
+
+
+def test_social_keys_status_and_readiness(auth_headers):
+    client = TestClient(app)
+    # Test social keys status endpoint
+    res = client.get("/api/publish/social-keys/status", headers=auth_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "platforms" in data
+    assert "instagram" in data["platforms"]
+    assert "twitter" in data["platforms"]
+    assert "youtube" in data["platforms"]
+
+    # Test readiness test for twitter
+    res_tw = client.post("/api/publish/social-keys/test/twitter", headers=auth_headers)
+    assert res_tw.status_code == 200
+    tw_data = res_tw.json()
+    assert "status" in tw_data
+    assert tw_data["platform"] == "twitter"
+
+    # Test unsupported platform
+    res_un = client.post("/api/publish/social-keys/test/unknown_platform", headers=auth_headers)
+    assert res_un.status_code == 200
+    assert res_un.json()["status"] == "unsupported"
+

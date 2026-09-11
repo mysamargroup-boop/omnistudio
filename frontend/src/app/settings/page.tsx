@@ -35,12 +35,18 @@ import {
   Activity,
   FileText,
   Palette,
+  Share2,
+  ExternalLink,
+  Globe,
+  Send,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn, formatBytes } from "@/lib/utils";
 import { BrandKitPanel } from "@/components/brand/BrandKitModal";
+import Dropdown from "@/components/ui/Dropdown";
+import SocialIcon from "@/components/social/SocialIcons";
 
-type SettingsTab = "infrastructure" | "brand_kit" | "trash" | "api_keys" | "preferences";
+type SettingsTab = "infrastructure" | "social_media" | "api_keys" | "brand_kit" | "trash" | "preferences";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("infrastructure");
@@ -56,7 +62,35 @@ export default function SettingsPage() {
     R2_SECRET_ACCESS_KEY: "",
     R2_BUCKET_NAME: "",
     R2_PUBLIC_DOMAIN: "",
+    // Social Media API Keys (BYOK)
+    META_ACCESS_TOKEN: "",
+    META_APP_ID: "",
+    META_APP_SECRET: "",
+    INSTAGRAM_ACCOUNT_ID: "",
+    FACEBOOK_PAGE_ID: "",
+    TWITTER_API_KEY: "",
+    TWITTER_API_SECRET: "",
+    TWITTER_BEARER_TOKEN: "",
+    TWITTER_ACCESS_TOKEN: "",
+    TWITTER_ACCESS_SECRET: "",
+    YOUTUBE_API_KEY: "",
+    YOUTUBE_CLIENT_ID: "",
+    YOUTUBE_CLIENT_SECRET: "",
+    YOUTUBE_REFRESH_TOKEN: "",
+    LINKEDIN_CLIENT_ID: "",
+    LINKEDIN_CLIENT_SECRET: "",
+    LINKEDIN_ACCESS_TOKEN: "",
+    LINKEDIN_ORGANIZATION_ID: "",
+    TIKTOK_CLIENT_KEY: "",
+    TIKTOK_CLIENT_SECRET: "",
+    TIKTOK_ACCESS_TOKEN: "",
+    PINTEREST_APP_ID: "",
+    PINTEREST_APP_SECRET: "",
+    PINTEREST_ACCESS_TOKEN: "",
+    TELEGRAM_BOT_TOKEN: "",
+    TELEGRAM_CHAT_ID: "",
   });
+
 
   const [maskedKeys, setMaskedKeys] = useState<Record<string, string>>({});
   const [keySource, setKeySource] = useState<string>("Supabase Cloud Database");
@@ -109,7 +143,7 @@ export default function SettingsPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (tab === "brand_kit" || tab === "infrastructure" || tab === "trash" || tab === "api_keys" || tab === "preferences") {
+      if (tab === "brand_kit" || tab === "infrastructure" || tab === "trash" || tab === "api_keys" || tab === "preferences" || tab === "social_media") {
         setActiveTab(tab as SettingsTab);
       }
     }
@@ -382,8 +416,304 @@ export default function SettingsPage() {
     },
   ];
 
+  // Social Media Platform BYOK Configurations
+  const [testingSocialPlatform, setTestingSocialPlatform] = useState<string | null>(null);
+  const [socialTestResults, setSocialTestResults] = useState<Record<string, { status: string; message: string; portal?: string }>>({});
+
+  const testSocialPlatform = async (platformId: string) => {
+    setTestingSocialPlatform(platformId);
+    try {
+      const res = await api.testSocialPlatformApi(platformId);
+      setSocialTestResults((prev) => ({ ...prev, [platformId]: res }));
+    } catch (e: any) {
+      setSocialTestResults((prev) => ({
+        ...prev,
+        [platformId]: { status: "error", message: e.message || "Failed to reach backend test endpoint" },
+      }));
+    } finally {
+      setTestingSocialPlatform(null);
+    }
+  };
+
+  const socialPlatformsConfig = [
+    {
+      id: "instagram",
+      name: "Meta Platforms (Instagram & Facebook)",
+      category: "Reels, Photos, Stories & Facebook Pages",
+      icon: "instagram",
+      color: "#E1306C",
+      portalUrl: "https://developers.facebook.com/apps/",
+      docsLabel: "Meta Developer Dashboard",
+      statusKey: "meta",
+      instruction: "Go to Meta for Developers -> Create App -> Add Instagram Graph API & Facebook Pages -> Generate a Long-Lived System User Access Token.",
+      fields: [
+        {
+          key: "META_ACCESS_TOKEN",
+          label: "Meta Long-Lived User / Page Access Token",
+          desc: "Token with instagram_basic, instagram_content_publish, pages_manage_posts, pages_read_engagement scopes.",
+          placeholder: "EAAG...",
+          isSecret: true,
+        },
+        {
+          key: "INSTAGRAM_ACCOUNT_ID",
+          label: "Instagram Professional / Business Account ID",
+          desc: "Numeric Instagram Business ID (found via Graph API Explorer or Meta Business Suite).",
+          placeholder: "17841400000000000",
+          isSecret: false,
+        },
+        {
+          key: "FACEBOOK_PAGE_ID",
+          label: "Facebook Page ID",
+          desc: "Numeric ID of the connected Facebook Page.",
+          placeholder: "102938475610293",
+          isSecret: false,
+        },
+        {
+          key: "META_APP_ID",
+          label: "Meta App ID (Optional)",
+          desc: "Your App ID from the Meta Developer Dashboard header.",
+          placeholder: "123456789012345",
+          isSecret: false,
+        },
+        {
+          key: "META_APP_SECRET",
+          label: "Meta App Secret (Optional)",
+          desc: "App secret used for server-side OAuth validation and webhook signature verification.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+      ],
+    },
+    {
+      id: "twitter",
+      name: "X / Twitter Developer API v2",
+      category: "Tweets, Media Uploads & Threads",
+      icon: "twitter",
+      color: "#1DA1F2",
+      portalUrl: "https://developer.twitter.com/en/portal/dashboard",
+      docsLabel: "X Developer Portal",
+      statusKey: "twitter",
+      instruction: "Sign in to X Developer Portal -> Create Project & App -> Set Permissions to 'Read and Write' -> Generate OAuth 1.0a & Bearer Tokens.",
+      fields: [
+        {
+          key: "TWITTER_BEARER_TOKEN",
+          label: "Twitter App Bearer Token",
+          desc: "App-only Bearer token for Twitter API v2 endpoints.",
+          placeholder: "AAAAAAAAAAAAAAAAAAAAA...",
+          isSecret: true,
+        },
+        {
+          key: "TWITTER_API_KEY",
+          label: "Consumer API Key",
+          desc: "App Consumer Key identifying your client.",
+          placeholder: "API_KEY_...",
+          isSecret: false,
+        },
+        {
+          key: "TWITTER_API_SECRET",
+          label: "Consumer API Secret",
+          desc: "App Consumer Secret for cryptographic request signing.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+        {
+          key: "TWITTER_ACCESS_TOKEN",
+          label: "User OAuth Access Token",
+          desc: "User access token with tweet write permissions.",
+          placeholder: "123456789-...",
+          isSecret: true,
+        },
+        {
+          key: "TWITTER_ACCESS_SECRET",
+          label: "User OAuth Access Token Secret",
+          desc: "Secret paired with the User OAuth Access Token.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+      ],
+    },
+    {
+      id: "youtube",
+      name: "Google YouTube Data API v3",
+      category: "Shorts, Long-form Video & Metadata",
+      icon: "youtube_shorts",
+      color: "#FF0000",
+      portalUrl: "https://console.cloud.google.com/apis/credentials",
+      docsLabel: "Google Cloud Credentials Console",
+      statusKey: "youtube",
+      instruction: "Open Google Cloud Console -> Enable YouTube Data API v3 -> Create OAuth 2.0 Client Credentials -> Obtain Refresh Token.",
+      fields: [
+        {
+          key: "YOUTUBE_API_KEY",
+          label: "Google Cloud API Key",
+          desc: "Standard Google Cloud API key for public queries and metadata verification.",
+          placeholder: "AIzaSy...",
+          isSecret: true,
+        },
+        {
+          key: "YOUTUBE_CLIENT_ID",
+          label: "OAuth 2.0 Client ID",
+          desc: "Client ID from Google Cloud Console.",
+          placeholder: "1234567890-xxx.apps.googleusercontent.com",
+          isSecret: false,
+        },
+        {
+          key: "YOUTUBE_CLIENT_SECRET",
+          label: "OAuth 2.0 Client Secret",
+          desc: "Client Secret for OAuth token refresh.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+        {
+          key: "YOUTUBE_REFRESH_TOKEN",
+          label: "OAuth 2.0 Refresh Token",
+          desc: "Persistent token used to automatically generate access tokens without manual re-login.",
+          placeholder: "1//04xxx...",
+          isSecret: true,
+        },
+      ],
+    },
+    {
+      id: "linkedin",
+      name: "LinkedIn Marketing Developer Platform",
+      category: "Company Page & Personal Profile Sharing",
+      icon: "linkedin_personal",
+      color: "#0A66C2",
+      portalUrl: "https://www.linkedin.com/developers/apps",
+      docsLabel: "LinkedIn Developers Portal",
+      statusKey: "linkedin",
+      instruction: "Create an App on LinkedIn Developers -> Add 'Share on LinkedIn' and 'Sign In with LinkedIn using OpenID' products -> Generate Member Token.",
+      fields: [
+        {
+          key: "LINKEDIN_ACCESS_TOKEN",
+          label: "LinkedIn Member / Organization Token",
+          desc: "OAuth 2.0 Access Token with w_member_social and w_organization_social scopes.",
+          placeholder: "AQV...",
+          isSecret: true,
+        },
+        {
+          key: "LINKEDIN_ORGANIZATION_ID",
+          label: "LinkedIn Organization URN / Page ID (Optional)",
+          desc: "Numeric ID of your Company Page (e.g. 12345678) if publishing as a company.",
+          placeholder: "12345678",
+          isSecret: false,
+        },
+        {
+          key: "LINKEDIN_CLIENT_ID",
+          label: "LinkedIn App Client ID",
+          desc: "Client ID from LinkedIn Developer App Settings.",
+          placeholder: "77xxxxxxxxxxxx",
+          isSecret: false,
+        },
+        {
+          key: "LINKEDIN_CLIENT_SECRET",
+          label: "LinkedIn App Client Secret",
+          desc: "Client Secret for OAuth signature verification.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+      ],
+    },
+    {
+      id: "tiktok",
+      name: "TikTok Content Posting API",
+      category: "Vertical Video & Creator Inbox",
+      icon: "tiktok",
+      color: "#FE2C55",
+      portalUrl: "https://developers.tiktok.com/",
+      docsLabel: "TikTok for Developers",
+      statusKey: "tiktok",
+      instruction: "Register developer account -> Apply for Content Posting API -> Obtain Client Key and authorized user Access Token.",
+      fields: [
+        {
+          key: "TIKTOK_ACCESS_TOKEN",
+          label: "TikTok Creator Access Token",
+          desc: "OAuth 2.0 User Token with video.publish or video.upload permissions.",
+          placeholder: "act.xxxxxxxxxxxxxxxx...",
+          isSecret: true,
+        },
+        {
+          key: "TIKTOK_CLIENT_KEY",
+          label: "TikTok App Client Key",
+          desc: "Client Key assigned in TikTok developer portal.",
+          placeholder: "awxxxxxxxxxxxxxx",
+          isSecret: false,
+        },
+        {
+          key: "TIKTOK_CLIENT_SECRET",
+          label: "TikTok App Client Secret",
+          desc: "App Client Secret for validating requests.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+      ],
+    },
+    {
+      id: "pinterest",
+      name: "Pinterest Developer API v5",
+      category: "Visual Pins, Board Sync & Shopping",
+      icon: "pinterest",
+      color: "#BD081C",
+      portalUrl: "https://developers.pinterest.com/apps/",
+      docsLabel: "Pinterest Developer Dashboard",
+      statusKey: "pinterest",
+      instruction: "Create Pinterest Developer App -> Connect Business Account -> Generate Trial or Production Access Token with pins:read, pins:write scopes.",
+      fields: [
+        {
+          key: "PINTEREST_ACCESS_TOKEN",
+          label: "Pinterest User Access Token",
+          desc: "OAuth 2.0 Bearer token with boards:read, pins:read, pins:write scopes.",
+          placeholder: "pina_xxxxxxxxxxxxxxxx...",
+          isSecret: true,
+        },
+        {
+          key: "PINTEREST_APP_ID",
+          label: "Pinterest App ID",
+          desc: "Numeric App ID from developer console.",
+          placeholder: "14xxxxx",
+          isSecret: false,
+        },
+        {
+          key: "PINTEREST_APP_SECRET",
+          label: "Pinterest App Secret",
+          desc: "Secret key for OAuth verification.",
+          placeholder: "••••••••••••••••••••••••••••••••",
+          isSecret: true,
+        },
+      ],
+    },
+    {
+      id: "telegram",
+      name: "Telegram Bot Broadcast API",
+      category: "Channel Broadcast & Direct Messages",
+      icon: "telegram",
+      color: "#229ED9",
+      portalUrl: "https://t.me/BotFather",
+      docsLabel: "Telegram @BotFather",
+      statusKey: "telegram",
+      instruction: "Open Telegram -> Message @BotFather -> Run /newbot -> Copy HTTP API Token -> Add your bot as Administrator to your Telegram Channel with post permissions.",
+      fields: [
+        {
+          key: "TELEGRAM_BOT_TOKEN",
+          label: "Telegram Bot API Token",
+          desc: "Bot token string given by @BotFather (e.g. 7123456789:AAFxz...).",
+          placeholder: "7123456789:AAFx...",
+          isSecret: true,
+        },
+        {
+          key: "TELEGRAM_CHAT_ID",
+          label: "Telegram Channel / Chat ID",
+          desc: "Channel public username (e.g. @mysamargroup) or private channel ID (e.g. -1001234567890).",
+          placeholder: "@mysamargroup or -1001234567890",
+          isSecret: false,
+        },
+      ],
+    },
+  ];
+
   const trashCount = trashData?.total || 0;
   const trashBytes = trashData?.total_bytes || 0;
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-7 pb-16 px-4 sm:px-6 font-jakarta tab-content-enter">
@@ -413,7 +743,7 @@ export default function SettingsPage() {
             <span>Test Health</span>
           </button>
 
-          {activeTab === "api_keys" && (
+          {(activeTab === "api_keys" || activeTab === "social_media") && (
             <button
               type="button"
               onClick={save}
@@ -423,11 +753,11 @@ export default function SettingsPage() {
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : saved ? (
-                <Check className="h-3.5 w-3.5 text-white" />
+                <Check className="h-3.5 w-3.5 text-white dark:text-zinc-950" />
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              <span>{saved ? "Saved to Supabase!" : "Save Keys"}</span>
+              <span>{saved ? "Saved to Supabase!" : activeTab === "social_media" ? "Save Social Keys" : "Save Keys"}</span>
             </button>
           )}
         </div>
@@ -447,6 +777,20 @@ export default function SettingsPage() {
         >
           <Cpu className="h-3.5 w-3.5 text-emerald-500" />
           <span>System Infrastructure</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("social_media")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+            activeTab === "social_media"
+              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+          )}
+        >
+          <Share2 className="h-3.5 w-3.5 text-emerald-500" />
+          <span>Social Media APIs</span>
         </button>
 
         <button
@@ -498,6 +842,7 @@ export default function SettingsPage() {
           <Key className="h-3.5 w-3.5 text-amber-500" />
           <span>AI Model Keys (BYOK)</span>
         </button>
+
 
         <button
           type="button"
@@ -869,6 +1214,277 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB: SOCIAL MEDIA APIS & INTEGRATIONS (BYOK) ─── */}
+      {activeTab === "social_media" && (
+        <div className="space-y-6 tab-content-enter">
+          {/* Header & Status Card */}
+          <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-heading font-bold text-zinc-950 dark:text-white flex items-center gap-2 flex-wrap">
+                    <span>Social Media APIs & Integrations (Direct BYOK)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 uppercase">
+                      BYOK Encrypted
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Connect your direct developer API keys & tokens for all 15 publishing channels. No third-party lock-in or extra per-post billing.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <a
+                  href="/publish"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+                >
+                  <span>Open Publish Studio</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-bold text-xs transition cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                  <span>{saved ? "Saved!" : "Save Keys"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Readiness Summary Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Configured Networks</div>
+                <div className="text-lg font-heading font-bold text-zinc-950 dark:text-white mt-0.5">
+                  {socialPlatformsConfig.filter(p => status?.keys?.[p.statusKey]).length} / {socialPlatformsConfig.length}
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Sync Storage</div>
+                <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Supabase & Local .env</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Scheduler Engine</div>
+                <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mt-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>Background Worker (30s)</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Direct Channels</div>
+                <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mt-1 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>15 Formats Supported</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Social Platform Config Cards */}
+          <div className="space-y-6">
+            {socialPlatformsConfig.map((plat) => {
+              const isConfigured = Boolean(status?.keys?.[plat.statusKey]);
+              const testResult = socialTestResults[plat.id];
+              const isTestingThis = testingSocialPlatform === plat.id;
+
+              return (
+                <div
+                  key={plat.id}
+                  className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-5 shadow-sm transition-all"
+                >
+                  {/* Platform Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
+                    <div className="flex items-center gap-3">
+                      <SocialIcon
+                        platform={plat.icon}
+                        size={36}
+                        className="w-9 h-9 rounded-xl shadow-xs shrink-0"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-heading font-bold text-zinc-950 dark:text-white">
+                            {plat.name}
+                          </h3>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            {plat.category}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span
+                        className={cn(
+                          "text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1.5 uppercase tracking-wider",
+                          isConfigured
+                            ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 border-transparent"
+                        )}
+                      >
+                        {isConfigured ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            <span>Configured & Ready</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-3 w-3" />
+                            <span>Not Configured</span>
+                          </>
+                        )}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => testSocialPlatform(plat.id)}
+                        disabled={isTestingThis}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition cursor-pointer border border-transparent disabled:opacity-50"
+                      >
+                        {isTestingThis ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-emerald-500" />
+                        ) : (
+                          <Zap className="w-3 h-3 text-amber-500" />
+                        )}
+                        <span>{isTestingThis ? "Testing..." : "Test Readiness"}</span>
+                      </button>
+
+                      <a
+                        href={plat.portalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
+                      >
+                        <span>{plat.docsLabel}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Quick Setup Instructions Tip */}
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] flex items-start gap-2.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <Sparkles className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>{plat.instruction}</span>
+                  </div>
+
+                  {/* Inline Test Result Alert */}
+                  {testResult && (
+                    <div
+                      className={cn(
+                        "p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200",
+                        testResult.status === "ready"
+                          ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-medium"
+                          : "bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400 font-medium"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        {testResult.status === "ready" ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                        )}
+                        <span>{testResult.message}</span>
+                      </div>
+                      {testResult.portal && (
+                        <a
+                          href={testResult.portal}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline hover:no-underline font-mono text-[11px] shrink-0"
+                        >
+                          Open Portal &rarr;
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Input Fields Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {plat.fields.map((field) => {
+                      const maskedVal = maskedKeys[field.key];
+                      const detail = keysDetail[field.key];
+                      const source = detail?.source || (maskedVal ? "Supabase Database" : "Not Configured");
+                      const currentValue = keys[field.key as keyof typeof keys] || "";
+                      const isSecret = field.isSecret;
+                      const isShown = Boolean(showKeys[field.key]);
+
+                      return (
+                        <div key={field.key} className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                              {field.label}
+                            </label>
+                            {maskedVal && (
+                              <span className="text-[10px] font-mono text-emerald-500">Configured</span>
+                            )}
+                          </div>
+
+                          <div className="relative flex items-center">
+                            <input
+                              type={isSecret && !isShown ? "password" : "text"}
+                              value={currentValue}
+                              onChange={(e) =>
+                                setKeys((prev) => ({ ...prev, [field.key]: e.target.value }))
+                              }
+                              placeholder={
+                                maskedVal
+                                  ? `${maskedVal} (${source})`
+                                  : field.placeholder
+                              }
+                              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 pr-10 text-xs text-zinc-950 dark:text-white font-mono placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+                            />
+                            {isSecret && (
+                              <button
+                                type="button"
+                                onClick={() => toggleShow(field.key)}
+                                className="absolute right-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] shrink-0"
+                                title={isShown ? "Hide Secret" : "Show Secret"}
+                              >
+                                {isShown ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-zinc-400 leading-normal">{field.desc}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Save Reminder Card */}
+          <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-white/[0.04] border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+            <div>
+              <div className="font-heading font-bold text-sm">Save & Persist All Social Media Credentials</div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Keys are automatically synced to your Supabase cloud database and encrypted at rest for background scheduled publishing.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-heading font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              <span>{saved ? "Saved to Supabase!" : "Save All Social Keys"}</span>
+            </button>
           </div>
         </div>
       )}
@@ -1355,17 +1971,18 @@ export default function SettingsPage() {
                       Default Image Studio Model
                     </label>
                     <p className="text-xs text-zinc-500">Initial model loaded in Image Studio</p>
-                    <select
+                    <Dropdown
+                      size="sm"
                       value={preferences.defaultImageModel}
-                      onChange={(e) => savePreferences({ ...preferences, defaultImageModel: e.target.value })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    >
-                      <option value="gpt-image-2">GPT Image 2 (OpenAI Flagship)</option>
-                      <option value="imagen_3">Imagen 3 (Google DeepMind)</option>
-                      <option value="flux_pro">Flux.1 Pro (BFL Studio)</option>
-                      <option value="dall-e-3">DALL-E 3 HD</option>
-                      <option value="flux-schnell">Flux Schnell (Speed)</option>
-                    </select>
+                      onChange={(val: any) => savePreferences({ ...preferences, defaultImageModel: val })}
+                      options={[
+                        { value: "gpt-image-2", label: "GPT Image 2 (OpenAI Flagship)", badge: "FLAGSHIP" },
+                        { value: "imagen_3", label: "Imagen 3 (Google DeepMind)", badge: "GOOGLE" },
+                        { value: "flux_pro", label: "Flux.1 Pro (BFL Studio)", badge: "BFL" },
+                        { value: "dall-e-3", label: "DALL-E 3 HD", badge: "OPENAI" },
+                        { value: "flux-schnell", label: "Flux Schnell (Speed)", badge: "FAST" },
+                      ]}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -1373,17 +1990,18 @@ export default function SettingsPage() {
                       Default Video Studio Engine
                     </label>
                     <p className="text-xs text-zinc-500">Initial engine selected in Video Studio</p>
-                    <select
+                    <Dropdown
+                      size="sm"
                       value={preferences.defaultVideoEngine}
-                      onChange={(e) => savePreferences({ ...preferences, defaultVideoEngine: e.target.value })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    >
-                      <option value="ffmpeg_local">FFmpeg Local Hardware (Free • Zero API Cost)</option>
-                      <option value="google_veo">Google Veo 3.1 (Cloud Video)</option>
-                      <option value="kling_v15">Kling AI v1.5 (Pro Cinematic)</option>
-                      <option value="luma_dream">Luma Dream Machine (Dynamic)</option>
-                      <option value="runway_gen3">Runway Gen-3 Alpha</option>
-                    </select>
+                      onChange={(val: any) => savePreferences({ ...preferences, defaultVideoEngine: val })}
+                      options={[
+                        { value: "ffmpeg_local", label: "FFmpeg Local Hardware (Free • Zero API Cost)", badge: "LOCAL" },
+                        { value: "google_veo", label: "Google Veo 3.1 (Cloud Video)", badge: "CLOUD" },
+                        { value: "kling_v15", label: "Kling AI v1.5 (Pro Cinematic)", badge: "PRO" },
+                        { value: "luma_dream", label: "Luma Dream Machine (Dynamic)", badge: "DYNAMIC" },
+                        { value: "runway_gen3", label: "Runway Gen-3 Alpha", badge: "ALPHA" },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

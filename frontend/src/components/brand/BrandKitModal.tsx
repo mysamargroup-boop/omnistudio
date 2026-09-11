@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import Dropdown from "@/components/ui/Dropdown";
+import Spinner from "@/components/ui/Spinner";
 
 export interface BrandKitData {
   brand_name: string;
@@ -191,8 +193,8 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-3 font-mono text-xs text-zinc-500">
-        <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-        <p>Loading Brand Kit Assets...</p>
+        <Spinner size="lg" variant="emerald" />
+        <p className="text-zinc-600 dark:text-zinc-400 font-medium">Loading Brand Kit Assets...</p>
       </div>
     );
   }
@@ -208,11 +210,11 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
-                  Brand Kit & Visual Identity
+                <h2 className="text-lg font-bold font-heading text-zinc-950 dark:text-white tracking-tight">
+                  Brand Kit Studio
                 </h2>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                  IDENTITY
+                  IDENTITY ACTIVE
                 </span>
               </div>
               <p className="text-xs text-zinc-500 font-jakarta mt-0.5">
@@ -228,7 +230,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Spinner size="xs" variant="current" />
             ) : saveSuccess ? (
               <Check className="h-3.5 w-3.5 text-emerald-500" />
             ) : (
@@ -328,7 +330,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <label className="inline-flex items-center gap-2 mt-2.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer shadow-xs active:scale-98">
               {uploadingLogo ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Spinner size="xs" variant="current" />
                   <span>Uploading...</span>
                 </>
               ) : (
@@ -437,18 +439,19 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <Type className="w-3.5 h-3.5 text-emerald-500" />
             Primary Font Identity
           </label>
-          <select
+          <Dropdown
+            size="md"
             value={primaryFont}
-            onChange={(e) => setPrimaryFont(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm border border-black/[0.08] dark:border-white/[0.08] bg-zinc-50 dark:bg-white/[0.03] text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono"
-          >
-            <option value="Inter">Inter (Clean Modern Sans)</option>
-            <option value="Playfair Display">Playfair Display (Editorial Luxury Serif)</option>
-            <option value="Syne">Syne (Avant-Garde Commercial Display)</option>
-            <option value="Cinzel">Cinzel (Cinematic Roman Capital)</option>
-            <option value="JetBrains Mono">JetBrains Mono (High-Tech Developer)</option>
-            <option value="Montserrat">Montserrat (Bold Fashion Geometric)</option>
-          </select>
+            onChange={(val) => setPrimaryFont(val)}
+            options={[
+              { value: "Inter", label: "Inter (Clean Modern Sans)" },
+              { value: "Playfair Display", label: "Playfair Display (Editorial Luxury Serif)" },
+              { value: "Syne", label: "Syne (Avant-Garde Commercial Display)" },
+              { value: "Cinzel", label: "Cinzel (Cinematic Roman Capital)" },
+              { value: "JetBrains Mono", label: "JetBrains Mono (High-Tech Developer)" },
+              { value: "Montserrat", label: "Montserrat (Bold Fashion Geometric)" },
+            ]}
+          />
         </div>
 
         <div className="space-y-1.5">
@@ -456,16 +459,17 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             <Sliders className="w-3.5 h-3.5 text-emerald-500" />
             Heading Stylistic Tone
           </label>
-          <select
+          <Dropdown
+            size="md"
             value={headingStyle}
-            onChange={(e) => setHeadingStyle(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm border border-black/[0.08] dark:border-white/[0.08] bg-zinc-50 dark:bg-white/[0.03] text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500/50 font-mono"
-          >
-            <option value="Modern Sans">Modern Sans (Sleek & Minimal)</option>
-            <option value="Luxury Serif">Luxury Serif (High-End & Opulent)</option>
-            <option value="Bold Display">Bold Display (Punchy & Viral)</option>
-            <option value="Tech Mono">Tech Mono (Futuristic Cyber)</option>
-          </select>
+            onChange={(val) => setHeadingStyle(val)}
+            options={[
+              { value: "Modern Sans", label: "Modern Sans (Sleek & Minimal)" },
+              { value: "Luxury Serif", label: "Luxury Serif (High-End & Opulent)" },
+              { value: "Bold Display", label: "Bold Display (Punchy & Viral)" },
+              { value: "Tech Mono", label: "Tech Mono (Futuristic Cyber)" },
+            ]}
+          />
         </div>
       </div>
 
@@ -535,7 +539,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
           >
             {saving ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner size="xs" variant="current" />
                 <span>Saving Brand Kit...</span>
               </>
             ) : saveSuccess ? (

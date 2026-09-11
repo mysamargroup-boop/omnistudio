@@ -42,6 +42,40 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRY_HOURS: int = 12
 
+    # Social Media API Keys (BYOK Direct Integrations)
+    META_ACCESS_TOKEN: str = ""
+    META_APP_ID: str = ""
+    META_APP_SECRET: str = ""
+    INSTAGRAM_ACCOUNT_ID: str = ""
+    FACEBOOK_PAGE_ID: str = ""
+    
+    TWITTER_API_KEY: str = ""
+    TWITTER_API_SECRET: str = ""
+    TWITTER_BEARER_TOKEN: str = ""
+    TWITTER_ACCESS_TOKEN: str = ""
+    TWITTER_ACCESS_SECRET: str = ""
+    
+    YOUTUBE_API_KEY: str = ""
+    YOUTUBE_CLIENT_ID: str = ""
+    YOUTUBE_CLIENT_SECRET: str = ""
+    YOUTUBE_REFRESH_TOKEN: str = ""
+    
+    LINKEDIN_CLIENT_ID: str = ""
+    LINKEDIN_CLIENT_SECRET: str = ""
+    LINKEDIN_ACCESS_TOKEN: str = ""
+    LINKEDIN_ORGANIZATION_ID: str = ""
+    
+    TIKTOK_CLIENT_KEY: str = ""
+    TIKTOK_CLIENT_SECRET: str = ""
+    TIKTOK_ACCESS_TOKEN: str = ""
+    
+    PINTEREST_APP_ID: str = ""
+    PINTEREST_APP_SECRET: str = ""
+    PINTEREST_ACCESS_TOKEN: str = ""
+    
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+
     # Server settings
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -111,8 +145,16 @@ ALLOWED_CONFIG_KEYS = {
     "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
     "DATABASE_URL", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
     "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "BACKEND_API_TOKEN", "JWT_SECRET",
-    "SUPABASE_JWT_SECRET", "ACCESS_PIN", "ENABLE_LOCAL_AUTH", "ENVIRONMENT",
-    "CORS_ORIGINS", "LOG_LEVEL"
+    "SUPABASE_JWT_SECRET", "ACCESS_PIN", "STUDIO_PASSCODE", "ENABLE_LOCAL_AUTH", "ENVIRONMENT",
+    "CORS_ORIGINS", "LOG_LEVEL",
+    # Social Media API Keys
+    "META_ACCESS_TOKEN", "META_APP_ID", "META_APP_SECRET", "INSTAGRAM_ACCOUNT_ID", "FACEBOOK_PAGE_ID",
+    "TWITTER_API_KEY", "TWITTER_API_SECRET", "TWITTER_BEARER_TOKEN", "TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_SECRET",
+    "YOUTUBE_API_KEY", "YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN",
+    "LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "LINKEDIN_ACCESS_TOKEN", "LINKEDIN_ORGANIZATION_ID",
+    "TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_ACCESS_TOKEN",
+    "PINTEREST_APP_ID", "PINTEREST_APP_SECRET", "PINTEREST_ACCESS_TOKEN",
+    "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",
 }
 
 def save_api_keys(keys: dict[str, str]):
@@ -154,5 +196,15 @@ def get_key_status():
         "r2_storage": bool(settings.R2_ACCESS_KEY_ID and settings.R2_SECRET_ACCESS_KEY),
         "studio_auth": bool(settings.BACKEND_API_TOKEN or settings.JWT_SECRET or settings.SUPABASE_JWT_SECRET),
         "edge_tts": True,  # Free built-in fallback
-        "ffmpeg": True
+        "ffmpeg": True,
+        # Social Media Keys Status
+        "meta": bool(settings.META_ACCESS_TOKEN or (settings.META_APP_ID and settings.META_APP_SECRET)),
+        "instagram": bool(settings.INSTAGRAM_ACCOUNT_ID and (settings.META_ACCESS_TOKEN or settings.META_APP_ID)),
+        "facebook": bool(settings.FACEBOOK_PAGE_ID and (settings.META_ACCESS_TOKEN or settings.META_APP_ID)),
+        "twitter": bool(settings.TWITTER_BEARER_TOKEN or (settings.TWITTER_API_KEY and settings.TWITTER_ACCESS_TOKEN)),
+        "youtube": bool(settings.YOUTUBE_API_KEY or (settings.YOUTUBE_CLIENT_ID and settings.YOUTUBE_REFRESH_TOKEN)),
+        "linkedin": bool(settings.LINKEDIN_ACCESS_TOKEN or (settings.LINKEDIN_CLIENT_ID and settings.LINKEDIN_CLIENT_SECRET)),
+        "tiktok": bool(settings.TIKTOK_ACCESS_TOKEN or (settings.TIKTOK_CLIENT_KEY and settings.TIKTOK_CLIENT_SECRET)),
+        "pinterest": bool(settings.PINTEREST_ACCESS_TOKEN or settings.PINTEREST_APP_ID),
+        "telegram": bool(settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID),
     }

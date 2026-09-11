@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import { 
   Share2, Send, Calendar, Sparkles, Layers, Image as ImageIcon, Video, 
   Clock, CheckCircle2, AlertCircle, RefreshCw, BarChart3, TrendingUp,
   Sliders, Plus, Trash2, Copy, Check, ExternalLink, Zap, Users,
   Globe, MessageSquare, Flame, Smartphone, ChevronRight, Eye, Heart,
-  Repeat, ArrowRight, ShieldCheck, Download
+  Repeat, ArrowRight, ShieldCheck, Download, Upload, FolderArchive, X,
+  Film, Play, Search, FileVideo, Radio, CheckCheck, Key
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import SocialIcon from "@/components/social/SocialIcons";
+import Dropdown from "@/components/ui/Dropdown";
+import ModernScheduleDatePicker from "@/components/social/ModernScheduleDatePicker";
+
 
 // Platforms metadata with brands and colors
 const PLATFORMS = [
@@ -49,6 +53,23 @@ function PublishStudioContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishSuccessMessage, setPublishSuccessMessage] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState(false);
+
+  // Media Staging & Vault Picker State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [vaultTab, setVaultTab] = useState<"all" | "images" | "videos">("all");
+  const [vaultAssets, setVaultAssets] = useState<Array<{ filename: string; url: string; size_mb?: number; media_type: "image" | "video" }>>([]);
+  const [isLoadingVault, setIsLoadingVault] = useState(false);
+  const [vaultSearch, setVaultSearch] = useState("");
+  const [recentAssets, setRecentAssets] = useState<Array<{ filename: string; url: string; size_mb?: number; media_type: "image" | "video" }>>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Cron Scheduler State
+  const [cronStatus, setCronStatus] = useState<any>(null);
+  const [isTriggeringCron, setIsTriggeringCron] = useState(false);
+  const [cronTriggerMessage, setCronTriggerMessage] = useState<string | null>(null);
 
   // Calendar & Posts State
   const [posts, setPosts] = useState<any[]>([]);
@@ -106,14 +127,125 @@ function PublishStudioContent() {
   // Compose Workflow Mode
   const [composePublishMode, setComposePublishMode] = useState<"instant" | "schedule" | "review" | "draft">("instant");
 
-  // Load initial data
+  // Load initial data & poll cron
   useEffect(() => {
     fetchPosts();
     fetchAnalytics();
     fetchAccounts();
     fetchWorkspaces();
     fetchTemplates();
+    fetchCronStatus();
+
+    const interval = setInterval(() => {
+      fetchCronStatus();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchCronStatus = async () => {
+    try {
+      const res = await api.getCronStatus();
+      setCronStatus(res);
+    } catch (e) {
+      console.error("Cron status error:", e);
+    }
+  };
+
+  const handleRunDuePosts = async () => {
+    setIsTriggeringCron(true);
+    setCronTriggerMessage(null);
+    try {
+      const res = await api.runDueScheduledPosts();
+      if (res.success) {
+        setCronTriggerMessage(res.message || `Scheduler executed: ${res.published_count} due post(s) published!`);
+        await Promise.all([fetchPosts(), fetchCronStatus(), fetchAnalytics()]);
+        setTimeout(() => setCronTriggerMessage(null), 6000);
+      } else {
+        setCronTriggerMessage(res.message || "No due posts were found to publish.");
+        setTimeout(() => setCronTriggerMessage(null), 4000);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setCronTriggerMessage("Error triggering cron run.");
+      setTimeout(() => setCronTriggerMessage(null), 4000);
+    } finally {
+      setIsTriggeringCron(false);
+    }
+  };
+
+  const uploadMediaFile = async (file: File) => {
+    setUploadError(null);
+    setIsUploadingMedia(true);
+    try {
+      const res = await api.uploadPublishMedia(file);
+      if (res.success && res.url) {
+        setMediaUrl(res.url);
+        setMediaType(res.media_type === "video" ? "video" : "image");
+        fetchRecentAssets();
+      } else {
+        setUploadError("Failed to upload media file.");
+      }
+    } catch (err: any) {
+      console.error("Media upload error:", err);
+      setUploadError(err?.message || "Failed to upload media");
+    } finally {
+      setIsUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleMediaFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadMediaFile(file);
+  };
+
+  const fetchRecentAssets = async () => {
+    try {
+      const [imgRes, vidRes] = await Promise.allSettled([
+        api.getVaultImages(),
+        api.getVaultVideos()
+      ]);
+      const imagesList = (imgRes.status === "fulfilled" && imgRes.value?.files) 
+        ? imgRes.value.files.map((f: any) => ({ ...f, media_type: "image" as const })) 
+        : [];
+      const videosList = (vidRes.status === "fulfilled" && vidRes.value?.files) 
+        ? vidRes.value.files.map((f: any) => ({ ...f, media_type: "video" as const })) 
+        : [];
+      setRecentAssets([...imagesList, ...videosList].slice(0, 8));
+    } catch (e) {
+      console.error("Failed to load recent assets:", e);
+    }
+  };
+
+  const openVaultPicker = async () => {
+    setIsVaultModalOpen(true);
+    setIsLoadingVault(true);
+    try {
+      const [imgRes, vidRes] = await Promise.allSettled([
+        api.getVaultImages(),
+        api.getVaultVideos()
+      ]);
+      
+      const imagesList = (imgRes.status === "fulfilled" && imgRes.value?.files) 
+        ? imgRes.value.files.map((f: any) => ({ ...f, media_type: "image" as const })) 
+        : [];
+      const videosList = (vidRes.status === "fulfilled" && vidRes.value?.files) 
+        ? vidRes.value.files.map((f: any) => ({ ...f, media_type: "video" as const })) 
+        : [];
+
+      setVaultAssets([...videosList, ...imagesList]);
+    } catch (err) {
+      console.error("Failed to load vault assets:", err);
+    } finally {
+      setIsLoadingVault(false);
+    }
+  };
+
+  const handleSelectVaultAsset = (asset: { url: string; media_type: "image" | "video" }) => {
+    setMediaUrl(asset.url);
+    setMediaType(asset.media_type);
+    setIsVaultModalOpen(false);
+  };
 
   const fetchWorkspaces = async () => {
     try {
@@ -631,27 +763,30 @@ function PublishStudioContent() {
         <div className="flex items-center gap-2.5">
           <Users className="w-3.5 h-3.5 text-zinc-400" />
           <span className="font-semibold text-zinc-500 dark:text-zinc-400">Client Workspace:</span>
-          <select
+          <Dropdown
+            size="sm"
             value={currentWorkspace}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "__new__") {
-                setShowWorkspaceModal(true);
-              } else {
-                setCurrentWorkspace(val);
-                fetchPosts(val);
-              }
+            onChange={(val) => {
+              setCurrentWorkspace(val);
+              fetchPosts(val);
             }}
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-          >
-            <option value="all">All Workspaces (Agency Master View)</option>
-            {workspaces.map((ws) => (
-              <option key={ws.id} value={ws.id}>
-                {ws.name} {ws.client_name ? `• ${ws.client_name}` : ""} {ws.approval_required ? "(Approval Signoff Required)" : ""}
-              </option>
-            ))}
-            <option value="__new__">+ Create New Client Workspace...</option>
-          </select>
+            options={[
+              { value: "all", label: "All Workspaces (Agency Master View)", badge: "MASTER" },
+              ...workspaces.map((ws) => ({
+                value: ws.id,
+                label: ws.name,
+                description: ws.client_name ? `Client: ${ws.client_name}` : undefined,
+                badge: ws.approval_required ? "APPROVAL" : "DIRECT",
+              })),
+            ]}
+            actionItem={{
+              label: "+ Create New Client Workspace...",
+              icon: <Plus className="w-3.5 h-3.5 text-emerald-500" />,
+              onClick: () => setShowWorkspaceModal(true),
+            }}
+            triggerClassName="min-w-[220px] max-w-sm py-1 font-semibold"
+            menuClassName="w-80"
+          />
           <button
             type="button"
             onClick={() => setShowWorkspaceModal(true)}
@@ -745,15 +880,20 @@ function PublishStudioContent() {
                         type="button"
                         onClick={() => togglePlatform(plat.id)}
                         className={cn(
-                          "flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer relative",
+                          "group flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer relative",
                           isSelected
                             ? "border-emerald-500 bg-emerald-500/10 text-zinc-900 dark:text-zinc-100 shadow-xs"
                             : "border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 text-zinc-500 opacity-60 hover:opacity-100"
                         )}
                       >
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500" />
-                        )}
+                        <div className={cn(
+                          "absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center transition-all duration-200 z-10",
+                          isSelected
+                            ? "bg-emerald-500 text-black dark:text-zinc-950 ring-2 ring-emerald-500/20 shadow-xs scale-100"
+                            : "border border-zinc-300 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 opacity-50 group-hover:opacity-100"
+                        )}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3.5]" />}
+                        </div>
                         <SocialIcon
                           platform={plat.id}
                           size={32}
@@ -776,19 +916,21 @@ function PublishStudioContent() {
                   </h2>
                   <div className="flex items-center gap-2">
                     {templates.length > 0 && (
-                      <select
-                        onChange={(e) => {
-                          const tmpl = templates.find(t => t.id === e.target.value);
+                      <Dropdown
+                        size="sm"
+                        value=""
+                        placeholder="Load Template..."
+                        onChange={(tmplId) => {
+                          const tmpl = templates.find(t => t.id === tmplId);
                           if (tmpl) handleApplyTemplate(tmpl);
                         }}
-                        defaultValue=""
-                        className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
-                      >
-                        <option value="" disabled>Load Template...</option>
-                        {templates.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
+                        options={templates.map(t => ({
+                          value: t.id,
+                          label: t.name,
+                          description: t.platforms ? `${t.platforms.length} platforms` : undefined
+                        }))}
+                        triggerClassName="py-1 min-w-[140px]"
+                      />
                     )}
                     <button
                       type="button"
@@ -822,6 +964,289 @@ function PublishStudioContent() {
                   </div>
                 </div>
 
+                {/* Media Attachment & Staging Area (Prominent Top Section) */}
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) uploadMediaFile(file);
+                  }}
+                  className={cn(
+                    "space-y-3 p-4 rounded-2xl border transition-all",
+                    isDragOver 
+                      ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/30" 
+                      : "bg-white/80 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-800"
+                  )}
+                >
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleMediaFileUpload}
+                    accept="video/mp4,video/quicktime,video/webm,image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                  />
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                        {mediaType === "video" ? <Video className="w-4 h-4 text-violet-500" /> : <ImageIcon className="w-4 h-4 text-emerald-500" />}
+                        Broadcast Creative Asset
+                      </label>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        Upload an image or video, or select directly from your OmniStudio Vault
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-xl text-xs border border-zinc-200/60 dark:border-zinc-700/60">
+                      <button
+                        type="button"
+                        onClick={() => setMediaType("image")}
+                        className={cn(
+                          "px-3 py-1 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5",
+                          mediaType === "image" ? "bg-white dark:bg-zinc-950 text-emerald-600 dark:text-emerald-400 shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                        )}
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        Image Post
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMediaType("video")}
+                        className={cn(
+                          "px-3 py-1 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5",
+                          mediaType === "video" ? "bg-white dark:bg-zinc-950 text-violet-600 dark:text-violet-400 shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                        )}
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        Video / Reel
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Uploading State */}
+                  {isUploadingMedia && (
+                    <div className="py-6 px-4 border border-dashed border-emerald-500/50 bg-emerald-500/5 rounded-xl text-center space-y-2">
+                      <RefreshCw className="w-5 h-5 text-emerald-500 animate-spin mx-auto" />
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Uploading & processing creative media...
+                      </p>
+                      <p className="text-[10px] text-zinc-400">Auto-optimizing for omnichannel distribution</p>
+                    </div>
+                  )}
+
+                  {/* Upload Error Banner */}
+                  {uploadError && !isUploadingMedia && (
+                    <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{uploadError}</span>
+                      </div>
+                      <button type="button" onClick={() => setUploadError(null)} className="cursor-pointer text-zinc-400 hover:text-zinc-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Staged Media Card (When Media Is Selected) */}
+                  {!isUploadingMedia && mediaUrl ? (
+                    <div className="p-3 bg-zinc-50 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-2.5 shadow-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-20 h-20 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center relative group shadow-sm">
+                          {mediaType === "video" ? (
+                            <div className="relative w-full h-full flex items-center justify-center bg-zinc-900">
+                              <video
+                                src={getMediaUrl(mediaUrl)}
+                                className="w-full h-full object-cover"
+                                preload="metadata"
+                              />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Play className="w-5 h-5 text-white fill-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <img
+                              src={getMediaUrl(mediaUrl)}
+                              alt="Staged Media"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
+                              mediaType === "video" ? "bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/30" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                            )}>
+                              {mediaType === "video" ? "Video Creative" : "Image Creative"}
+                            </span>
+                            <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                              {mediaUrl.split("/").pop()}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 mt-1 truncate font-mono">
+                            {mediaUrl}
+                          </p>
+                          <p className="text-[10px] text-emerald-500 font-medium mt-0.5 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Ready for cross-platform distribution
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setMediaUrl("")}
+                          title="Remove media"
+                          className="p-2 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Action Buttons to Change */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-zinc-200/70 dark:border-zinc-800/80">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex-1 py-1.5 px-3 rounded-lg bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                          Replace Media File
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openVaultPicker}
+                          className="flex-1 py-1.5 px-3 rounded-lg bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                        >
+                          <FolderArchive className="w-3.5 h-3.5 text-amber-500" />
+                          Pick from Vault
+                        </button>
+                      </div>
+                    </div>
+                  ) : !isUploadingMedia ? (
+                    /* Empty State / Dropzone with Upload & Vault Options */
+                    <div className="space-y-3">
+                      <div 
+                        className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/60 dark:hover:border-emerald-500/60 rounded-2xl p-4 sm:p-5 text-center transition-all bg-zinc-50/50 dark:bg-zinc-900/30 group cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform">
+                            <FolderArchive className="w-5 h-5" />
+                          </div>
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                          Upload Image / Video or Select from Vault
+                        </h4>
+                        <p className="text-[11px] text-zinc-400 mt-1 max-w-sm mx-auto">
+                          Drag & drop image/video here, or click buttons below. Supports PNG, JPG, WebP, GIF, MP4, MOV, WebM.
+                        </p>
+
+                        <div className="flex flex-wrap items-center justify-center gap-2.5 mt-3.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-4 py-2 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-md"
+                          >
+                            <Upload className="w-4 h-4 text-emerald-400" />
+                            Upload Media File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openVaultPicker}
+                            className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
+                          >
+                            <FolderArchive className="w-4 h-4 text-amber-500" />
+                            Select from Vault
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quick-Pick from Recent Creations */}
+                      {recentAssets.length > 0 && (
+                        <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                              <Sparkles className="w-3 h-3 text-amber-500" />
+                              Quick Select Recent Creations:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={openVaultPicker}
+                              className="text-[10px] text-emerald-500 hover:underline cursor-pointer"
+                            >
+                              View All Vault ({vaultAssets.length || "Browse"}) &rarr;
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                            {recentAssets.map((asset, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setMediaUrl(asset.url);
+                                  setMediaType(asset.media_type);
+                                }}
+                                title={`Click to attach ${asset.filename}`}
+                                className="group relative w-14 h-14 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 transition-all cursor-pointer shadow-xs"
+                              >
+                                {asset.media_type === "video" ? (
+                                  <div className="w-full h-full relative flex items-center justify-center bg-zinc-900">
+                                    <video src={getMediaUrl(asset.url)} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-emerald-500/20 transition">
+                                      <Play className="w-3.5 h-3.5 text-white fill-white" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={getMediaUrl(asset.url)}
+                                    alt={asset.filename}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                )}
+                                <span className={cn(
+                                  "absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 rounded",
+                                  asset.media_type === "video" ? "bg-violet-600 text-white" : "bg-emerald-600 text-white"
+                                )}>
+                                  {asset.media_type === "video" ? "VID" : "IMG"}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Fallback Direct URL input */}
+                      <div className="pt-1">
+                        <input
+                          type="text"
+                          value={mediaUrl}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setMediaUrl(val);
+                            if (val.match(/\.(mp4|mov|webm|mkv)$/i)) {
+                              setMediaType("video");
+                            } else if (val.match(/\.(png|jpg|jpeg|webp|gif)$/i)) {
+                              setMediaType("image");
+                            }
+                          }}
+                          placeholder="Or paste asset URL / path: /outputs/images/... or https://..."
+                          className="w-full px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-mono text-zinc-600 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                     Post Title / Headline
@@ -850,19 +1275,6 @@ function PublishStudioContent() {
                     onChange={(e) => setPostContent(e.target.value)}
                     placeholder="Describe your visual concept, product details, key takeaways, and call to action..."
                     className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    Media URL / Vault Asset Path (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={mediaUrl}
-                    onChange={(e) => setMediaUrl(e.target.value)}
-                    placeholder="/outputs/videos/final_video.mp4 or /outputs/images/render.png"
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-mono text-zinc-600 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -972,25 +1384,33 @@ function PublishStudioContent() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Schedule For Later (Required if scheduling)
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Schedule For Later</span>
+                      </span>
+                      {scheduledDate && (
+                        <span className="text-[10px] font-mono text-emerald-500 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                          Active Dispatch Time
+                        </span>
+                      )}
                     </label>
-                    <input
-                      type="datetime-local"
+                    <ModernScheduleDatePicker
                       value={scheduledDate}
-                      onChange={(e) => setScheduledDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      onChange={setScheduledDate}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
                       Agency Approval Status
                     </label>
-                    <div className="flex items-center gap-2 h-9 px-3 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl text-xs text-zinc-600 dark:text-zinc-400">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      {workspaces.find(w => w.id === currentWorkspace)?.approval_required
-                        ? "Requires Client Sign-off"
-                        : "Direct Auto-Approval Policy"}
+                    <div className="flex items-center gap-2 h-10 px-3 bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-xs text-zinc-600 dark:text-zinc-400">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span className="truncate font-medium">
+                        {workspaces.find(w => w.id === currentWorkspace)?.approval_required
+                          ? "Requires Client Sign-off"
+                          : "Direct Auto-Approval Policy"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1050,20 +1470,22 @@ function PublishStudioContent() {
                     <h3 className="text-xs font-bold uppercase tracking-wider">Live Platform Simulator</h3>
                   </div>
                   {/* Platform selector pill */}
-                  <select
+                  <Dropdown
+                    size="sm"
                     value={previewPlatform}
-                    onChange={(e) => setPreviewPlatform(e.target.value)}
-                    className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
-                  >
-                    {selectedPlatforms.map(pid => {
+                    onChange={(val) => setPreviewPlatform(val)}
+                    options={selectedPlatforms.map(pid => {
                       const plat = PLATFORMS.find(p => p.id === pid);
-                      return (
-                        <option key={pid} value={pid}>
-                          {plat?.name || pid}
-                        </option>
-                      );
+                      return {
+                        value: pid,
+                        label: plat?.name || pid,
+                        icon: <SocialIcon platform={pid} size={15} showBg={false} />,
+                        badge: plat?.aspect,
+                      };
                     })}
-                  </select>
+                    triggerClassName="py-1 min-w-[150px]"
+                    align="right"
+                  />
                 </div>
 
                 {/* Mock Phone Frame */}
@@ -1086,18 +1508,57 @@ function PublishStudioContent() {
                   </div>
 
                   {/* Mock Media Display */}
-                  <div className="aspect-video bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500">
+                  <div className="aspect-video bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500 group">
                     {mediaUrl ? (
-                      mediaType === "video" ? (
-                        <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
-                      ) : (
-                        <img src={getMediaUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover" />
-                      )
+                      <>
+                        {mediaType === "video" ? (
+                          <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={getMediaUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover" />
+                        )}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-[10px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
+                          >
+                            <Upload className="w-3 h-3 text-emerald-400" /> Replace
+                          </button>
+                          <span className="text-zinc-600">|</span>
+                          <button
+                            type="button"
+                            onClick={openVaultPicker}
+                            className="text-[10px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
+                          >
+                            <FolderArchive className="w-3 h-3 text-amber-400" /> Vault
+                          </button>
+                        </div>
+                      </>
                     ) : (
-                      <div className="text-center p-4">
-                        <ImageIcon className="w-8 h-8 mx-auto mb-2 text-zinc-700 opacity-60" />
-                        <div className="text-[11px] font-medium text-zinc-400">Visual Media Canvas</div>
-                        <div className="text-[9px] text-zinc-600">Aspect Ratio: {PLATFORMS.find(p => p.id === previewPlatform)?.aspect}</div>
+                      <div className="text-center p-5 flex flex-col items-center justify-center gap-2">
+                        <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500">
+                          <ImageIcon className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-zinc-300">Visual Media Canvas</div>
+                          <div className="text-[10px] text-zinc-500">Aspect Ratio: {PLATFORMS.find(p => p.id === previewPlatform)?.aspect}</div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-xs"
+                          >
+                            <Upload className="w-3 h-3" /> Upload
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openVaultPicker}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
+                          >
+                            <FolderArchive className="w-3 h-3 text-amber-400" /> Vault
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1164,6 +1625,55 @@ function PublishStudioContent() {
         {/* =================================================================== */}
         {activeTab === "calendar" && (
           <div className="space-y-6">
+            {/* Auto-Scheduler & Cron Heartbeat Banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="relative flex h-3.5 w-3.5 mt-0.5 sm:mt-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      Auto-Scheduler Cron Engine Active
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono font-medium">
+                      Interval: 30s
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+                    {cronStatus?.scheduled_pending ?? posts.filter(p => p.status === "scheduled").length} post(s) queued for scheduled dispatch
+                    {cronStatus?.next_due_post && (
+                      <span className="ml-1 text-zinc-800 dark:text-zinc-200 font-semibold">
+                        • Next due: &quot;{cronStatus.next_due_post.title}&quot; ({new Date(cronStatus.next_due_post.scheduled_at).toLocaleTimeString()})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRunDuePosts}
+                  disabled={isTriggeringCron}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5", isTriggeringCron && "animate-spin")} />
+                  {isTriggeringCron ? "Running Due Posts Check..." : "Run Due Posts Now"}
+                </button>
+              </div>
+            </div>
+
+            {/* Cron Trigger Feedback Message */}
+            {cronTriggerMessage && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{cronTriggerMessage}</span>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold">Omnichannel Content Calendar</h2>
@@ -1869,16 +2379,17 @@ function PublishStudioContent() {
                   <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                     Platform Format
                   </label>
-                  <select
+                  <Dropdown
+                    size="sm"
                     value={thumbFormat}
-                    onChange={(e) => setThumbFormat(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
-                  >
-                    <option value="youtube_16_9">YouTube (16:9 - 1280x720)</option>
-                    <option value="pinterest_2_3">Pinterest (2:3 - 1000x1500)</option>
-                    <option value="linkedin_banner">LinkedIn (1.91:1 - 1200x628)</option>
-                    <option value="instagram_square">Instagram (1:1 - 1080x1080)</option>
-                  </select>
+                    onChange={(val) => setThumbFormat(val)}
+                    options={[
+                      { value: "youtube_16_9", label: "YouTube (16:9 - 1280x720)", badge: "16:9" },
+                      { value: "pinterest_2_3", label: "Pinterest (2:3 - 1000x1500)", badge: "2:3" },
+                      { value: "linkedin_banner", label: "LinkedIn (1.91:1 - 1200x628)", badge: "1.91:1" },
+                      { value: "instagram_square", label: "Instagram (1:1 - 1080x1080)", badge: "1:1" },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
@@ -2055,6 +2566,31 @@ function PublishStudioContent() {
                   Connect and manage publishing credentials across all supported video, social, and messaging channels
                 </p>
               </div>
+            </div>
+
+            {/* Social API Keys BYOK Direct Link Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-zinc-900/60 to-cyan-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <span>Direct BYOK Social Media API Keys</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-400 font-semibold uppercase">BYOK Config</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Configure Meta Graph (Instagram & Facebook), X/Twitter API v2, YouTube Data API, LinkedIn, TikTok, Pinterest, and Telegram bot credentials in Settings.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/settings?tab=social_media"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-heading transition shrink-0 cursor-pointer shadow-sm"
+              >
+                <span>Open Social Media Settings</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2293,6 +2829,200 @@ function PublishStudioContent() {
                   className="px-4 py-2 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-xs font-bold cursor-pointer disabled:opacity-50 transition shadow-sm"
                 >
                   Save Template
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vault Media Picker Modal */}
+        {isVaultModalOpen && (
+          <div 
+            onClick={() => setIsVaultModalOpen(false)}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 cursor-pointer"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-[#0c0d14] rounded-2xl max-w-4xl w-full border border-zinc-200 dark:border-zinc-800 shadow-2xl cursor-default font-jakarta flex flex-col max-h-[85vh] overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                    <FolderArchive className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
+                      OmniStudio Vault Media Picker
+                    </h3>
+                    <p className="text-xs text-zinc-500">
+                      Select any previously rendered image or video from your Vault storage to publish
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsVaultModalOpen(false)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="p-3 sm:px-5 sm:py-3 bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={vaultSearch}
+                    onChange={(e) => setVaultSearch(e.target.value)}
+                    placeholder="Search by file name..."
+                    className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* Tab Pills */}
+                <div className="flex items-center gap-1 bg-zinc-200/70 dark:bg-zinc-800/70 p-0.5 rounded-xl text-xs self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setVaultTab("all")}
+                    className={cn(
+                      "px-3 py-1 rounded-lg font-medium transition cursor-pointer text-xs",
+                      vaultTab === "all" ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-bold shadow-xs" : "text-zinc-500"
+                    )}
+                  >
+                    All ({vaultAssets.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVaultTab("videos")}
+                    className={cn(
+                      "px-3 py-1 rounded-lg font-medium transition cursor-pointer text-xs flex items-center gap-1",
+                      vaultTab === "videos" ? "bg-white dark:bg-zinc-950 text-violet-600 dark:text-violet-400 font-bold shadow-xs" : "text-zinc-500"
+                    )}
+                  >
+                    <Video className="w-3 h-3" />
+                    Videos ({vaultAssets.filter(a => a.media_type === "video").length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVaultTab("images")}
+                    className={cn(
+                      "px-3 py-1 rounded-lg font-medium transition cursor-pointer text-xs flex items-center gap-1",
+                      vaultTab === "images" ? "bg-white dark:bg-zinc-950 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs" : "text-zinc-500"
+                    )}
+                  >
+                    <ImageIcon className="w-3 h-3" />
+                    Images ({vaultAssets.filter(a => a.media_type === "image").length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Assets Grid */}
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 min-h-[300px]">
+                {isLoadingVault ? (
+                  <div className="h-64 flex flex-col items-center justify-center text-zinc-400 gap-2">
+                    <RefreshCw className="w-6 h-6 animate-spin text-emerald-500" />
+                    <span className="text-xs">Loading assets from Vault storage...</span>
+                  </div>
+                ) : (
+                  (() => {
+                    const filtered = vaultAssets.filter(item => {
+                      if (vaultTab === "videos" && item.media_type !== "video") return false;
+                      if (vaultTab === "images" && item.media_type !== "image") return false;
+                      if (vaultSearch.trim() && !item.filename.toLowerCase().includes(vaultSearch.toLowerCase())) {
+                        return false;
+                      }
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="h-64 flex flex-col items-center justify-center text-center p-6 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                          <FolderArchive className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mb-2" />
+                          <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">No media found</h4>
+                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                            {vaultSearch ? "No assets matched your search term" : "Render some images or videos in the Image/Video Studio first!"}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                        {filtered.map((asset, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => handleSelectVaultAsset(asset)}
+                            className="group relative border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-xl overflow-hidden bg-zinc-50 dark:bg-zinc-900/60 transition cursor-pointer flex flex-col"
+                          >
+                            {/* Media Preview Box */}
+                            <div className="aspect-square w-full bg-black relative overflow-hidden flex items-center justify-center">
+                              {asset.media_type === "video" ? (
+                                <div className="relative w-full h-full flex items-center justify-center bg-zinc-950">
+                                  <video
+                                    src={getMediaUrl(asset.url)}
+                                    className="w-full h-full object-cover"
+                                    preload="metadata"
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition flex items-center justify-center">
+                                    <Play className="w-6 h-6 text-white fill-white drop-shadow-md" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <img
+                                  src={getMediaUrl(asset.url)}
+                                  alt={asset.filename}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = "none";
+                                  }}
+                                />
+                              )}
+
+                              {/* Badge */}
+                              <span className={cn(
+                                "absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider backdrop-blur-xs",
+                                asset.media_type === "video" 
+                                  ? "bg-violet-600/90 text-white" 
+                                  : "bg-emerald-600/90 text-white"
+                              )}>
+                                {asset.media_type === "video" ? "Video" : "Image"}
+                              </span>
+                            </div>
+
+                            {/* Info */}
+                            <div className="p-2.5 flex-1 flex flex-col justify-between">
+                              <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate" title={asset.filename}>
+                                {asset.filename}
+                              </p>
+                              <div className="flex items-center justify-between mt-1 text-[10px] text-zinc-400">
+                                <span>{asset.size_mb ? `${asset.size_mb} MB` : "Ready"}</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold group-hover:underline">
+                                  Select →
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-3 sm:px-5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-400 bg-zinc-50/50 dark:bg-zinc-950">
+                <span>Showing {vaultAssets.length} assets from OmniStudio Vault</span>
+                <button
+                  type="button"
+                  onClick={() => setIsVaultModalOpen(false)}
+                  className="px-4 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold cursor-pointer text-zinc-700 dark:text-zinc-300"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

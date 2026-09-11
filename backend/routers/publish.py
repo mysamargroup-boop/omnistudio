@@ -383,3 +383,26 @@ async def run_cron_scheduler_now():
         "message": f"Processed {len(executed)} due scheduled posts."
     }
 
+# -----------------------------------------------------------------------------
+# Social Media BYOK API Status & Readiness Endpoints
+# -----------------------------------------------------------------------------
+@router.get("/social-keys/status")
+async def get_social_keys_status():
+    """Returns the configuration readiness of all supported social media networks."""
+    from services.social_api_client import get_platform_key_details
+    details = get_platform_key_details()
+    return {
+        "success": True,
+        "platforms": details,
+        "total_configured": sum(1 for p in details.values() if p["ready"]),
+        "total_supported": len(details)
+    }
+
+@router.post("/social-keys/test/{platform}")
+async def test_social_platform_api(platform: str):
+    """Verifies whether required API keys are configured and ready for the platform."""
+    from services.social_api_client import test_platform_readiness
+    result = test_platform_readiness(platform)
+    return result
+
+

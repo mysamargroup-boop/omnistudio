@@ -260,21 +260,39 @@ OFFICIAL_RATE_CARDS = [
     }
 ]
 
+_USAGE_CACHE: Optional[Dict[str, Any]] = None
+_USAGE_CACHE_MTIME: float = 0.0
+
 def load_usage_data() -> Dict[str, Any]:
-    with usage_lock():
-        if not USAGE_FILE.exists():
-            initial = {
-                "version": "1.0",
-                "last_updated": datetime.utcnow().isoformat(),
-                "records": []
-            }
-            _atomic_write_usage(initial)
-            return initial
+    global _USAGE_CACHE, _USAGE_CACHE_MTIME
+    if not USAGE_FILE.exists():
+        initial = {
+            "version": "1.0",
+            "last_updated": datetime.utcnow().isoformat(),
+            "records": []
+        }
         try:
-            with open(USAGE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with usage_lock():
+                _atomic_write_usage(initial)
         except Exception:
-            return {"version": "1.0", "last_updated": datetime.utcnow().isoformat(), "records": []}
+            pass
+        _USAGE_CACHE = initial
+        _USAGE_CACHE_MTIME = USAGE_FILE.stat().st_mtime if USAGE_FILE.exists() else 0.0
+        return initial
+
+    try:
+        current_mtime = USAGE_FILE.stat().st_mtime
+        if _USAGE_CACHE is not None and current_mtime == _USAGE_CACHE_MTIME:
+            return _USAGE_CACHE
+        with open(USAGE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            _USAGE_CACHE = data
+            _USAGE_CACHE_MTIME = current_mtime
+            return data
+    except Exception:
+        if _USAGE_CACHE is not None:
+            return _USAGE_CACHE
+        return {"version": "1.0", "last_updated": datetime.utcnow().isoformat(), "records": []}
 
 
 def _atomic_write_usage(data: Dict[str, Any]) -> None:
@@ -299,9 +317,12 @@ def _atomic_write_usage(data: Dict[str, Any]) -> None:
 
 
 def save_usage_data(data: Dict[str, Any]):
+    global _USAGE_CACHE, _USAGE_CACHE_MTIME
     data["last_updated"] = datetime.utcnow().isoformat()
     with usage_lock():
         _atomic_write_usage(data)
+    _USAGE_CACHE = data
+    _USAGE_CACHE_MTIME = USAGE_FILE.stat().st_mtime if USAGE_FILE.exists() else 0.0
 
 def calculate_spend(
     service_type: str,

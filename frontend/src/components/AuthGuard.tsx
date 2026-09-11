@@ -9,6 +9,8 @@ import PageTransition from "@/components/PageTransition";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import Spinner from "@/components/ui/Spinner";
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const pathname = usePathname();
@@ -32,14 +34,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#07070a] text-white">
         <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-300">
-          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center shadow-2xl">
-            <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.1] flex items-center justify-center shadow-2xl backdrop-blur-md">
+            <Spinner size="md" variant="emerald" />
           </div>
           <div className="text-center space-y-1">
             <p className="text-xs font-mono font-bold tracking-[0.25em] text-zinc-300 uppercase">
               OmniStudio Workstation
             </p>
-            <p className="text-[10px] font-mono text-zinc-600">Verifying Security Credentials...</p>
+            <p className="text-[10px] font-mono text-zinc-500">Verifying Security Credentials...</p>
           </div>
         </div>
       </div>

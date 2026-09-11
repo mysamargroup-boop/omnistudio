@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import Dropdown from "@/components/ui/Dropdown";
 
 export interface PrecisionVideoEditorProps {
   videoUrl?: string;
@@ -1162,34 +1163,36 @@ export default function PrecisionVideoEditor({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[10px] font-mono text-zinc-400 block mb-1">Language</label>
-                    <select
+                    <Dropdown
+                      size="sm"
                       value={captionLang}
-                      onChange={(e) => setCaptionLang(e.target.value)}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-hidden focus:border-emerald-500"
-                    >
-                      <option value="en">English</option>
-                      <option value="hi">Hindi</option>
-                      <option value="hinglish">Hinglish</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                      <option value="de">German</option>
-                      <option value="ja">Japanese</option>
-                      <option value="zh">Chinese</option>
-                    </select>
+                      onChange={(val) => setCaptionLang(val)}
+                      options={[
+                        { value: "en", label: "English" },
+                        { value: "hi", label: "Hindi" },
+                        { value: "hinglish", label: "Hinglish" },
+                        { value: "es", label: "Spanish" },
+                        { value: "fr", label: "French" },
+                        { value: "de", label: "German" },
+                        { value: "ja", label: "Japanese" },
+                        { value: "zh", label: "Chinese" },
+                      ]}
+                    />
                   </div>
 
                   <div>
                     <label className="text-[10px] font-mono text-zinc-400 block mb-1">Animation Style</label>
-                    <select
+                    <Dropdown
+                      size="sm"
                       value={captionStyle}
-                      onChange={(e) => setCaptionStyle(e.target.value as any)}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-hidden focus:border-emerald-500"
-                    >
-                      <option value="karaoke_glow">Karaoke Glow</option>
-                      <option value="tiktok_bold">TikTok Bold Yellow</option>
-                      <option value="clean_modern">Clean Modern</option>
-                      <option value="classic_bar">Classic Cinema Bar</option>
-                    </select>
+                      onChange={(val) => setCaptionStyle(val as any)}
+                      options={[
+                        { value: "karaoke_glow", label: "Karaoke Glow", badge: "GLOW" },
+                        { value: "tiktok_bold", label: "TikTok Bold Yellow", badge: "TIKTOK" },
+                        { value: "clean_modern", label: "Clean Modern", badge: "CLEAN" },
+                        { value: "classic_bar", label: "Classic Cinema Bar", badge: "BAR" },
+                      ]}
+                    />
                   </div>
                 </div>
 

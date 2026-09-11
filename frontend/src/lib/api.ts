@@ -486,10 +486,15 @@ export const api = {
   uploadPublishMedia: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetchApiFormData<any>("/api/publish/upload-media", formData);
+    return fetchApi<any>("/api/publish/upload-media", { method: "POST", body: formData });
   },
   getCronStatus: () =>
     fetchApi<any>("/api/publish/cron/status"),
   runDueScheduledPosts: () =>
     fetchApi<any>("/api/publish/cron/run", { method: "POST" }),
+  getSocialKeysStatus: () =>
+    fetchApi<any>("/api/publish/social-keys/status"),
+  testSocialPlatformApi: (platform: string) =>
+    fetchApi<any>(`/api/publish/social-keys/test/${platform}`, { method: "POST" }),
 };
+

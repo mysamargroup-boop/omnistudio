@@ -22,6 +22,33 @@ class KeysUpdateRequest(BaseModel):
     R2_SECRET_ACCESS_KEY: Optional[str] = None
     R2_BUCKET_NAME: Optional[str] = None
     R2_PUBLIC_DOMAIN: Optional[str] = None
+    # Social Media API Keys
+    META_ACCESS_TOKEN: Optional[str] = None
+    META_APP_ID: Optional[str] = None
+    META_APP_SECRET: Optional[str] = None
+    INSTAGRAM_ACCOUNT_ID: Optional[str] = None
+    FACEBOOK_PAGE_ID: Optional[str] = None
+    TWITTER_API_KEY: Optional[str] = None
+    TWITTER_API_SECRET: Optional[str] = None
+    TWITTER_BEARER_TOKEN: Optional[str] = None
+    TWITTER_ACCESS_TOKEN: Optional[str] = None
+    TWITTER_ACCESS_SECRET: Optional[str] = None
+    YOUTUBE_API_KEY: Optional[str] = None
+    YOUTUBE_CLIENT_ID: Optional[str] = None
+    YOUTUBE_CLIENT_SECRET: Optional[str] = None
+    YOUTUBE_REFRESH_TOKEN: Optional[str] = None
+    LINKEDIN_CLIENT_ID: Optional[str] = None
+    LINKEDIN_CLIENT_SECRET: Optional[str] = None
+    LINKEDIN_ACCESS_TOKEN: Optional[str] = None
+    LINKEDIN_ORGANIZATION_ID: Optional[str] = None
+    TIKTOK_CLIENT_KEY: Optional[str] = None
+    TIKTOK_CLIENT_SECRET: Optional[str] = None
+    TIKTOK_ACCESS_TOKEN: Optional[str] = None
+    PINTEREST_APP_ID: Optional[str] = None
+    PINTEREST_APP_SECRET: Optional[str] = None
+    PINTEREST_ACCESS_TOKEN: Optional[str] = None
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_CHAT_ID: Optional[str] = None
 
 class TestDbRequest(BaseModel):
     database_url: Optional[str] = None
@@ -72,7 +99,15 @@ async def get_keys(request: Request):
 
     KEY_NAMES = [
         "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
-        "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "DATABASE_URL"
+        "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "DATABASE_URL",
+        # Social Media API Keys
+        "META_ACCESS_TOKEN", "META_APP_ID", "META_APP_SECRET", "INSTAGRAM_ACCOUNT_ID", "FACEBOOK_PAGE_ID",
+        "TWITTER_API_KEY", "TWITTER_API_SECRET", "TWITTER_BEARER_TOKEN", "TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_SECRET",
+        "YOUTUBE_API_KEY", "YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN",
+        "LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "LINKEDIN_ACCESS_TOKEN", "LINKEDIN_ORGANIZATION_ID",
+        "TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_ACCESS_TOKEN",
+        "PINTEREST_APP_ID", "PINTEREST_APP_SECRET", "PINTEREST_ACCESS_TOKEN",
+        "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",
     ]
 
     masked = {}
