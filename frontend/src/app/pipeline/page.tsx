@@ -91,6 +91,11 @@ function PipelineContent() {
   const [statusText, setStatusText] = useState("");
   const [result, setResult] = useState<any>(null);
   const [enhancing, setEnhancing] = useState(false);
+  const [pipelineMode, setPipelineMode] = useState<"auto" | "director">("auto");
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [motionPrompt, setMotionPrompt] = useState("Slow cinematic push-in zoom with gentle pan right");
+  const [voiceScript, setVoiceScript] = useState("");
+  const [draftingPrompts, setDraftingPrompts] = useState(false);
 
   // Smooth Scrolling Section Refs
   const deskRef = useRef<HTMLDivElement>(null);
@@ -150,8 +155,29 @@ function PipelineContent() {
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmDetails, setConfirmDetails] = useState<GenerationConfirmDetails | null>(null);
 
+  const handleDraftPrompts = async () => {
+    const promptIdea = topic.trim() || "Cinematic sci-fi explorer discovering a lost alien civilization";
+    setDraftingPrompts(true);
+    try {
+      const res = await api.draftPipelinePrompts({ topic: promptIdea, style });
+      if (res && res.image_prompt) {
+        setImagePrompt(res.image_prompt);
+        setMotionPrompt(res.motion_prompt || "Slow cinematic push-in zoom with gentle pan right");
+        setVoiceScript(res.voice_script || "");
+      }
+    } catch (err: any) {
+      console.error("Failed to draft prompts:", err);
+      setImagePrompt(`${promptIdea}, 35mm anamorphic cinematography, volumetric fog, dramatic rim lighting, cinematic 8k masterpiece`);
+      setMotionPrompt("Slow cinematic push-in zoom with gentle pan right");
+      setVoiceScript("In the silence of the cosmos, the forgotten mysteries of the past finally begin to reveal themselves.");
+    } finally {
+      setDraftingPrompts(false);
+    }
+  };
+
   const requestPipelineConfirm = () => {
-    if (!topic.trim()) return;
+    const mainPrompt = pipelineMode === "director" ? (imagePrompt.trim() || topic.trim()) : topic.trim();
+    if (!mainPrompt) return;
     const isEdge = voiceProvider === "edge";
     const costPerScene = isEdge ? 0.04 : 0.06;
     const costUsd = costPerScene * scenes;
@@ -166,8 +192,9 @@ function PipelineContent() {
       isFree: false,
       costUsd,
       costInr,
-      prompt: topic.trim(),
+      prompt: mainPrompt,
       specs: {
+        mode: pipelineMode === "director" ? "Director Multi-Prompt Mode" : "Auto Storyboard",
         sceneCount: `${scenes} Scenes`,
         aspectRatio,
         style,
@@ -207,13 +234,14 @@ function PipelineContent() {
   };
 
   const run = async () => {
-    if (!topic.trim()) return;
+    const mainTopic = pipelineMode === "director" ? (imagePrompt.trim() || topic.trim()) : topic.trim();
+    if (!mainTopic) return;
     setLoading(true);
     setResult(null);
     setProgress(5);
     setCurrentStep(0);
     setStageTitle("01 • Initializing Autonomous Agent");
-    setStatusText("Drafting screenplay & scene visual compositions...");
+    setStatusText(pipelineMode === "director" ? "Executing custom directorial stage prompts..." : "Drafting screenplay & scene visual compositions...");
     setElapsedSeconds(0);
     // Smooth scroll down to live production stage
     setTimeout(() => {
@@ -221,7 +249,7 @@ function PipelineContent() {
     }, 120);
     const nowTime = new Date().toTimeString().split(" ")[0];
     setTelemetryLogs([
-      { timestamp: nowTime, message: `Initialized Autonomous Cinema Pipeline for: "${topic.slice(0, 45)}..."` }
+      { timestamp: nowTime, message: `Initialized Autonomous Cinema Pipeline for: "${mainTopic.slice(0, 45)}..."` }
     ]);
 
     const startTimestamp = Date.now();
@@ -234,13 +262,16 @@ function PipelineContent() {
 
     try {
       const streamResult = await api.runPipelineStream({
-        topic,
+        topic: mainTopic,
         num_scenes: scenes,
         style,
         image_model: imageModel,
         aspect_ratio: aspectRatio,
         voice_provider: voiceProvider,
-        enhance_prompts: true,
+        enhance_prompts: pipelineMode !== "director",
+        image_prompt: pipelineMode === "director" ? imagePrompt.trim() : undefined,
+        motion_prompt: pipelineMode === "director" ? motionPrompt.trim() : undefined,
+        voice_script: pipelineMode === "director" ? voiceScript.trim() : undefined,
       }, (event: any) => {
         if (typeof event.progress === "number") {
           setProgress(event.progress);
@@ -550,63 +581,224 @@ function PipelineContent() {
               </div>
             </div>
 
-            {/* ── BOTTOM PART: SCREENPLAY NARRATIVE DIRECTIVE (Prompt Box on Bottom) ── */}
-            <div className="space-y-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
-              <div className="flex items-center justify-between font-mono">
+            {/* ── BOTTOM PART: SCREENPLAY NARRATIVE DIRECTIVE (Mode Switcher + Prompt Boxes) ── */}
+            <div className="space-y-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <label className="text-[11px] text-zinc-700 dark:text-zinc-300 uppercase tracking-widest font-bold">
-                    02 • SCREENPLAY NARRATIVE DIRECTIVE
+                    02 • DIRECTORIAL NARRATIVE & STEP PROMPTS
                   </label>
                 </div>
-                <div className="flex items-center gap-2">
-                  {topic.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => setTopic("")}
-                      className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer px-2 py-1 rounded"
-                    >
-                      Clear
-                    </button>
-                  )}
+
+                {/* Mode Selector Tabs: Auto Storyboard vs Multi-Prompt Director */}
+                <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700/60">
                   <button
                     type="button"
-                    onClick={enhancePrompt}
-                    disabled={enhancing || !topic.trim()}
-                    className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white transition-colors cursor-pointer border border-emerald-300 dark:border-emerald-500/30 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-40"
+                    onClick={() => setPipelineMode("auto")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer",
+                      pipelineMode === "auto"
+                        ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-xs"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    )}
                   >
-                    <Wand2 className={cn("h-3 w-3", enhancing && "animate-spin")} />
-                    <span>{enhancing ? "ENHANCING SCRIPT..." : "AI SCRIPT ENHANCE"}</span>
+                    <Sparkles className="w-3 h-3 text-emerald-500" />
+                    <span>Single Topic (Auto)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPipelineMode("director");
+                      if (!imagePrompt && topic) {
+                        setImagePrompt(topic);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer",
+                      pipelineMode === "director"
+                        ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    <Clapperboard className="w-3 h-3 text-emerald-500" />
+                    <span>Director Multi-Prompt</span>
                   </button>
                 </div>
               </div>
 
-              <textarea
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone..."
-                className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed"
-              />
+              {/* MODE 1: SINGLE TOPIC AUTO-STORYBOARD */}
+              {pipelineMode === "auto" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="text-[10px] text-zinc-500">
+                      Enter a high-level story concept — the AI Director will automatically script scenes, generate keyframes, compute kinematics, and dub voiceover.
+                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {topic.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setTopic("")}
+                          className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer px-2 py-1 rounded"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={enhancePrompt}
+                        disabled={enhancing || !topic.trim()}
+                        className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white transition-colors cursor-pointer border border-emerald-300 dark:border-emerald-500/30 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-40"
+                      >
+                        <Wand2 className={cn("h-3 w-3", enhancing && "animate-spin")} />
+                        <span>{enhancing ? "ENHANCING SCRIPT..." : "AI SCRIPT ENHANCE"}</span>
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Inspiration Presets */}
-              <div className="pt-1 space-y-2 font-mono">
-                <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
-                  QUICK INSPIRATION PRESETS:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {PRESETS.map((p, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setTopic(p.text)}
-                      className="text-[10px] px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span className="font-bold text-emerald-500">[{p.genre}]</span>
-                      <span className="truncate max-w-[220px]">{p.text}</span>
-                    </button>
-                  ))}
+                  <textarea
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone..."
+                    className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed"
+                  />
+
+                  {/* Inspiration Presets */}
+                  <div className="pt-1 space-y-2 font-mono">
+                    <span className="text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
+                      QUICK INSPIRATION PRESETS:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {PRESETS.map((p, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setTopic(p.text)}
+                          className="text-[10px] px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-white/[0.04] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-300 dark:hover:border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span className="font-bold text-emerald-500">[{p.genre}]</span>
+                          <span className="truncate max-w-[220px]">{p.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* MODE 2: DIRECTOR MULTI-PROMPT MODE (Image + Motion + Voice boxes) */}
+              {pipelineMode === "director" && (
+                <div className="space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                    <div>
+                      <span className="text-xs font-heading font-bold text-emerald-950 dark:text-emerald-100 block">
+                        Sequential Directorial Stage Control
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300">
+                        Write custom prompts for each generation stage, or auto-decompose from your idea.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDraftPrompts}
+                      disabled={draftingPrompts}
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[11px] font-mono font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      <Sparkles className={cn("w-3.5 h-3.5", draftingPrompts && "animate-spin")} />
+                      <span>{draftingPrompts ? "DRAFTING PROMPTS..." : "⚡ AUTO-DRAFT STEP PROMPTS"}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Prompt Box 1: Visual Image Diffusion */}
+                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-mono">
+                          <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
+                          <label className="text-[11px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                            STEP 1 • KEYFRAME IMAGE PROMPT (DIFFUSION)
+                          </label>
+                        </div>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                          VISUAL KEYFRAME
+                        </span>
+                      </div>
+                      <textarea
+                        value={imagePrompt}
+                        onChange={(e) => setImagePrompt(e.target.value)}
+                        placeholder="E.g. Cinematic wide shot of cyberpunk detective in dark rain, neon reflections on wet asphalt, volumetric lighting, Arri Alexa 35mm lens, 8k resolution..."
+                        rows={2}
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-950 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-jakarta resize-none leading-relaxed"
+                      />
+                    </div>
+
+                    {/* Prompt Box 2: Camera Kinematics Dynamics */}
+                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-mono">
+                          <Video className="w-3.5 h-3.5 text-emerald-500" />
+                          <label className="text-[11px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                            STEP 2 • CAMERA KINEMATICS DYNAMICS (MOTION)
+                          </label>
+                        </div>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                          CAMERA VECTOR
+                        </span>
+                      </div>
+                      <textarea
+                        value={motionPrompt}
+                        onChange={(e) => setMotionPrompt(e.target.value)}
+                        placeholder="E.g. Slow cinematic push-in zoom with gentle pan right, smooth optical lens drift..."
+                        rows={2}
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-950 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-jakarta resize-none leading-relaxed"
+                      />
+                      {/* Quick Camera Motion Presets */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[9px] font-mono uppercase text-zinc-400 mr-1">Camera Presets:</span>
+                        {[
+                          { label: "Zoom In", val: "Slow cinematic push-in zoom with steady focus" },
+                          { label: "Zoom Out", val: "Smooth dramatic zoom-out revealing the expansive environment" },
+                          { label: "Pan Right", val: "Smooth cinematic horizontal pan right across the scene" },
+                          { label: "Pan Left", val: "Fluid sweeping pan left following the focal action" },
+                          { label: "Tilt Up", val: "Low angle cinematic tilt up towards the sky and architecture" },
+                          { label: "Orbit CW", val: "Dynamic circular 360 orbit camera around the central subject" },
+                          { label: "Dolly Zoom", val: "Vertigo effect cinematic dolly zoom with perspective shift" },
+                        ].map((m) => (
+                          <button
+                            key={m.label}
+                            type="button"
+                            onClick={() => setMotionPrompt(m.val)}
+                            className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-zinc-200/80 dark:bg-zinc-800 hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                          >
+                            +{m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Prompt Box 3: Neural Voiceover Narration */}
+                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-mono">
+                          <Mic className="w-3.5 h-3.5 text-emerald-500" />
+                          <label className="text-[11px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                            STEP 3 • NEURAL VOICEOVER NARRATION SCRIPT
+                          </label>
+                        </div>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                          {voiceProvider === "edge" ? "EDGE NEURAL (FREE)" : "ELEVENLABS"}
+                        </span>
+                      </div>
+                      <textarea
+                        value={voiceScript}
+                        onChange={(e) => setVoiceScript(e.target.value)}
+                        placeholder="Enter the narration script or spoken monologue to be synthesized by the neural speech engine..."
+                        rows={2}
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-950 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-jakarta resize-none leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Launch Production Command Button */}
@@ -625,7 +817,7 @@ function PipelineContent() {
               <button
                 type="button"
                 onClick={requestPipelineConfirm}
-                disabled={loading || !topic.trim()}
+                disabled={loading || (pipelineMode === "auto" ? !topic.trim() : (!imagePrompt.trim() && !topic.trim()))}
                 className="px-8 py-3.5 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 disabled:opacity-50 transition-all shadow-md active:scale-[0.98] cursor-pointer"
               >
                 {loading ? (
@@ -636,8 +828,7 @@ function PipelineContent() {
                 ) : (
                   <>
                     <Play className="h-4 w-4 fill-current" />
-                    <span>EXECUTE AUTONOMOUS PIPELINE</span>
-                    <ChevronRight className="h-4 w-4" />
+                    <span>{pipelineMode === "director" ? "EXECUTE DIRECTORIAL PIPELINE" : "EXECUTE AUTONOMOUS PIPELINE"}</span>
                   </>
                 )}
               </button>

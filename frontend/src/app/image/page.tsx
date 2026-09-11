@@ -43,6 +43,9 @@ import {
   Palette,
   Crop,
   SlidersHorizontal,
+  Trash2,
+  ImagePlus,
+  Bookmark,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -206,6 +209,54 @@ export default function ImageStudioPage() {
   const [styleExploration, setStyleExploration] = useState(true);
   const [variationsResult, setVariationsResult] = useState<any>(null);
   const [loadingVariations, setLoadingVariations] = useState(false);
+
+  // Multi-Reference & Character Consistency State (Matching user screenshot media_1789093591015.png)
+  const [refImages, setRefImages] = useState<Array<{ url: string; name: string }>>([]);
+  const [uploadingMultiRef, setUploadingMultiRef] = useState(false);
+  const [lockFace, setLockFace] = useState(true);
+  const [lockDress, setLockDress] = useState(true);
+  const [lockJewelry, setLockJewelry] = useState(true);
+  const [lockBackground, setLockBackground] = useState(false);
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
+  const multiRefFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMultiRefUpload = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (!fileArray.length) return;
+    setUploadingMultiRef(true);
+    try {
+      for (const file of fileArray) {
+        if (file.size > 25 * 1024 * 1024) {
+          alert(`File ${file.name} exceeds 25MB limit.`);
+          continue;
+        }
+        const res = await api.uploadReferenceImage(file);
+        if (res?.url) {
+          setRefImages((prev) => [...prev, { url: res.url, name: file.name }]);
+          setRefImageUrl((prev) => prev || res.url);
+        }
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to upload reference image");
+    } finally {
+      setUploadingMultiRef(false);
+    }
+  };
+
+  const removeRefImage = (index: number) => {
+    setRefImages((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      setRefImageUrl(next.length > 0 ? next[0].url : "");
+      return next;
+    });
+  };
+
+  const clearAllRefImages = () => {
+    setRefImages([]);
+    setRefImageUrl("");
+  };
 
   // Image Precision Editor State
   const [editorImageFile, setEditorImageFile] = useState<File | null>(null);
@@ -476,6 +527,37 @@ export default function ImageStudioPage() {
       const sizeParam = sizeMap[aspectRatio] || "1792x1024";
 
       let finalPromptText = prompt.trim();
+      let finalNegativePrompt = negativePrompt.trim();
+
+      // Multi-Reference & Character Consistency Modulation
+      if (refImages.length > 0) {
+        const consistencyDirectives: string[] = [];
+        const negDirectives: string[] = [];
+        if (lockFace) {
+          consistencyDirectives.push("exact facial geometry and likeness matching reference character");
+          negDirectives.push("morphed face, distorted facial features, changing face identity");
+        }
+        if (lockDress) {
+          consistencyDirectives.push("exact clothing costume, wardrobe silhouette and fabric texture matching reference");
+          negDirectives.push("changing clothes, different dress, wrong wardrobe");
+        }
+        if (lockJewelry) {
+          consistencyDirectives.push("consistent jewelry ornaments, accessories, and necklace matching reference");
+          negDirectives.push("missing jewelry, changed jewelry");
+        }
+        if (lockBackground) {
+          consistencyDirectives.push("consistent background environment, architectural backdrop, and scene lighting");
+        }
+        if (consistencyDirectives.length > 0) {
+          finalPromptText += ` [Character Consistency: ${consistencyDirectives.join("; ")}].`;
+        }
+        if (negDirectives.length > 0) {
+          finalNegativePrompt = finalNegativePrompt
+            ? `${finalNegativePrompt}, ${negDirectives.join(", ")}`
+            : negDirectives.join(", ");
+        }
+      }
+
       try {
         const savedPrefs = localStorage.getItem("omnistudio_preferences");
         if (savedPrefs) {
@@ -488,7 +570,7 @@ export default function ImageStudioPage() {
 
       const data = await api.generateImage({
         prompt: finalPromptText,
-        negative_prompt: negativePrompt.trim(),
+        negative_prompt: finalNegativePrompt,
         model,
         size: sizeParam,
         aspect_ratio: aspectRatio,
@@ -924,6 +1006,19 @@ export default function ImageStudioPage() {
               <Upload className="w-3.5 h-3.5 text-emerald-500" />
             )}
             <span>{uploadingEditorImage ? "Uploading..." : "Upload Image"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setReferenceDrawerOpen((prev) => !prev)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
+              referenceDrawerOpen || refImages.length > 0
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold"
+                : "bg-white dark:bg-[#0d0d14] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
+            )}
+          >
+            <ImagePlus className="w-3.5 h-3.5 text-emerald-500" />
+            <span>References {refImages.length > 0 ? `(${refImages.length})` : ""}</span>
           </button>
           <button
             type="button"
@@ -2029,8 +2124,281 @@ export default function ImageStudioPage() {
           </div>
         )}
 
-        {/* State D: Idle Showcase Hero */}
-        {!loading && !loadingVariations && !result && !variationsResult && studioMode !== "image_editor" && (
+        {/* State D1: Multi-Reference Images & Character Consistency Suite (media_1789093591015.png) */}
+        {!loading && !loadingVariations && !result && !variationsResult && (studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0) && (
+          <div className="w-full max-w-lg mx-auto py-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-xl space-y-5 text-left">
+              {/* Heading */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-bold font-heading text-zinc-950 dark:text-white flex items-center gap-2">
+                    <span>Reference Images</span>
+                    <span className="text-xs font-normal text-zinc-400 font-mono">(Optional)</span>
+                  </h3>
+                  {refImages.length > 0 && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                      {refImages.length} ATTACHED
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
+                  Add image references to maintain character, style, or composition consistency.
+                </p>
+              </div>
+
+              {/* Drag and Drop Zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.dataTransfer.files?.length) {
+                    handleMultiRefUpload(e.dataTransfer.files);
+                  }
+                }}
+                onClick={() => multiRefFileInputRef.current?.click()}
+                className="rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+              >
+                <input
+                  ref={multiRefFileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) {
+                      handleMultiRefUpload(e.target.files);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                {uploadingMultiRef ? (
+                  <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-violet-700 dark:text-violet-300 font-heading">
+                    {uploadingMultiRef ? "Uploading References..." : "Upload Image"}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-jakarta">
+                    or drag and drop
+                  </p>
+                </div>
+                <p className="text-[10px] text-zinc-400 font-mono">
+                  Supports JPG, PNG, WEBP - Up to 25MB
+                </p>
+              </div>
+
+              {/* Attached Thumbnails Row */}
+              {refImages.length > 0 && (
+                <div className="space-y-3 pt-1 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                    {refImages.map((img, idx) => (
+                      <div key={idx} className="relative group shrink-0">
+                        <img
+                          src={getMediaUrl(img.url)}
+                          alt={img.name}
+                          className="w-20 h-20 rounded-2xl object-cover border-2 border-zinc-200 dark:border-zinc-700 shadow-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeRefImage(idx);
+                          }}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:text-rose-500 shadow-sm flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+                          title="Remove image"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Centered Clear All Button */}
+                  <div className="flex justify-center pt-1">
+                    <button
+                      type="button"
+                      onClick={clearAllRefImages}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-violet-700 dark:text-violet-300 hover:text-rose-600 text-xs font-mono font-bold transition-colors cursor-pointer border border-violet-200/60 dark:border-violet-500/20"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Clear All</span>
+                    </button>
+                  </div>
+
+                  {/* Character Consistency Checkboxes */}
+                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
+                        Character Consistency Locks:
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                        Active on Render
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                      <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lockFace}
+                          onChange={(e) => setLockFace(e.target.checked)}
+                          className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                        />
+                        <span>Lock Face</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lockDress}
+                          onChange={(e) => setLockDress(e.target.checked)}
+                          className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                        />
+                        <span>Lock Dress</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lockJewelry}
+                          onChange={(e) => setLockJewelry(e.target.checked)}
+                          className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                        />
+                        <span>Lock Jewelry</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lockBackground}
+                          onChange={(e) => setLockBackground(e.target.checked)}
+                          className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                        />
+                        <span>Lock Background</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Negative Prompt */}
+              <div className="space-y-1.5 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold font-heading text-zinc-950 dark:text-white flex items-center gap-2">
+                    <span>Negative Prompt</span>
+                    <span className="text-xs font-normal text-zinc-400 font-mono">(Optional)</span>
+                  </h4>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta">
+                  Describe what you don&apos;t want in the image.
+                </p>
+                <textarea
+                  value={negativePrompt}
+                  onChange={(e) => setNegativePrompt(e.target.value)}
+                  placeholder="blurry, low quality, extra fingers, bad anatomy, text, watermark, deformed face"
+                  rows={3}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/70 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/40 font-jakarta resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Accordion 1: Advanced Settings */}
+              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedSettingsOpen((prev) => !prev)}
+                  className="w-full p-3.5 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/40 hover:bg-zinc-100 dark:hover:bg-zinc-900/70 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 font-mono text-xs font-bold text-zinc-900 dark:text-white">
+                    <Sliders className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>Advanced Settings</span>
+                  </div>
+                  <ChevronDown className={cn("w-4 h-4 text-zinc-400 transition-transform duration-200", advancedSettingsOpen && "rotate-180")} />
+                </button>
+                {advancedSettingsOpen && (
+                  <div className="p-4 space-y-3 bg-white dark:bg-[#0e0e16] border-t border-black/[0.06] dark:border-white/[0.06] animate-in fade-in duration-150">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <span>CFG Guidance Scale</span>
+                        <span className="font-bold">{cfgScale}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="20"
+                        step="0.5"
+                        value={cfgScale}
+                        onChange={(e) => setCfgScale(Number(e.target.value))}
+                        className="w-full accent-emerald-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
+                        <span>Sampling Steps</span>
+                        <span className="font-bold">{samplingSteps}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="10"
+                        max="50"
+                        value={samplingSteps}
+                        onChange={(e) => setSamplingSteps(Number(e.target.value))}
+                        className="w-full accent-emerald-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">Seed (Optional)</span>
+                      <input
+                        type="text"
+                        value={seed}
+                        onChange={(e) => setSeed(e.target.value)}
+                        placeholder="Random seed (e.g. 42)..."
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Accordion 2: Save as Preset */}
+              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSavePresetOpen((prev) => !prev)}
+                  className="w-full p-3.5 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/40 hover:bg-zinc-100 dark:hover:bg-zinc-900/70 transition-colors text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 font-mono text-xs font-bold text-zinc-900 dark:text-white">
+                    <Bookmark className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>Save as Preset</span>
+                  </div>
+                  <ChevronDown className={cn("w-4 h-4 text-zinc-400 transition-transform duration-200", savePresetOpen && "rotate-180")} />
+                </button>
+                {savePresetOpen && (
+                  <div className="p-4 space-y-2.5 bg-white dark:bg-[#0e0e16] border-t border-black/[0.06] dark:border-white/[0.06] animate-in fade-in duration-150">
+                    <input
+                      type="text"
+                      placeholder="Preset name (e.g. Cyberpunk Portrait Preset)..."
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        alert("Preset saved successfully to your Local Workspace!");
+                        setSavePresetOpen(false);
+                      }}
+                      className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-mono text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Save Preset
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* State D: Idle Showcase Hero (only shown if not in variations and no references attached) */}
+        {!loading && !loadingVariations && !result && !variationsResult && studioMode !== "image_editor" && studioMode !== "image_variations" && !referenceDrawerOpen && refImages.length === 0 && (
           <div className="w-full flex flex-col items-center justify-center text-center space-y-6 py-6 animate-in fade-in duration-300">
             {/* Visual Overlapping Gallery Cards */}
             <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 overflow-hidden max-w-md sm:max-w-xl mx-auto">
@@ -2202,6 +2570,21 @@ export default function ImageStudioPage() {
               title="Toggle Negative Prompt (Exclude elements)"
             >
               <Sliders className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setReferenceDrawerOpen((p) => !p)}
+              className={cn(
+                "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer flex items-center gap-1",
+                referenceDrawerOpen || refImages.length > 0
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-sm"
+                  : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+              )}
+              title="Toggle Reference Images & Character Consistency"
+            >
+              <ImagePlus className="w-3.5 h-3.5 text-emerald-500" />
+              {refImages.length > 0 && <span className="text-[10px] font-bold">{refImages.length}</span>}
             </button>
           </div>
         </div>

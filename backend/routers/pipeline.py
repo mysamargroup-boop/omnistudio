@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 from pathlib import Path
 from config import settings
-from services.prompt_enhancer import generate_storyboard, enhance_prompt
+from services.prompt_enhancer import generate_storyboard, enhance_prompt, draft_step_prompts
 from services.openai_service import generate_openai_image
 from services.replicate_service import generate_video_from_image
 from services.elevenlabs_service import generate_elevenlabs_speech
@@ -33,6 +33,9 @@ class PipelineRequest(BaseModel):
     enhance_prompts: bool = True
     style: str = "cinematic"
     aspect_ratio: str = "16:9"
+    image_prompt: Optional[str] = None
+    motion_prompt: Optional[str] = None
+    voice_script: Optional[str] = None
 
     @field_validator("topic")
     @classmethod
@@ -129,11 +132,23 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
 
     await notify("init", 5, 0, f"Initializing Cinema Director Agent for: '{req.topic[:45]}...'")
 
-    # Step 1: Generate Storyboard
-    await notify("storyboard_start", 12, 0, "Drafting 3-act cinematic screenplay & scene compositions...")
-    scenes = await generate_storyboard(req.topic, req.num_scenes)
-    steps.append({"step": 1, "name": "Storyboard", "status": "done", "scenes": len(scenes)})
-    await notify("storyboard_done", 22, 1, f"Director screenplay finalized ({len(scenes)} scenes drafted).", {"scenes": scenes})
+    # Step 1: Generate Storyboard or Use Explicit Step Prompts
+    if req.image_prompt:
+        scenes = [{
+            "scene_number": 1,
+            "title": f"Director Master: {req.topic[:35]}",
+            "visual_prompt": req.image_prompt,
+            "camera_motion": req.motion_prompt or "zoom_in",
+            "duration": 5.0,
+            "narration": req.voice_script or req.topic
+        }]
+        steps.append({"step": 1, "name": "Directorial Prompts", "status": "done", "scenes": 1})
+        await notify("storyboard_done", 22, 1, "Custom stage prompts locked for sequential generation.", {"scenes": scenes})
+    else:
+        await notify("storyboard_start", 12, 0, "Drafting 3-act cinematic screenplay & scene compositions...")
+        scenes = await generate_storyboard(req.topic, req.num_scenes)
+        steps.append({"step": 1, "name": "Storyboard", "status": "done", "scenes": len(scenes)})
+        await notify("storyboard_done", 22, 1, f"Director screenplay finalized ({len(scenes)} scenes drafted).", {"scenes": scenes})
 
     scene_outputs = []
     total_scenes = len(scenes)
@@ -345,6 +360,22 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
 
     await notify("complete", 100, 5, "Cinema Masterpiece Generated Successfully!", {"result": result})
     return result
+
+class DraftPromptsRequest(BaseModel):
+    topic: str
+    style: str = "cinematic"
+
+@router.post("/draft-prompts")
+@limiter.limit("30/minute")
+async def draft_prompts_endpoint(req: DraftPromptsRequest, request: Request):
+    """
+    Auto-decompose a single topic/idea into 3 tailored stage prompts:
+    1. Image Diffusion Prompt
+    2. Video Motion Prompt
+    3. Neural Voice Script
+    """
+    data = await draft_step_prompts(topic=req.topic, style=req.style)
+    return {"success": True, **data}
 
 @router.post("/run")
 @limiter.limit("5/minute")

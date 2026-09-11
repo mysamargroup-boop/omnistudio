@@ -47,6 +47,8 @@ import {
   UserX,
   UserPlus,
   Scissors,
+  RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -233,6 +235,34 @@ function VideoStudioContent() {
   const [uploadingCharImage, setUploadingCharImage] = useState(false);
   const charFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Character Consistency Specific Toggles
+  const [charSelectTab, setCharSelectTab] = useState<"presets" | "custom">("presets");
+  const [lockFace, setLockFace] = useState<boolean>(true);
+  const [lockDress, setLockDress] = useState<boolean>(true);
+  const [lockJewelry, setLockJewelry] = useState<boolean>(true);
+  const [lockBackground, setLockBackground] = useState<boolean>(false);
+
+  // Render Queue (Midjourney-Style Jobs)
+  const [sidebarTab, setSidebarTab] = useState<"settings" | "queue">("settings");
+  const [queueTab, setQueueTab] = useState<"rendering" | "completed" | "failed" | "cancelled">("completed");
+  const [renderJobs, setRenderJobs] = useState<Array<{
+    id: string;
+    prompt: string;
+    model: string;
+    motion: string;
+    duration: number;
+    aspectRatio: string;
+    status: "rendering" | "completed" | "failed" | "cancelled";
+    progress?: number;
+    stage?: string;
+    createdAt: number;
+    completedAt?: number;
+    videoUrl?: string;
+    thumbnailUrl?: string;
+    error?: string;
+  }>>([]);
+  const activeJobIdRef = useRef<string | null>(null);
+
   // Video Editor & Upload Mode State
   const [editorVideoFile, setEditorVideoFile] = useState<File | null>(null);
   const [editorVideoUrl, setEditorVideoUrl] = useState("");
@@ -272,6 +302,59 @@ function VideoStudioContent() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Persistent Render Queue initialization
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("omnistudio_video_render_queue");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const normalized = parsed.map((j: any) =>
+            j.status === "rendering" ? { ...j, status: "failed", error: "Session interrupted" } : j
+          );
+          setRenderJobs(normalized);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const persistJobs = (jobs: typeof renderJobs) => {
+    setRenderJobs(jobs);
+    try {
+      localStorage.setItem("omnistudio_video_render_queue", JSON.stringify(jobs.slice(0, 50)));
+    } catch {}
+  };
+
+  const abortActiveJob = (jobId: string) => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setLoading(false);
+    const updated = renderJobs.map((j) =>
+      j.id === jobId ? { ...j, status: "cancelled" as const, stage: "Cancelled by user" } : j
+    );
+    persistJobs(updated);
+    setStatusMessage("Video render cancelled by user.");
+  };
+
+  const retryJob = (job: any) => {
+    setPrompt(job.prompt);
+    setSidebarTab("queue");
+    setQueueTab("rendering");
+    setTimeout(() => {
+      generate();
+    }, 100);
+  };
+
+  const deleteJob = (jobId: string) => {
+    persistJobs(renderJobs.filter((j) => j.id !== jobId));
+  };
+
+  const clearNonRenderingJobs = () => {
+    persistJobs(renderJobs.filter((j) => j.status === "rendering"));
+  };
 
   useEffect(() => {
     if (promptTextareaRef.current) {
@@ -686,46 +769,100 @@ function VideoStudioContent() {
       { timestamp: nowTime, message: `Started ${mode.toUpperCase()} synthesis on ${activeModel.label}...` },
     ]);
 
+    const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
+    const effectiveStartImage = !startImage.trim() && activeCharacter?.isLocked && activeCharacter?.imageUrl ? activeCharacter.imageUrl : startImage;
+
+    // Character Consistency Directives
+    const consistencyDirectives: string[] = [];
+    if (lockFace) consistencyDirectives.push("exact facial geometry and likeness");
+    if (lockDress) consistencyDirectives.push("exact clothing costume and fabric texture");
+    if (lockJewelry) consistencyDirectives.push("consistent jewelry ornaments and accessories");
+    if (lockBackground) consistencyDirectives.push("consistent background environment and atmosphere");
+    const consistencyString = consistencyDirectives.length > 0 ? `[Consistency Lock: ${consistencyDirectives.join(", ")}]. ` : "";
+
+    const characterContext = (activeCharacter?.isLocked && characterLockActive && activeCharacter?.prompt)
+      ? `[Featuring Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ${consistencyString}`
+      : consistencyString;
+
+    let promptDirectiveText = "";
+    try {
+      const savedPrefs = localStorage.getItem("omnistudio_preferences");
+      if (savedPrefs) {
+        const p = JSON.parse(savedPrefs);
+        if (p.enablePromptDirective && p.promptDirective) {
+          promptDirectiveText = `, ${p.promptDirective}`;
+        }
+      }
+    } catch {}
+
+    const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
+
+    // Negative Prompt with Consistency Enhancements
+    let effectiveNegative = negativePrompt.trim();
+    const negativeDirectives: string[] = [];
+    if (lockFace) negativeDirectives.push("morphed face, mismatched face, distorted facial features");
+    if (lockDress) negativeDirectives.push("changing clothes, different costume, mismatched dress");
+    if (lockJewelry) negativeDirectives.push("missing jewelry, disappearing ornaments, changing necklace");
+    if (negativeDirectives.length > 0) {
+      effectiveNegative = effectiveNegative
+        ? `${effectiveNegative}, ${negativeDirectives.join(", ")}`
+        : negativeDirectives.join(", ");
+    }
+
+    // Initialize Render Queue Record
+    const newJobId = "job_" + Date.now();
+    activeJobIdRef.current = newJobId;
+    const initialJob = {
+      id: newJobId,
+      prompt: finalPrompt,
+      model: activeModel.label,
+      motion: activeMotion.label,
+      duration,
+      aspectRatio,
+      status: "rendering" as const,
+      progress: 10,
+      stage: "01 • Initializing Frame Buffer",
+      createdAt: Date.now(),
+      thumbnailUrl: effectiveStartImage || undefined,
+    };
+    persistJobs([initialJob, ...renderJobs]);
+
     const startTimestamp = Date.now();
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
+      let curProg = 10;
+      let curStage = "01 • Initializing Frame Buffer";
       if (elapsed === 1) {
+        curProg = 28;
+        curStage = "02 • Calculating Kinematics";
         setProgress(28);
         setStageTitle("02 • Calculating Kinematics");
         setStatusMessage(`Applying camera vector: ${activeMotion.label} (${resolution}, ${fps} FPS)...`);
       } else if (elapsed === 3) {
+        curProg = 58;
+        curStage = "03 • Interpolating Frames";
         setProgress(58);
         setStageTitle("03 • Interpolating Frames");
         setStatusMessage("Hardware-accelerated frame interpolation running...");
       } else if (elapsed === 6) {
+        curProg = 82;
+        curStage = "04 • FFmpeg ProRes Encoding";
         setProgress(82);
         setStageTitle("04 • FFmpeg ProRes Encoding");
         setStatusMessage(`Encoding libx264 container at ${aspectRatio}...`);
       } else if (elapsed >= 9 && elapsed < 16) {
-        setProgress((prev) => Math.min(prev + 2, 95));
+        curProg = Math.min(82 + (elapsed - 6) * 2, 95);
+        curStage = "05 • Polishing Stream Container";
+        setProgress(curProg);
       }
+      setRenderJobs((prev) =>
+        prev.map((j) => (j.id === newJobId ? { ...j, progress: curProg, stage: curStage } : j))
+      );
     }, 1000);
 
     try {
-      const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
-      const effectiveStartImage = !startImage.trim() && activeCharacter?.isLocked && activeCharacter?.imageUrl ? activeCharacter.imageUrl : startImage;
-      const characterContext = activeCharacter?.isLocked && activeCharacter?.prompt ? `[Featuring Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ` : "";
-
-      let promptDirectiveText = "";
-      try {
-        const savedPrefs = localStorage.getItem("omnistudio_preferences");
-        if (savedPrefs) {
-          const p = JSON.parse(savedPrefs);
-          if (p.enablePromptDirective && p.promptDirective) {
-            promptDirectiveText = `, ${p.promptDirective}`;
-          }
-        }
-      } catch {}
-
-      const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
-
       const payload: any = {
         mode: effectiveMode,
         start_image_path: mode === "multi_frame" ? keyframeImages[0] : effectiveStartImage,
@@ -733,7 +870,7 @@ function VideoStudioContent() {
         image_paths: mode === "multi_frame" ? keyframeImages : undefined,
         source_video_path: mode === "motion_transfer" ? sourceVideoUrl : null,
         prompt: finalPrompt,
-        negative_prompt: negativePrompt,
+        negative_prompt: effectiveNegative,
         motion_type: motion,
         duration,
         fps,
@@ -760,6 +897,17 @@ function VideoStudioContent() {
             message: `Render complete: ${data.filename} (${data.duration}s)`,
           },
         ]);
+
+        const completedJob = {
+          ...initialJob,
+          status: "completed" as const,
+          progress: 100,
+          stage: "Render Complete",
+          completedAt: Date.now(),
+          videoUrl: data.url,
+          thumbnailUrl: data.thumbnail_url || initialJob.thumbnailUrl,
+        };
+        persistJobs(renderJobs.map((j) => (j.id === newJobId ? completedJob : j)));
       }
     } catch (e: any) {
       setResult({ success: false, error: e.message });
@@ -767,6 +915,13 @@ function VideoStudioContent() {
         ...prev,
         { timestamp: new Date().toTimeString().split(" ")[0], message: `Error: ${e.message}` },
       ]);
+      const failedJob = {
+        ...initialJob,
+        status: "failed" as const,
+        stage: "Synthesis Failed",
+        error: e.message || "Synthesis failed",
+      };
+      persistJobs(renderJobs.map((j) => (j.id === newJobId ? failedJob : j)));
     } finally {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -925,13 +1080,50 @@ function VideoStudioContent() {
             <span className="hidden lg:inline">Guide</span>
           </button>
 
+          {/* Render Queue (Midjourney Jobs) Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (sidebarOpen && sidebarTab === "queue") {
+                setSidebarOpen(false);
+              } else {
+                setSidebarOpen(true);
+                setSidebarTab("queue");
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
+              sidebarOpen && sidebarTab === "queue"
+                ? "bg-emerald-600 text-white border-transparent font-bold shadow-xs"
+                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            )}
+            title="Toggle Render Queue (Midjourney Jobs)"
+          >
+            <Film className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-semibold">Queue</span>
+            {renderJobs.some((j) => j.status === "rendering") ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            ) : renderJobs.length > 0 ? (
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold">
+                {renderJobs.length}
+              </span>
+            ) : null}
+          </button>
+
           {/* Right Sidebar Toggle Button */}
           <button
             type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              if (sidebarOpen && sidebarTab === "settings") {
+                setSidebarOpen(false);
+              } else {
+                setSidebarOpen(true);
+                setSidebarTab("settings");
+              }
+            }}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0",
-              sidebarOpen
+              sidebarOpen && sidebarTab === "settings"
                 ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 border-transparent font-bold"
                 : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50"
             )}
@@ -939,7 +1131,7 @@ function VideoStudioContent() {
           >
             <Sliders className="w-3.5 h-3.5 text-emerald-500" />
             <span className="font-semibold">Settings</span>
-            {sidebarOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+            {sidebarOpen && sidebarTab === "settings" ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -2155,22 +2347,55 @@ function VideoStudioContent() {
         {sidebarOpen && (
           <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full overflow-hidden transition-all duration-300 shadow-lg z-10">
             {/* Sidebar Header with Stacked Close Toggle All */}
-            <div className="flex-shrink-0 p-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-emerald-500" />
-                <h3 className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white">
-                  Studio Settings
-                </h3>
-              </div>
-              <div className="flex items-center gap-1.5">
+            {/* Sidebar Header with Segmented Switch: Settings vs Render Queue */}
+            <div className="flex-shrink-0 p-2.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70">
+              <div className="flex items-center gap-1 bg-zinc-200/80 dark:bg-zinc-800 p-0.5 rounded-xl">
                 <button
                   type="button"
-                  onClick={toggleAllSections}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white px-2 py-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                  title="Toggle all accordion sections"
+                  onClick={() => setSidebarTab("settings")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer",
+                    sidebarTab === "settings"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-xs"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  )}
                 >
-                  {Object.values(openSections).every(Boolean) ? "Collapse All" : "Expand All"}
+                  <Sliders className="w-3 h-3 text-emerald-500" />
+                  <span>Settings</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarTab("queue")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer",
+                    sidebarTab === "queue"
+                      ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  )}
+                >
+                  <Film className="w-3 h-3 text-emerald-500" />
+                  <span>Queue</span>
+                  {renderJobs.some((j) => j.status === "rendering") ? (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  ) : renderJobs.length > 0 ? (
+                    <span className="text-[9px] px-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                      {renderJobs.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {sidebarTab === "settings" && (
+                  <button
+                    type="button"
+                    onClick={toggleAllSections}
+                    className="text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-white px-2 py-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    title="Toggle all accordion sections"
+                  >
+                    {Object.values(openSections).every(Boolean) ? "Collapse" : "Expand"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}
@@ -2182,217 +2407,338 @@ function VideoStudioContent() {
               </div>
             </div>
 
-            {/* Scrollable Accordions Container (Independent Scroll) */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
-              {/* Section 0: Character Lock & Consistency (Native Right Sidebar) */}
-              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => toggleSection("character")}
-                  className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>CHARACTER LOCK</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full font-bold truncate max-w-[120px]",
-                      activeCharacter?.isLocked
-                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-                        : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
-                    )}>
-                      {activeCharacter?.isLocked ? `LOCKED: ${activeCharacter.name}` : "UNLOCKED"}
-                    </span>
-                    <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.character && "rotate-180")} />
-                  </div>
-                </button>
+            {/* If Settings Tab is active: Scrollable Accordions Container */}
+            {sidebarTab === "settings" && (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
+                  {/* Section 0: Character Lock & Consistency (Native Right Sidebar) */}
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection("character")}
+                      className="w-full p-3 flex items-center justify-between text-left font-mono text-xs font-bold text-zinc-900 dark:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>CHARACTER LOCK</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-[10px] px-2 py-0.5 rounded-full font-bold truncate max-w-[120px]",
+                          activeCharacter?.isLocked
+                            ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                            : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+                        )}>
+                          {activeCharacter?.isLocked ? `LOCKED: ${activeCharacter.name}` : "UNLOCKED"}
+                        </span>
+                        <ChevronDown className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform duration-200", openSections.character && "rotate-180")} />
+                      </div>
+                    </button>
 
-                {openSections.character && (
-                  <div className="p-3 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800/50">
-                    {/* Active Locked Character Status */}
-                    {activeCharacter?.isLocked ? (
-                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {activeCharacter.imageUrl && (
-                              <img
-                                src={getMediaUrl(activeCharacter.imageUrl)}
-                                alt={activeCharacter.name}
-                                className="w-8 h-8 rounded-lg object-cover border border-emerald-500"
-                              />
-                            )}
-                            <div>
-                              <p className="text-xs font-bold font-heading text-emerald-900 dark:text-emerald-100">{activeCharacter.name}</p>
-                              <p className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                Active in Synthesis
-                              </p>
+                    {openSections.character && (
+                      <div className="p-3 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800/50">
+                        {/* Active Locked Character Status */}
+                        {activeCharacter?.isLocked ? (
+                          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {activeCharacter.imageUrl && (
+                                  <img
+                                    src={getMediaUrl(activeCharacter.imageUrl)}
+                                    alt={activeCharacter.name}
+                                    className="w-8 h-8 rounded-lg object-cover border border-emerald-500"
+                                  />
+                                )}
+                                <div>
+                                  <p className="text-xs font-bold font-heading text-emerald-900 dark:text-emerald-100">{activeCharacter.name}</p>
+                                  <p className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active in Synthesis
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveCharacter(null)}
+                                className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                              >
+                                Unlock
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-jakarta line-clamp-2 leading-relaxed">
+                              {activeCharacter.prompt}
+                            </p>
+
+                            {/* Live Consistency Toggles for Active Character */}
+                            <div className="pt-2 border-t border-emerald-500/20 space-y-1.5">
+                              <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-300 font-bold block">
+                                Character Consistency Locks
+                              </span>
+                              <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockFace}
+                                    onChange={(e) => setLockFace(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Face</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockDress}
+                                    onChange={(e) => setLockDress(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Dress</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockJewelry}
+                                    onChange={(e) => setLockJewelry(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Jewelry</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockBackground}
+                                    onChange={(e) => setLockBackground(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Background</span>
+                                </label>
+                              </div>
                             </div>
                           </div>
+                        ) : (
+                          <p className="text-[11px] text-zinc-500 font-jakarta leading-relaxed">
+                            Lock a character identity to keep the same face, costume, and persona consistent across all camera motions and takes.
+                          </p>
+                        )}
+
+                        {/* Mode Switch: Archetypes vs Custom Identity */}
+                        <div className="flex rounded-lg bg-zinc-200/80 dark:bg-zinc-800/80 p-0.5 border border-zinc-300/60 dark:border-zinc-700/60">
                           <button
                             type="button"
-                            onClick={() => setActiveCharacter(null)}
-                            className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                            onClick={() => setCharSelectTab("presets")}
+                            className={cn(
+                              "flex-1 py-1 text-[10px] font-mono rounded-md font-bold transition-all cursor-pointer",
+                              charSelectTab === "presets"
+                                ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-xs"
+                                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                            )}
                           >
-                            Unlock
+                            Archetypes (6)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCharSelectTab("custom")}
+                            className={cn(
+                              "flex-1 py-1 text-[10px] font-mono rounded-md font-bold transition-all cursor-pointer",
+                              charSelectTab === "custom"
+                                ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                            )}
+                          >
+                            + Custom Character
                           </button>
                         </div>
-                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-jakarta line-clamp-2 leading-relaxed">
-                          {activeCharacter.prompt}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-zinc-500 font-jakarta leading-relaxed">
-                        Lock a character identity to keep the same face, costume, and persona consistent across all camera motions and takes.
-                      </p>
-                    )}
 
-                    {/* Predefined Archetypes */}
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
-                        Choose Archetype Preset
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5">
-                        {ARCHETYPES.map((arch) => {
-                          const isSelected = activeCharacter?.id === arch.id && activeCharacter?.isLocked;
-                          return (
-                            <button
-                              key={arch.id}
-                              type="button"
-                              onClick={() => {
-                                setActiveCharacter({
-                                  id: arch.id,
-                                  name: arch.name,
-                                  tagline: "",
-                                  description: arch.description,
-                                  prompt: arch.prompt,
-                                  imageUrl: arch.avatar,
-                                  isLocked: true,
-                                });
-                              }}
-                              className={cn(
-                                "p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col gap-1.5",
-                                isSelected
-                                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
-                                  : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
-                              )}
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <img src={arch.avatar} alt={arch.name} className="w-6 h-6 rounded-md object-cover border border-black/10 dark:border-white/10" />
-                                <span className="text-[11px] font-bold font-heading truncate">{arch.name}</span>
-                              </div>
-                              <span className="text-[9px] text-zinc-500 line-clamp-1">{arch.description}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Custom Character Creator */}
-                    <div className="space-y-2 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
-                      <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
-                        Or Create Custom Character
-                      </div>
-                      <input
-                        type="text"
-                        value={customCharName}
-                        onChange={(e) => setCustomCharName(e.target.value)}
-                        placeholder="Character name (e.g. Captain Nova)..."
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <textarea
-                        value={customCharPrompt}
-                        onChange={(e) => setCustomCharPrompt(e.target.value)}
-                        placeholder="Visual description (hair, costume, facial traits, age)..."
-                        rows={2}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
-                      />
-
-                      {/* Image Upload for Custom Character */}
-                      <input
-                        ref={charFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setUploadingCharImage(true);
-                          try {
-                            const res = await api.uploadReferenceImage(file);
-                            if (res?.url) {
-                              setCustomCharImage(res.url);
-                            }
-                          } catch (err: any) {
-                            alert(err?.message || "Failed to upload reference character image");
-                          } finally {
-                            setUploadingCharImage(false);
-                            e.target.value = "";
-                          }
-                        }}
-                      />
-                      {customCharImage ? (
-                        <div className="relative rounded-lg overflow-hidden border border-emerald-500/40 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2 p-1.5">
-                          <img
-                            src={getMediaUrl(customCharImage)}
-                            alt="Custom character"
-                            className="w-10 h-10 rounded object-cover border border-white/10"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
-                              Face Reference Attached
-                            </span>
-                            <span className="text-[9px] font-mono text-zinc-400 truncate block">
-                              {customCharImage.split("/").pop()}
-                            </span>
+                        {/* Predefined Archetypes */}
+                        {charSelectTab === "presets" && (
+                          <div className="space-y-1.5">
+                            <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto custom-scrollbar pr-0.5">
+                              {ARCHETYPES.map((arch) => {
+                                const isSelected = activeCharacter?.id === arch.id && activeCharacter?.isLocked;
+                                return (
+                                  <button
+                                    key={arch.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveCharacter({
+                                        id: arch.id,
+                                        name: arch.name,
+                                        tagline: "",
+                                        description: arch.description,
+                                        prompt: arch.prompt,
+                                        imageUrl: arch.avatar,
+                                        isLocked: true,
+                                      });
+                                    }}
+                                    className={cn(
+                                      "p-2 rounded-xl text-left transition-all cursor-pointer border flex flex-col gap-1.5",
+                                      isSelected
+                                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500/30 shadow-xs"
+                                        : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <img src={arch.avatar} alt={arch.name} className="w-6 h-6 rounded-md object-cover border border-black/10 dark:border-white/10" />
+                                      <span className="text-[11px] font-bold font-heading truncate">{arch.name}</span>
+                                    </div>
+                                    <span className="text-[9px] text-zinc-500 line-clamp-1">{arch.description}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setCustomCharImage("")}
-                            className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => charFileInputRef.current?.click()}
-                          disabled={uploadingCharImage}
-                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[11px] font-mono transition-colors cursor-pointer"
-                        >
-                          {uploadingCharImage ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Upload className="w-3.5 h-3.5" />
-                          )}
-                          <span>{uploadingCharImage ? "Uploading Image..." : "Upload Face / Reference Image"}</span>
-                        </button>
-                      )}
+                        )}
 
-                      <button
-                        type="button"
-                        disabled={!customCharName.trim() || !customCharPrompt.trim()}
-                        onClick={() => {
-                          setActiveCharacter({
-                            id: "custom_" + Date.now(),
-                            name: customCharName.trim(),
-                            tagline: "",
-                            description: customCharPrompt.trim(),
-                            prompt: customCharPrompt.trim(),
-                            imageUrl: customCharImage || undefined,
-                            isLocked: true,
-                          });
-                        }}
-                        className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
-                      >
-                        Lock Custom Character
-                      </button>
-                    </div>
+                        {/* Custom Character Creator */}
+                        {charSelectTab === "custom" && (
+                          <div className="space-y-2 pt-1">
+                            <input
+                              type="text"
+                              value={customCharName}
+                              onChange={(e) => setCustomCharName(e.target.value)}
+                              placeholder="Character name (e.g. Captain Nova)..."
+                              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <textarea
+                              value={customCharPrompt}
+                              onChange={(e) => setCustomCharPrompt(e.target.value)}
+                              placeholder="Visual description (hair, costume, facial traits, age)..."
+                              rows={2}
+                              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+                            />
+
+                            {/* Image Upload for Custom Character */}
+                            <input
+                              ref={charFileInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setUploadingCharImage(true);
+                                try {
+                                  const res = await api.uploadReferenceImage(file);
+                                  if (res?.url) {
+                                    setCustomCharImage(res.url);
+                                  }
+                                } catch (err: any) {
+                                  alert(err?.message || "Failed to upload reference character image");
+                                } finally {
+                                  setUploadingCharImage(false);
+                                  e.target.value = "";
+                                }
+                              }}
+                            />
+                            {customCharImage ? (
+                              <div className="relative rounded-lg overflow-hidden border border-emerald-500/40 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2 p-1.5">
+                                <img
+                                  src={getMediaUrl(customCharImage)}
+                                  alt="Custom character"
+                                  className="w-8 h-8 rounded object-cover border border-white/10"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
+                                    Face Reference Attached
+                                  </span>
+                                  <span className="text-[9px] font-mono text-zinc-400 truncate block">
+                                    {customCharImage.split("/").pop()}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setCustomCharImage("")}
+                                  className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => charFileInputRef.current?.click()}
+                                disabled={uploadingCharImage}
+                                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[11px] font-mono transition-colors cursor-pointer"
+                              >
+                                {uploadingCharImage ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Upload className="w-3.5 h-3.5" />
+                                )}
+                                <span>{uploadingCharImage ? "Uploading Image..." : "Upload Face / Reference Image"}</span>
+                              </button>
+                            )}
+
+                            {/* Fine-Grained Consistency Checkboxes */}
+                            <div className="pt-1.5 space-y-1">
+                              <span className="text-[9px] font-mono uppercase tracking-wider text-zinc-400 block font-semibold">
+                                Consistency Lock Settings:
+                              </span>
+                              <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono bg-zinc-100/70 dark:bg-zinc-800/40 p-2 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockFace}
+                                    onChange={(e) => setLockFace(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Face</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockDress}
+                                    onChange={(e) => setLockDress(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Dress</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockJewelry}
+                                    onChange={(e) => setLockJewelry(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Jewelry</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockBackground}
+                                    onChange={(e) => setLockBackground(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Background</span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Sticky Docked Action Button - NEVER pushed down or cut off */}
+                            <div className="sticky bottom-0 pt-2 pb-0.5 bg-zinc-50/95 dark:bg-[#0c0c14]/95 backdrop-blur-xs z-10 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                              <button
+                                type="button"
+                                disabled={!customCharName.trim() || !customCharPrompt.trim()}
+                                onClick={() => {
+                                  setActiveCharacter({
+                                    id: "custom_" + Date.now(),
+                                    name: customCharName.trim(),
+                                    tagline: "",
+                                    description: customCharPrompt.trim(),
+                                    prompt: customCharPrompt.trim(),
+                                    imageUrl: customCharImage || undefined,
+                                    isLocked: true,
+                                  });
+                                }}
+                                className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                              >
+                                Lock Custom Character
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
               {/* Section 1: AI Model & Engine (Active in GREEN) */}
               <div className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-hidden shadow-xs">
@@ -2764,6 +3110,271 @@ function VideoStudioContent() {
                 {activeModel.active === false ? "INACTIVE" : activeModel.badge || (activeModel.value === "ffmpeg_local" ? "FREE LOCAL" : "ACTIVE")}
               </span>
             </div>
+          </>
+        )}
+
+        {/* If Render Queue Tab is active: Midjourney Jobs Drawer */}
+        {sidebarTab === "queue" && (
+          <div className="flex flex-col h-full overflow-hidden">
+            {/* 4 State Tabs: Rendering | Completed | Failed | Cancelled */}
+            <div className="flex-shrink-0 p-2.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40">
+              <div className="grid grid-cols-4 gap-1 p-0.5 rounded-xl bg-zinc-200/70 dark:bg-zinc-800 text-[10px] font-mono font-bold">
+                {[
+                  { id: "rendering", label: "Rendering", count: renderJobs.filter(j => j.status === "rendering").length, pulse: true },
+                  { id: "completed", label: "Done", count: renderJobs.filter(j => j.status === "completed").length },
+                  { id: "failed", label: "Failed", count: renderJobs.filter(j => j.status === "failed").length },
+                  { id: "cancelled", label: "Cancelled", count: renderJobs.filter(j => j.status === "cancelled").length },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setQueueTab(tab.id as any)}
+                    className={cn(
+                      "py-1.5 px-1 rounded-lg text-center transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer",
+                      queueTab === tab.id
+                        ? "bg-white dark:bg-zinc-900 text-zinc-950 dark:text-white shadow-xs"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-1">
+                      {tab.pulse && tab.count > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />}
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    <span className={cn(
+                      "text-[9px] px-1.5 rounded-full",
+                      queueTab === tab.id
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold"
+                        : "bg-black/5 dark:bg-white/5 text-zinc-400"
+                    )}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Jobs Feed List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+              {renderJobs.filter((j) => j.status === queueTab).length === 0 ? (
+                <div className="py-12 px-4 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 mx-auto flex items-center justify-center text-zinc-400">
+                    {queueTab === "rendering" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Film className="w-5 h-5" />}
+                  </div>
+                  <p className="text-xs font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                    No {queueTab} jobs
+                  </p>
+                  <p className="text-[11px] text-zinc-400 font-jakarta max-w-[200px] mx-auto leading-relaxed">
+                    {queueTab === "rendering"
+                      ? "Active video generations will stream real-time progress here."
+                      : `Completed or past runs in ${queueTab} status will be indexed here.`}
+                  </p>
+                </div>
+              ) : (
+                renderJobs
+                  .filter((j) => j.status === queueTab)
+                  .map((job) => (
+                    <div
+                      key={job.id}
+                      className="p-3 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2.5 shadow-xs transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+                    >
+                      {/* Card Header: Model & Meta */}
+                      <div className="flex items-center justify-between font-mono text-[10px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            {job.model}
+                          </span>
+                          <span className="text-zinc-400">
+                            {job.duration}s • {job.aspectRatio}
+                          </span>
+                        </div>
+                        <span className="text-zinc-400">
+                          {new Date(job.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+
+                      {/* Prompt Snippet */}
+                      <p className="text-xs text-zinc-800 dark:text-zinc-200 line-clamp-2 font-jakarta leading-relaxed">
+                        {job.prompt}
+                      </p>
+
+                      {/* Rendering State UI */}
+                      {job.status === "rendering" && (
+                        <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                          <div className="flex items-center justify-between text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                            <span className="flex items-center gap-1.5">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>{job.stage || "Rendering..."}</span>
+                            </span>
+                            <span className="font-bold">{job.progress || 15}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                              style={{ width: `${job.progress || 15}%` }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => abortActiveJob(job.id)}
+                            className="w-full py-1 text-center text-[10px] font-mono text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                          >
+                            Cancel Render
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Completed State UI */}
+                      {job.status === "completed" && (
+                        <div className="space-y-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                          {job.videoUrl && (
+                            <div className="relative rounded-xl overflow-hidden aspect-video bg-black flex items-center justify-center group">
+                              <video
+                                src={getMediaUrl(job.videoUrl)}
+                                className="w-full h-full object-cover"
+                                preload="metadata"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResult({
+                                    success: true,
+                                    url: job.videoUrl,
+                                    filename: job.videoUrl?.split("/").pop() || "render.mp4",
+                                    duration: job.duration,
+                                  });
+                                }}
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-mono font-bold cursor-pointer"
+                              >
+                                <Play className="w-5 h-5 fill-current" />
+                                <span>Load in Canvas</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Completed Quick Actions */}
+                          <div className="flex items-center justify-between gap-1 text-[10px] font-mono pt-1">
+                            <div className="flex items-center gap-1">
+                              {job.videoUrl && (
+                                <a
+                                  href={getMediaUrl(job.videoUrl)}
+                                  download={job.videoUrl.split("/").pop() || "render.mp4"}
+                                  className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:text-emerald-500 flex items-center gap-1 transition-colors"
+                                  title="Download MP4"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  <span>Save</span>
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setPrompt(job.prompt)}
+                                className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:text-emerald-500 flex items-center gap-1 transition-colors cursor-pointer"
+                                title="Reuse Prompt"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                <span>Prompt</span>
+                              </button>
+                              {job.videoUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditorVideoUrl(job.videoUrl!);
+                                    setEditorModalOpen(true);
+                                  }}
+                                  className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:text-emerald-500 flex items-center gap-1 transition-colors cursor-pointer"
+                                  title="Open in Precision Video Editor"
+                                >
+                                  <Scissors className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteJob(job.id)}
+                              className="p-1 rounded-md text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Delete from Queue"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Failed State UI */}
+                      {job.status === "failed" && (
+                        <div className="space-y-2 pt-1 border-t border-rose-500/20">
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-rose-600 dark:text-rose-400 bg-rose-500/10 p-1.5 rounded-lg">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{job.error || "Generation error"}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => retryJob(job)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Retry Run</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteJob(job.id)}
+                              className="p-1 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cancelled State UI */}
+                      {job.status === "cancelled" && (
+                            <div className="flex items-center justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800/60 text-[10px] font-mono">
+                              <span className="text-zinc-400 italic">Render cancelled</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => retryJob(job)}
+                                  className="px-2 py-1 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-emerald-500 transition-colors cursor-pointer"
+                                >
+                                  Re-run
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteJob(job.id)}
+                                  className="p-1 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                      )}
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {/* Queue Bottom Summary & Cleanup */}
+            <div className="flex-shrink-0 p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60 flex items-center justify-between text-[10px] font-mono">
+              <span className="text-zinc-400 font-bold">
+                {renderJobs.length} Jobs Indexed
+              </span>
+              {renderJobs.some((j) => j.status !== "rendering") && (
+                <button
+                  type="button"
+                  onClick={clearNonRenderingJobs}
+                  className="text-zinc-500 hover:text-rose-500 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear Inactive</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
           </aside>
         )}
       </div>

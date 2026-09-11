@@ -230,6 +230,8 @@ export const api = {
   getLanguages: () => fetchApi<any>("/api/voice/languages"),
 
   // Pipeline
+  draftPipelinePrompts: (data: { topic: string; style?: string }) =>
+    fetchApi<any>("/api/pipeline/draft-prompts", { method: "POST", body: JSON.stringify(data) }),
   runPipeline: (data: any) => fetchApi<any>("/api/pipeline/run", { method: "POST", body: JSON.stringify(data) }),
   runPipelineStream: async (
     data: any,

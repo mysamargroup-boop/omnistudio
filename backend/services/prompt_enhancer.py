@@ -123,3 +123,79 @@ Return ONLY a valid JSON array of objects with this schema:
         }
     ]
     return scenes[:num_scenes]
+
+
+async def draft_step_prompts(topic: str, style: str = "cinematic") -> dict:
+    """
+    Generate tailored step-by-step prompts for:
+    1. Image diffusion prompt (visual scene, lighting, lens)
+    2. Video motion dynamics (camera kinematics, motion speed, direction)
+    3. Voiceover narration script (spoken speech text, tone, pacing)
+    """
+    modifier = CINEMATIC_MODIFIERS.get(style, CINEMATIC_MODIFIERS["cinematic"])
+    
+    if settings.OPENAI_API_KEY:
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            prompt_content = f"""
+Given this concept or story idea: "{topic}" (Style: {style})
+Draft 3 specific stage prompts for an automated video pipeline:
+1. "image_prompt": Detailed visual description for high-resolution image diffusion (subject, composition, lighting, camera lens, atmospheric mood).
+2. "motion_prompt": Camera kinematic directions (e.g., "slow continuous zoom in on subject with subtle horizontal drift and atmospheric dust kinematics").
+3. "voice_script": Engaging 1-2 sentence spoken narration script for neural text-to-speech (approx 20-30 words, inspiring cinematic tone).
+
+Return ONLY a valid JSON object:
+{{
+  "image_prompt": "...",
+  "motion_prompt": "...",
+  "voice_script": "..."
+}}
+"""
+            res = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt_content}],
+                response_format={"type": "json_object"} if hasattr(client, "beta") else None,
+                temperature=0.7
+            )
+            data = json.loads(res.choices[0].message.content.strip())
+            if data.get("image_prompt") and data.get("voice_script"):
+                return {
+                    "image_prompt": data["image_prompt"].strip(),
+                    "motion_prompt": data.get("motion_prompt", "slow zoom_in, subtle cinematic parallax").strip(),
+                    "voice_script": data["voice_script"].strip()
+                }
+        except Exception as e:
+            logger.debug("OpenAI draft_step_prompts fallback: %s", e)
+
+    # Gemini Flash Fallback
+    try:
+        from services.gemini_service import get_gemini_key, generate_gemini_text
+        if get_gemini_key():
+            gemini_prompt = f"""Given idea "{topic}" ({style}), generate JSON with 3 keys:
+"image_prompt": detailed visual image diffusion prompt,
+"motion_prompt": camera motion kinematics,
+"voice_script": spoken narration text (20-30 words).
+Output ONLY valid JSON."""
+            gemini_res = await generate_gemini_text(gemini_prompt)
+            if gemini_res.get("success") and gemini_res.get("text"):
+                text = gemini_res["text"].strip()
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    data = json.loads(match.group(0))
+                    if data.get("image_prompt"):
+                        return {
+                            "image_prompt": data["image_prompt"].strip(),
+                            "motion_prompt": data.get("motion_prompt", "zoom_in").strip(),
+                            "voice_script": data.get("voice_script", f"Discovering {topic}.").strip()
+                        }
+    except Exception as e:
+        logger.debug("Gemini draft_step_prompts fallback: %s", e)
+
+    # Algorithmic fallback
+    return {
+        "image_prompt": f"Cinematic master shot of {topic}, {modifier}",
+        "motion_prompt": "smooth cinematic zoom_in towards main subject, shallow depth of field drift",
+        "voice_script": f"In a world where boundaries dissolve, {topic} comes alive. Every subtle detail carries the pulse of an extraordinary journey."
+    }
+
