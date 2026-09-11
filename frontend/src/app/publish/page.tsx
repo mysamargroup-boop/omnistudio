@@ -89,17 +89,54 @@ function PublishStudioContent() {
   const [accountNameInput, setAccountNameInput] = useState("");
   const [accountHandleInput, setAccountHandleInput] = useState("");
 
+  // Workspaces & Agency State
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [currentWorkspace, setCurrentWorkspace] = useState<string>("default");
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState<boolean>(false);
+  const [newWsName, setNewWsName] = useState<string>("");
+  const [newWsClient, setNewWsClient] = useState<string>("");
+  const [newWsApprovalReq, setNewWsApprovalReq] = useState<boolean>(true);
+
+  // Publishing Templates State
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [showTemplateModal, setShowTemplateModal] = useState<boolean>(false);
+  const [templateNameInput, setTemplateNameInput] = useState<string>("");
+
+  // Compose Workflow Mode
+  const [composePublishMode, setComposePublishMode] = useState<"instant" | "schedule" | "review" | "draft">("instant");
+
   // Load initial data
   useEffect(() => {
     fetchPosts();
     fetchAnalytics();
     fetchAccounts();
+    fetchWorkspaces();
+    fetchTemplates();
   }, []);
 
-  const fetchPosts = async () => {
+  const fetchWorkspaces = async () => {
+    try {
+      const res = await api.getPublishWorkspaces();
+      setWorkspaces(res.workspaces || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const res = await api.getPublishTemplates();
+      setTemplates(res.templates || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchPosts = async (wsId?: string) => {
     setIsLoadingPosts(true);
     try {
-      const res = await api.getPublishPosts();
+      const targetWs = wsId !== undefined ? wsId : currentWorkspace;
+      const res = await api.getPublishPosts(targetWs && targetWs !== "all" ? { workspace_id: targetWs } : undefined);
       setPosts(res.posts || []);
     } catch (e) {
       console.error(e);
@@ -177,12 +214,29 @@ function PublishStudioContent() {
     }
   };
 
-  // Publish / Schedule
-  const handleCreatePost = async (publishNow: boolean) => {
+  // Publish / Schedule / Review
+  const handleCreatePost = async (actionOverride?: "publish_now" | "schedule" | "review" | "draft") => {
     if (!postContent.trim() && !postTitle.trim()) return;
     setIsPublishing(true);
     try {
-      const status = publishNow ? "published" : (scheduledDate ? "scheduled" : "draft");
+      const mode = actionOverride || composePublishMode;
+      let status = "draft";
+      let approvalStatus = "approved";
+
+      if (mode === "publish_now") {
+        status = "published";
+        approvalStatus = "approved";
+      } else if (mode === "schedule") {
+        status = "scheduled";
+        approvalStatus = "approved";
+      } else if (mode === "review") {
+        status = "pending_review";
+        approvalStatus = "pending";
+      } else if (mode === "draft") {
+        status = "draft";
+        approvalStatus = "draft";
+      }
+
       const res = await api.createPublishPost({
         title: postTitle || "Studio Release",
         content: postContent,
@@ -190,14 +244,20 @@ function PublishStudioContent() {
         media_urls: mediaUrl ? [mediaUrl] : [],
         media_type: mediaType,
         status: status,
+        approval_status: approvalStatus,
         scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : undefined,
-        ai_adaptation: adaptedData
+        ai_adaptation: adaptedData,
+        workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
       });
       if (res.success) {
         setPublishSuccessMessage(
-          publishNow 
+          mode === "publish_now" 
             ? `Successfully distributed across ${selectedPlatforms.length} platforms simultaneously!`
-            : `Post scheduled for ${scheduledDate || "later"}!`
+            : mode === "review"
+            ? `Submitted for Client / Agency Approval review!`
+            : mode === "schedule"
+            ? `Post scheduled for ${scheduledDate || "later"}!`
+            : `Draft saved in workspace!`
         );
         setTimeout(() => setPublishSuccessMessage(null), 5000);
         fetchPosts();
@@ -207,6 +267,86 @@ function PublishStudioContent() {
       console.error(e);
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  // Approval Actions for Posts
+  const handleApprovePost = async (postId: string, approved: boolean) => {
+    try {
+      await api.approvePublishPost(postId, approved);
+      setPublishSuccessMessage(approved ? "Post approved & scheduled for distribution!" : "Post rejected and returned to draft.");
+      setTimeout(() => setPublishSuccessMessage(null), 4000);
+      fetchPosts();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handlePublishNowPost = async (postId: string) => {
+    try {
+      await api.publishPostNow(postId);
+      setPublishSuccessMessage("Post published live across all selected platforms!");
+      setTimeout(() => setPublishSuccessMessage(null), 4000);
+      fetchPosts();
+      fetchAnalytics();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Template Handlers
+  const handleSaveTemplate = async () => {
+    if (!templateNameInput.trim()) return;
+    try {
+      await api.savePublishTemplate({
+        name: templateNameInput.trim(),
+        platforms: selectedPlatforms,
+        caption_template: postContent,
+        hashtag_template: ""
+      });
+      setShowTemplateModal(false);
+      setTemplateNameInput("");
+      setPublishSuccessMessage("Publishing template saved successfully!");
+      setTimeout(() => setPublishSuccessMessage(null), 4000);
+      fetchTemplates();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleApplyTemplate = (tmpl: any) => {
+    if (tmpl.platforms && tmpl.platforms.length > 0) {
+      setSelectedPlatforms(tmpl.platforms);
+    }
+    if (tmpl.caption_template) {
+      setPostContent(tmpl.caption_template);
+    }
+    setPublishSuccessMessage(`Applied template: "${tmpl.name}"`);
+    setTimeout(() => setPublishSuccessMessage(null), 3000);
+  };
+
+  // Workspace Creation
+  const handleCreateWorkspace = async () => {
+    if (!newWsName.trim()) return;
+    try {
+      const res = await api.createPublishWorkspace({
+        name: newWsName.trim(),
+        client_name: newWsClient.trim(),
+        approval_required: newWsApprovalReq
+      });
+      if (res.success) {
+        setShowWorkspaceModal(false);
+        setNewWsName("");
+        setNewWsClient("");
+        setNewWsApprovalReq(true);
+        await fetchWorkspaces();
+        setCurrentWorkspace(res.workspace.id);
+        fetchPosts(res.workspace.id);
+        setPublishSuccessMessage(`Client Workspace "${res.workspace.name}" created!`);
+        setTimeout(() => setPublishSuccessMessage(null), 4000);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -458,6 +598,53 @@ function PublishStudioContent() {
         </div>
       </header>
 
+      {/* Client Workspaces & Agency Governance Bar */}
+      <div className="bg-zinc-100/70 dark:bg-zinc-950/70 border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-8 py-2 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <Users className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="font-semibold text-zinc-500 dark:text-zinc-400">Client Workspace:</span>
+          <select
+            value={currentWorkspace}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "__new__") {
+                setShowWorkspaceModal(true);
+              } else {
+                setCurrentWorkspace(val);
+                fetchPosts(val);
+              }
+            }}
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+          >
+            <option value="all">All Workspaces (Agency Master View)</option>
+            {workspaces.map((ws) => (
+              <option key={ws.id} value={ws.id}>
+                {ws.name} {ws.client_name ? `• ${ws.client_name}` : ""} {ws.approval_required ? "(Approval Signoff Required)" : ""}
+              </option>
+            ))}
+            <option value="__new__">+ Create New Client Workspace...</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setShowWorkspaceModal(true)}
+            className="px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-[11px] font-medium transition cursor-pointer"
+          >
+            + New Client
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 text-[11px]">
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            {workspaces.find(w => w.id === currentWorkspace)?.approval_required
+              ? "Strict Client Approval Required (Draft → Review → Approved → Scheduled)"
+              : "Direct Publishing Mode (Auto-Approved)"}
+          </span>
+          <span className="hidden sm:inline">•</span>
+          <span className="hidden sm:inline">Shared Agency Content Hub</span>
+        </div>
+      </div>
+
       {/* Success Notification Alert */}
       {publishSuccessMessage && (
         <div className="bg-emerald-500/10 border-b border-emerald-500/30 text-emerald-600 dark:text-emerald-400 px-6 py-2.5 text-xs font-medium flex items-center justify-between animate-in fade-in duration-200">
@@ -555,12 +742,36 @@ function PublishStudioContent() {
 
               {/* Step 2: Content Composer */}
               <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-bold flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center">2</span>
                     Master Concept & Media
                   </h2>
                   <div className="flex items-center gap-2">
+                    {templates.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          const tmpl = templates.find(t => t.id === e.target.value);
+                          if (tmpl) handleApplyTemplate(tmpl);
+                        }}
+                        defaultValue=""
+                        className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-medium cursor-pointer"
+                      >
+                        <option value="" disabled>Load Template...</option>
+                        {templates.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowTemplateModal(true)}
+                      disabled={!postContent.trim()}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-indigo-500" /> Save Template
+                    </button>
+                    <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
                     <button
                       type="button"
                       onClick={() => setMediaType("image")}
@@ -651,15 +862,91 @@ function PublishStudioContent() {
 
               {/* Step 3: Scheduling & Actions */}
               <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
-                <h2 className="text-sm font-bold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center">3</span>
-                  Publish & Distribution Actions
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center">3</span>
+                    Publish & Workflow Mode
+                  </h2>
+                  <span className="text-[11px] text-zinc-500">
+                    Workspace: <strong className="text-zinc-800 dark:text-zinc-200">{workspaces.find(w => w.id === currentWorkspace)?.name || "OmniStudio Main"}</strong>
+                  </span>
+                </div>
+
+                {/* Mode Selector Tabs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setComposePublishMode("instant")}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition cursor-pointer",
+                      composePublishMode === "instant"
+                        ? "border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold"
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+                    )}
+                  >
+                    <div className="text-xs flex items-center gap-1.5 font-bold">
+                      <Send className="w-3.5 h-3.5 text-indigo-500" />
+                      Instant Publish
+                    </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">Push live now</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setComposePublishMode("schedule")}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition cursor-pointer",
+                      composePublishMode === "schedule"
+                        ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold"
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+                    )}
+                  >
+                    <div className="text-xs flex items-center gap-1.5 font-bold">
+                      <Clock className="w-3.5 h-3.5 text-blue-500" />
+                      Schedule
+                    </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">Automated date</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setComposePublishMode("review")}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition cursor-pointer",
+                      composePublishMode === "review"
+                        ? "border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold"
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+                    )}
+                  >
+                    <div className="text-xs flex items-center gap-1.5 font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                      Client Review
+                    </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">Approval signoff</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setComposePublishMode("draft")}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition cursor-pointer",
+                      composePublishMode === "draft"
+                        ? "border-zinc-500 bg-zinc-500/10 text-zinc-800 dark:text-zinc-200 font-bold"
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+                    )}
+                  >
+                    <div className="text-xs flex items-center gap-1.5 font-bold">
+                      <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                      Draft Post
+                    </div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">Save in studio</div>
+                  </button>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Schedule For Later (Optional)
+                      Schedule For Later (Required if scheduling)
                     </label>
                     <input
                       type="datetime-local"
@@ -670,11 +957,13 @@ function PublishStudioContent() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Agency Approval Workflow
+                      Agency Approval Status
                     </label>
                     <div className="flex items-center gap-2 h-9 px-3 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl text-xs text-zinc-600 dark:text-zinc-400">
                       <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      Auto-approved (Personal Studio)
+                      {workspaces.find(w => w.id === currentWorkspace)?.approval_required
+                        ? "Requires Client Sign-off"
+                        : "Direct Auto-Approval Policy"}
                     </div>
                   </div>
                 </div>
@@ -682,26 +971,44 @@ function PublishStudioContent() {
                 <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => handleCreatePost(true)}
+                    onClick={() => handleCreatePost()}
                     disabled={isPublishing || (!postTitle && !postContent)}
-                    className="w-full sm:flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
+                    className={cn(
+                      "w-full sm:flex-1 py-3 rounded-xl text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm",
+                      composePublishMode === "instant" ? "bg-indigo-600 hover:bg-indigo-500" :
+                      composePublishMode === "schedule" ? "bg-blue-600 hover:bg-blue-500" :
+                      composePublishMode === "review" ? "bg-amber-600 hover:bg-amber-500" :
+                      "bg-zinc-700 hover:bg-zinc-600"
+                    )}
                   >
                     {isPublishing ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
+                    ) : composePublishMode === "instant" ? (
                       <Send className="w-4 h-4" />
+                    ) : composePublishMode === "schedule" ? (
+                      <Clock className="w-4 h-4" />
+                    ) : composePublishMode === "review" ? (
+                      <ShieldCheck className="w-4 h-4" />
+                    ) : (
+                      <Layers className="w-4 h-4" />
                     )}
-                    Publish Everywhere Now ({selectedPlatforms.length})
+                    {composePublishMode === "instant"
+                      ? `Publish Everywhere Now (${selectedPlatforms.length} Channels)`
+                      : composePublishMode === "schedule"
+                      ? `Confirm Schedule (${selectedPlatforms.length} Channels)`
+                      : composePublishMode === "review"
+                      ? `Submit for Client Review (${selectedPlatforms.length} Channels)`
+                      : "Save as Studio Draft"}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleCreatePost(false)}
+                    onClick={() => handleCreatePost("publish_now")}
                     disabled={isPublishing || (!postTitle && !postContent)}
-                    className="w-full sm:w-auto px-5 py-3 rounded-xl bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full sm:w-auto px-4 py-3 rounded-xl bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    <Clock className="w-4 h-4 text-emerald-500" />
-                    {scheduledDate ? "Save Schedule" : "Save as Draft"}
+                    <Send className="w-3.5 h-3.5" />
+                    Quick Publish
                   </button>
                 </div>
               </div>
@@ -839,11 +1146,11 @@ function PublishStudioContent() {
                   Track and manage posts across drafts, scheduled broadcasts, and live published content
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   onClick={() => setCalendarFilter("all")}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer",
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition",
                     calendarFilter === "all" ? "bg-indigo-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                   )}
                 >
@@ -852,7 +1159,7 @@ function PublishStudioContent() {
                 <button
                   onClick={() => setCalendarFilter("published")}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer",
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition",
                     calendarFilter === "published" ? "bg-emerald-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                   )}
                 >
@@ -861,11 +1168,38 @@ function PublishStudioContent() {
                 <button
                   onClick={() => setCalendarFilter("scheduled")}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer",
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition",
                     calendarFilter === "scheduled" ? "bg-blue-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                   )}
                 >
                   Scheduled ({posts.filter(p => p.status === "scheduled").length})
+                </button>
+                <button
+                  onClick={() => setCalendarFilter("pending_review")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition",
+                    calendarFilter === "pending_review" ? "bg-amber-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                  )}
+                >
+                  Pending Review ({posts.filter(p => p.status === "pending_review" || p.approval_status === "pending").length})
+                </button>
+                <button
+                  onClick={() => setCalendarFilter("approved")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition",
+                    calendarFilter === "approved" ? "bg-indigo-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                  )}
+                >
+                  Approved ({posts.filter(p => p.approval_status === "approved" && p.status !== "published").length})
+                </button>
+                <button
+                  onClick={() => setCalendarFilter("draft")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition",
+                    calendarFilter === "draft" ? "bg-zinc-600 text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                  )}
+                >
+                  Drafts ({posts.filter(p => p.status === "draft").length})
                 </button>
               </div>
             </div>
@@ -893,22 +1227,40 @@ function PublishStudioContent() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {posts
-                  .filter(p => calendarFilter === "all" || p.status === calendarFilter)
+                  .filter(p => {
+                    if (calendarFilter === "all") return true;
+                    if (calendarFilter === "pending_review") return p.status === "pending_review" || p.approval_status === "pending";
+                    if (calendarFilter === "approved") return p.approval_status === "approved" && p.status !== "published";
+                    return p.status === calendarFilter;
+                  })
                   .map(post => (
                     <div
                       key={post.id}
-                      className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col justify-between space-y-3"
+                      className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col justify-between space-y-3 shadow-xs"
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                            post.status === "published" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
-                            post.status === "scheduled" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" :
-                            "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border border-zinc-500/20"
-                          )}>
-                            {post.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                              post.status === "published" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                              post.status === "scheduled" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" :
+                              post.status === "pending_review" || post.approval_status === "pending" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" :
+                              "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border border-zinc-500/20"
+                            )}>
+                              {post.status === "pending_review" || post.approval_status === "pending" ? "Pending Review" : post.status}
+                            </span>
+                            {post.approval_status === "approved" && post.status !== "published" && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Approved
+                              </span>
+                            )}
+                            {post.approval_status === "rejected" && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-300 border border-rose-500/30">
+                                Revision
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-zinc-400 font-mono">
                             {post.scheduled_at ? new Date(post.scheduled_at).toLocaleDateString() : new Date(post.created_at).toLocaleDateString()}
                           </span>
@@ -939,26 +1291,64 @@ function PublishStudioContent() {
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => handleRecycle(post.id)}
-                          className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-400 flex items-center gap-1 cursor-pointer"
-                          title="Auto Content Recycling: Duplicates with fresh AI hooks"
-                        >
-                          <Repeat className="w-3 h-3" />
-                          Auto-Recycle
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await api.deletePublishPost(post.id);
-                            fetchPosts();
-                          }}
-                          className="text-zinc-400 hover:text-rose-500 p-1 rounded transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          {/* Approval Actions */}
+                          {(post.status === "pending_review" || post.approval_status === "pending" || post.status === "draft") && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprovePost(post.id, true)}
+                              className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                              title="Approve post for publishing"
+                            >
+                              <Check className="w-3 h-3" /> Approve
+                            </button>
+                          )}
+                          {(post.status === "pending_review" || post.approval_status === "pending") && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprovePost(post.id, false)}
+                              className="px-2 py-1 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-semibold cursor-pointer"
+                              title="Reject / Request Revision"
+                            >
+                              Reject
+                            </button>
+                          )}
+                          {/* Publish Now if not yet published */}
+                          {post.status !== "published" && (
+                            <button
+                              type="button"
+                              onClick={() => handlePublishNowPost(post.id)}
+                              className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                              title="Publish live to all channels now"
+                            >
+                              <Send className="w-2.5 h-2.5" /> Publish
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRecycle(post.id)}
+                            className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-400 flex items-center gap-1 cursor-pointer"
+                            title="Auto Content Recycling: Duplicates with fresh AI hooks"
+                          >
+                            <Repeat className="w-3 h-3" />
+                            Recycle
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await api.deletePublishPost(post.id);
+                              fetchPosts();
+                            }}
+                            className="text-zinc-400 hover:text-rose-500 p-1 rounded transition cursor-pointer"
+                            title="Delete post"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1169,48 +1559,92 @@ function PublishStudioContent() {
 
             {/* Creator Kit Results */}
             {creatorKit && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Reel Card */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-fuchsia-500">
-                    <span>✓ Instagram / TikTok Reel</span>
-                    <span className="text-[10px] text-zinc-400">9:16</span>
-                  </div>
-                  <div className="text-xs font-semibold">{creatorKit.reel.hook}</div>
-                  <p className="text-[11px] text-zinc-500 line-clamp-3">{creatorKit.reel.caption}</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-fuchsia-500" />
+                    Complete 8-Asset Multi-Platform Deliverable Suite
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // Schedule Reel
+                      await api.createPublishPost({
+                        title: `${creatorConcept} [Reel]`,
+                        content: creatorKit.reel.caption,
+                        platforms: ["instagram", "tiktok"],
+                        status: "scheduled",
+                        workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
+                      });
+                      // Schedule Short
+                      await api.createPublishPost({
+                        title: `${creatorConcept} [Short]`,
+                        content: creatorKit.short.caption,
+                        platforms: ["youtube_shorts"],
+                        status: "scheduled",
+                        workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
+                      });
+                      // Schedule Carousel
+                      await api.createPublishPost({
+                        title: `${creatorConcept} [Carousel]`,
+                        content: creatorKit.carousel.summary,
+                        platforms: ["linkedin_personal", "linkedin_company"],
+                        status: "scheduled",
+                        workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
+                      });
+                      setPublishSuccessMessage("Reel, Short, and Carousel successfully queued to Calendar!");
+                      fetchPosts();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Schedule All Kit Assets to Calendar
+                  </button>
                 </div>
 
-                {/* Short Card */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-red-500">
-                    <span>✓ YouTube Short</span>
-                    <span className="text-[10px] text-zinc-400">9:16</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Reel Card */}
+                  <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-fuchsia-500">
+                      <span>✓ Instagram / TikTok Reel</span>
+                      <span className="text-[10px] text-zinc-400">9:16</span>
+                    </div>
+                    <div className="text-xs font-semibold">{creatorKit.reel.hook}</div>
+                    <p className="text-[11px] text-zinc-500 line-clamp-3">{creatorKit.reel.caption}</p>
                   </div>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-3">{creatorKit.short.caption}</p>
-                </div>
 
-                {/* Carousel Card */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-blue-500">
-                    <span>✓ LinkedIn Document Carousel</span>
-                    <span className="text-[10px] text-zinc-400">5 Slides</span>
+                  {/* Short Card */}
+                  <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-red-500">
+                      <span>✓ YouTube Short</span>
+                      <span className="text-[10px] text-zinc-400">9:16</span>
+                    </div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300 line-clamp-3">{creatorKit.short.caption}</p>
                   </div>
-                  <div className="text-xs font-semibold">{creatorKit.carousel.summary}</div>
-                </div>
 
-                {/* Thumbnails Card */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-500">
-                    <span>✓ Multi-Format Thumbnails</span>
-                    <span className="text-[10px] text-zinc-400">16:9 & 2:3</span>
+                  {/* Carousel Card */}
+                  <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-blue-500">
+                      <span>✓ LinkedIn Document Carousel</span>
+                      <span className="text-[10px] text-zinc-400">5 Slides</span>
+                    </div>
+                    <div className="text-xs font-semibold">{creatorKit.carousel.summary}</div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {creatorKit.thumbnails.youtube_16_9 && (
-                      <img src={getMediaUrl(creatorKit.thumbnails.youtube_16_9)} alt="YT" className="h-14 rounded border" />
-                    )}
-                    {creatorKit.thumbnails.pinterest_2_3 && (
-                      <img src={getMediaUrl(creatorKit.thumbnails.pinterest_2_3)} alt="PIN" className="h-14 rounded border" />
-                    )}
+
+                  {/* Thumbnails Card */}
+                  <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-500">
+                      <span>✓ Multi-Format Thumbnails</span>
+                      <span className="text-[10px] text-zinc-400">16:9 & 2:3</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {creatorKit.thumbnails.youtube_16_9 && (
+                        <img src={getMediaUrl(creatorKit.thumbnails.youtube_16_9)} alt="YT" className="h-14 rounded border" />
+                      )}
+                      {creatorKit.thumbnails.pinterest_2_3 && (
+                        <img src={getMediaUrl(creatorKit.thumbnails.pinterest_2_3)} alt="PIN" className="h-14 rounded border" />
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1272,6 +1706,42 @@ function PublishStudioContent() {
             {/* Repurposing Breakdown Results */}
             {repurposeData && (
               <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-500" />
+                    Repurposed Derivatives Ready for Distribution
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // Schedule Short Clips
+                      for (const clip of repurposeData.short_clips) {
+                        await api.createPublishPost({
+                          title: clip.title,
+                          content: clip.script,
+                          platforms: ["instagram", "tiktok", "youtube_shorts"],
+                          status: "scheduled",
+                          workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
+                        });
+                      }
+                      // Schedule Thread
+                      await api.createPublishPost({
+                        title: "Repurposed Masterclass Thread",
+                        content: repurposeData.tweet_thread.join("\n\n---\n\n"),
+                        platforms: ["twitter", "threads"],
+                        status: "scheduled",
+                        workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
+                      });
+                      setPublishSuccessMessage("All 5 repurposed formats queued into Calendar!");
+                      fetchPosts();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Schedule All Repurposed Assets
+                  </button>
+                </div>
+
                 {/* 3 Short Clips */}
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
@@ -1576,8 +2046,14 @@ function PublishStudioContent() {
 
             {/* Connect Account Modal */}
             {connectModalPlatform && (
-              <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl max-w-md w-full border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-2xl">
+              <div 
+                onClick={() => setConnectModalPlatform(null)}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+              >
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white dark:bg-zinc-900 p-6 rounded-2xl max-w-md w-full border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-2xl cursor-default"
+                >
                   <h3 className="text-sm font-bold">
                     Connect {PLATFORMS.find(p => p.id === connectModalPlatform)?.name} Channel
                   </h3>
@@ -1620,6 +2096,134 @@ function PublishStudioContent() {
                       className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                     >
                       Save Channel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Create Client Workspace Modal */}
+            {showWorkspaceModal && (
+              <div 
+                onClick={() => setShowWorkspaceModal(false)}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+              >
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white dark:bg-zinc-900 p-6 rounded-2xl max-w-md w-full border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-2xl cursor-default"
+                >
+                  <div className="flex items-center gap-2 text-indigo-500">
+                    <Users className="w-5 h-5" />
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      Create New Client / Team Workspace
+                    </h3>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Isolate multi-channel publishing, approval sign-offs, and analytics for specific agency clients.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      Workspace Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newWsName}
+                      onChange={(e) => setNewWsName(e.target.value)}
+                      placeholder="e.g. Acme Global Fashion"
+                      className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      Client Organization / Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newWsClient}
+                      onChange={(e) => setNewWsClient(e.target.value)}
+                      placeholder="e.g. Acme Corp Enterprise B2B"
+                      className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="wsApproval"
+                      checked={newWsApprovalReq}
+                      onChange={(e) => setNewWsApprovalReq(e.target.checked)}
+                      className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="wsApproval" className="text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                      Require Client Sign-Off before Scheduled Distribution
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowWorkspaceModal(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateWorkspace}
+                      disabled={!newWsName.trim()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      Create Workspace
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Save Template Modal */}
+            {showTemplateModal && (
+              <div 
+                onClick={() => setShowTemplateModal(false)}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+              >
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white dark:bg-zinc-900 p-6 rounded-2xl max-w-md w-full border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-2xl cursor-default"
+                >
+                  <div className="flex items-center gap-2 text-indigo-500">
+                    <Copy className="w-5 h-5" />
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      Save Publishing Template
+                    </h3>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Save current channel selection ({selectedPlatforms.length} platforms) and copy structure as a reusable one-click template.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      Template Name
+                    </label>
+                    <input
+                      type="text"
+                      value={templateNameInput}
+                      onChange={(e) => setTemplateNameInput(e.target.value)}
+                      placeholder="e.g. Weekly Product Drop (Omnichannel)"
+                      className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setShowTemplateModal(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTemplate}
+                      disabled={!templateNameInput.trim()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      Save Template
                     </button>
                   </div>
                 </div>

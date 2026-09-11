@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   X, Sparkles, Palette, Type, Upload, Check, Loader2, 
   ShieldCheck, Sliders, RefreshCw, Wand2, Image as ImageIcon 
@@ -49,6 +50,11 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [brandName, setBrandName] = useState("OmniStudio");
   const [tagline, setTagline] = useState("Next-Gen AI Cinematic Production");
@@ -160,13 +166,19 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-[#0c0d14] border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer overflow-y-auto"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-3xl max-h-[85vh] flex flex-col bg-white dark:bg-[#0c0d14] border border-zinc-200 dark:border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden cursor-default my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500 text-white shadow-lg shadow-indigo-500/20">
               <Palette className="w-5 h-5" />
@@ -476,10 +488,10 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-t border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
-            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: primaryColor }} />
+            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 truncate max-w-[160px] sm:max-w-none">
               {brandName || "Active Brand Profile"}
             </span>
           </div>
@@ -487,7 +499,7 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -495,7 +507,7 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-500 to-fuchsia-600 hover:from-indigo-600 hover:to-fuchsia-700 text-white shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-500 to-fuchsia-600 hover:from-indigo-600 hover:to-fuchsia-700 text-white shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 cursor-pointer"
             >
               {saving ? (
                 <>
@@ -517,6 +529,7 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

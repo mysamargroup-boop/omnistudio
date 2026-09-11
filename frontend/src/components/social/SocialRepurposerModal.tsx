@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   X, Share2, Download, Copy, Check, 
   Sparkles, Layers, ArrowRight, ExternalLink 
@@ -73,8 +74,13 @@ export default function SocialRepurposerModal({
 }: SocialRepurposerModalProps) {
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const fullUrl = getMediaUrl(mediaUrl);
 
@@ -105,11 +111,17 @@ export default function SocialRepurposerModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white dark:bg-[#0c0d14] border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer overflow-y-auto"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-4xl max-h-[85vh] flex flex-col bg-white dark:bg-[#0c0d14] border border-zinc-200 dark:border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden cursor-default my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/20">
               <Share2 className="w-5 h-5" />
@@ -205,18 +217,20 @@ export default function SocialRepurposerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-t border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] shrink-0">
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Export ready for publishing to Meta Business Suite, YouTube Studio, and TikTok
           </p>
           <button
+            type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-opacity"
+            className="px-5 py-2 rounded-xl text-xs font-semibold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-opacity cursor-pointer"
           >
             Done
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -481,4 +481,6 @@ export const api = {
     fetchApi<any>("/api/publish/templates", { method: "POST", body: JSON.stringify(data) }),
   getPublishWorkspaces: () =>
     fetchApi<any>("/api/publish/workspaces"),
+  createPublishWorkspace: (data: { name: string; client_name?: string; approval_required?: boolean }) =>
+    fetchApi<any>("/api/publish/workspaces", { method: "POST", body: JSON.stringify(data) }),
 };

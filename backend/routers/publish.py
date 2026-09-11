@@ -27,6 +27,7 @@ from services.publish_service import (
     db_list_templates,
     db_create_template,
     db_list_workspaces,
+    db_create_workspace,
 )
 
 logger = logging.getLogger("omnistudio.router.publish")
@@ -78,6 +79,7 @@ class CreatePostRequest(BaseModel):
     scheduled_at: Optional[str] = None
     ai_adaptation: Optional[Dict[str, Any]] = None
     workspace_id: Optional[str] = "default"
+    approval_status: Optional[str] = None
 
 class ApprovePostRequest(BaseModel):
     approved: bool = True
@@ -222,7 +224,8 @@ async def create_post(req: CreatePostRequest):
         status=req.status or "draft",
         scheduled_at=req.scheduled_at,
         ai_adaptation=req.ai_adaptation,
-        workspace_id=req.workspace_id or "default"
+        workspace_id=req.workspace_id or "default",
+        approval_status=req.approval_status
     )
     return {"success": True, "post": post}
 
@@ -304,7 +307,18 @@ async def save_template(req: SaveTemplateRequest):
     tmpl = db_create_template(req.name, req.platforms, req.caption_template, req.hashtag_template)
     return {"success": True, "template": tmpl}
 
+class CreateWorkspaceRequest(BaseModel):
+    name: str
+    client_name: Optional[str] = ""
+    approval_required: Optional[bool] = False
+
 @router.get("/workspaces")
 async def list_workspaces():
     workspaces = db_list_workspaces()
     return {"workspaces": workspaces}
+
+@router.post("/workspaces")
+async def create_workspace_endpoint(req: CreateWorkspaceRequest):
+    ws = db_create_workspace(req.name, req.client_name or "", req.approval_required or False)
+    return {"success": True, "workspace": ws}
+

@@ -898,7 +898,8 @@ def db_create_post(
     status: str = "draft",
     scheduled_at: Optional[str] = None,
     ai_adaptation: Optional[Dict[str, Any]] = None,
-    workspace_id: str = "default"
+    workspace_id: str = "default",
+    approval_status: Optional[str] = None
 ) -> Dict[str, Any]:
     post_id = f"post_{uuid.uuid4().hex[:10]}"
     now_iso = datetime.now().isoformat()
@@ -911,6 +912,8 @@ def db_create_post(
     status_by_platform_json = json.dumps(status_by_platform)
     
     published_at = now_iso if status == "published" else None
+    if not approval_status:
+        approval_status = "pending" if status == "pending_review" else ("draft" if status == "draft" else "approved")
 
     with get_db_cursor() as cur:
         cur.execute("""
@@ -918,15 +921,17 @@ def db_create_post(
                 id, title, content, media_urls, media_type, thumbnail_url, platforms,
                 status, scheduled_at, published_at, status_by_platform, platform_post_ids,
                 ai_adaptation, approval_status, workspace_id, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, 'approved', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         """, (
             post_id, title, content, media_urls_json, media_type, thumbnail_url, platforms_json,
-            status, scheduled_at, published_at, status_by_platform_json, ai_adaptation_json, workspace_id
+            status, scheduled_at, published_at, status_by_platform_json, ai_adaptation_json, approval_status, workspace_id
         ))
 
     # If published, generate initial mock analytics
     if status == "published":
         db_record_initial_analytics(post_id, platforms)
+
+    return db_get_post(post_id)
 
     return db_get_post(post_id)
 
@@ -1035,13 +1040,23 @@ def db_publish_now(post_id: str) -> Dict[str, Any]:
     return db_get_post(post_id)
 
 def db_approve_post(post_id: str, approved: bool = True) -> Dict[str, Any]:
-    status_val = "approved" if approved else "rejected"
     with get_db_cursor() as cur:
-        cur.execute("""
-            UPDATE publish_posts
-            SET approval_status = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (status_val, post_id))
+        if approved:
+            cur.execute("""
+                UPDATE publish_posts
+                SET approval_status = 'approved',
+                    status = CASE WHEN status = 'pending_review' THEN 'scheduled' ELSE status END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (post_id,))
+        else:
+            cur.execute("""
+                UPDATE publish_posts
+                SET approval_status = 'rejected',
+                    status = 'draft',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (post_id,))
     return db_get_post(post_id)
 
 def db_delete_post(post_id: str) -> bool:
@@ -1263,12 +1278,27 @@ def db_create_template(name: str, platforms: List[str], caption_template: str, h
 
 def db_list_workspaces() -> List[Dict[str, Any]]:
     with get_db_cursor() as cur:
-        cur.execute("SELECT id, name, client_name, approval_required FROM publish_workspaces")
+        cur.execute("SELECT id, name, client_name, approval_required FROM publish_workspaces ORDER BY created_at ASC")
         rows = cur.fetchall()
         if not rows:
-            # Default workspace
+            # Default workspaces seed
+            cur.execute("""
+                INSERT OR IGNORE INTO publish_workspaces (id, name, client_name, approval_required)
+                VALUES 
+                ('default', 'OmniStudio Main', 'Internal Studio', 0),
+                ('agency_client_1', 'Samar Luxury Group', 'Samar Group B2B', 1)
+            """)
             return [
                 {"id": "default", "name": "OmniStudio Main", "client_name": "Internal Studio", "approval_required": False},
                 {"id": "agency_client_1", "name": "Samar Luxury Group", "client_name": "Samar Group B2B", "approval_required": True}
             ]
         return [{"id": r[0], "name": r[1], "client_name": r[2], "approval_required": bool(r[3])} for r in rows]
+
+def db_create_workspace(name: str, client_name: str = "", approval_required: bool = False) -> Dict[str, Any]:
+    ws_id = f"ws_{uuid.uuid4().hex[:8]}"
+    with get_db_cursor() as cur:
+        cur.execute("""
+            INSERT INTO publish_workspaces (id, name, client_name, approval_required)
+            VALUES (?, ?, ?, ?)
+        """, (ws_id, name, client_name, 1 if approval_required else 0))
+    return {"id": ws_id, "name": name, "client_name": client_name, "approval_required": approval_required}
