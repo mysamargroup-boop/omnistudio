@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles, BookOpen, Activity, Palette } from 'lucide-react';
+import { Zap, Sun, Moon, ChevronDown, Menu, LogIn, LogOut, User as UserIcon, Sparkles, BookOpen, Activity, Palette, LayoutDashboard, Sliders } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/ThemeProvider';
@@ -10,16 +10,21 @@ import { useAuth } from '@/context/AuthContext';
 import HowItWorksModal from '@/components/ui/HowItWorksModal';
 import BrandKitModal from '@/components/brand/BrandKitModal';
 
-const NAV_TABS = [
-  { id: 'studio', label: 'Studio', path: '/studio', badge: 'ALL' },
+const PRIMARY_NAV_TABS = [
   { id: 'image', label: 'Image', path: '/image' },
   { id: 'video', label: 'Video', path: '/video', hasDropdown: true },
   { id: 'audio', label: 'Voice', path: '/voice', hasDropdown: true },
   { id: 'pipeline', label: 'Agent', path: '/pipeline', badge: 'AI' },
   { id: 'publish', label: 'Publish', path: '/publish', badge: 'NEW' },
   { id: 'vault', label: 'Vault', path: '/vault' },
-  { id: 'usage', label: 'Usage', path: '/usage', badge: 'SPEND' },
-  { id: 'settings', label: 'Settings', path: '/settings' },
+];
+
+const MORE_NAV_ITEMS = [
+  { id: 'studio', label: 'Studio Hub', path: '/studio', desc: 'Unified multi-modal generator', badge: 'ALL', icon: LayoutDashboard },
+  { id: 'usage', label: 'Usage & Spend', path: '/usage', desc: 'Real-time telemetry & API spend', badge: 'SPEND', icon: Activity },
+  { id: 'settings', label: 'System Settings', path: '/settings', desc: 'BYOK API keys & security', icon: Sliders },
+  { id: 'brand_kit', label: 'Brand Kit', action: 'brand_kit', desc: 'Logos, colors & visual identity', icon: Palette },
+  { id: 'how_it_works', label: 'How It Works', action: 'how_it_works', desc: 'Studio workflow & model guide', icon: BookOpen },
 ];
 
 const VIDEO_FEATURES = [
@@ -125,7 +130,7 @@ export default function Header() {
         className="hidden md:flex items-center h-full relative gap-0.5 shrink min-w-0"
         onMouseLeave={() => setActiveDropdown(null)}
       >
-        {NAV_TABS.map((tab) => {
+        {PRIMARY_NAV_TABS.map((tab) => {
           const isActive = pathname === tab.path || (tab.path !== '/' && pathname.startsWith(tab.path));
           return (
             <div 
@@ -136,19 +141,19 @@ export default function Header() {
               <Link
                 href={tab.path}
                 className={cn(
-                  'flex items-center gap-1 px-2 py-1 xl:px-2.5 xl:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
+                  'flex items-center gap-1 px-2.5 py-1 xl:px-3 xl:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
                   isActive 
-                    ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs' 
+                    ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs font-bold' 
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span className={cn(
-                    "text-[9px] font-mono font-bold px-1 py-0.2 rounded leading-none",
+                    "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded leading-none",
                     isActive
                       ? "bg-white/20 dark:bg-zinc-900/20 text-white dark:text-zinc-950"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
+                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                   )}>
                     {tab.badge}
                   </span>
@@ -163,6 +168,33 @@ export default function Header() {
             </div>
           );
         })}
+
+        {/* More ▾ Dropdown Trigger (Contains Studio Hub, Usage, Settings, Brand Kit, Guide) */}
+        <div 
+          className="relative flex items-center h-full shrink-0"
+          onMouseEnter={() => setActiveDropdown('more')}
+        >
+          {(() => {
+            const isMoreActive = pathname === '/studio' || pathname === '/usage' || pathname === '/settings';
+            return (
+              <button
+                type="button"
+                className={cn(
+                  'flex items-center gap-1 px-2.5 py-1 xl:px-3 xl:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer',
+                  isMoreActive || activeDropdown === 'more'
+                    ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs font-bold' 
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
+                )}
+              >
+                <span>More</span>
+                <ChevronDown className={cn(
+                  'w-3 h-3 text-zinc-400 transition-transform duration-200',
+                  activeDropdown === 'more' && 'rotate-180 text-zinc-900 dark:text-white'
+                )} />
+              </button>
+            );
+          })()}
+        </div>
 
         {/* Video Dropdown Panel */}
         {activeDropdown === 'video' && (
@@ -229,13 +261,100 @@ export default function Header() {
             </div>
           </div>
         )}
+
+        {/* More Tools Dropdown Panel */}
+        {activeDropdown === 'more' && (
+          <div className="absolute top-full mt-2 right-0 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-2.5 shadow-2xl w-72 animate-scale-in z-50 space-y-1">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 px-2.5 py-1 font-bold">
+              Studio Tools & Utilities
+            </div>
+            
+            <Link
+              href="/studio"
+              onClick={() => setActiveDropdown(null)}
+              className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer"
+            >
+              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-zinc-950 transition-colors">
+                <LayoutDashboard className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Studio Hub</span>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">ALL</span>
+                </div>
+                <p className="text-[10px] text-zinc-500 line-clamp-1">Unified multi-modal generator</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/usage"
+              onClick={() => setActiveDropdown(null)}
+              className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer"
+            >
+              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-zinc-950 transition-colors">
+                <Activity className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Usage & Spend</span>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">TELEMETRY</span>
+                </div>
+                <p className="text-[10px] text-zinc-500 line-clamp-1">Real-time spend & API analytics</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/settings"
+              onClick={() => setActiveDropdown(null)}
+              className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer"
+            >
+              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-zinc-950 transition-colors">
+                <Sliders className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">System Settings</div>
+                <p className="text-[10px] text-zinc-500 line-clamp-1">BYOK API keys & passcodes</p>
+              </div>
+            </Link>
+
+            <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1" />
+
+            <button
+              type="button"
+              onClick={() => { setActiveDropdown(null); setBrandKitOpen(true); }}
+              className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer text-left"
+            >
+              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-zinc-950 transition-colors">
+                <Palette className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Brand Kit</div>
+                <p className="text-[10px] text-zinc-500 line-clamp-1">Logos, colors & visual identity</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveDropdown(null); setHowItWorksOpen(true); }}
+              className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer text-left"
+            >
+              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-950 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-zinc-950 transition-colors">
+                <BookOpen className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">How It Works</div>
+                <p className="text-[10px] text-zinc-500 line-clamp-1">Studio workflow & model guide</p>
+              </div>
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* Right Controls: Online Status + Theme + Auth + Create CTA */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Live Engine Status */}
         <div 
-          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-[11px] font-medium shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-[11px] font-medium shrink-0"
           title={isOnline ? 'All AI backend services running' : 'Backend offline'}
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -248,26 +367,6 @@ export default function Header() {
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
-
-        {/* Brand Kit Trigger */}
-        <button
-          onClick={() => setBrandKitOpen(true)}
-          className="flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
-          title="Brand Kit & Visual Identity"
-        >
-          <Palette className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-          <span className="hidden xl:inline">Brand Kit</span>
-        </button>
-
-        {/* How It Works Guide Trigger */}
-        <button
-          onClick={() => setHowItWorksOpen(true)}
-          className="flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
-          title="Studio Workflow & Model Guide"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span className="hidden xl:inline">How It Works</span>
-        </button>
 
         {/* Theme Toggle */}
         <button
@@ -328,6 +427,20 @@ export default function Header() {
                   >
                     <Activity className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Usage & Spend Telemetry</span>
+                  </button>
+                  <button
+                    onClick={() => { setUserMenuOpen(false); setBrandKitOpen(true); }}
+                    className="w-full flex items-center gap-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.04] px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-left"
+                  >
+                    <Palette className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Brand Kit & Visual Identity</span>
+                  </button>
+                  <button
+                    onClick={() => { setUserMenuOpen(false); setHowItWorksOpen(true); }}
+                    className="w-full flex items-center gap-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.04] px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-left"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Studio Workflow Guide</span>
                   </button>
                 </div>
 

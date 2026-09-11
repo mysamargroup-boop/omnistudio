@@ -419,7 +419,8 @@ function VideoStudioContent() {
     if (!raw) return;
     const parts = raw.split(":");
     const text = parts[0].trim();
-    const weight = parts[1] ? parseFloat(parts[1]) || 1.1 : 1.1;
+    const rawWeight = parts[1] !== undefined ? parseFloat(parts[1]) : 1.1;
+    const weight = isNaN(rawWeight) ? 1.1 : Math.max(0, Math.min(2.0, rawWeight));
     if (text) {
       setTokenChips((prev) => [...prev, { text, weight: Math.round(weight * 10) / 10 }]);
       setNewTokenInput("");
@@ -903,8 +904,15 @@ function VideoStudioContent() {
       }
     } catch {}
 
-    const tokenString = tokenChips.length > 0 ? `, ${tokenChips.map((t) => `${t.text}:${t.weight}`).join(", ")}` : "";
-    const finalPrompt = (characterContext + prompt + promptDirectiveText + tokenString).trim();
+    const tokenParts = tokenChips.map((t) => `${t.text}:${t.weight}`);
+    const tokenString = tokenParts.length > 0 ? tokenParts.join(", ") : "";
+    const promptSegments = [
+      characterContext ? characterContext.trim().replace(/,\s*$/, "") : "",
+      prompt ? prompt.trim().replace(/^,\s*|,\s*$/g, "") : "",
+      promptDirectiveText ? promptDirectiveText.trim().replace(/^,\s*|,\s*$/g, "") : "",
+      tokenString,
+    ].filter(Boolean);
+    const finalPrompt = promptSegments.join(", ").trim();
 
     // Initialize Render Queue Record
     const newJobId = "job_" + Date.now();

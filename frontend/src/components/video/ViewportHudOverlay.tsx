@@ -115,7 +115,7 @@ export default function ViewportHudOverlay({
             <span>COLORSPACE: ACEScg (LINEAR)</span>
           </div>
           <div className="w-full h-[8%] bg-black/90 backdrop-blur-xs border-t border-white/10 flex items-center justify-between px-3 text-[9px] font-mono text-zinc-500">
-            <span>RASTER: {resolution.toUpperCase()} DCI-P3 D65</span>
+            <span>RASTER: {(resolution || "1080p").toUpperCase()} DCI-P3 D65</span>
             <span>SHUTTER: 180.0° CINE</span>
           </div>
         </div>
@@ -123,14 +123,14 @@ export default function ViewportHudOverlay({
 
       {/* Full Cinematic Telemetry HUD Overlay */}
       {showHud && (
-        <div className={cn("absolute inset-0 pointer-events-none z-25 flex flex-col justify-between p-3 sm:p-4 select-none font-mono text-white", className)}>
+        <div className={cn("absolute inset-0 pointer-events-none z-[25] flex flex-col justify-between p-3 sm:p-4 select-none font-mono text-white", className)}>
           {/* Top Telemetry Row */}
           <div className="flex items-start justify-between gap-2">
             {/* Top-Left: REC & Sensor Stamp */}
             <div className="flex flex-col gap-1">
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-[10px] text-emerald-400 font-bold">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                <span>REC {fps}.00P [{focalLens.toUpperCase()}]</span>
+                <span>REC {fps || 24}.00P [{(focalLens || "35mm Prime").toUpperCase()}]</span>
               </div>
               <div className="text-[9px] text-zinc-400 px-1 font-mono tracking-wider drop-shadow-md">
                 BUFFER: 120/120 F · SHUTTER 1/48s
@@ -190,7 +190,7 @@ export default function ViewportHudOverlay({
                 </span>
               </div>
               <div className="text-[9px] text-zinc-400 px-1 font-mono tracking-wider drop-shadow-md">
-                RIG: {motionLabel.toUpperCase()} · STAGE_A ACTIVE
+                RIG: {(motionLabel || "Static").toUpperCase()} · STAGE_A ACTIVE
               </div>
             </div>
 
@@ -203,7 +203,7 @@ export default function ViewportHudOverlay({
                 </span>
               </div>
               <div className="text-[9px] text-zinc-400 px-1 font-mono tracking-wider drop-shadow-md">
-                {resolution.toUpperCase()} MASTER · PRORES 422 HQ
+                {(resolution || "1080p").toUpperCase()} MASTER · PRORES 422 HQ
               </div>
             </div>
           </div>

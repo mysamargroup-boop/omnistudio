@@ -195,13 +195,17 @@ async def generate_voice(req: VoiceRequest, request: Request):
             text=req.text, voice=req.voice_id, model=req.model
         )
     else:
+        # Microsoft Edge Neural Engine (100% Free)
+        edge_voice = req.voice_id
+        if not edge_voice or not edge_voice.endswith("Neural"):
+            edge_voice = "en-US-ChristopherNeural"
         filename = f"edge_{uuid.uuid4().hex[:8]}.mp3"
         local_path = settings.AUDIO_PATH / filename
-        await generate_edge_speech(text=req.text, voice_id=req.voice_id, output_path=local_path)
+        await generate_edge_speech(text=req.text, voice_id=edge_voice, output_path=local_path)
         res = {
             "success": True, "simulated": False,
             "filename": filename, "url": f"/outputs/audio/{filename}",
-            "local_path": str(local_path), "model": f"Edge TTS ({req.voice_id})"
+            "local_path": str(local_path), "model": f"Edge TTS ({edge_voice})"
         }
 
     # Sync to Cloudflare R2 and Supabase Cloud

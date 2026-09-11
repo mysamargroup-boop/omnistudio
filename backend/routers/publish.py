@@ -1,7 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Query
+from fastapi import APIRouter, HTTPException, Depends, Request, Query, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
+from pathlib import Path
+import uuid
 import logging
+from config import settings
+from services.cron_service import cron_scheduler
 
 from services.publish_service import (
     SUPPORTED_PLATFORMS,
@@ -321,4 +325,61 @@ async def list_workspaces():
 async def create_workspace_endpoint(req: CreateWorkspaceRequest):
     ws = db_create_workspace(req.name, req.client_name or "", req.approval_required or False)
     return {"success": True, "workspace": ws}
+
+# -----------------------------------------------------------------------------
+# Media Upload for Publish Studio
+# -----------------------------------------------------------------------------
+@router.post("/upload-media")
+async def upload_publish_media(file: UploadFile = File(...)):
+    """Upload a video or image file for publishing."""
+    filename = file.filename or "media_upload"
+    ext = Path(filename).suffix.lower()
+    
+    is_video = ext in [".mp4", ".mov", ".webm", ".avi", ".mkv"]
+    is_image = ext in [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]
+    
+    if not is_video and not is_image:
+        is_image = True
+        ext = ".png"
+
+    media_type = "video" if is_video else "image"
+    safe_name = f"pub_{uuid.uuid4().hex[:8]}{ext}"
+    
+    if is_video:
+        target_path = settings.VIDEOS_PATH / safe_name
+        rel_url = f"/outputs/videos/{safe_name}"
+    else:
+        target_path = settings.IMAGES_PATH / safe_name
+        rel_url = f"/outputs/images/{safe_name}"
+
+    content = await file.read()
+    with open(target_path, "wb") as f:
+        f.write(content)
+
+    return {
+        "success": True,
+        "filename": safe_name,
+        "url": rel_url,
+        "media_type": media_type,
+        "size": len(content)
+    }
+
+# -----------------------------------------------------------------------------
+# Cron Scheduler Endpoints
+# -----------------------------------------------------------------------------
+@router.get("/cron/status")
+async def get_cron_scheduler_status():
+    """Returns the live status of the background auto-publish scheduler."""
+    return cron_scheduler.get_status()
+
+@router.post("/cron/run")
+async def run_cron_scheduler_now():
+    """Manually triggers execution of all due scheduled posts immediately."""
+    executed = cron_scheduler.run_due_posts()
+    return {
+        "success": True,
+        "executed_count": len(executed),
+        "executed_posts": executed,
+        "message": f"Processed {len(executed)} due scheduled posts."
+    }
 

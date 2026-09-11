@@ -483,4 +483,13 @@ export const api = {
     fetchApi<any>("/api/publish/workspaces"),
   createPublishWorkspace: (data: { name: string; client_name?: string; approval_required?: boolean }) =>
     fetchApi<any>("/api/publish/workspaces", { method: "POST", body: JSON.stringify(data) }),
+  uploadPublishMedia: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApiFormData<any>("/api/publish/upload-media", formData);
+  },
+  getCronStatus: () =>
+    fetchApi<any>("/api/publish/cron/status"),
+  runDueScheduledPosts: () =>
+    fetchApi<any>("/api/publish/cron/run", { method: "POST" }),
 };

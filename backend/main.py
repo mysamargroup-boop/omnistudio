@@ -68,12 +68,26 @@ app.openapi = custom_openapi
 @app.on_event("startup")
 async def on_startup():
     from database import init_database, load_settings_into_runtime
+    from services.cron_service import cron_scheduler
     try:
         init_database()
         load_settings_into_runtime()
     except Exception as e:
         import logging
         logging.getLogger("omnistudio").warning("Startup DB init: %s", e)
+    try:
+        cron_scheduler.start()
+    except Exception as e:
+        import logging
+        logging.getLogger("omnistudio").warning("Startup cron scheduler: %s", e)
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    from services.cron_service import cron_scheduler
+    try:
+        cron_scheduler.stop()
+    except Exception as e:
+        pass
 
 # CORS: Origin whitelist + explicit methods + explicit headers (no wildcard)
 SAFE_CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]

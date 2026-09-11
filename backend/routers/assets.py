@@ -453,7 +453,7 @@ async def empty_trash(request: Request):
                 if f.is_file() and not f.name.startswith("."):
                     filename = f.name
                     f.unlink()
-                    object_name = f"{media_type}s/{filename}"
+                    object_name = f"{media_type}/{filename}"
                     await delete_file_from_r2(object_name)
                     db_delete_asset(filename=filename, asset_type=media_type)
                     purged.append(filename)
