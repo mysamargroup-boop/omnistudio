@@ -997,3 +997,119 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         "size_mb": round(stat.st_size / (1024 * 1024), 2)
     }
 
+
+# ─── AI Video Intelligence & Creator Endpoints ───
+
+class SilenceRemovalRequest(BaseModel):
+    video_path: str
+    noise_threshold_db: float = -30.0
+    min_silence_duration: float = 0.5
+
+class AudioFilterRequest(BaseModel):
+    video_path: str
+
+class AutoCaptionsRequest(BaseModel):
+    video_path: str
+    language: str = "en"
+    translate_to: Optional[str] = None
+
+class ProductAdRequest(BaseModel):
+    product_image_path: str
+    product_title: str
+    target_audience: str = "Luxury consumers"
+    language: str = "en"
+
+
+@router.post("/ai-remove-silence")
+@limiter.limit("15/minute")
+async def api_remove_silence(req: SilenceRemovalRequest, request: Request):
+    """Automatically cut pauses, umms, and dead air from video"""
+    from services.ai_video_tools import remove_silence_from_video
+    from services.security_service import safe_resolve_output_path
+
+    try:
+        src = safe_resolve_output_path(req.video_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid video path: {e}"}
+
+    res = await remove_silence_from_video(
+        src,
+        noise_threshold_db=req.noise_threshold_db,
+        min_silence_duration=req.min_silence_duration
+    )
+    return res
+
+
+@router.post("/ai-denoise")
+@limiter.limit("15/minute")
+async def api_denoise_audio(req: AudioFilterRequest, request: Request):
+    """Filter fan, traffic, and microphone noise from video using FFmpeg afftdn"""
+    from services.ai_video_tools import denoise_video_audio
+    from services.security_service import safe_resolve_output_path
+
+    try:
+        src = safe_resolve_output_path(req.video_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid video path: {e}"}
+
+    res = await denoise_video_audio(src)
+    return res
+
+
+@router.post("/ai-enhance-voice")
+@limiter.limit("15/minute")
+async def api_enhance_voice(req: AudioFilterRequest, request: Request):
+    """Apply broadcast-grade EQ, compression, and loudness normalization to vocals"""
+    from services.ai_video_tools import enhance_voice_audio
+    from services.security_service import safe_resolve_output_path
+
+    try:
+        src = safe_resolve_output_path(req.video_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid video path: {e}"}
+
+    res = await enhance_voice_audio(src)
+    return res
+
+
+@router.post("/ai-captions")
+@limiter.limit("15/minute")
+async def api_generate_captions(req: AutoCaptionsRequest, request: Request):
+    """Generate timestamped subtitles/captions from video audio"""
+    from services.ai_video_tools import generate_auto_captions
+    from services.security_service import safe_resolve_output_path
+
+    try:
+        src = safe_resolve_output_path(req.video_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid video path: {e}"}
+
+    res = await generate_auto_captions(
+        src,
+        language=req.language,
+        translate_to=req.translate_to
+    )
+    return res
+
+
+@router.post("/ai-product-ad")
+@limiter.limit("10/minute")
+async def api_product_ad(req: ProductAdRequest, request: Request):
+    """Generate commercial ad video & storyboard from product image"""
+    from services.ai_video_tools import generate_product_ad_campaign
+    from services.security_service import safe_resolve_output_path
+
+    try:
+        img_src = safe_resolve_output_path(req.product_image_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid product image path: {e}"}
+
+    res = await generate_product_ad_campaign(
+        product_image_path=img_src,
+        product_title=req.product_title,
+        target_audience=req.target_audience,
+        language=req.language
+    )
+    return res
+
+

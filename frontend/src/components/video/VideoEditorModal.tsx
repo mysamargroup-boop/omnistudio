@@ -230,8 +230,14 @@ export default function VideoEditorModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
-      <div className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-[#0d0d14] border border-white/[0.1] shadow-2xl overflow-hidden text-white">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-[#0d0d14] border border-white/[0.1] shadow-2xl overflow-hidden text-white cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-white/[0.02]">
           <div className="flex items-center gap-3">

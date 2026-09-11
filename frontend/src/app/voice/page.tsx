@@ -490,21 +490,35 @@ export default function VoiceStudioPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#06060a] text-zinc-950 dark:text-zinc-50 flex flex-col p-4 sm:p-6 font-jakarta">
-      
-      {/* Header */}
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-1 text-xs font-mono tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">
-            <Mic size={14} className="text-emerald-500" />
-            <span>ACOUSTIC SUITE 5.0 • NEURAL SPEECH + VOICE CHANGE + TRANSLATE</span>
+      <div className="max-w-6xl mx-auto w-full flex flex-col flex-1">
+        {/* Centered Bold Studio Header */}
+        <div className="mb-6 flex flex-col items-center justify-center text-center space-y-2.5 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono tracking-widest uppercase font-semibold">
+            <Mic size={13} className="text-emerald-500" />
+            <span>ACOUSTIC SUITE 5.0 • NEURAL VOICE STUDIO</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-medium tracking-tight">Audio Production Studio</h1>
+          <h1 className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white">
+            Audio Production Studio
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-sans max-w-lg">
+            Broadcast-grade neural speech synthesis, real-time voice conversion, and multilingual dubbing.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono font-bold shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              EDGE NEURAL (100% FREE ACTIVE)
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[11px] font-mono">
+              ELEVENLABS V3
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[11px] font-mono">
+              OPENAI AUDIO
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[11px] font-mono">
+              SEED AUDIO
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] px-3 py-1.5 rounded-full shadow-sm text-xs font-mono tracking-widest text-zinc-500 whitespace-nowrap shrink-0">
-          <Sparkles size={12} className="text-emerald-500" />
-          <span>ENGINES: ELEVENLABS + EDGE NEURAL + OPENAI + SEED AUDIO</span>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         
@@ -850,17 +864,18 @@ export default function VoiceStudioPage() {
         </div>
       </div>
 
-      {/* Spend Safeguard Confirmation Modal */}
-      <GenerationConfirmModal
-        isOpen={confirmModalOpen}
-        onClose={() => setConfirmModalOpen(false)}
-        onConfirm={() => {
-          setConfirmModalOpen(false);
-          if (onConfirmCallback) onConfirmCallback();
-        }}
-        details={confirmDetails}
-        loading={isGenerating}
-      />
+        {/* Spend Safeguard Confirmation Modal */}
+        <GenerationConfirmModal
+          isOpen={confirmModalOpen}
+          onClose={() => setConfirmModalOpen(false)}
+          onConfirm={() => {
+            setConfirmModalOpen(false);
+            if (onConfirmCallback) onConfirmCallback();
+          }}
+          details={confirmDetails}
+          loading={isGenerating}
+        />
+      </div>
     </div>
   );
 }

@@ -346,6 +346,33 @@ export const api = {
       body: JSON.stringify({ media_type, old_filename, new_filename }),
     }),
 
+  // AI Video Intelligence & Creator Tools
+  aiRemoveSilence: (video_path: string, noise_threshold_db: number = -30.0, min_silence_duration: number = 0.5) =>
+    fetchApi<any>("/api/video/ai-remove-silence", {
+      method: "POST",
+      body: JSON.stringify({ video_path, noise_threshold_db, min_silence_duration }),
+    }),
+  aiDenoiseAudio: (video_path: string) =>
+    fetchApi<any>("/api/video/ai-denoise", {
+      method: "POST",
+      body: JSON.stringify({ video_path }),
+    }),
+  aiEnhanceVoice: (video_path: string) =>
+    fetchApi<any>("/api/video/ai-enhance-voice", {
+      method: "POST",
+      body: JSON.stringify({ video_path }),
+    }),
+  aiCaptions: (video_path: string, language: string = "en", translate_to?: string) =>
+    fetchApi<any>("/api/video/ai-captions", {
+      method: "POST",
+      body: JSON.stringify({ video_path, language, translate_to }),
+    }),
+  aiProductAd: (product_image_path: string, product_title: string, target_audience: string = "Luxury consumers", language: string = "en") =>
+    fetchApi<any>("/api/video/ai-product-ad", {
+      method: "POST",
+      body: JSON.stringify({ product_image_path, product_title, target_audience, language }),
+    }),
+
   // Settings
   getStatus: () => fetchApi<any>("/api/settings/status"),
   getKeys: () => fetchApi<any>("/api/settings/keys"),

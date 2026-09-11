@@ -183,9 +183,12 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
   const StepIcon = step.icon;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
       <div
-        className="relative w-full max-w-3xl rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta"
+        className="relative w-full max-w-3xl rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-jakarta cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

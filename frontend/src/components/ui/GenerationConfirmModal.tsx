@@ -103,7 +103,10 @@ export default function GenerationConfirmModal({
   const ServiceIcon = serviceMeta.icon;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+      onClick={onClose}
+    >
       {/* Background ambient glow halo */}
       <div
         className={cn(
@@ -117,7 +120,7 @@ export default function GenerationConfirmModal({
       />
 
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100"
+        className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Accent Rim */}

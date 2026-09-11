@@ -44,6 +44,8 @@ import {
   SlidersHorizontal,
   User,
   UserCheck,
+  UserX,
+  UserPlus,
   Scissors,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
@@ -224,6 +226,7 @@ function VideoStudioContent() {
   // Character Lock State (Sidebar & Consistent Persona)
   const [characterModalOpen, setCharacterModalOpen] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<CharacterData | null>(null);
+  const [characterLockActive, setCharacterLockActive] = useState<boolean>(true);
   const [customCharName, setCustomCharName] = useState("");
   const [customCharPrompt, setCustomCharPrompt] = useState("");
   const [customCharImage, setCustomCharImage] = useState("");
@@ -630,7 +633,9 @@ function VideoStudioContent() {
       ? `API Key for ${modelObj?.label || model} is missing. Configure it in Settings or switch to Local Ken Burns (100% Free).`
       : undefined;
     const effectiveMode = (mode === "first_frame" && !startImage.trim() && !!prompt.trim()) ? "text_to_video" : mode;
-    const characterContext = activeCharacter?.isLocked && activeCharacter?.prompt ? `[Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ` : "";
+    const characterContext = (activeCharacter?.isLocked && characterLockActive && activeCharacter?.prompt)
+      ? `[Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. `
+      : "";
     const displayPrompt = (characterContext + prompt).trim() || `Motion: ${motion} on keyframe`;
 
     setConfirmDetails({
@@ -777,8 +782,9 @@ function VideoStudioContent() {
   return (
     <div className="relative h-full flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
-      <div className="flex-shrink-0 sticky top-0 flex items-center justify-between gap-3 px-4 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/90 dark:bg-[#0c0c12]/90 backdrop-blur-md z-20">
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-x-auto no-scrollbar flex-nowrap shrink-0 max-w-[calc(100vw-300px)]">
+      <div className="flex-shrink-0 sticky top-0 flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/95 dark:bg-[#0c0c12]/95 backdrop-blur-md z-20 w-full overflow-hidden">
+        {/* Left: Mode Tabs (flex-1 scrollable, never pushes right utilities off-screen) */}
+        <div className="flex-1 min-w-0 overflow-x-auto no-scrollbar flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
           <button
             type="button"
             onClick={() => setMode("first_frame")}
@@ -868,19 +874,20 @@ function VideoStudioContent() {
               RECUT
             </span>
           </button>
-
-          {/* Engine & Ken Burns Indicator Right Next to Mode Tabs */}
-          <div className="flex items-center gap-2 text-xs font-mono font-bold px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shadow-xs shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-            <span>ENGINE: {activeModel.label}</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
-              {activeModel.value === "ffmpeg_local" ? "100% FREE" : activeModel.active ? "ACTIVE" : "KEY REQ"}
-            </span>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* Character Lock Button (Reference Image 1) */}
+        {/* Right: Pinned Utilities (Engine, Character Lock, Guide, Settings) - NEVER overflows */}
+        <div className="shrink-0 flex items-center gap-2">
+          {/* Engine & Ken Burns Indicator */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shadow-xs shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+            <span className="truncate max-w-[130px]">{activeModel.label}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
+              {activeModel.value === "ffmpeg_local" ? "FREE" : activeModel.active ? "ACTIVE" : "KEY"}
+            </span>
+          </div>
+
+          {/* Character Lock Button */}
           <button
             type="button"
             onClick={() => {
@@ -888,7 +895,7 @@ function VideoStudioContent() {
               setOpenSections((prev) => ({ ...prev, character: true }));
             }}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 border",
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 border",
               activeCharacter?.isLocked
                 ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-sm"
                 : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/40"
@@ -903,7 +910,7 @@ function VideoStudioContent() {
             ) : (
               <User className="w-3.5 h-3.5 text-emerald-500" />
             )}
-            <span>{activeCharacter?.isLocked ? `Locked: ${activeCharacter.name}` : "Character Lock"}</span>
+            <span className="hidden md:inline">{activeCharacter?.isLocked ? `Locked: ${activeCharacter.name}` : "Character Lock"}</span>
             {activeCharacter?.isLocked && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             )}
@@ -912,10 +919,10 @@ function VideoStudioContent() {
           <button
             type="button"
             onClick={() => setHowItWorksOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer shrink-0"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden md:inline">Studio Guide</span>
+            <span className="hidden lg:inline">Guide</span>
           </button>
 
           {/* Right Sidebar Toggle Button */}
@@ -938,9 +945,9 @@ function VideoStudioContent() {
       </div>
 
       {/* Main Viewport: Canvas on Left + Settings Sidebar on Right */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {precisionEditorOpen || mode === "video_editor" ? (
-          <div className="flex-1 p-3 sm:p-5 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-hidden p-1.5 sm:p-2.5 flex flex-col">
             <PrecisionVideoEditor
               videoUrl={precisionEditorUrl || editorVideoUrl || (result?.url ? getMediaUrl(result.url) : "")}
               filename={precisionEditorFilename || editorVideoFile?.name || result?.filename || "video.mp4"}
@@ -1575,6 +1582,11 @@ function VideoStudioContent() {
             )}
           </div>
 
+          {/* Backdrop to dismiss any open popovers on outside click */}
+          {(modelPopoverOpen || ratioPopoverOpen || motionPopoverOpen || durationPopoverOpen || qualityPopoverOpen) && (
+            <div className="fixed inset-0 z-30" onClick={closeAllPopovers} />
+          )}
+
           {/* Prompt Control Bar Fixed at Bottom of Canvas */}
           <div className={cn(
             "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4",
@@ -1601,7 +1613,7 @@ function VideoStudioContent() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -1624,7 +1636,7 @@ function VideoStudioContent() {
                 </div>
               )}
 
-              {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt */}
+              {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt + Character Lock */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* 1-Click Improve Prompt Button */}
@@ -1650,6 +1662,41 @@ function VideoStudioContent() {
                     <Sparkle className={cn("h-3 w-3 text-amber-500", directing && "animate-spin")} />
                     <span>Director Agent</span>
                   </button>
+
+                  {/* Character Lock Quick Toggle Button */}
+                  {activeCharacter?.isLocked ? (
+                    <button
+                      type="button"
+                      onClick={() => setCharacterLockActive(!characterLockActive)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95 border",
+                        characterLockActive
+                          ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-500"
+                      )}
+                      title={characterLockActive ? "Character Lock is Active (Click to disable for next generation)" : "Character Lock is Disabled (Click to activate)"}
+                    >
+                      {characterLockActive ? (
+                        <UserCheck className="h-3.5 w-3.5 text-emerald-500" />
+                      ) : (
+                        <UserX className="h-3.5 w-3.5 text-zinc-400" />
+                      )}
+                      <span>Character: {activeCharacter.name} ({characterLockActive ? "ON" : "OFF"})</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSidebarOpen(true);
+                        setOpenSections((prev) => ({ ...prev, character: true }));
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-mono cursor-pointer transition-all active:scale-95"
+                      title="Open Character Studio to Lock Persona"
+                    >
+                      <UserPlus className="h-3.5 w-3.5 text-zinc-400" />
+                      <span>Character Lock</span>
+                    </button>
+                  )}
 
                   {/* Negative Prompt Toggle */}
                   <button
@@ -2261,6 +2308,69 @@ function VideoStudioContent() {
                         rows={2}
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
                       />
+
+                      {/* Image Upload for Custom Character */}
+                      <input
+                        ref={charFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingCharImage(true);
+                          try {
+                            const res = await api.uploadReferenceImage(file);
+                            if (res?.url) {
+                              setCustomCharImage(res.url);
+                            }
+                          } catch (err: any) {
+                            alert(err?.message || "Failed to upload reference character image");
+                          } finally {
+                            setUploadingCharImage(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                      {customCharImage ? (
+                        <div className="relative rounded-lg overflow-hidden border border-emerald-500/40 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2 p-1.5">
+                          <img
+                            src={getMediaUrl(customCharImage)}
+                            alt="Custom character"
+                            className="w-10 h-10 rounded object-cover border border-white/10"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold block">
+                              Face Reference Attached
+                            </span>
+                            <span className="text-[9px] font-mono text-zinc-400 truncate block">
+                              {customCharImage.split("/").pop()}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCustomCharImage("")}
+                            className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => charFileInputRef.current?.click()}
+                          disabled={uploadingCharImage}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[11px] font-mono transition-colors cursor-pointer"
+                        >
+                          {uploadingCharImage ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="w-3.5 h-3.5" />
+                          )}
+                          <span>{uploadingCharImage ? "Uploading Image..." : "Upload Face / Reference Image"}</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         disabled={!customCharName.trim() || !customCharPrompt.trim()}
