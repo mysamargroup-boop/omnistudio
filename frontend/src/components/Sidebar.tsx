@@ -22,6 +22,7 @@ import {
   Sparkles,
   Activity,
   Share2,
+  Palette,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -46,6 +47,13 @@ export default function Sidebar() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState<string>("");
+  const [currentSearch, setCurrentSearch] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentSearch(window.location.search);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -132,6 +140,12 @@ export default function Sidebar() {
           icon: Activity,
           badge: "SPEND",
         },
+        {
+          href: "/settings?tab=brand_kit",
+          label: "Brand Kit Studio",
+          icon: Palette,
+          badge: "IDENTITY",
+        },
         { href: "/settings", label: "BYOK & Settings", icon: Sliders, badge: "KEYS" },
       ],
     },
@@ -191,11 +205,26 @@ export default function Sidebar() {
               </span>
               <div className="space-y-0.5">
               {group.items.map((item) => {
-                const isActive = pathname === item.href;
+                const isBrandKitLink = item.href.includes("tab=brand_kit");
+                const isSettingsLink = item.href === "/settings";
+                const isBrandKitActive = pathname === "/settings" && currentSearch.includes("tab=brand_kit");
+                const isActive = isBrandKitLink 
+                  ? isBrandKitActive 
+                  : isSettingsLink 
+                  ? (pathname === "/settings" && !isBrandKitActive) 
+                  : (pathname === item.href);
+
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => {
+                      if (isBrandKitLink) {
+                        setCurrentSearch("?tab=brand_kit");
+                      } else if (isSettingsLink) {
+                        setCurrentSearch("");
+                      }
+                    }}
                     className={cn(
                       "group flex items-center gap-2.5 font-jakarta mx-2 px-2.5 py-1.5 rounded-xl text-xs transition-all duration-150 relative",
                       isActive

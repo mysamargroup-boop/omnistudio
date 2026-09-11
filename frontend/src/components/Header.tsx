@@ -255,7 +255,7 @@ export default function Header() {
           className="flex items-center gap-1.5 px-2 xl:px-2.5 py-1 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 border border-zinc-200/80 dark:border-zinc-800/80"
           title="Brand Kit & Visual Identity"
         >
-          <Palette className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+          <Palette className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
           <span className="hidden xl:inline">Brand Kit</span>
         </button>
 

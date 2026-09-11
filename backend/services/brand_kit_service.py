@@ -27,10 +27,10 @@ DEFAULT_BRAND_KIT: Dict[str, Any] = {
     "tagline": "Next-Gen AI Cinematic Production",
     "logo_url": "",
     "colors": {
-        "primary": "#6366f1",
-        "secondary": "#ec4899",
-        "accent": "#10b981",
-        "background": "#0b0c10"
+        "primary": "#10b981",
+        "secondary": "#71717a",
+        "accent": "#06b6d4",
+        "background": "#09090b"
     },
     "typography": {
         "primary_font": "Inter",

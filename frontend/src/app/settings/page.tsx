@@ -34,11 +34,13 @@ import {
   Upload,
   Activity,
   FileText,
+  Palette,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn, formatBytes } from "@/lib/utils";
+import { BrandKitPanel } from "@/components/brand/BrandKitModal";
 
-type SettingsTab = "infrastructure" | "trash" | "api_keys" | "preferences";
+type SettingsTab = "infrastructure" | "brand_kit" | "trash" | "api_keys" | "preferences";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("infrastructure");
@@ -95,7 +97,7 @@ export default function SettingsPage() {
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 
-  // Load preferences from localStorage on mount
+  // Load preferences from localStorage and URL tab parameter on mount
   useEffect(() => {
     try {
       const savedPrefs = localStorage.getItem("omnistudio_preferences");
@@ -103,6 +105,14 @@ export default function SettingsPage() {
         setPreferences((prev) => ({ ...prev, ...JSON.parse(savedPrefs) }));
       }
     } catch {}
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "brand_kit" || tab === "infrastructure" || tab === "trash" || tab === "api_keys" || tab === "preferences") {
+        setActiveTab(tab as SettingsTab);
+      }
+    }
   }, []);
 
   const savePreferences = (newPrefs: typeof preferences) => {
@@ -437,6 +447,20 @@ export default function SettingsPage() {
         >
           <Cpu className="h-3.5 w-3.5 text-emerald-500" />
           <span>System Infrastructure</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("brand_kit")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+            activeTab === "brand_kit"
+              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+          )}
+        >
+          <Palette className="h-3.5 w-3.5 text-emerald-500" />
+          <span>Brand Kit & Identity</span>
         </button>
 
         <button
@@ -845,6 +869,15 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB: BRAND KIT & VISUAL IDENTITY ─── */}
+      {activeTab === "brand_kit" && (
+        <div className="space-y-6 tab-content-enter">
+          <div className="rounded-2xl p-5 sm:p-6 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] shadow-sm">
+            <BrandKitPanel isEmbedded={true} />
           </div>
         </div>
       )}

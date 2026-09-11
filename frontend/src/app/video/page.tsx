@@ -1874,10 +1874,10 @@ function VideoStudioContent() {
                 <button
                   type="button"
                   onClick={() => setBrandKitModalOpen(true)}
-                  className="shrink-0 ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer"
+                  className="shrink-0 ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] border border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
                   title="Open Brand Kit Guidelines"
                 >
-                  <Palette className="w-3 h-3" />
+                  <Palette className="w-3 h-3 text-emerald-500" />
                   <span>Brand Kit</span>
                 </button>
               </div>
