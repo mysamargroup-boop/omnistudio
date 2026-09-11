@@ -27,7 +27,10 @@ router = APIRouter(prefix="/api/image", tags=["Image Generation"])
 
 ALLOWED_ASPECT_RATIOS = {"1:1", "16:9", "9:16", "4:3", "3:2", "21:9"}
 ALLOWED_IMAGE_QUALITIES = {"standard", "hd", "ultra"}
-ALLOWED_IMAGE_STYLES = {"cinematic", "photoreal", "anime", "cyberpunk", "3d_pixar", "vintage", "fantasy", "analog"}
+ALLOWED_IMAGE_STYLES = {
+    "cinematic", "photoreal", "anime", "cyberpunk", "3d_pixar", "vintage", "fantasy", "analog",
+    "more_realistic", "more_cinematic", "more_luxury", "more_fashion", "more_commercial", "more_viral"
+}
 
 class ImageRequest(BaseModel):
     prompt: str
@@ -921,3 +924,95 @@ async def edit_image(req: ImageEditRequest, request: Request):
     except Exception as e:
         logger.error("Image edit error: %s", e)
         raise HTTPException(status_code=500, detail=f"Image edit failed: {e}")
+
+
+# ─── AI Image Tools Endpoints ───
+
+class ImageToolRequest(BaseModel):
+    image_path: str
+    preset: Optional[str] = "golden_hour"
+    intensity: Optional[float] = 1.0
+    target_aspect: Optional[str] = "16:9"
+
+
+def _save_ai_tool_asset(res: dict, src_name: str, tool_name: str):
+    if res.get("success") and res.get("filename"):
+        fn = res["filename"]
+        fp = settings.IMAGES_PATH / fn
+        if fp.exists():
+            try:
+                db_save_asset(
+                    asset_id=str(uuid.uuid4()),
+                    project_id=None,
+                    asset_type="images",
+                    filename=fn,
+                    url=res.get("url", f"/outputs/images/{fn}"),
+                    local_path=str(fp),
+                    storage_provider="local",
+                    size_bytes=fp.stat().st_size,
+                    mime_type="image/png",
+                    metadata={"source_file": src_name, "tool": tool_name}
+                )
+            except Exception as e:
+                logger.warning("Failed to save AI tool asset: %s", e)
+
+
+@router.post("/remove-background")
+@limiter.limit("20/minute")
+async def api_remove_background(req: ImageToolRequest, request: Request):
+    """Remove background from image and export transparent PNG"""
+    from services.ai_image_tools import remove_background
+    from services.security_service import safe_resolve_output_path
+    try:
+        src = safe_resolve_output_path(req.image_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid image path: {e}"}
+    res = remove_background(src)
+    _save_ai_tool_asset(res, src.name, "remove_background")
+    return res
+
+
+@router.post("/relight")
+@limiter.limit("20/minute")
+async def api_relight(req: ImageToolRequest, request: Request):
+    """Apply studio relighting to an image"""
+    from services.ai_image_tools import relight_image
+    from services.security_service import safe_resolve_output_path
+    try:
+        src = safe_resolve_output_path(req.image_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid image path: {e}"}
+    res = relight_image(src, preset=req.preset or "golden_hour", intensity=req.intensity or 1.0)
+    _save_ai_tool_asset(res, src.name, f"relight_{req.preset}")
+    return res
+
+
+@router.post("/face-restore")
+@limiter.limit("20/minute")
+async def api_face_restore(req: ImageToolRequest, request: Request):
+    """Restore facial micro-textures and sharpness"""
+    from services.ai_image_tools import restore_face
+    from services.security_service import safe_resolve_output_path
+    try:
+        src = safe_resolve_output_path(req.image_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid image path: {e}"}
+    res = restore_face(src)
+    _save_ai_tool_asset(res, src.name, "face_restore")
+    return res
+
+
+@router.post("/outpaint")
+@limiter.limit("20/minute")
+async def api_outpaint(req: ImageToolRequest, request: Request):
+    """Expand canvas to wide or vertical aspect ratio"""
+    from services.ai_image_tools import outpaint_expand
+    from services.security_service import safe_resolve_output_path
+    try:
+        src = safe_resolve_output_path(req.image_path, must_exist=True)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid image path: {e}"}
+    res = outpaint_expand(src, target_aspect=req.target_aspect or "16:9")
+    _save_ai_tool_asset(res, src.name, f"outpaint_{req.target_aspect}")
+    return res
+

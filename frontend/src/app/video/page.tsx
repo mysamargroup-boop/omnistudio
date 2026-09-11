@@ -49,6 +49,7 @@ import {
   Scissors,
   RotateCcw,
   AlertCircle,
+  Palette,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ import LazyImage from "@/components/ui/LazyImage";
 import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/video/CharacterStudioModal";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
+import BrandKitModal from "@/components/brand/BrandKitModal";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
@@ -292,6 +294,7 @@ function VideoStudioContent() {
   const [enhancingPrompt, setEnhancingPrompt] = useState(false);
   const [directing, setDirecting] = useState(false);
   const [directorNotes, setDirectorNotes] = useState<any>(null);
+  const [brandKitModalOpen, setBrandKitModalOpen] = useState(false);
 
   // Auto-resize prompt textarea
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -629,24 +632,42 @@ function VideoStudioContent() {
     }
   };
 
-  // 1-Click Prompt Enhancer
-  const handleEnhancePrompt = async () => {
-    if (!prompt.trim()) {
-      setPrompt("Cinematic sequence, dramatic atmospheric lighting, photorealistic 8k, slow motion");
+  // 1-Click Prompt Enhancer with 6 Styles
+  const handleApplyPromptModifier = async (stylePreset: string) => {
+    setEnhancingPrompt(true);
+    const styleFallbacks: Record<string, string> = {
+      more_realistic: "8K cinema camera, Hasselblad optical precision, natural lighting, raw micro-textures, hyper-realistic motion physics",
+      more_cinematic: "shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, volumetric haze, Hollywood cinematic color grade",
+      more_luxury: "ultra-luxury commercial production, opulent materials, gold caustics, architectural studio lighting, Vogue luxury aesthetic",
+      more_fashion: "haute couture fashion film, Paris Fashion Week styling, dynamic Profoto rim light, high-fashion editorial movement",
+      more_commercial: "crisp commercial product advertising, clean high-key studio, pristine reflections, Apple advertising aesthetic",
+      more_viral: "high-energy dynamic camera track, dramatic speed ramp, punchy saturated colors, viral TikTok & Reels visual hook"
+    };
+
+    const currentPrompt = prompt.trim();
+    if (!currentPrompt) {
+      setPrompt(styleFallbacks[stylePreset] || "Cinematic sequence, dramatic atmospheric lighting, photorealistic 8k, slow motion");
+      setEnhancingPrompt(false);
       return;
     }
-    setEnhancingPrompt(true);
+
     try {
-      const res = await api.enhancePrompt({ prompt, enhance_style: "cinematic" });
+      const res = await api.enhancePrompt({ prompt: currentPrompt, enhance_style: stylePreset, style: stylePreset });
       if (res?.enhanced) {
         setPrompt(res.enhanced);
+      } else {
+        const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
+        setPrompt(`${currentPrompt}, ${mod}`);
       }
     } catch (err) {
-      console.error("Failed to enhance prompt:", err);
+      const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
+      setPrompt(`${currentPrompt}, ${mod}`);
     } finally {
       setEnhancingPrompt(false);
     }
   };
+
+  const handleEnhancePrompt = () => handleApplyPromptModifier("more_cinematic");
 
   // OpenAI Director Agent
   const runDirectorAgent = async () => {
@@ -1827,6 +1848,43 @@ function VideoStudioContent() {
                   </div>
                 </div>
               )}
+
+              {/* Prompt Engineer 6 Quick-Modifier Bar */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-1 shrink-0 font-bold">
+                  <Sparkles className="w-3 h-3 text-indigo-500" />
+                  Prompt Engineer:
+                </span>
+                {[
+                  { label: "More Realistic", style: "more_realistic", icon: "📷" },
+                  { label: "More Cinematic", style: "more_cinematic", icon: "🎬" },
+                  { label: "More Luxury", style: "more_luxury", icon: "✨" },
+                  { label: "More Fashion", style: "more_fashion", icon: "👗" },
+                  { label: "More Commercial", style: "more_commercial", icon: "💎" },
+                  { label: "More Viral", style: "more_viral", icon: "🔥" },
+                ].map((btn) => (
+                  <button
+                    key={btn.style}
+                    type="button"
+                    onClick={() => handleApplyPromptModifier(btn.style)}
+                    disabled={enhancingPrompt}
+                    className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 hover:bg-indigo-500/10 dark:bg-white/[0.05] dark:hover:bg-indigo-500/10 border border-zinc-200/80 dark:border-white/10 hover:border-indigo-500/40 text-zinc-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{btn.icon}</span>
+                    <span>{btn.label}</span>
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setBrandKitModalOpen(true)}
+                  className="shrink-0 ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer"
+                  title="Open Brand Kit Guidelines"
+                >
+                  <Palette className="w-3 h-3" />
+                  <span>Brand Kit</span>
+                </button>
+              </div>
 
               {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt + Character Lock */}
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -3480,6 +3538,12 @@ function VideoStudioContent() {
           }}
         />
       )}
+
+      {/* Brand Kit Modal */}
+      <BrandKitModal
+        isOpen={brandKitModalOpen}
+        onClose={() => setBrandKitModalOpen(false)}
+      />
     </div>
   );
 }

@@ -11,7 +11,7 @@ from services.ffmpeg_service import check_ffmpeg
 from auth import create_studio_jwt, get_current_user_or_token
 from pydantic import BaseModel
 from security_logger import audit_log
-from routers import image, video, voice, pipeline, assets, settings as settings_router, analytics
+from routers import image, video, voice, pipeline, assets, settings as settings_router, analytics, brand_kit
 
 from limiter import limiter
 from slowapi.errors import RateLimitExceeded
@@ -130,6 +130,7 @@ app.include_router(pipeline.router, dependencies=api_security)
 app.include_router(assets.router, dependencies=api_security)
 app.include_router(settings_router.router, dependencies=api_security)
 app.include_router(analytics.router, dependencies=api_security)
+app.include_router(brand_kit.router, dependencies=api_security)
 
 try:
     from presentation.api.v2.image_routes import router as image_v2_router

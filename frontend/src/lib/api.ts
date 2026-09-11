@@ -188,6 +188,39 @@ export const api = {
     return fetchApiFormData<any>("/api/image/upload-reference", formData);
   },
   generateVariations: (data: any) => fetchApi<any>("/api/image/variations", { method: "POST", body: JSON.stringify(data) }),
+  aiRemoveBackground: (image_path: string) =>
+    fetchApi<any>("/api/image/remove-background", {
+      method: "POST",
+      body: JSON.stringify({ image_path }),
+    }),
+  aiRelight: (image_path: string, preset: string = "golden_hour", intensity: number = 1.0) =>
+    fetchApi<any>("/api/image/relight", {
+      method: "POST",
+      body: JSON.stringify({ image_path, preset, intensity }),
+    }),
+  aiFaceRestore: (image_path: string) =>
+    fetchApi<any>("/api/image/face-restore", {
+      method: "POST",
+      body: JSON.stringify({ image_path }),
+    }),
+  aiOutpaint: (image_path: string, target_aspect: string = "16:9") =>
+    fetchApi<any>("/api/image/outpaint", {
+      method: "POST",
+      body: JSON.stringify({ image_path, target_aspect }),
+    }),
+
+  // Brand Kit
+  getBrandKit: () => fetchApi<any>("/api/brand-kit"),
+  updateBrandKit: (data: any) =>
+    fetchApi<any>("/api/brand-kit", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  uploadBrandLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApiFormData<any>("/api/brand-kit/upload-logo", formData);
+  },
 
   // Video
   generateVideo: (data: any) => fetchApi<any>("/api/video/generate", { method: "POST", body: JSON.stringify(data) }),

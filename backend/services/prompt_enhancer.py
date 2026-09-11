@@ -10,7 +10,14 @@ CINEMATIC_MODIFIERS = {
     "cyberpunk": "cyberpunk aesthetics, neon glow, wet reflective asphalt, moody atmospheric fog, octane render, 8k resolution, Unreal Engine 5, futuristic high-tech noir",
     "anime": "Makoto Shinkai aesthetic, Studio Ghibli inspired, vibrant colors, detailed anime illustration, painterly background, celestial skies, emotional lighting",
     "3d_pixar": "Pixar and Disney animation style, 3D character design, subsurface scattering, soft warm studio lighting, 8k 3D render, expressive, smooth textures",
-    "photoreal": "hyper-realistic photography, Hasselblad H6D-100c, 85mm portrait lens, natural studio lighting, ultra sharp focus, pore-level texture, masterpiece"
+    "photoreal": "hyper-realistic photography, Hasselblad H6D-100c, 85mm portrait lens, natural studio lighting, ultra sharp focus, pore-level texture, masterpiece",
+    # 6 Specialized Prompt Engineer Agent Presets
+    "more_realistic": "ultra-detailed 8K photography, Hasselblad H6D-100c, 85mm f/1.4 lens, natural ambient daylight, raw authentic textures, micro-details, hyper-realistic, unedited documentary aesthetic",
+    "more_cinematic": "shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, dramatic atmospheric haze, cinematic rim light, golden hour, color graded by Hollywood colorist",
+    "more_luxury": "ultra-luxury high-end commercial aesthetic, opulent materials, elegant gold caustics, architectural luxury lighting, pristine studio reflections, elite editorial Vogue luxury",
+    "more_fashion": "high-fashion editorial photography, Paris Fashion Week haute couture, Profoto softbox studio lighting, dramatic angles, avant-garde styling, crisp rim light, Harper's Bazaar cover quality",
+    "more_commercial": "crisp commercial product advertising, clean high-key studio lighting, flawless pristine surfaces, sharp macro focus, vibrant commercial color grade, Apple advertising aesthetic",
+    "more_viral": "high-energy dynamic composition, dramatic perspective, punchy saturated colors, eye-catching visual hook, hyper-engaging TikTok & Instagram trending aesthetic, viral visual impact"
 }
 
 async def enhance_prompt(prompt: str, style: str = "cinematic") -> str:

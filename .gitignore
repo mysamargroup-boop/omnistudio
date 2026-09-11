@@ -41,6 +41,8 @@ backend/outputs/audio/*
 backend/outputs/final/*
 backend/outputs/trash/*
 backend/outputs/analytics/*
+backend/outputs/brand_kit/*
+scratch/
 backend/outputs/*.db
 backend/outputs/*.sqlite
 backend/outputs/*.sqlite3

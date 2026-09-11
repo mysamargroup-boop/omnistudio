@@ -52,6 +52,9 @@ import { cn } from "@/lib/utils";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
+import BrandKitModal from "@/components/brand/BrandKitModal";
+import BeforeAfterSlider from "@/components/ui/BeforeAfterSlider";
+import SocialRepurposerModal from "@/components/social/SocialRepurposerModal";
 
 interface ModelOption {
   value: string;
@@ -289,10 +292,24 @@ export default function ImageStudioPage() {
   const [editorLockAspectRatio, setEditorLockAspectRatio] = useState<boolean>(true);
   const [editorCompressionQuality, setEditorCompressionQuality] = useState<number>(92);
   const [editorOutputFormat, setEditorOutputFormat] = useState<string>("png"); // png, jpeg, webp
-  const [editorActiveTab, setEditorActiveTab] = useState<"filters" | "hsl" | "curves" | "text" | "resize" | "export">("filters");
+  const [editorActiveTab, setEditorActiveTab] = useState<"ai_tools" | "filters" | "hsl" | "curves" | "text" | "resize" | "export">("ai_tools");
   const [promptDockCollapsed, setPromptDockCollapsed] = useState<boolean>(false);
   const [downloadingMaster, setDownloadingMaster] = useState(false);
   const [lastExportedResult, setLastExportedResult] = useState<any>(null);
+
+  // Brand Kit, Social Repurposer, Before/After & AI Tools State
+  const [brandKitModalOpen, setBrandKitModalOpen] = useState(false);
+  const [socialModalOpen, setSocialModalOpen] = useState(false);
+  const [socialMediaUrl, setSocialMediaUrl] = useState<string>("");
+  const [originalEditorImageUrl, setOriginalEditorImageUrl] = useState<string>("");
+  const [showBeforeAfter, setShowBeforeAfter] = useState<boolean>(false);
+  const [processingBgRemoval, setProcessingBgRemoval] = useState<boolean>(false);
+  const [processingRelight, setProcessingRelight] = useState<boolean>(false);
+  const [processingFaceRestore, setProcessingFaceRestore] = useState<boolean>(false);
+  const [processingOutpaint, setProcessingOutpaint] = useState<boolean>(false);
+  const [relightPreset, setRelightPreset] = useState<string>("golden_hour");
+  const [relightIntensity, setRelightIntensity] = useState<number>(1.0);
+  const [outpaintAspect, setOutpaintAspect] = useState<string>("16:9");
 
   // Vault Picker Modal State
   const [vaultOpen, setVaultOpen] = useState(false);
@@ -450,29 +467,42 @@ export default function ImageStudioPage() {
 
   // AI Prompt Enhancer Copilot
   const [enhancingPrompt, setEnhancingPrompt] = useState(false);
-  const enhancePromptText = async () => {
-    if (!prompt.trim()) return;
+  const handleApplyPromptModifier = async (stylePreset: string) => {
     setEnhancingPrompt(true);
+    const styleFallbacks: Record<string, string> = {
+      more_realistic: "8K photography, Hasselblad H6D-100c, 85mm f/1.4 lens, natural daylight, raw authentic textures, micro-details, hyper-realistic documentary quality",
+      more_cinematic: "shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, dramatic atmospheric haze, cinematic rim light, Hollywood color grade",
+      more_luxury: "ultra-luxury high-end commercial aesthetic, opulent materials, gold caustics, architectural luxury lighting, pristine reflections, Vogue editorial",
+      more_fashion: "Paris Fashion Week haute couture, Profoto softbox studio lighting, dramatic angles, avant-garde styling, crisp rim light, Harper's Bazaar cover",
+      more_commercial: "crisp commercial product advertising, clean high-key studio lighting, flawless pristine surfaces, sharp macro focus, vibrant commercial color grade",
+      more_viral: "high-energy dynamic composition, dramatic perspective, punchy saturated colors, eye-catching visual hook, trending TikTok & Instagram viral aesthetic"
+    };
+
+    const currentPrompt = prompt.trim();
+    if (!currentPrompt) {
+      setPrompt(styleFallbacks[stylePreset] || "Cinematic 8k masterpiece portrait, dramatic studio lighting");
+      setEnhancingPrompt(false);
+      return;
+    }
+
     try {
-      const data = await api.enhancePrompt({ prompt, style: "cinematic" });
+      const data = await api.enhancePrompt({ prompt: currentPrompt, enhance_style: stylePreset, style: stylePreset });
       const enhancedText = data?.enhanced || data?.enhanced_prompt;
       if (enhancedText) {
         setPrompt(enhancedText);
       } else {
-        setPrompt(
-          (prev) =>
-            `${prev.trim()}, 8k master photography, raw photo detail, hyper-realistic skin texture, 35mm prime lens at f/1.4, volumetric rim lighting, cinematic color grading, master composition`
-        );
+        const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
+        setPrompt(`${currentPrompt}, ${mod}`);
       }
     } catch (_) {
-      setPrompt(
-        (prev) =>
-          `${prev.trim()}, 8k master photography, raw photo detail, hyper-realistic skin texture, 35mm prime lens at f/1.4, volumetric rim lighting, cinematic color grading, master composition`
-      );
+      const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
+      setPrompt(`${currentPrompt}, ${mod}`);
     } finally {
       setEnhancingPrompt(false);
     }
   };
+
+  const enhancePromptText = () => handleApplyPromptModifier("more_cinematic");
 
   // Single or Multi-Variation Generation
   const generate = async () => {
@@ -698,6 +728,7 @@ export default function ImageStudioPage() {
       const url = res?.url || (typeof res === "string" ? res : "");
       if (url) {
         setEditorImageUrl(url);
+        setOriginalEditorImageUrl(url);
         setEditorImageFile(file);
         setStudioMode("image_editor");
         setPromptDockCollapsed(true);
@@ -752,6 +783,86 @@ export default function ImageStudioPage() {
       alert(err?.message || "Failed to process image edit");
     } finally {
       setProcessingImageEdit(false);
+    }
+  };
+
+  // 1-Click AI Background Removal
+  const handleAiRemoveBackground = async () => {
+    if (!editorImageUrl) return;
+    setProcessingBgRemoval(true);
+    try {
+      if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
+      const res = await api.aiRemoveBackground(editorImageUrl);
+      if (res && res.success && res.url) {
+        setEditorImageUrl(res.url);
+        setShowBeforeAfter(true);
+      } else {
+        alert(res?.error || "Background removal failed");
+      }
+    } catch (e: any) {
+      alert("Background removal failed: " + (e.message || e));
+    } finally {
+      setProcessingBgRemoval(false);
+    }
+  };
+
+  // AI Studio Relighting
+  const handleAiRelight = async () => {
+    if (!editorImageUrl) return;
+    setProcessingRelight(true);
+    try {
+      if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
+      const res = await api.aiRelight(editorImageUrl, relightPreset, relightIntensity);
+      if (res && res.success && res.url) {
+        setEditorImageUrl(res.url);
+        setShowBeforeAfter(true);
+      } else {
+        alert(res?.error || "Relighting failed");
+      }
+    } catch (e: any) {
+      alert("Relighting failed: " + (e.message || e));
+    } finally {
+      setProcessingRelight(false);
+    }
+  };
+
+  // AI Face Restoration
+  const handleAiFaceRestore = async () => {
+    if (!editorImageUrl) return;
+    setProcessingFaceRestore(true);
+    try {
+      if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
+      const res = await api.aiFaceRestore(editorImageUrl);
+      if (res && res.success && res.url) {
+        setEditorImageUrl(res.url);
+        setShowBeforeAfter(true);
+      } else {
+        alert(res?.error || "Face restoration failed");
+      }
+    } catch (e: any) {
+      alert("Face restoration failed: " + (e.message || e));
+    } finally {
+      setProcessingFaceRestore(false);
+    }
+  };
+
+  // AI Expand (Outpaint)
+  const handleAiOutpaint = async () => {
+    if (!editorImageUrl) return;
+    setProcessingOutpaint(true);
+    try {
+      if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
+      const res = await api.aiOutpaint(editorImageUrl, outpaintAspect);
+      if (res && res.success && res.url) {
+        setEditorImageUrl(res.url);
+        setShowBeforeAfter(true);
+      } else {
+        alert(res?.error || "Outpaint expansion failed");
+      }
+    } catch (e: any) {
+      alert("Outpaint failed: " + (e.message || e));
+    } finally {
+      setProcessingOutpaint(false);
     }
   };
 
@@ -1151,6 +1262,19 @@ export default function ImageStudioPage() {
 
                   <button
                     type="button"
+                    onClick={() => {
+                      setSocialMediaUrl(currentDisplayImage.url);
+                      setSocialModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-mono border border-pink-500/30 backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    title="1-Click Multi-Platform Social Media Repurposer"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Socials</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={handleCopyPrompt}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
                     title="Copy Prompt"
@@ -1361,6 +1485,38 @@ export default function ImageStudioPage() {
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                 {/* Image Live Viewport & Canvas */}
                 <div className="md:col-span-7 space-y-4">
+                  {/* Canvas Controls Toolbar: Before/After toggle + Social Repurpose */}
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      {originalEditorImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setShowBeforeAfter((prev) => !prev)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all flex items-center gap-1.5 cursor-pointer border",
+                            showBeforeAfter
+                              ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                              : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10 hover:bg-zinc-200"
+                          )}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          <span>{showBeforeAfter ? "Exit Split View" : "Before / After Compare"}</span>
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSocialMediaUrl(editorImageUrl);
+                        setSocialModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Social Repurpose</span>
+                    </button>
+                  </div>
+
                   {/* Aspect Ratio Canvas Container */}
                   <div
                     className={cn(
@@ -1368,17 +1524,27 @@ export default function ImageStudioPage() {
                       getAspectRatioClass(editorCropRatio)
                     )}
                   >
-                    <img
-                      src={getMediaUrl(editorImageUrl)}
-                      alt="Editor Preview"
-                      style={{
-                        filter: computeLiveFilterStyle(),
-                      }}
-                      className={cn(
-                        "transition-all duration-150",
-                        editorCropRatio !== "original" ? "w-full h-full object-cover" : "max-h-[500px] w-auto object-contain mx-auto"
-                      )}
-                    />
+                    {showBeforeAfter && originalEditorImageUrl ? (
+                      <BeforeAfterSlider
+                        beforeSrc={getMediaUrl(originalEditorImageUrl)}
+                        afterSrc={getMediaUrl(editorImageUrl)}
+                        beforeLabel="Original"
+                        afterLabel="AI Edited"
+                        className="w-full h-full min-h-[380px]"
+                      />
+                    ) : (
+                      <img
+                        src={getMediaUrl(editorImageUrl)}
+                        alt="Editor Preview"
+                        style={{
+                          filter: computeLiveFilterStyle(),
+                        }}
+                        className={cn(
+                          "transition-all duration-150",
+                          editorCropRatio !== "original" ? "w-full h-full object-cover" : "max-h-[500px] w-auto object-contain mx-auto"
+                        )}
+                      />
+                    )}
 
                     {/* Live Text Overlay on Canvas */}
                     {editorTextOverlay.trim() && (
@@ -1486,6 +1652,7 @@ export default function ImageStudioPage() {
                   {/* Category Tabs */}
                   <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-x-auto custom-scrollbar">
                     {[
+                      { id: "ai_tools", label: "✨ AI Tools" },
                       { id: "filters", label: "Filters" },
                       { id: "hsl", label: "HSL & Color" },
                       { id: "curves", label: "Curves" },
@@ -1508,6 +1675,212 @@ export default function ImageStudioPage() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Tab 0: AI Editing Tools (Background Removal, Relighting, Face Restore, AI Expand) */}
+                  {editorActiveTab === "ai_tools" && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-500/10 via-fuchsia-500/10 to-pink-500/10 border border-indigo-500/20">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
+                          <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+                            Zero-Cost Neural & Vision Suite
+                          </p>
+                        </div>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                          Automated local AI transforms with split comparison slider
+                        </p>
+                      </div>
+
+                      {/* Tool 1: Background Removal */}
+                      <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-emerald-500" />
+                            <div>
+                              <h4 className="text-xs font-bold text-zinc-900 dark:text-white">AI Background Removal</h4>
+                              <p className="text-[10px] text-zinc-500">1-Click transparent cut-out PNG</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            FREE
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAiRemoveBackground}
+                          disabled={processingBgRemoval || !editorImageUrl}
+                          className="w-full py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                        >
+                          {processingBgRemoval ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Extracting Alpha Mask...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Remove Background</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Tool 2: Studio Relighting */}
+                      <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Sun className="w-4 h-4 text-amber-500" />
+                            <div>
+                              <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Studio Relighting</h4>
+                              <p className="text-[10px] text-zinc-500">Directional lighting gradient & caustics</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Presets */}
+                        <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
+                          {[
+                            { id: "golden_hour", label: "Golden Hour" },
+                            { id: "studio_softbox", label: "Studio Softbox" },
+                            { id: "neon_cyberpunk", label: "Cyberpunk Neon" },
+                            { id: "dramatic_chiaroscuro", label: "Chiaroscuro" },
+                            { id: "warm_sunset", label: "Warm Sunset" },
+                          ].map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setRelightPreset(p.id)}
+                              className={cn(
+                                "p-2 rounded-lg text-left transition-all cursor-pointer border",
+                                relightPreset === p.id
+                                  ? "bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold"
+                                  : "bg-white dark:bg-white/[0.03] border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300"
+                              )}
+                            >
+                              <span className="text-[11px] block">{p.label}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Intensity Slider */}
+                        <div className="space-y-1 pt-1">
+                          <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                            <span>Relight Intensity</span>
+                            <span className="font-bold text-zinc-900 dark:text-white">{relightIntensity.toFixed(1)}x</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.2"
+                            max="1.8"
+                            step="0.1"
+                            value={relightIntensity}
+                            onChange={(e) => setRelightIntensity(Number(e.target.value))}
+                            className="w-full accent-amber-500 cursor-pointer"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleAiRelight}
+                          disabled={processingRelight || !editorImageUrl}
+                          className="w-full py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                        >
+                          {processingRelight ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Relighting Scene...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sun className="w-3.5 h-3.5" />
+                              <span>Apply Studio Relight</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Tool 3: Face Restoration */}
+                      <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wand2 className="w-4 h-4 text-violet-500" />
+                            <div>
+                              <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Face & Texture Restoration</h4>
+                              <p className="text-[10px] text-zinc-500">Sharpen micro-textures and facial features</p>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAiFaceRestore}
+                          disabled={processingFaceRestore || !editorImageUrl}
+                          className="w-full py-2 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                        >
+                          {processingFaceRestore ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Restoring Textures...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-3.5 h-3.5" />
+                              <span>Restore Face Details</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Tool 4: AI Expand (Outpaint) */}
+                      <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Maximize2 className="w-4 h-4 text-blue-500" />
+                            <div>
+                              <h4 className="text-xs font-bold text-zinc-900 dark:text-white">AI Expand (Outpainting)</h4>
+                              <p className="text-[10px] text-zinc-500">Expand canvas to widescreen or portrait</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1 text-xs font-mono">
+                          {["16:9", "9:16", "21:9", "4:3"].map((asp) => (
+                            <button
+                              key={asp}
+                              type="button"
+                              onClick={() => setOutpaintAspect(asp)}
+                              className={cn(
+                                "py-1.5 rounded-lg text-center transition-all cursor-pointer border",
+                                outpaintAspect === asp
+                                  ? "bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400 font-bold"
+                                  : "bg-white dark:bg-white/[0.03] border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300"
+                              )}
+                            >
+                              {asp}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleAiOutpaint}
+                          disabled={processingOutpaint || !editorImageUrl}
+                          className="w-full py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                        >
+                          {processingOutpaint ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Expanding Canvas...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Maximize2 className="w-3.5 h-3.5" />
+                              <span>Expand Canvas ({outpaintAspect})</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Tab 1: Preset Filters & Core Adjustments */}
                   {editorActiveTab === "filters" && (
@@ -2510,6 +2883,43 @@ export default function ImageStudioPage() {
               </button>
             </div>
           )}
+          {/* Prompt Engineer 6 Quick-Modifier Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-1 shrink-0 font-bold">
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              Prompt Engineer:
+            </span>
+            {[
+              { label: "More Realistic", style: "more_realistic", icon: "📷" },
+              { label: "More Cinematic", style: "more_cinematic", icon: "🎬" },
+              { label: "More Luxury", style: "more_luxury", icon: "✨" },
+              { label: "More Fashion", style: "more_fashion", icon: "👗" },
+              { label: "More Commercial", style: "more_commercial", icon: "💎" },
+              { label: "More Viral", style: "more_viral", icon: "🔥" },
+            ].map((btn) => (
+              <button
+                key={btn.style}
+                type="button"
+                onClick={() => handleApplyPromptModifier(btn.style)}
+                disabled={enhancingPrompt}
+                className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 hover:bg-indigo-500/10 dark:bg-white/[0.05] dark:hover:bg-indigo-500/10 border border-zinc-200/80 dark:border-white/10 hover:border-indigo-500/40 text-zinc-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                <span>{btn.icon}</span>
+                <span>{btn.label}</span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setBrandKitModalOpen(true)}
+              className="shrink-0 ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer"
+              title="Open Brand Kit Guidelines"
+            >
+              <Palette className="w-3 h-3" />
+              <span>Brand Kit</span>
+            </button>
+          </div>
+
           {/* Row 1: Professional Studio Prompt Input Bar */}
           <div className="relative flex items-start rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30 transition-all p-1">
           <textarea
@@ -3053,6 +3463,7 @@ export default function ImageStudioPage() {
                   onClick={() => {
                     if (studioMode === "image_editor") {
                       setEditorImageUrl(img);
+                      setOriginalEditorImageUrl(img);
                       setPromptDockCollapsed(true);
                     } else {
                       setRefImageUrl(img);
@@ -3073,6 +3484,21 @@ export default function ImageStudioPage() {
       <HowItWorksModal
         isOpen={howItWorksOpen}
         onClose={() => setHowItWorksOpen(false)}
+      />
+
+      {/* Brand Kit Modal */}
+      <BrandKitModal
+        isOpen={brandKitModalOpen}
+        onClose={() => setBrandKitModalOpen(false)}
+      />
+
+      {/* Social Media Repurposer Modal */}
+      <SocialRepurposerModal
+        isOpen={socialModalOpen}
+        onClose={() => setSocialModalOpen(false)}
+        mediaUrl={socialMediaUrl || result?.url || editorImageUrl || ""}
+        mediaType="image"
+        prompt={prompt}
       />
     </div>
   );

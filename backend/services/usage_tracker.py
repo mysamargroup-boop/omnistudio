@@ -466,8 +466,43 @@ def get_usage_summary() -> Dict[str, Any]:
         by_provider[prov]["spend_usd"] = round(by_provider[prov]["spend_usd"], 3)
         by_provider[prov]["spend_inr"] = round(by_provider[prov]["spend_usd"] * USD_TO_INR, 2)
 
+    # Model usage tracking
+    model_counts: Dict[str, Dict[str, Any]] = {}
+    successful_count = 0
+
+    for r in records:
+        is_success = r.get("status") == "success"
+        if is_success:
+            successful_count += 1
+
+        mdl = r.get("model") or "unknown"
+        if mdl not in model_counts:
+            model_counts[mdl] = {
+                "model": mdl,
+                "provider": r.get("provider", "local"),
+                "service_type": r.get("service_type", "image"),
+                "count": 0,
+                "success_count": 0
+            }
+        model_counts[mdl]["count"] += 1
+        if is_success:
+            model_counts[mdl]["success_count"] += 1
+
+    # Sort top models
+    most_used_models = sorted(
+        model_counts.values(),
+        key=lambda x: x["count"],
+        reverse=True
+    )[:6]
+
+    success_rate = round((successful_count / total_generations) * 100, 1) if total_generations > 0 else 100.0
+
     return {
         "total_generations": total_generations,
+        "successful_generations": successful_count,
+        "failed_generations": total_generations - successful_count,
+        "success_rate": success_rate,
+        "most_used_models": most_used_models,
         "total_spend_usd": round(total_spend_usd, 3),
         "total_spend_inr": round(total_spend_usd * USD_TO_INR, 2),
         "total_saved_usd": round(total_saved_usd, 3),

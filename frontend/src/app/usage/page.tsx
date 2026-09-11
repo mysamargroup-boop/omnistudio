@@ -48,6 +48,16 @@ interface UsageSummary {
   };
   by_provider: Record<string, { count: number; spend_usd: number; spend_inr: number }>;
   latest_generation: any;
+  success_rate?: number;
+  successful_generations?: number;
+  failed_generations?: number;
+  most_used_models?: Array<{
+    model: string;
+    provider: string;
+    service_type: string;
+    count: number;
+    success_count: number;
+  }>;
 }
 
 interface GenerationRecord {
@@ -338,6 +348,83 @@ export default function UsagePage() {
             <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-mono flex items-center gap-1 pt-1.5 border-t border-black/[0.04] dark:border-white/[0.04]">
               <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Sovereign Single-Tenant Studio
             </div>
+          </div>
+        </div>
+
+        {/* Operational Analytics: Success Rate & Most Used Models */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Success Rate & Reliability Card */}
+          <div className="lg:col-span-4 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Pipeline Reliability
+              </span>
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                HEALTHY
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-heading font-black text-zinc-950 dark:text-white">
+                {summary?.success_rate !== undefined ? `${summary.success_rate}%` : "100%"}
+              </span>
+              <span className="text-xs text-zinc-500 font-medium">Generation Success Rate</span>
+            </div>
+            <div className="w-full bg-zinc-100 dark:bg-white/5 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.max(0, summary?.success_rate ?? 100))}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 pt-1">
+              <span>Successful: {summary?.successful_generations ?? (summary?.total_generations || 0)}</span>
+              <span>Failed / Retried: {summary?.failed_generations ?? 0}</span>
+            </div>
+          </div>
+
+          {/* Top Most Used Models Leaderboard */}
+          <div className="lg:col-span-8 bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-indigo-500" /> Most Used AI Models Ranking
+              </span>
+              <span className="text-[11px] text-zinc-400 font-mono">
+                Top Production Engines
+              </span>
+            </div>
+            {summary?.most_used_models && summary.most_used_models.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {summary.most_used_models.slice(0, 6).map((m, idx) => (
+                  <div
+                    key={m.model}
+                    className="p-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.02] flex items-center justify-between"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold flex items-center justify-center font-mono">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white truncate max-w-[130px]">
+                          {m.model}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+                        {m.provider} • {m.service_type}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
+                        {m.count}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 block">runs</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-4 text-center text-xs text-zinc-400 font-mono">
+                Ready for first generation run telemetry
+              </div>
+            )}
           </div>
         </div>
 
