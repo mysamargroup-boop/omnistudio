@@ -58,6 +58,13 @@ class GenerateThumbnailRequest(BaseModel):
     category_badge: Optional[str] = "AI MASTERCLASS"
     accent_color: Optional[str] = "#10B981"
 
+class BatchThumbnailRequest(BaseModel):
+    title: str
+    formats: List[str] = ["youtube_16_9", "tiktok_shorts_9_16", "instagram_square", "linkedin_banner"]
+    source_image_path: Optional[str] = None
+    category_badge: Optional[str] = "AI MASTERCLASS"
+    accent_color: Optional[str] = "#10B981"
+
 class RepurposeRequest(BaseModel):
     title: str = ""
     content: str
@@ -180,6 +187,37 @@ async def create_thumbnail(req: GenerateThumbnailRequest):
         "success": True,
         "thumbnail_url": thumb_url,
         "format": req.platform_format
+    }
+
+@router.post("/thumbnails/batch")
+async def create_batch_thumbnails(req: BatchThumbnailRequest):
+    """Generates multiple platform-tailored thumbnails in parallel for multi-channel publishing."""
+    results = []
+    for fmt in req.formats:
+        try:
+            url = await generate_social_thumbnail(
+                title=req.title,
+                platform_format=fmt,
+                source_image_path=req.source_image_path,
+                category_badge=req.category_badge or "AI MASTERCLASS",
+                accent_color=req.accent_color or "#6366F1"
+            )
+            results.append({
+                "format": fmt,
+                "thumbnail_url": url,
+                "success": True
+            })
+        except Exception as e:
+            logger.error("Failed to generate batch thumbnail for %s: %s", fmt, e)
+            results.append({
+                "format": fmt,
+                "error": str(e),
+                "success": False
+            })
+    return {
+        "success": True,
+        "thumbnails": results,
+        "count": len([r for r in results if r.get("success")])
     }
 
 

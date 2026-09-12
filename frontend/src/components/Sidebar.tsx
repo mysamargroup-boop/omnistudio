@@ -249,8 +249,10 @@ export default function Sidebar() {
               router.push("/pipeline");
             }}
             className={cn(
-              "flex items-center justify-center bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer",
-              isDesktopCollapsed ? "w-10 h-10 mx-auto p-0" : "w-full py-2 px-3 gap-2"
+              "flex items-center justify-center transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer",
+              isDesktopCollapsed
+                ? "w-10 h-10 mx-auto p-0 bg-transparent hover:bg-transparent text-emerald-500 hover:text-emerald-400 hover:scale-110 shadow-none border-0"
+                : "w-full py-2 px-3 gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm"
             )}
           >
             {pendingHref === "/pipeline" ? (
@@ -304,13 +306,15 @@ export default function Sidebar() {
                     className={cn(
                       "group flex items-center font-jakarta rounded-xl text-xs transition-all duration-150 relative cursor-pointer",
                       isDesktopCollapsed
-                        ? "w-10 h-10 mx-auto justify-center p-0"
-                        : "gap-2.5 mx-2 px-2.5 py-1.5",
-                      isActive
-                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
-                        : isPending
-                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/40 ring-2 ring-emerald-500/10 shadow-xs"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
+                        ? "w-10 h-10 mx-auto justify-center p-0 bg-transparent hover:bg-transparent border-transparent shadow-none"
+                        : cn(
+                            "gap-2.5 mx-2 px-2.5 py-1.5",
+                            isActive
+                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
+                              : isPending
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/40 ring-2 ring-emerald-500/10 shadow-xs"
+                              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
+                          )
                     )}
                   >
                     {isPending ? (
@@ -318,12 +322,20 @@ export default function Sidebar() {
                     ) : (
                       <item.icon
                         className={cn(
-                          "h-4 w-4 shrink-0 transition-colors",
-                          isActive
+                          "shrink-0 transition-all duration-150",
+                          isDesktopCollapsed ? "h-5 w-5" : "h-4 w-4",
+                          isDesktopCollapsed
+                            ? isActive
+                              ? "text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.55)] scale-110"
+                              : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:scale-110"
+                            : isActive
                             ? "text-white dark:text-zinc-950"
                             : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
                         )}
                       />
+                    )}
+                    {isDesktopCollapsed && isActive && (
+                      <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
                     )}
                     {!isDesktopCollapsed && (
                       <>

@@ -453,6 +453,8 @@ export const api = {
     fetchApi<any>("/api/publish/optimize", { method: "POST", body: JSON.stringify(data) }),
   generatePublishThumbnail: (data: { title: string; platform_format?: string; source_image_path?: string; category_badge?: string; accent_color?: string }) =>
     fetchApi<any>("/api/publish/thumbnails", { method: "POST", body: JSON.stringify(data) }),
+  generateBatchThumbnails: (data: { title: string; formats: string[]; source_image_path?: string; category_badge?: string; accent_color?: string }) =>
+    fetchApi<any>("/api/publish/thumbnails/batch", { method: "POST", body: JSON.stringify(data) }),
   repurposePublishContent: (data: { title?: string; content: string; media_url?: string }) =>
     fetchApi<any>("/api/publish/repurpose", { method: "POST", body: JSON.stringify(data) }),
   aiSocialMediaManagerPlan: (data: { campaign_goal: string; target_audience?: string; duration_days?: number }) =>

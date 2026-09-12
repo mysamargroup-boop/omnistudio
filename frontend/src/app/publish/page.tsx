@@ -34,6 +34,15 @@ const PLATFORMS = [
   { id: "google_business", name: "Google Business", category: "Local SEO & CTA", color: "#4285F4", icon: "GB", aspect: "4:3", maxChars: 1500 },
 ];
 
+const THUMBNAIL_PLATFORMS = [
+  { id: "youtube_16_9", label: "YouTube 16:9", badge: "16:9", aspect: "16:9", dims: "1280×720", icon: "YT", color: "#FF0000" },
+  { id: "tiktok_shorts_9_16", label: "TikTok / Reels / Shorts", badge: "9:16", aspect: "9:16", dims: "1080×1920", icon: "TT", color: "#FE2C55" },
+  { id: "instagram_square", label: "Instagram Feed Post", badge: "1:1", aspect: "1:1", dims: "1080×1080", icon: "IG", color: "#E1306C" },
+  { id: "linkedin_banner", label: "LinkedIn / Web Banner", badge: "1.91:1", aspect: "1.91:1", dims: "1200×628", icon: "LC", color: "#0A66C2" },
+  { id: "twitter_banner", label: "X (Twitter) Card", badge: "16:9", aspect: "16:9", dims: "1200×675", icon: "X", color: "#1DA1F2" },
+  { id: "pinterest_2_3", label: "Pinterest Pin", badge: "2:3", aspect: "2:3", dims: "1000×1500", icon: "PIN", color: "#BD081C" },
+];
+
 function PublishStudioContent() {
   const [activeTab, setActiveTab] = useState<"compose" | "calendar" | "ai_manager" | "creator_mode" | "repurpose" | "thumbnail" | "analytics" | "accounts">("compose");
 
@@ -118,6 +127,14 @@ function PublishStudioContent() {
   const [thumbColor, setThumbColor] = useState("#10B981");
   const [isGeneratingThumb, setIsGeneratingThumb] = useState(false);
   const [generatedThumbUrl, setGeneratedThumbUrl] = useState<string | null>(null);
+  const [thumbMode, setThumbMode] = useState<"multi" | "single">("multi");
+  const [selectedThumbFormats, setSelectedThumbFormats] = useState<string[]>([
+    "youtube_16_9",
+    "tiktok_shorts_9_16",
+    "instagram_square",
+    "linkedin_banner"
+  ]);
+  const [batchThumbResults, setBatchThumbResults] = useState<Array<{ format: string; thumbnail_url: string; label: string; aspect: string; dims: string }>>([]);
 
   // Analytics & Recommendations State
   const [analytics, setAnalytics] = useState<any>(null);
@@ -626,21 +643,49 @@ function PublishStudioContent() {
     }
   };
 
-  // Generate Thumbnail
+  // Generate Thumbnail (Single or Multi-Platform Batch)
   const handleGenerateThumbnail = async () => {
     setIsGeneratingThumb(true);
     try {
-      const res = await api.generatePublishThumbnail({
-        title: thumbTitle,
-        platform_format: thumbFormat,
-        category_badge: thumbBadge,
-        accent_color: thumbColor
-      });
-      if (res.success) {
-        setGeneratedThumbUrl(res.thumbnail_url);
+      if (thumbMode === "multi") {
+        const formatsToGen = selectedThumbFormats.length > 0 ? selectedThumbFormats : ["youtube_16_9"];
+        const res = await api.generateBatchThumbnails({
+          title: thumbTitle,
+          formats: formatsToGen,
+          category_badge: thumbBadge,
+          accent_color: thumbColor
+        });
+        if (res?.success && Array.isArray(res.thumbnails)) {
+          const formatted = res.thumbnails
+            .filter((t: any) => t.success && t.thumbnail_url)
+            .map((t: any) => {
+              const meta = THUMBNAIL_PLATFORMS.find(p => p.id === t.format) || { label: t.format, aspect: "16:9", dims: "HD" };
+              return {
+                format: t.format,
+                thumbnail_url: t.thumbnail_url,
+                label: meta.label,
+                aspect: meta.aspect,
+                dims: meta.dims,
+              };
+            });
+          setBatchThumbResults(formatted);
+          if (formatted.length > 0) {
+            setGeneratedThumbUrl(formatted[0].thumbnail_url);
+          }
+        }
+      } else {
+        const res = await api.generatePublishThumbnail({
+          title: thumbTitle,
+          platform_format: thumbFormat,
+          category_badge: thumbBadge,
+          accent_color: thumbColor
+        });
+        if (res?.success) {
+          setGeneratedThumbUrl(res.thumbnail_url);
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error("Thumbnail generation error:", e);
     } finally {
       setIsGeneratingThumb(false);
     }
@@ -2876,122 +2921,328 @@ function PublishStudioContent() {
         {/* =================================================================== */}
         {/* TAB 6: THUMBNAIL STUDIO                                            */}
         {/* =================================================================== */}
+        {/* =================================================================== */}
+        {/* TAB 6: THUMBNAIL STUDIO - MULTI-PLATFORM PACK GENERATOR             */}
+        {/* =================================================================== */}
         {activeTab === "thumbnail" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-5xl mx-auto">
-            <div className="lg:col-span-6 bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
-              <h2 className="text-base font-bold flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-rose-500" />
-                AI Thumbnail Generator
-              </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                High-CTR platform covers with bold typography, dark gradients, and category pills
-              </p>
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                  Headline Text
-                </label>
-                <input
-                  type="text"
-                  value={thumbTitle}
-                  onChange={(e) => setThumbTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    Platform Format
-                  </label>
-                  <Dropdown
-                    size="sm"
-                    value={thumbFormat}
-                    onChange={(val) => setThumbFormat(val)}
-                    options={[
-                      { value: "youtube_16_9", label: "YouTube (16:9 - 1280x720)", badge: "16:9" },
-                      { value: "pinterest_2_3", label: "Pinterest (2:3 - 1000x1500)", badge: "2:3" },
-                      { value: "linkedin_banner", label: "LinkedIn (1.91:1 - 1200x628)", badge: "1.91:1" },
-                      { value: "instagram_square", label: "Instagram (1:1 - 1080x1080)", badge: "1:1" },
-                    ]}
-                  />
+          <div className="space-y-6 max-w-6xl mx-auto">
+            {/* Top Toolbar: Mode Switch & Platform Presets */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+                  <ImageIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    Category Badge
+                  <h2 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
+                    <span>Multi-Platform Thumbnail & Cover Studio</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-500 font-bold uppercase border border-rose-500/30">
+                      BATCH SIZES
+                    </span>
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta">
+                    Generate platform-optimized high-CTR thumbnails across 6 formats in one click
+                  </p>
+                </div>
+              </div>
+
+              {/* Mode Switch Pills */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-800/80 border border-black/[0.06] dark:border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setThumbMode("multi")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer",
+                    thumbMode === "multi"
+                      ? "bg-rose-600 text-white shadow-xs"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+                  )}
+                >
+                  <span>Multi-Platform Pack</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setThumbMode("single")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer",
+                    thumbMode === "single"
+                      ? "bg-rose-600 text-white shadow-xs"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+                  )}
+                >
+                  <span>Single Format</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Config Panel */}
+              <div className="lg:col-span-5 bg-zinc-50 dark:bg-zinc-900/50 p-5 sm:p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
+                <div>
+                  <label className="block text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                    Headline Text
                   </label>
                   <input
                     type="text"
-                    value={thumbBadge}
-                    onChange={(e) => setThumbBadge(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold uppercase"
+                    value={thumbTitle}
+                    onChange={(e) => setThumbTitle(e.target.value)}
+                    placeholder="Enter punchy headline text..."
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-rose-500/50"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                  Accent Color
-                </label>
-                <div className="flex items-center gap-2">
-                  {["#6366F1", "#EF4444", "#EC4899", "#10B981", "#F59E0B"].map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setThumbColor(color)}
-                      className={cn(
-                        "w-7 h-7 rounded-full transition cursor-pointer border-2",
-                        thumbColor === color ? "border-white scale-110 shadow-sm" : "border-transparent"
-                      )}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-              </div>
+                {/* Multi-Platform Selection Checklist */}
+                {thumbMode === "multi" ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300">
+                        Target Platforms ({selectedThumbFormats.length} selected)
+                      </label>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedThumbFormats(THUMBNAIL_PLATFORMS.map(p => p.id))}
+                          className="text-rose-500 hover:underline cursor-pointer"
+                        >
+                          All (6)
+                        </button>
+                        <span className="text-zinc-400">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedThumbFormats(["youtube_16_9", "tiktok_shorts_9_16", "instagram_square"])}
+                          className="text-zinc-500 hover:text-rose-500 hover:underline cursor-pointer"
+                        >
+                          Top 3
+                        </button>
+                      </div>
+                    </div>
 
-              <button
-                type="button"
-                onClick={handleGenerateThumbnail}
-                disabled={isGeneratingThumb || !thumbTitle.trim()}
-                className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm whitespace-nowrap shrink-0"
-              >
-                {isGeneratingThumb ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                    <span className="whitespace-nowrap">Rendering High-Res Cover...</span>
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon className="w-4 h-4 shrink-0" />
-                    <span className="whitespace-nowrap">Render Platform Cover</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Thumbnail Preview */}
-            <div className="lg:col-span-6 space-y-4">
-              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col items-center justify-center min-h-[340px]">
-                {generatedThumbUrl ? (
-                  <div className="space-y-4 w-full text-center">
-                    <img
-                      src={getMediaUrl(generatedThumbUrl)}
-                      alt="Thumbnail Preview"
-                      className="rounded-xl shadow-xl max-h-[300px] mx-auto object-contain"
-                    />
-                    <a
-                      href={getMediaUrl(generatedThumbUrl)}
-                      download="thumbnail.png"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold hover:opacity-90 whitespace-nowrap shrink-0"
-                    >
-                      <Download className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">Download High-Res PNG</span>
-                    </a>
+                    <div className="grid grid-cols-2 gap-2">
+                      {THUMBNAIL_PLATFORMS.map((plat) => {
+                        const isSelected = selectedThumbFormats.includes(plat.id);
+                        return (
+                          <button
+                            key={plat.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                if (selectedThumbFormats.length > 1) {
+                                  setSelectedThumbFormats(selectedThumbFormats.filter(id => id !== plat.id));
+                                }
+                              } else {
+                                setSelectedThumbFormats([...selectedThumbFormats, plat.id]);
+                              }
+                            }}
+                            className={cn(
+                              "p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer",
+                              isSelected
+                                ? "border-rose-500/80 bg-rose-500/10 text-zinc-950 dark:text-white"
+                                : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-700"
+                            )}
+                          >
+                            <div className="min-w-0">
+                              <div className="text-[11px] font-heading font-bold truncate">
+                                {plat.label}
+                              </div>
+                              <div className="text-[10px] font-mono text-zinc-400">
+                                {plat.dims}
+                              </div>
+                            </div>
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold shrink-0",
+                              isSelected ? "bg-rose-500 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+                            )}>
+                              {plat.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center text-zinc-400">
-                    <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-40" />
-                    <div className="text-xs font-semibold">Ready to generate cover art</div>
+                  <div>
+                    <label className="block text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                      Platform Format
+                    </label>
+                    <Dropdown
+                      size="sm"
+                      value={thumbFormat}
+                      onChange={(val) => setThumbFormat(val)}
+                      options={THUMBNAIL_PLATFORMS.map(p => ({
+                        value: p.id,
+                        label: `${p.label} (${p.dims})`,
+                        badge: p.badge
+                      }))}
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                      Category Badge
+                    </label>
+                    <input
+                      type="text"
+                      value={thumbBadge}
+                      onChange={(e) => setThumbBadge(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold uppercase"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                      Accent Color
+                    </label>
+                    <div className="flex items-center gap-1.5 pt-1">
+                      {["#6366F1", "#EF4444", "#EC4899", "#10B981", "#F59E0B"].map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setThumbColor(color)}
+                          className={cn(
+                            "w-6 h-6 rounded-full transition cursor-pointer border-2",
+                            thumbColor === color ? "border-zinc-950 dark:border-white scale-110 shadow-xs" : "border-transparent"
+                          )}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateThumbnail}
+                  disabled={isGeneratingThumb || !thumbTitle.trim()}
+                  className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md whitespace-nowrap shrink-0 active:scale-98"
+                >
+                  {isGeneratingThumb ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {thumbMode === "multi"
+                          ? `Rendering ${selectedThumbFormats.length} Platform Covers...`
+                          : "Rendering High-Res Cover..."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-4 h-4 shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {thumbMode === "multi"
+                          ? `Render Multi-Platform Pack (${selectedThumbFormats.length} Formats)`
+                          : `Render ${THUMBNAIL_PLATFORMS.find(p => p.id === thumbFormat)?.label || "Cover"}`}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Right Preview Gallery */}
+              <div className="lg:col-span-7 space-y-4">
+                {thumbMode === "multi" && batchThumbResults.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                      <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 dark:text-white">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <span>Generated {batchThumbResults.length} Platform Thumbnails</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        Click image or download button to save
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {batchThumbResults.map((item) => (
+                        <div
+                          key={item.format}
+                          className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 p-3 space-y-2.5 flex flex-col justify-between shadow-xs hover:border-rose-500/40 transition-all"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white">
+                              {item.label}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                              {item.aspect} • {item.dims}
+                            </span>
+                          </div>
+
+                          <div className="relative rounded-xl overflow-hidden bg-black/40 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center min-h-[160px] max-h-[220px]">
+                            <img
+                              src={getMediaUrl(item.thumbnail_url)}
+                              alt={item.label}
+                              className="max-h-[210px] w-auto max-w-full object-contain mx-auto rounded-lg shadow-sm"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-black/[0.04] dark:border-white/[0.04] gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMediaUrl(item.thumbnail_url);
+                                setActiveTab("compose");
+                              }}
+                              className="text-[10px] font-mono text-rose-500 hover:underline cursor-pointer"
+                            >
+                              Use in Compose →
+                            </button>
+
+                            <a
+                              href={getMediaUrl(item.thumbnail_url)}
+                              download={`thumbnail_${item.format}.png`}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold transition cursor-pointer shadow-xs"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>PNG</span>
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col items-center justify-center min-h-[380px]">
+                    {generatedThumbUrl ? (
+                      <div className="space-y-4 w-full text-center">
+                        <img
+                          src={getMediaUrl(generatedThumbUrl)}
+                          alt="Thumbnail Preview"
+                          className="rounded-xl shadow-xl max-h-[320px] mx-auto object-contain"
+                        />
+                        <div className="flex items-center justify-center gap-3">
+                          <a
+                            href={getMediaUrl(generatedThumbUrl)}
+                            download="thumbnail.png"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold hover:opacity-90 shadow-xs cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download High-Res PNG</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMediaUrl(generatedThumbUrl);
+                              setActiveTab("compose");
+                            }}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs cursor-pointer"
+                          >
+                            <span>Use in Compose Tab →</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-zinc-400 space-y-2">
+                        <ImageIcon className="w-12 h-12 mx-auto opacity-40 text-rose-500" />
+                        <div className="text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300">
+                          {thumbMode === "multi"
+                            ? "Ready to render Multi-Platform Cover Pack"
+                            : "Ready to render platform cover art"}
+                        </div>
+                        <p className="text-[11px] text-zinc-500 max-w-xs mx-auto">
+                          Select your desired formats and click render to generate high-CTR thumbnails.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -3093,25 +3344,25 @@ function PublishStudioContent() {
               </div>
             </div>
 
-            {/* Social API Keys BYOK Direct Link Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-zinc-900/60 to-cyan-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            {/* Social API Keys BYOK Direct Link Card - Whitish Style */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-zinc-100 text-zinc-950 border border-zinc-200 dark:border-zinc-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-100 text-emerald-700 dark:text-emerald-700 flex items-center justify-center shrink-0 shadow-xs border border-emerald-200">
                   <Key className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <span>Direct BYOK Social Media API Keys</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-400 font-semibold uppercase">BYOK Config</span>
+                  <div className="text-xs font-bold text-zinc-950 flex items-center gap-2">
+                    <span className="font-heading font-extrabold text-zinc-950 tracking-tight">Direct BYOK Social Media API Keys</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold uppercase">BYOK Config</span>
                   </div>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <p className="text-[11px] text-zinc-700 dark:text-zinc-600 mt-0.5 font-jakarta leading-relaxed">
                     Configure Meta Graph (Instagram & Facebook), X/Twitter API v2, YouTube Data API, LinkedIn, TikTok, Pinterest, and Telegram bot credentials in Settings.
                   </p>
                 </div>
               </div>
               <a
                 href="/settings?tab=social_media"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-heading transition shrink-0 cursor-pointer shadow-sm"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-heading transition shrink-0 cursor-pointer shadow-md active:scale-98"
               >
                 <span>Open Social Media Settings</span>
                 <ExternalLink className="w-3.5 h-3.5" />

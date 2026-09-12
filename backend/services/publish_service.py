@@ -507,10 +507,12 @@ async def generate_social_thumbnail(
     # Define canvas dimensions
     format_specs = {
         "youtube_16_9": (1280, 720, "16:9"),
-        "pinterest_2_3": (1000, 1500, "2:3"),
-        "linkedin_banner": (1200, 628, "1.91:1"),
+        "tiktok_shorts_9_16": (1080, 1920, "9:16"),
         "instagram_square": (1080, 1080, "1:1"),
+        "linkedin_banner": (1200, 628, "1.91:1"),
         "facebook_post": (1200, 630, "1.91:1"),
+        "twitter_banner": (1200, 675, "16:9"),
+        "pinterest_2_3": (1000, 1500, "2:3"),
     }
     
     width, height, aspect = format_specs.get(platform_format, (1280, 720, "16:9"))
@@ -572,7 +574,7 @@ async def generate_social_thumbnail(
     # Draw Category Badge Pill
     badge_text = (category_badge or "AI PRODUCTION").upper()
     pill_x = 60
-    pill_y = 60 if platform_format != "pinterest_2_3" else 100
+    pill_y = 120 if ("9_16" in platform_format or platform_format == "pinterest_2_3") else 60
     pill_pad_x = 22
     pill_pad_y = 10
     
