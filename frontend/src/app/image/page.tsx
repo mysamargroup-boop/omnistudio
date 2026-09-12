@@ -387,13 +387,19 @@ export default function ImageStudioPage() {
     };
   }, []);
 
-  // Pre-fill prompt from URL query params (e.g. when 'Reuse Prompt' is clicked in Vault)
+  // Pre-fill prompt and input_image from URL query params (e.g. when 'Edit in Image Studio' or 'Reuse Prompt' is clicked)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const urlPrompt = params.get("prompt");
       if (urlPrompt && urlPrompt.trim()) {
         setPrompt(urlPrompt.trim());
+      }
+      const urlImage = params.get("input_image") || params.get("image");
+      if (urlImage && urlImage.trim()) {
+        const cleanUrl = urlImage.trim();
+        setRefImageUrl(cleanUrl);
+        setResult({ success: true, url: cleanUrl, local_path: cleanUrl });
       }
     }
   }, []);
