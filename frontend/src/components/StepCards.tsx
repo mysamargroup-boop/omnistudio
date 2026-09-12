@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Layers, Image as ImageIcon, Video, Mic, Film } from "lucide-react";
+import { Layers, Image as ImageIcon, Video, Mic, Film, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StepCardItem {
@@ -24,6 +24,8 @@ interface StepCardsProps {
 }
 
 export default function StepCards({ currentStep = -1, className }: StepCardsProps) {
+  const isRunning = currentStep >= 0;
+
   return (
     <div
       className={cn(
@@ -42,25 +44,36 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
               key={step.id}
               className={cn(
                 "group relative rounded-xl border p-4 sm:p-4.5 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-default",
+                // Connecting flow line between steps (hidden on last + mobile 2-col)
+                idx < PIPELINE_STEPS.length - 1 && "step-connector sm:step-connector",
+                isDone && "step-done",
+                // State-based styling
                 isCurrent
-                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-lg scale-[1.02] ring-1 ring-black/20 dark:ring-white/30"
+                  ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-lg scale-[1.02] ring-1 ring-black/20 dark:ring-white/30 step-active-pulse"
                   : isDone
-                  ? "bg-zinc-50 dark:bg-[#111118] border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
-                  : "bg-zinc-50 dark:bg-white/[0.02] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-black/[0.1] dark:hover:border-white/[0.1]"
+                  ? "bg-emerald-50 dark:bg-emerald-500/[0.08] border-emerald-300 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-100"
+                  : "bg-zinc-50 dark:bg-white/[0.02] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-black/[0.1] dark:hover:border-white/[0.1]",
+                // Staggered entrance animation when pipeline starts
+                isRunning && "step-card-enter"
               )}
+              style={isRunning ? { animationDelay: `${idx * 0.06}s` } : undefined}
             >
-              {/* Step Icon */}
+              {/* Step Icon with Checkmark Overlay */}
               <div
                 className={cn(
-                  "p-2 rounded-lg mb-2.5 transition-colors",
+                  "relative p-2 rounded-lg mb-2.5 transition-colors",
                   isCurrent
                     ? "text-white dark:text-zinc-950 bg-white/20 dark:bg-zinc-900/20"
                     : isDone
-                    ? "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+                    ? "text-emerald-500 bg-emerald-100 dark:bg-emerald-500/15"
                     : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 bg-zinc-200/60 dark:bg-white/[0.04]"
                 )}
               >
-                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                {isDone ? (
+                  <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 animate-checkmark-pop" />
+                ) : (
+                  <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", isCurrent && "animate-pulse")} />
+                )}
               </div>
 
               {/* Step Title */}
@@ -69,6 +82,8 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
                   "text-[11px] sm:text-xs font-bold font-mono tracking-wider uppercase block",
                   isCurrent
                     ? "text-white dark:text-zinc-950"
+                    : isDone
+                    ? "text-emerald-800 dark:text-emerald-300"
                     : "text-zinc-800 dark:text-zinc-200"
                 )}
               >
@@ -81,10 +96,12 @@ export default function StepCards({ currentStep = -1, className }: StepCardsProp
                   "text-[10px] sm:text-[11px] block mt-1 tracking-tight font-sans truncate max-w-full",
                   isCurrent
                     ? "text-zinc-300 dark:text-zinc-700 font-medium"
+                    : isDone
+                    ? "text-emerald-600 dark:text-emerald-400/70"
                     : "text-zinc-500 dark:text-zinc-400"
                 )}
               >
-                {step.desc}
+                {isDone ? "Complete ✓" : step.desc}
               </span>
             </div>
           );

@@ -70,11 +70,11 @@ const PIPELINE_IMAGE_MODELS: PipelineModelOption[] = [
 ];
 
 const STYLES = [
-  { id: "cinematic", label: "Cinematic 35mm", desc: "Arri Alexa • Volumetric Lighting" },
-  { id: "cyberpunk", label: "Cyberpunk Noir", desc: "Vibrant Neon • Rainy Reflections" },
-  { id: "anime", label: "Anime Ghibli", desc: "Painterly Skies • Luminous Color" },
-  { id: "3d_pixar", label: "3D Animation", desc: "Subsurface Glow • Stylized CGI" },
-  { id: "photoreal", label: "Photoreal 8K", desc: "Hasselblad Sharp • Natural Sunlight" },
+  { id: "cinematic", label: "Cinematic 35mm", desc: "Arri Alexa • Volumetric Lighting", swatch: "style-swatch-cinematic" },
+  { id: "cyberpunk", label: "Cyberpunk Noir", desc: "Vibrant Neon • Rainy Reflections", swatch: "style-swatch-cyberpunk" },
+  { id: "anime", label: "Anime Ghibli", desc: "Painterly Skies • Luminous Color", swatch: "style-swatch-anime" },
+  { id: "3d_pixar", label: "3D Animation", desc: "Subsurface Glow • Stylized CGI", swatch: "style-swatch-3d" },
+  { id: "photoreal", label: "Photoreal 8K", desc: "Hasselblad Sharp • Natural Sunlight", swatch: "style-swatch-photoreal" },
 ];
 
 function PipelineContent() {
@@ -416,7 +416,7 @@ function PipelineContent() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. Scene Timeline */}
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 config-card-hover">
                   <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
                     SCENE TIMELINE
                   </label>
@@ -446,7 +446,7 @@ function PipelineContent() {
                 </div>
 
                 {/* 2. Visual Diffusion Engine (with dynamic active API green badges) */}
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 config-card-hover">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
                       DIFFUSION ENGINE
@@ -493,7 +493,7 @@ function PipelineContent() {
                 </div>
 
                 {/* 3. Aesthetic Style */}
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 config-card-hover">
                   <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold">
                     AESTHETIC STYLE
                   </label>
@@ -504,21 +504,24 @@ function PipelineContent() {
                         type="button"
                         onClick={() => setStyle(s.id)}
                         className={cn(
-                          "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
+                          "w-full px-2.5 py-1.5 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer",
                           style === s.id
                             ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
                             : "bg-white dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700"
                         )}
                       >
-                        <span className="text-[11px] font-semibold">{s.label}</span>
-                        <span className="text-[8px] font-mono opacity-70 truncate max-w-[100px]">{s.desc}</span>
+                        <div className={cn("style-swatch", s.swatch, style === s.id && "ring-2 ring-white/60 dark:ring-zinc-900/60 shadow-md")} />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[11px] font-semibold block truncate">{s.label}</span>
+                          <span className="text-[8px] font-mono opacity-70 block truncate">{s.desc}</span>
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* 4. Aspect Ratio & Speech Engine */}
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3 config-card-hover">
                   <div>
                     <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 block font-bold mb-1.5">
                       ASPECT RATIO
@@ -655,10 +658,13 @@ function PipelineContent() {
                         type="button"
                         onClick={enhancePrompt}
                         disabled={enhancing || !topic.trim()}
-                        className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white transition-colors cursor-pointer border border-emerald-300 dark:border-emerald-500/30 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-40"
+                        className={cn(
+                          "flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white transition-all cursor-pointer border border-emerald-300 dark:border-emerald-500/30 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-40",
+                          enhancing && "enhance-active-glow"
+                        )}
                       >
                         <Wand2 className={cn("h-3 w-3", enhancing && "animate-spin")} />
-                        <span>{enhancing ? "ENHANCING SCRIPT..." : "AI SCRIPT ENHANCE"}</span>
+                        <span>{enhancing ? "ENHANCING SCRIPT..." : "✨ AI SCRIPT ENHANCE"}</span>
                       </button>
                     </div>
                   </div>
@@ -834,7 +840,10 @@ function PipelineContent() {
                 type="button"
                 onClick={requestPipelineConfirm}
                 disabled={loading || (pipelineMode === "auto" ? !topic.trim() : (!imagePrompt.trim() && !topic.trim()))}
-                className="px-8 py-3.5 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 disabled:opacity-50 transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                className={cn(
+                  "px-8 py-3.5 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 disabled:opacity-50 transition-all shadow-md active:scale-[0.98] cursor-pointer",
+                  !loading && "execute-btn-shimmer"
+                )}
               >
                 {loading ? (
                   <>

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { Clock, ChevronDown, ChevronUp, Cpu, Aperture, Wand2, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Clock, ChevronDown, ChevronUp, Cpu, Aperture, Wand2, ShieldCheck, CheckCircle2, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface LogEntry {
@@ -46,6 +46,21 @@ export default function LiveProgressBar({
   };
 
   const clampedProgress = Math.min(Math.max(Math.round(progress), 0), 100);
+
+  // Estimate remaining time based on elapsed and progress
+  const estimatedRemaining = (() => {
+    if (clampedProgress <= 5 || clampedProgress >= 100 || elapsedSeconds < 3) return null;
+    const totalEstimated = (elapsedSeconds / clampedProgress) * 100;
+    const remaining = Math.max(0, Math.round(totalEstimated - elapsedSeconds));
+    if (remaining > 600) return null; // Cap at 10 min to avoid wild estimates early on
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    if (m > 0) return `~${m}m ${s}s remaining`;
+    return `~${s}s remaining`;
+  })();
+
+  // Determine if nearing completion for glow effect
+  const nearComplete = clampedProgress >= 75 && clampedProgress < 100;
 
   // Stepper milestones
   const steps = [
@@ -108,6 +123,14 @@ export default function LiveProgressBar({
         </div>
 
         <div className="flex items-center gap-3 self-end sm:self-auto">
+          {/* Estimated Time Remaining */}
+          {estimatedRemaining && isActive && clampedProgress < 100 && (
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/[0.08] px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-500/20">
+              <Timer className="h-3 w-3" />
+              <span>{estimatedRemaining}</span>
+            </div>
+          )}
+
           {/* Elapsed Time Pill */}
           <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-white/[0.06] px-3 py-1.5 rounded-full border border-black/[0.06] dark:border-white/[0.08]">
             <Clock className="h-3.5 w-3.5 text-zinc-500" />
@@ -115,7 +138,15 @@ export default function LiveProgressBar({
           </div>
 
           {/* Large Numerical Percentage */}
-          <div className="px-3.5 py-1 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-black font-heading font-black text-sm sm:text-base shadow-sm">
+          <div
+            className={cn(
+              "px-3.5 py-1 rounded-2xl font-heading font-black text-sm sm:text-base shadow-sm transition-all",
+              clampedProgress === 100
+                ? "bg-emerald-500 text-white"
+                : "bg-zinc-950 dark:bg-white text-white dark:text-black",
+              isActive && clampedProgress < 100 && "pct-badge-pulse"
+            )}
+          >
             {clampedProgress}%
           </div>
         </div>
@@ -133,7 +164,7 @@ export default function LiveProgressBar({
                 step.done
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                   : step.active
-                  ? "bg-zinc-100 dark:bg-white/[0.08] border-black/20 dark:border-white/20 text-zinc-950 dark:text-white shadow-sm"
+                  ? "bg-zinc-100 dark:bg-white/[0.08] border-black/20 dark:border-white/20 text-zinc-950 dark:text-white shadow-sm step-active-pulse"
                   : "bg-zinc-50/50 dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] text-zinc-400 dark:text-zinc-600"
               )}
             >
@@ -148,14 +179,16 @@ export default function LiveProgressBar({
                       : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
                   )}
                 >
-                  {step.done ? <CheckCircle2 className="w-4 h-4" /> : <StepIcon className="w-3.5 h-3.5" />}
+                  {step.done ? <CheckCircle2 className="w-4 h-4 animate-checkmark-pop" /> : <StepIcon className={cn("w-3.5 h-3.5", step.active && "animate-pulse")} />}
                 </div>
                 <span className="text-[10px] font-mono font-bold opacity-60">0{step.id}</span>
               </div>
 
               <div>
                 <h4 className="text-xs font-heading font-bold truncate">{step.label}</h4>
-                <p className="text-[10px] font-jakarta opacity-70 truncate hidden sm:block">{step.desc}</p>
+                <p className="text-[10px] font-jakarta opacity-70 truncate hidden sm:block">
+                  {step.done ? "Complete ✓" : step.desc}
+                </p>
               </div>
             </div>
           );
@@ -164,12 +197,19 @@ export default function LiveProgressBar({
 
       {/* 3. Smooth Animated Progress Bar */}
       <div className="space-y-2">
-        <div className="relative w-full h-2.5 sm:h-3 bg-zinc-100 dark:bg-white/[0.06] rounded-full overflow-hidden border border-black/[0.06] dark:border-white/[0.08] shadow-inner">
+        <div
+          className={cn(
+            "relative w-full h-2.5 sm:h-3 bg-zinc-100 dark:bg-white/[0.06] rounded-full overflow-hidden border border-black/[0.06] dark:border-white/[0.08] shadow-inner",
+            nearComplete && "progress-glow-near-complete"
+          )}
+        >
           <div
             className={cn(
               "h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden",
               clampedProgress === 100
                 ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+                : nearComplete
+                ? "bg-gradient-to-r from-zinc-950 via-emerald-600 to-emerald-500 dark:from-white dark:via-emerald-400 dark:to-emerald-300 shadow-sm"
                 : "bg-zinc-950 dark:bg-white shadow-sm"
             )}
             style={{ width: `${clampedProgress}%` }}
@@ -187,7 +227,7 @@ export default function LiveProgressBar({
             {statusMessage}
           </span>
           <span className={cn("text-[11px] font-mono shrink-0 uppercase tracking-wider ml-2", clampedProgress === 100 ? "text-emerald-500 font-bold" : "text-zinc-500 dark:text-zinc-400 font-medium")}>
-            {clampedProgress === 100 ? "Ready in Vault" : "Rendering Frame"}
+            {clampedProgress === 100 ? "✓ Ready in Vault" : "Rendering Frame"}
           </span>
         </div>
       </div>

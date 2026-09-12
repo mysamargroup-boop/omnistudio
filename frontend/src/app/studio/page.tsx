@@ -41,6 +41,7 @@ import {
   CheckCircle2,
   Share2,
   Trash2,
+  Gem,
 } from "lucide-react";
 import Link from "next/link";
 import { api, getMediaUrl } from "@/lib/api";
@@ -50,6 +51,7 @@ import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import ShareModal from "@/components/ui/ShareModal";
+import JewelleryPromptSuite from "@/components/studio/JewelleryPromptSuite";
 
 type StudioMasterMode = "video" | "image" | "voice" | "cinema";
 
@@ -176,6 +178,18 @@ function StudioContent() {
   const [loadingVault, setLoadingVault] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmDetails, setConfirmDetails] = useState<GenerationConfirmDetails | null>(null);
+  const [jewelleryModalOpen, setJewelleryModalOpen] = useState(false);
+  const [showJewellerySuiteInline, setShowJewellerySuiteInline] = useState(false);
+
+  const handleApplyJewelleryPrompt = (newPrompt: string, recommendedRatio?: string) => {
+    setPrompt(newPrompt);
+    if (recommendedRatio) {
+      setAspectRatio(recommendedRatio);
+    }
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.focus();
+    }
+  };
 
   // Execution & Output State
   const [loading, setLoading] = useState(false);
@@ -1538,6 +1552,43 @@ function StudioContent() {
                     </div>
                   </div>
                 )}
+
+                {/* 💎 Dedicated Jewellery Reference Variations & Prompts Suite */}
+                <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowJewellerySuiteInline(!showJewellerySuiteInline)}
+                      className={cn(
+                        "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-heading font-semibold transition-all cursor-pointer shadow-xs",
+                        refImage || showJewellerySuiteInline
+                          ? "bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20"
+                          : "bg-zinc-100 dark:bg-zinc-800/60 border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-amber-500 hover:border-amber-500/30"
+                      )}
+                    >
+                      <Gem className="w-3.5 h-3.5 text-amber-500" />
+                      <span>
+                        {refImage
+                          ? "💎 Jewellery Reference Prompts (Recommended for your upload)"
+                          : showJewellerySuiteInline
+                          ? "💎 Hide Jewellery Prompt Variations"
+                          : "💎 Show Jewellery Reference Prompts (Model • Aesthetic • Macro)"}
+                      </span>
+                    </button>
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      8 Pre-Engineered Variations
+                    </span>
+                  </div>
+
+                  {(refImage || showJewellerySuiteInline) && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                      <JewelleryPromptSuite
+                        hasReferenceImage={Boolean(refImage)}
+                        onSelectPrompt={handleApplyJewelleryPrompt}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1649,6 +1700,17 @@ function StudioContent() {
             <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span className="uppercase font-bold text-zinc-700 dark:text-zinc-300">Prompt Console ({masterMode})</span>
+              {(masterMode === "image" || masterMode === "video") && (
+                <button
+                  type="button"
+                  onClick={() => setJewelleryModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-300 border border-amber-500/30 text-[10px] font-heading font-bold transition-all cursor-pointer shadow-xs ml-1.5"
+                  title="Open Jewellery Reference Variations & Presets"
+                >
+                  <Gem className="w-3 h-3 text-amber-500" />
+                  <span>💎 Jewellery Presets</span>
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -2120,6 +2182,31 @@ function StudioContent() {
         onClose={() => setShareModalAsset(null)}
         asset={shareModalAsset}
       />
+
+      {/* Jewellery Reference Prompt Suite Modal */}
+      {jewelleryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-4xl rounded-3xl bg-zinc-950 border border-amber-500/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            <button
+              type="button"
+              onClick={() => setJewelleryModalOpen(false)}
+              className="absolute top-4 right-4 z-20 p-2 rounded-full bg-zinc-900/90 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer border border-white/10"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="p-3 sm:p-5 max-h-[85vh] overflow-y-auto custom-scrollbar">
+              <JewelleryPromptSuite
+                hasReferenceImage={Boolean(refImage)}
+                onSelectPrompt={(newPrompt, recommendedRatio) => {
+                  handleApplyJewelleryPrompt(newPrompt, recommendedRatio);
+                  setJewelleryModalOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
