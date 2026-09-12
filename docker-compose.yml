@@ -18,9 +18,9 @@ services:
         required: false
       - ./backend/.env
     environment:
-      - STUDIO_PASSCODE=${STUDIO_PASSCODE:-7391}
+      - STUDIO_PASSCODE=${STUDIO_PASSCODE}
       - JWT_SECRET=${JWT_SECRET}
-      - BACKEND_API_TOKEN=${BACKEND_API_TOKEN:-7391}
+      - BACKEND_API_TOKEN=${BACKEND_API_TOKEN}
       - ADMIN_API_TOKEN=${ADMIN_API_TOKEN}
       - CORS_ORIGINS=${CORS_ORIGINS}
     volumes:
@@ -46,10 +46,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://31.97.231.218:8050}
-        - NEXT_PUBLIC_STUDIO_PASSCODE=${NEXT_PUBLIC_STUDIO_PASSCODE:-7391}
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-https://lsttnpynhwtpkzfbfntf.supabase.co}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzdHRucHluaHd0cGt6ZmJmbnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2Mzg4NzgsImV4cCI6MjA2MjIxNDg3OH0.S6t81i8x_9tIcf9Vj90y6lqA5416F6Z6Hn9w46hJ2U4}
+        - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+        - NEXT_PUBLIC_STUDIO_PASSCODE=${NEXT_PUBLIC_STUDIO_PASSCODE}
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     image: ghcr.io/mysamargroup-boop/omnistudio-frontend:latest
     container_name: omnistudio-frontend
     restart: unless-stopped
@@ -69,12 +69,12 @@ services:
         required: false
     environment:
       - BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL:-http://omni-backend:8000}
-      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://31.97.231.218:8050}
-      - NEXT_PUBLIC_STUDIO_PASSCODE=${NEXT_PUBLIC_STUDIO_PASSCODE:-7391}
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+      - NEXT_PUBLIC_STUDIO_PASSCODE=${NEXT_PUBLIC_STUDIO_PASSCODE}
       - NODE_ENV=production
       - PORT=3000
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-https://lsttnpynhwtpkzfbfntf.supabase.co}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzdHRucHluaHd0cGt6ZmJmbnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2Mzg4NzgsImV4cCI6MjA2MjIxNDg3OH0.S6t81i8x_9tIcf9Vj90y6lqA5416F6Z6Hn9w46hJ2U4}
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 0"]
       interval: 30s
