@@ -1,9 +1,10 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { 
   X, Sparkles, Palette, Type, Upload, Check, Loader2, 
-  ShieldCheck, Sliders, Wand2, Image as ImageIcon, Trash2, Save 
+  ShieldCheck, Sliders, Wand2, Image as ImageIcon, Trash2, Save,
+  Copy, Download, FileJson, CheckCheck, Eye, Volume2
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -26,12 +27,16 @@ export interface BrandKitData {
   };
   style_guidelines: string;
   negative_guidelines: string;
+  brand_voice?: string;
+  watermark_position?: string;
+  watermark_opacity?: number;
   apply_to_generation: boolean;
 }
 
 export const PRESET_TEMPLATES = [
   {
     name: "Emerald Pro (Omni)",
+    brand_voice: "Minimalist & Clean",
     colors: { primary: "#10b981", secondary: "#71717a", accent: "#06b6d4", background: "#09090b" },
     typography: { primary_font: "Inter", heading_style: "Modern Sans" },
     style_guidelines: "Linear-inspired dark interface aesthetic, clean edge reflections, subtle emerald luminescence, pristine studio contrast, minimalist precision.",
@@ -39,6 +44,7 @@ export const PRESET_TEMPLATES = [
   },
   {
     name: "Luxury Couture",
+    brand_voice: "High Fashion & Luxe",
     colors: { primary: "#c5a059", secondary: "#1c1917", accent: "#fef08a", background: "#0c0a09" },
     typography: { primary_font: "Playfair Display", heading_style: "Luxury Serif" },
     style_guidelines: "Vogue luxury aesthetic, opulent warm caustics, soft architectural chiaroscuro, cinematic shallow depth of field, high-fashion editorial styling.",
@@ -46,6 +52,7 @@ export const PRESET_TEMPLATES = [
   },
   {
     name: "Cyberpunk Tech",
+    brand_voice: "Authoritative & Futuristic",
     colors: { primary: "#06b6d4", secondary: "#8b5cf6", accent: "#10b981", background: "#09090b" },
     typography: { primary_font: "JetBrains Mono", heading_style: "Tech Mono" },
     style_guidelines: "High-tech cyberpunk aesthetic, volumetric neon glow, wet reflective asphalt, atmospheric haze, octane render 8k detail.",
@@ -53,6 +60,7 @@ export const PRESET_TEMPLATES = [
   },
   {
     name: "Minimalist Studio",
+    brand_voice: "Minimalist & Clean",
     colors: { primary: "#3b82f6", secondary: "#64748b", accent: "#38bdf8", background: "#ffffff" },
     typography: { primary_font: "Inter", heading_style: "Modern Sans" },
     style_guidelines: "Clean commercial product lighting, high-key studio, pristine reflections, Apple advertising aesthetic, ultra sharp focus.",
@@ -60,6 +68,7 @@ export const PRESET_TEMPLATES = [
   },
   {
     name: "Cinematic Noir",
+    brand_voice: "Cinematic & Epic",
     colors: { primary: "#e4e4e7", secondary: "#52525b", accent: "#38bdf8", background: "#09090b" },
     typography: { primary_font: "Cinzel", heading_style: "Modern Sans" },
     style_guidelines: "35mm anamorphic film grain, dramatic high-contrast key lighting, moody atmospheric shadows, masterpiece cinematography.",
@@ -91,6 +100,12 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
   const [styleGuidelines, setStyleGuidelines] = useState("");
   const [negativeGuidelines, setNegativeGuidelines] = useState("");
   const [applyToGeneration, setApplyToGeneration] = useState(true);
+  const [brandVoice, setBrandVoice] = useState("Cinematic & Epic");
+  const [watermarkPosition, setWatermarkPosition] = useState("bottom-right");
+  const [watermarkOpacity, setWatermarkOpacity] = useState(80);
+  const [copiedDirectives, setCopiedDirectives] = useState(false);
+  const [copiedColor, setCopiedColor] = useState<string | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
 
   const toValidHex = (val: string, fallback: string = "#10b981") =>
     /^#[0-9A-Fa-f]{6}$/.test(val) ? val : fallback;
@@ -117,6 +132,9 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
           }
           setStyleGuidelines(k.style_guidelines || "");
           setNegativeGuidelines(k.negative_guidelines || "");
+          setBrandVoice(k.brand_voice || "Cinematic & Epic");
+          setWatermarkPosition(k.watermark_position || "bottom-right");
+          setWatermarkOpacity(k.watermark_opacity ?? 80);
           setApplyToGeneration(k.apply_to_generation ?? true);
         }
       } catch (e) {
@@ -153,6 +171,96 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
     setHeadingStyle(preset.typography.heading_style);
     setStyleGuidelines(preset.style_guidelines);
     setNegativeGuidelines(preset.negative_guidelines);
+    if ((preset as any).brand_voice) {
+      setBrandVoice((preset as any).brand_voice);
+    }
+  };
+
+  const copyHex = (hex: string) => {
+    navigator.clipboard.writeText(hex);
+    setCopiedColor(hex);
+    setTimeout(() => setCopiedColor(null), 1500);
+  };
+
+  const handleCopyDirectives = () => {
+    const parts = [
+      `Brand: ${brandName}`,
+      tagline ? `(${tagline})` : "",
+      brandVoice ? `Voice: ${brandVoice}` : "",
+      `Colors: ${primaryColor}, ${secondaryColor}, ${accentColor}, ${backgroundColor}`,
+      `Font: ${primaryFont} (${headingStyle})`,
+      styleGuidelines ? `Style: ${styleGuidelines}` : "",
+      negativeGuidelines ? `Negative: ${negativeGuidelines}` : ""
+    ].filter(Boolean).join(" | ");
+
+    navigator.clipboard.writeText(parts);
+    setCopiedDirectives(true);
+    setTimeout(() => setCopiedDirectives(false), 2000);
+  };
+
+  const exportBrandKit = () => {
+    const data: BrandKitData = {
+      brand_name: brandName,
+      tagline,
+      logo_url: logoUrl,
+      colors: {
+        primary: primaryColor,
+        secondary: secondaryColor,
+        accent: accentColor,
+        background: backgroundColor
+      },
+      typography: {
+        primary_font: primaryFont,
+        heading_style: headingStyle
+      },
+      style_guidelines: styleGuidelines,
+      negative_guidelines: negativeGuidelines,
+      brand_voice: brandVoice,
+      watermark_position: watermarkPosition,
+      watermark_opacity: watermarkOpacity,
+      apply_to_generation: applyToGeneration
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `brand-kit-${brandName.toLowerCase().replace(/[^a-z0-9]/g, "-") || "export"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importBrandKit = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (parsed.brand_name) setBrandName(parsed.brand_name);
+        if (parsed.tagline !== undefined) setTagline(parsed.tagline);
+        if (parsed.logo_url !== undefined) setLogoUrl(parsed.logo_url);
+        if (parsed.colors) {
+          if (parsed.colors.primary) setPrimaryColor(parsed.colors.primary);
+          if (parsed.colors.secondary) setSecondaryColor(parsed.colors.secondary);
+          if (parsed.colors.accent) setAccentColor(parsed.colors.accent);
+          if (parsed.colors.background) setBackgroundColor(parsed.colors.background);
+        }
+        if (parsed.typography) {
+          if (parsed.typography.primary_font) setPrimaryFont(parsed.typography.primary_font);
+          if (parsed.typography.heading_style) setHeadingStyle(parsed.typography.heading_style);
+        }
+        if (parsed.style_guidelines !== undefined) setStyleGuidelines(parsed.style_guidelines);
+        if (parsed.negative_guidelines !== undefined) setNegativeGuidelines(parsed.negative_guidelines);
+        if (parsed.brand_voice) setBrandVoice(parsed.brand_voice);
+        if (parsed.watermark_position) setWatermarkPosition(parsed.watermark_position);
+        if (parsed.watermark_opacity !== undefined) setWatermarkOpacity(parsed.watermark_opacity);
+        if (parsed.apply_to_generation !== undefined) setApplyToGeneration(parsed.apply_to_generation);
+      } catch (err) {
+        alert("Invalid Brand Kit JSON file");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
   const handleSave = async () => {
@@ -175,6 +283,9 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         },
         style_guidelines: styleGuidelines,
         negative_guidelines: negativeGuidelines,
+        brand_voice: brandVoice,
+        watermark_position: watermarkPosition,
+        watermark_opacity: watermarkOpacity,
         apply_to_generation: applyToGeneration
       };
       await api.updateBrandKit(payload);
@@ -205,7 +316,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
       {isEmbedded && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-xs border border-black/10 dark:border-white/20">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs border border-emerald-500/20">
               <Palette className="w-5 h-5 text-emerald-500" />
             </div>
             <div>
@@ -227,12 +338,12 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? (
               <Spinner size="xs" variant="current" />
             ) : saveSuccess ? (
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              <Check className="h-3.5 w-3.5 text-white" />
             ) : (
               <Save className="h-3.5 w-3.5" />
             )}
@@ -240,6 +351,130 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
           </button>
         </div>
       )}
+
+      {/* Sync & Utility Toolbar (Directives, Export, Import) */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-white/[0.02]">
+        <div className="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 font-medium">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Brand Kit Tools</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopyDirectives}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900 hover:border-emerald-500/50 hover:text-emerald-500 text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer"
+            title="Copy synthesized prompt directives string to clipboard"
+          >
+            {copiedDirectives ? <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copiedDirectives ? "Copied Directives!" : "Copy Directives"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={exportBrandKit}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900 hover:border-emerald-500/50 hover:text-emerald-500 text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer"
+            title="Export Brand Kit profile as a JSON file"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export JSON</span>
+          </button>
+          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-900 hover:border-emerald-500/50 hover:text-emerald-500 text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer">
+            <FileJson className="w-3.5 h-3.5" />
+            <span>Import JSON</span>
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={importBrandKit}
+              className="hidden"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Live Brand Card Mockup Preview */}
+      <div 
+        className="relative overflow-hidden rounded-2xl border border-black/[0.08] dark:border-white/[0.08] p-5 sm:p-6 transition-all shadow-sm"
+        style={{
+          backgroundColor: backgroundColor || "#09090b",
+          color: "#ffffff"
+        }}
+      >
+        <div 
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: `radial-gradient(circle at 100% 0%, ${primaryColor} 0%, transparent 60%), radial-gradient(circle at 0% 100%, ${accentColor} 0%, transparent 60%)`
+          }}
+        />
+        
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {/* Brand Watermark / Logo Preview */}
+            <div 
+              className="w-14 h-14 rounded-2xl flex items-center justify-center p-2 border border-white/10 shadow-lg backdrop-blur-md shrink-0"
+              style={{
+                backgroundColor: `${primaryColor}20`,
+                borderColor: `${primaryColor}40`,
+                opacity: (watermarkOpacity || 80) / 100
+              }}
+            >
+              {logoUrl ? (
+                <img src={getMediaUrl(logoUrl)} alt="Brand Preview" className="max-w-full max-h-full object-contain" />
+              ) : (
+                <span className="text-xl font-bold font-heading" style={{ color: primaryColor }}>
+                  {brandName ? brandName.charAt(0).toUpperCase() : "O"}
+                </span>
+              )}
+            </div>
+
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-xl font-bold tracking-tight text-white font-heading">
+                  {brandName || "OmniStudio"}
+                </h3>
+                <span 
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider backdrop-blur-md"
+                  style={{
+                    backgroundColor: `${accentColor}25`,
+                    color: accentColor,
+                    border: `1px solid ${accentColor}40`
+                  }}
+                >
+                  {brandVoice || "Cinematic & Epic"}
+                </span>
+              </div>
+              <p className="text-xs text-white/70 mt-1" style={{ fontFamily: primaryFont }}>
+                {tagline || "Next-Gen AI Cinematic Production"}
+              </p>
+            </div>
+          </div>
+
+          {/* Palette Badges in Mockup */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:ml-auto">
+            <div className="flex items-center -space-x-1.5">
+              {[
+                { label: "Primary", hex: primaryColor },
+                { label: "Secondary", hex: secondaryColor },
+                { label: "Accent", hex: accentColor },
+                { label: "Base", hex: backgroundColor }
+              ].map((c) => (
+                <button
+                  key={c.label}
+                  type="button"
+                  onClick={() => copyHex(c.hex)}
+                  className="group relative w-7 h-7 rounded-full border-2 border-zinc-900 shadow-md cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
+                  style={{ backgroundColor: c.hex }}
+                  title={`Click to copy ${c.label}: ${c.hex}`}
+                >
+                  {copiedColor === c.hex && <Check className="w-3 h-3 text-white drop-shadow-md" />}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] font-mono text-white/50 pl-1 sm:pl-2">
+              {primaryFont} • {headingStyle}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Quick Industry Presets */}
       <div className="space-y-2">
@@ -298,55 +533,91 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
       </div>
 
       {/* Logo Upload & Preview */}
-      <div className="space-y-1.5">
+      <div className="space-y-3">
         <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">
           Brand Logo / Watermark Asset
         </label>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-zinc-50 dark:bg-white/[0.02]">
-          {logoUrl ? (
-            <div className="relative w-16 h-16 rounded-xl bg-zinc-900 border border-black/10 dark:border-white/10 flex items-center justify-center p-2 overflow-hidden shrink-0 shadow-xs">
-              <img src={getMediaUrl(logoUrl)} alt="Brand Logo" className="max-w-full max-h-full object-contain" />
-              <button
-                type="button"
-                onClick={() => setLogoUrl("")}
-                className="absolute top-1 right-1 p-1 rounded-md bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer"
-                title="Remove Logo"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
+        <div className="p-4 rounded-xl border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-zinc-50 dark:bg-white/[0.02] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {logoUrl ? (
+              <div className="relative w-16 h-16 rounded-xl bg-zinc-900 border border-black/10 dark:border-white/10 flex items-center justify-center p-2 overflow-hidden shrink-0 shadow-xs">
+                <img src={getMediaUrl(logoUrl)} alt="Brand Logo" className="max-w-full max-h-full object-contain" />
+                <button
+                  type="button"
+                  onClick={() => setLogoUrl("")}
+                  className="absolute top-1 right-1 p-1 rounded-md bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                  title="Remove Logo"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center text-zinc-400 shrink-0">
+                <ImageIcon className="w-6 h-6" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                {logoUrl ? "Active Brand Logo Configured" : "Upload Brand Watermark or Logo"}
+              </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-sans leading-relaxed">
+                Supports PNG, SVG, WebP with transparency. Used for automatic overlays and brand watermark branding.
+              </p>
+              <label className="inline-flex items-center gap-2 mt-2.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-white/10 dark:hover:bg-white/15 text-zinc-900 dark:text-white border border-black/[0.08] dark:border-white/[0.08] transition-all cursor-pointer shadow-xs active:scale-98">
+                {uploadingLogo ? (
+                  <>
+                    <Spinner size="xs" variant="current" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Choose Logo File</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                />
+              </label>
             </div>
-          ) : (
-            <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center text-zinc-400 shrink-0">
-              <ImageIcon className="w-6 h-6" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-              {logoUrl ? "Active Brand Logo Configured" : "Upload Brand Watermark or Logo"}
-            </p>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-sans leading-relaxed">
-              Supports PNG, SVG, WebP with transparency. Used for automatic overlays and brand watermark branding.
-            </p>
-            <label className="inline-flex items-center gap-2 mt-2.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all cursor-pointer shadow-xs active:scale-98">
-              {uploadingLogo ? (
-                <>
-                  <Spinner size="xs" variant="current" />
-                  <span>Uploading...</span>
-                </>
-              ) : (
-                <>
-                  <Upload className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Choose Logo File</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                onChange={handleLogoUpload}
-                disabled={uploadingLogo}
-                className="hidden"
+          </div>
+
+          {/* Watermark Placement & Opacity Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+            <div className="space-y-1.5">
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">Watermark Placement</span>
+              <Dropdown
+                size="sm"
+                value={watermarkPosition}
+                onChange={(val) => setWatermarkPosition(val)}
+                options={[
+                  { value: "bottom-right", label: "Bottom Right Corner" },
+                  { value: "bottom-left", label: "Bottom Left Corner" },
+                  { value: "top-right", label: "Top Right Corner" },
+                  { value: "top-left", label: "Top Left Corner" },
+                  { value: "center", label: "Center Watermark" },
+                ]}
               />
-            </label>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Watermark Opacity</span>
+                <span className="text-xs font-mono text-emerald-500 font-bold">{watermarkOpacity}%</span>
+              </div>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                step={5}
+                value={watermarkOpacity}
+                onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
+                className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -473,6 +744,40 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         </div>
       </div>
 
+      {/* Brand Voice & Narrative Tone */}
+      <div className="space-y-2">
+        <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 font-mono">
+          <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
+          Brand Voice & Personality
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {[
+            { id: "Cinematic & Epic", desc: "Grand scale, dramatic flair, emotional lighting" },
+            { id: "Minimalist & Clean", desc: "Precise, spacious, surgical Apple-like clarity" },
+            { id: "High Fashion & Luxe", desc: "Vogue editorial, warm caustics, elegance" },
+            { id: "Authoritative & Futuristic", desc: "Cyberpunk, neon glows, sharp tech" },
+            { id: "Warm & Commercial", desc: "Friendly, studio high-key, inviting tones" }
+          ].map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => setBrandVoice(v.id)}
+              className={cn(
+                "p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col",
+                brandVoice === v.id
+                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                  : "border-black/[0.08] dark:border-white/[0.08] bg-zinc-50 dark:bg-white/[0.03] text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/40"
+              )}
+            >
+              <span className="text-xs font-bold font-heading truncate w-full">{v.id}</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans mt-0.5 line-clamp-2 leading-tight">
+                {v.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Aesthetic Guidelines */}
       <div className="space-y-1.5">
         <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">
@@ -524,18 +829,18 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         </label>
       </div>
 
-      {/* Embedded Action Footer (when on Settings page) */}
-      {isEmbedded && (
-        <div className="pt-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
-            <span>Active: {brandName || "OmniStudio"}</span>
-          </div>
+      {/* Action Footer (Always available for both modal and settings page) */}
+      <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+          <span className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: primaryColor }} />
+          <span>Active: {brandName || "OmniStudio"} ({brandVoice})</span>
+        </div>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -544,8 +849,8 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
               </>
             ) : saveSuccess ? (
               <>
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-                <span>Saved Successfully!</span>
+                <Check className="h-3.5 w-3.5 text-white" />
+                <span>Saved & Synced!</span>
               </>
             ) : (
               <>
@@ -555,7 +860,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
             )}
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -597,7 +902,7 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/50 dark:bg-white/[0.02] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-xs border border-black/10 dark:border-white/20">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs border border-emerald-500/20">
               <Palette className="w-4 h-4 text-emerald-500" />
             </div>
             <div>

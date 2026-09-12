@@ -379,8 +379,10 @@ async def generate_image(req: ImageRequest, request: Request):
         composed_prompt = await enhance_prompt(composed_prompt, req.enhance_style)
 
     try:
-        from services.brand_kit_service import apply_brand_kit_to_prompt
+        from services.brand_kit_service import apply_brand_kit_to_prompt, apply_brand_kit_to_negative_prompt
         composed_prompt = apply_brand_kit_to_prompt(composed_prompt)
+        if hasattr(req, "negative_prompt"):
+            req.negative_prompt = apply_brand_kit_to_negative_prompt(req.negative_prompt or "")
     except Exception as bke:
         logger.debug(f"Brand kit prompt injection skipped: {bke}")
 
@@ -1004,7 +1006,7 @@ async def api_remove_background(req: ImageToolRequest, request: Request):
         src = safe_resolve_output_path(req.image_path, must_exist=True)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
-    res = remove_background(src)
+    res = await asyncio.to_thread(remove_background, src)
     _save_ai_tool_asset(res, src.name, "remove_background")
     return res
 
@@ -1019,7 +1021,7 @@ async def api_relight(req: ImageToolRequest, request: Request):
         src = safe_resolve_output_path(req.image_path, must_exist=True)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
-    res = relight_image(src, preset=req.preset or "golden_hour", intensity=req.intensity or 1.0)
+    res = await asyncio.to_thread(relight_image, src, preset=req.preset or "golden_hour", intensity=req.intensity or 1.0)
     _save_ai_tool_asset(res, src.name, f"relight_{req.preset}")
     return res
 
@@ -1034,7 +1036,7 @@ async def api_face_restore(req: ImageToolRequest, request: Request):
         src = safe_resolve_output_path(req.image_path, must_exist=True)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
-    res = restore_face(src)
+    res = await asyncio.to_thread(restore_face, src)
     _save_ai_tool_asset(res, src.name, "face_restore")
     return res
 
@@ -1049,7 +1051,7 @@ async def api_outpaint(req: ImageToolRequest, request: Request):
         src = safe_resolve_output_path(req.image_path, must_exist=True)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
-    res = outpaint_expand(src, target_aspect=req.target_aspect or "16:9")
+    res = await asyncio.to_thread(outpaint_expand, src, target_aspect=req.target_aspect or "16:9")
     _save_ai_tool_asset(res, src.name, f"outpaint_{req.target_aspect}")
     return res
 

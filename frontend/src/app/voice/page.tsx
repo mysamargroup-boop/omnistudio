@@ -487,41 +487,37 @@ export default function VoiceStudioPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#06060a] text-zinc-950 dark:text-zinc-50 flex flex-col p-4 sm:p-6 font-jakarta">
+    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#06060a] text-zinc-950 dark:text-zinc-50 flex flex-col p-3 sm:p-5 sm:pt-3 font-jakarta">
       <div className="max-w-6xl mx-auto w-full flex flex-col flex-1">
-        {/* Centered Bold Studio Header */}
-        <div className="mb-6 flex flex-col items-center justify-center text-center space-y-2.5 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono tracking-widest uppercase font-semibold">
-            <Mic size={13} className="text-emerald-500" />
-            <span>ACOUSTIC SUITE 5.0 • NEURAL VOICE STUDIO</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white">
+        {/* Centered Compact Studio Header */}
+        <div className="mb-4 sm:mb-5 flex flex-col items-center justify-center text-center space-y-1.5 max-w-2xl mx-auto">
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white">
             Audio Production Studio
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-sans max-w-lg">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans max-w-lg">
             Broadcast-grade neural speech synthesis, real-time voice conversion, and multilingual dubbing.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono font-bold shadow-xs">
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               EDGE NEURAL (100% FREE ACTIVE)
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[11px] font-mono">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[10px] font-mono">
               ELEVENLABS V3
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[11px] font-mono">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[10px] font-mono">
               OPENAI AUDIO
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[11px] font-mono">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 text-[10px] font-mono">
               SEED AUDIO
             </span>
           </div>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
         
         {/* LEFT PANEL: CONTROLS (Compact & Pinned Fixed on Desktop) */}
-        <div className="lg:col-span-5 flex flex-col gap-3 lg:sticky lg:top-6 self-start max-h-[calc(100vh-5rem)] overflow-y-auto custom-scrollbar">
+        <div className="lg:col-span-5 flex flex-col gap-3 lg:sticky lg:top-4 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto custom-scrollbar">
           
           {/* Tabs - Single Line Non-Wrapping */}
           <div className="bg-zinc-100 dark:bg-[#0d0d14] p-1 rounded-xl flex flex-nowrap whitespace-nowrap gap-1 w-full border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto scrollbar-hide">

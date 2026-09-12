@@ -46,6 +46,7 @@ import {
   Trash2,
   ImagePlus,
   Bookmark,
+  ShieldCheck,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -229,13 +230,18 @@ export default function ImageStudioPage() {
     const fileArray = Array.from(files);
     if (!fileArray.length) return;
     setUploadingMultiRef(true);
+    setMultiRefUploadProgress(0);
     try {
-      for (const file of fileArray) {
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
         if (file.size > 25 * 1024 * 1024) {
           alert(`File ${file.name} exceeds 25MB limit.`);
           continue;
         }
-        const res = await api.uploadReferenceImage(file);
+        const res = await api.uploadWithProgress<any>("/api/image/upload-reference", file, "file", (pct) => {
+          const overall = Math.round(((i * 100) + pct) / fileArray.length);
+          setMultiRefUploadProgress(overall);
+        });
         if (res?.url) {
           setRefImages((prev) => [...prev, { url: res.url, name: file.name }]);
           setRefImageUrl((prev) => prev || res.url);
@@ -245,6 +251,7 @@ export default function ImageStudioPage() {
       alert(err?.message || "Failed to upload reference image");
     } finally {
       setUploadingMultiRef(false);
+      setMultiRefUploadProgress(0);
     }
   };
 
@@ -272,6 +279,10 @@ export default function ImageStudioPage() {
   const [editorCropRatio, setEditorCropRatio] = useState<string>("original"); // original, 16:9, 9:16, 1:1, 4:3, 3:4, 21:9
   const [editorUpscale, setEditorUpscale] = useState<boolean>(false);
   const [uploadingEditorImage, setUploadingEditorImage] = useState<boolean>(false);
+  const [editorUploadProgress, setEditorUploadProgress] = useState<number>(0);
+  const [refUploadProgress, setRefUploadProgress] = useState<number>(0);
+  const [multiRefUploadProgress, setMultiRefUploadProgress] = useState<number>(0);
+  const [isEditorDragOver, setIsEditorDragOver] = useState<boolean>(false);
   const [processingImageEdit, setProcessingImageEdit] = useState<boolean>(false);
   const editorFileInputRef = useRef<HTMLInputElement>(null);
   const quickUploadInputRef = useRef<HTMLInputElement>(null);
@@ -705,23 +716,32 @@ export default function ImageStudioPage() {
   // Upload reference image
   const handleRefFileUpload = async (file: File) => {
     setUploadingRef(true);
+    setRefUploadProgress(0);
     try {
-      const data = await api.uploadReferenceImage(file);
-      if (data.success && data.url) {
-        setRefImageUrl(data.url);
+      const data = await api.uploadWithProgress<any>("/api/image/upload-reference", file, "file", (pct) => {
+        setRefUploadProgress(pct);
+      });
+      if (data && (data.url || data.path)) {
+        const url = data.url || data.path;
+        setRefImageUrl(url);
       }
     } catch (e: any) {
       alert(`Upload failed: ${e.message}`);
+    } finally {
+      setUploadingRef(false);
+      setRefUploadProgress(0);
     }
-    setUploadingRef(false);
   };
 
   // Upload image for precision editing
   const handleEditorImageUpload = async (file: File) => {
     if (!file) return;
     setUploadingEditorImage(true);
+    setEditorUploadProgress(0);
     try {
-      const res = await api.uploadImage(file);
+      const res = await api.uploadWithProgress<any>("/api/image/upload", file, "file", (pct) => {
+        setEditorUploadProgress(pct);
+      });
       const url = res?.url || (typeof res === "string" ? res : "");
       if (url) {
         setEditorImageUrl(url);
@@ -729,11 +749,14 @@ export default function ImageStudioPage() {
         setEditorImageFile(file);
         setStudioMode("image_editor");
         setPromptDockCollapsed(true);
+        // Auto-collapse left sidebar so image canvas and controls have full width
+        window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
       }
     } catch (err) {
       console.error("Failed to upload image for editing:", err);
     } finally {
       setUploadingEditorImage(false);
+      setEditorUploadProgress(0);
     }
   };
 
@@ -1112,11 +1135,25 @@ export default function ImageStudioPage() {
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
           >
             {uploadingEditorImage ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                <span>Uploading {editorUploadProgress}%</span>
+              </>
             ) : (
-              <Upload className="w-3.5 h-3.5 text-emerald-500" />
+              <>
+                <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Upload Image</span>
+              </>
             )}
-            <span>{uploadingEditorImage ? "Uploading..." : "Upload Image"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={openVaultPicker}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-violet-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+            title="Pick from Vault"
+          >
+            <FolderArchive className="w-3.5 h-3.5 text-violet-500" />
+            <span>From Vault</span>
           </button>
           <button
             type="button"
@@ -1251,7 +1288,10 @@ export default function ImageStudioPage() {
                     type="button"
                     onClick={() => {
                       setEditorImageUrl(currentDisplayImage.url);
+                      setOriginalEditorImageUrl(currentDisplayImage.url);
                       setStudioMode("image_editor");
+                      setPromptDockCollapsed(true);
+                      window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
                     }}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
                     title="Open in Precision Image Editor"
@@ -1440,7 +1480,7 @@ export default function ImageStudioPage() {
 
         {/* State E: Image Precision Editor & Color Lab */}
         {studioMode === "image_editor" && (
-          <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-200">
+          <div className="w-full max-w-[1650px] mx-auto space-y-6 animate-in fade-in duration-200">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-emerald-500" />
@@ -1467,24 +1507,36 @@ export default function ImageStudioPage() {
                 <button
                   type="button"
                   onClick={() => editorFileInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  disabled={uploadingEditorImage}
+                  className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  Upload New
+                  {uploadingEditorImage ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                      <span>{editorUploadProgress}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload New</span>
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={openVaultPicker}
-                  className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  Pick from Vault
+                  <FolderArchive className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Pick from Vault</span>
                 </button>
               </div>
             </div>
 
             {editorImageUrl ? (
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Image Live Viewport & Canvas */}
-                <div className="md:col-span-7 space-y-4">
+                <div className="lg:col-span-7 xl:col-span-8 space-y-4">
                   {/* Canvas Controls Toolbar: Before/After toggle + Social Repurpose */}
                   <div className="flex items-center justify-between px-1">
                     <div className="flex items-center gap-2">
@@ -1648,7 +1700,7 @@ export default function ImageStudioPage() {
                 </div>
 
                 {/* Editor Adjustments Sidebar (Multi-Tab Suite) */}
-                <div className="md:col-span-5 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm font-jakarta">
+                <div className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm font-jakarta max-h-[82vh] overflow-y-auto custom-scrollbar">
                   {/* Category Tabs */}
                   <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-x-auto custom-scrollbar">
                     {[
@@ -2476,139 +2528,237 @@ export default function ImageStudioPage() {
               </div>
             ) : (
               <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditorDragOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditorDragOver(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditorDragOver(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleEditorImageUpload(file);
+                }}
                 onClick={() => editorFileInputRef.current?.click()}
-                className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl aspect-video flex flex-col items-center justify-center gap-3 p-10 cursor-pointer transition-colors bg-zinc-50/50 dark:bg-zinc-900/50 max-w-xl mx-auto"
+                className={cn(
+                  "border-2 border-dashed rounded-3xl aspect-[16/9] max-w-2xl mx-auto flex flex-col items-center justify-center gap-4 p-8 sm:p-12 transition-all cursor-pointer relative overflow-hidden",
+                  isEditorDragOver
+                    ? "border-emerald-500 bg-emerald-500/10 scale-[1.01]"
+                    : "border-zinc-300 dark:border-zinc-700/80 hover:border-emerald-500/60 bg-zinc-50/70 dark:bg-[#0d0d15]/70 shadow-lg"
+                )}
               >
                 {uploadingEditorImage ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                  <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+                    <Loader2 className="h-9 w-9 animate-spin text-emerald-500" />
+                    <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-150"
+                        style={{ width: `${editorUploadProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      Uploading from PC... {editorUploadProgress}%
+                    </span>
+                  </div>
                 ) : (
-                  <Upload className="h-8 w-8 text-emerald-500" />
+                  <>
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 shadow-sm">
+                      <Upload className="h-7 w-7" />
+                    </div>
+                    <div className="text-center space-y-1.5 max-w-md">
+                      <p className="text-base font-heading font-bold text-zinc-900 dark:text-white">
+                        Drag & drop image here, or select an upload method
+                      </p>
+                      <p className="text-xs text-zinc-400 font-mono">
+                        PNG, JPG, WEBP • AI Relighting, BG Removal, 4K Upscale & Color Grading
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => editorFileInputRef.current?.click()}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Upload from PC</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openVaultPicker}
+                        className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 font-semibold text-xs border border-black/10 dark:border-white/10 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                      >
+                        <FolderArchive className="w-4 h-4 text-violet-400" />
+                        <span>Pick from Vault</span>
+                      </button>
+                    </div>
+                  </>
                 )}
-                <div className="text-center space-y-1">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                    {uploadingEditorImage ? "Uploading Image..." : "Click or drag an image here to edit"}
-                  </p>
-                  <p className="text-xs text-zinc-400 font-mono">
-                    PNG, JPG, WEBP • HSL, Color Wheel, Tone Curves, Text & 4K Super-Resolution
-                  </p>
-                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* State D1: Multi-Reference Images & Character Consistency Suite (media_1789093591015.png) */}
+        {/* State D1: Multi-Reference Images & Character Consistency Suite (Horizontal 2-Column Layout) */}
         {!loading && !loadingVariations && !result && !variationsResult && (studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0) && (
-          <div className="w-full max-w-lg mx-auto py-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-xl space-y-5 text-left">
-              {/* Heading */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base sm:text-lg font-bold font-heading text-zinc-950 dark:text-white flex items-center gap-2">
-                    <span>Reference Images</span>
-                    <span className="text-xs font-normal text-zinc-400 font-mono">(Optional)</span>
-                  </h3>
-                  {refImages.length > 0 && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                      {refImages.length} ATTACHED
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
-                  Add image references to maintain character, style, or composition consistency.
-                </p>
-              </div>
-
-              {/* Drag and Drop Zone */}
-              <div
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.dataTransfer.files?.length) {
-                    handleMultiRefUpload(e.dataTransfer.files);
-                  }
-                }}
-                onClick={() => multiRefFileInputRef.current?.click()}
-                className="rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
-              >
-                <input
-                  ref={multiRefFileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files?.length) {
-                      handleMultiRefUpload(e.target.files);
-                    }
-                    e.target.value = "";
-                  }}
-                />
-                {uploadingMultiRef ? (
-                  <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform">
-                    <Upload className="w-5 h-5" />
+          <div className="w-full max-w-5xl mx-auto py-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-5 sm:p-7 shadow-xl space-y-5 text-left">
+              {/* Header Bar */}
+              <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20">
+                    <ImagePlus className="w-4 h-4" />
                   </div>
-                )}
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-violet-700 dark:text-violet-300 font-heading">
-                    {uploadingMultiRef ? "Uploading References..." : "Upload Image"}
-                  </p>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-jakarta">
-                    or drag and drop
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
+                        Image Variations & Style Directives
+                      </h3>
+                      {refImages.length > 0 && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                          {refImages.length} ATTACHED
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta">
+                      Reference images, character consistency locks, negative prompt exclusion aur advanced sampling settings.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-[10px] text-zinc-400 font-mono">
-                  Supports JPG, PNG, WEBP - Up to 25MB
-                </p>
+
+                {referenceDrawerOpen && (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceDrawerOpen(false)}
+                    className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Close Reference Panel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
-              {/* Attached Thumbnails Row */}
-              {refImages.length > 0 && (
-                <div className="space-y-3 pt-1 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                    {refImages.map((img, idx) => (
-                      <div key={idx} className="relative group shrink-0">
-                        <img
-                          src={getMediaUrl(img.url)}
-                          alt={img.name}
-                          className="w-20 h-20 rounded-2xl object-cover border-2 border-zinc-200 dark:border-zinc-700 shadow-sm"
-                        />
+              {/* 2-Column Horizontal Layout Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                {/* ── LEFT COLUMN: Reference Images & Character Consistency Locks ── */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5 text-violet-500" />
+                      <span>Reference Images ({refImages.length})</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={openVaultPicker}
+                        className="text-[11px] font-mono text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1.5 cursor-pointer transition-colors px-2.5 py-1 rounded-lg border border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/20"
+                        title="Pick reference from Vault"
+                      >
+                        <FolderArchive className="w-3 h-3" />
+                        <span>From Vault</span>
+                      </button>
+                      {refImages.length > 0 && (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeRefImage(idx);
-                          }}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:text-rose-500 shadow-sm flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
-                          title="Remove image"
+                          onClick={clearAllRefImages}
+                          className="text-[11px] font-mono text-rose-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer transition-colors px-2 py-1 rounded-lg hover:bg-rose-500/10"
                         >
-                          <X className="w-3 h-3" />
+                          <Trash2 className="w-3 h-3" />
+                          <span>Clear All</span>
                         </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.dataTransfer.files?.length) {
+                        handleMultiRefUpload(e.dataTransfer.files);
+                      }
+                    }}
+                    onClick={() => multiRefFileInputRef.current?.click()}
+                    className="rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+                  >
+                    <input
+                      ref={multiRefFileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.length) {
+                          handleMultiRefUpload(e.target.files);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+                    {uploadingMultiRef ? (
+                      <Loader2 className="w-7 h-7 text-violet-600 animate-spin" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform">
+                        <Upload className="w-4 h-4" />
                       </div>
-                    ))}
+                    )}
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-violet-700 dark:text-violet-300 font-heading">
+                        {uploadingMultiRef ? `Uploading References... ${multiRefUploadProgress}%` : "Upload Image or Drag & Drop"}
+                      </p>
+                      <p className="text-[10px] text-zinc-400 font-mono">
+                        Supports JPG, PNG, WEBP - Up to 25MB
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Centered Clear All Button */}
-                  <div className="flex justify-center pt-1">
-                    <button
-                      type="button"
-                      onClick={clearAllRefImages}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-violet-700 dark:text-violet-300 hover:text-rose-600 text-xs font-mono font-bold transition-colors cursor-pointer border border-violet-200/60 dark:border-violet-500/20"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Clear All</span>
-                    </button>
-                  </div>
-
-                  {/* Character Consistency Checkboxes */}
-                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
-                        Character Consistency Locks:
+                  {/* Attached Thumbnails Carousel */}
+                  {refImages.length > 0 && (
+                    <div className="space-y-2 pt-1 animate-in fade-in duration-200">
+                      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">
+                        Attached Active References:
                       </span>
+                      <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 custom-scrollbar">
+                        {refImages.map((img, idx) => (
+                          <div key={idx} className="relative group shrink-0">
+                            <img
+                              src={getMediaUrl(img.url)}
+                              alt={img.name}
+                              className="w-16 h-16 rounded-xl object-cover border-2 border-zinc-200 dark:border-zinc-700 shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeRefImage(idx);
+                              }}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:text-rose-500 shadow-sm flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+                              title="Remove image"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Character Consistency Locks */}
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.08] space-y-2.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300 font-bold">
+                          Character Consistency Locks
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
@@ -2620,23 +2770,13 @@ export default function ImageStudioPage() {
                           setLockBackground(nextVal);
                         }}
                         className={cn(
-                          "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
+                          "flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
                           (lockFace || lockDress || lockJewelry || lockBackground)
                             ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
                             : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
                         )}
-                        title={(lockFace || lockDress || lockJewelry || lockBackground) ? "Character Locks ON (Click to turn all OFF)" : "Character Locks OFF (Click to turn all ON)"}
                       >
-                        <div className={cn(
-                          "w-5 h-3 rounded-full p-0.5 transition-colors relative flex items-center",
-                          (lockFace || lockDress || lockJewelry || lockBackground) ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"
-                        )}>
-                          <div className={cn(
-                            "w-2 h-2 rounded-full bg-white transition-transform transform shadow-xs",
-                            (lockFace || lockDress || lockJewelry || lockBackground) ? "translate-x-2" : "translate-x-0"
-                          )} />
-                        </div>
-                        <span>{(lockFace || lockDress || lockJewelry || lockBackground) ? "ON" : "OFF"}</span>
+                        <span>{(lockFace || lockDress || lockJewelry || lockBackground) ? "ALL ON" : "ALL OFF"}</span>
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
@@ -2679,74 +2819,92 @@ export default function ImageStudioPage() {
                     </div>
                   </div>
                 </div>
-              )}
 
-              {/* Negative Prompt */}
-              <div className="space-y-1.5 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold font-heading text-zinc-950 dark:text-white flex items-center gap-2">
-                    <span>Negative Prompt</span>
-                    <span className="text-xs font-normal text-zinc-400 font-mono">(Optional)</span>
-                  </h4>
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-jakarta">
-                  Describe what you don&apos;t want in the image.
-                </p>
-                <textarea
-                  value={negativePrompt}
-                  onChange={(e) => setNegativePrompt(e.target.value)}
-                  placeholder="blurry, low quality, extra fingers, bad anatomy, text, watermark, deformed face"
-                  rows={3}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/70 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/40 font-jakarta resize-none leading-relaxed"
-                />
-              </div>
-
-              {/* Accordion 1: Advanced Settings */}
-              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setAdvancedSettingsOpen((prev) => !prev)}
-                  className="w-full p-3.5 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/40 hover:bg-zinc-100 dark:hover:bg-zinc-900/70 transition-colors text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 font-mono text-xs font-bold text-zinc-900 dark:text-white">
-                    <Sliders className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Advanced Settings</span>
+                {/* ── RIGHT COLUMN: Negative Prompt & Advanced Settings ── */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-4">
+                  {/* Negative Prompt */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                        <Sliders className="w-3.5 h-3.5 text-violet-500" />
+                        <span>Negative Prompt (Exclude Elements)</span>
+                      </span>
+                      {negativePrompt && (
+                        <button
+                          type="button"
+                          onClick={() => setNegativePrompt("")}
+                          className="text-[11px] font-mono text-zinc-400 hover:text-rose-500 cursor-pointer transition-colors"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      value={negativePrompt}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                      placeholder="e.g. blurry, low quality, extra fingers, deformed face, bad anatomy, watermark..."
+                      rows={3}
+                      className="w-full bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500/40 font-mono resize-none leading-relaxed shadow-xs"
+                    />
+                    {/* Quick Exclude Chips */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {["blurry", "extra fingers", "watermark", "deformed face", "low quality"].map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            if (!negativePrompt.includes(tag)) {
+                              setNegativePrompt((prev) => (prev ? `${prev}, ${tag}` : tag));
+                            }
+                          }}
+                          className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-white dark:bg-zinc-800/80 hover:bg-violet-500/10 hover:text-violet-600 border border-black/[0.06] dark:border-white/[0.06] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer"
+                        >
+                          +{tag}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <ChevronDown className={cn("w-4 h-4 text-zinc-400 transition-transform duration-200", advancedSettingsOpen && "rotate-180")} />
-                </button>
-                {advancedSettingsOpen && (
-                  <div className="p-4 space-y-3 bg-white dark:bg-[#0e0e16] border-t border-black/[0.06] dark:border-white/[0.06] animate-in fade-in duration-150">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
-                        <span>CFG Guidance Scale</span>
-                        <span className="font-bold">{cfgScale}</span>
+
+                  {/* Advanced Settings */}
+                  <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#111118] p-3.5 space-y-3 shadow-xs">
+                    <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                      Advanced Synthesis Parameters
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
+                          <span>CFG Guidance:</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{cfgScale}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="20"
+                          step="0.5"
+                          value={cfgScale}
+                          onChange={(e) => setCfgScale(Number(e.target.value))}
+                          className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg"
+                        />
                       </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="20"
-                        step="0.5"
-                        value={cfgScale}
-                        onChange={(e) => setCfgScale(Number(e.target.value))}
-                        className="w-full accent-emerald-500 cursor-pointer"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
-                        <span>Sampling Steps</span>
-                        <span className="font-bold">{samplingSteps}</span>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
+                          <span>Sampling Steps:</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{samplingSteps}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="10"
+                          max="50"
+                          value={samplingSteps}
+                          onChange={(e) => setSamplingSteps(Number(e.target.value))}
+                          className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg"
+                        />
                       </div>
-                      <input
-                        type="range"
-                        min="10"
-                        max="50"
-                        value={samplingSteps}
-                        onChange={(e) => setSamplingSteps(Number(e.target.value))}
-                        className="w-full accent-emerald-500 cursor-pointer"
-                      />
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold">Seed (Optional)</span>
+
+                    <div className="pt-1">
+                      <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold mb-1">Seed (Optional)</span>
                       <input
                         type="text"
                         value={seed}
@@ -2756,41 +2914,29 @@ export default function ImageStudioPage() {
                       />
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Accordion 2: Save as Preset */}
-              <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setSavePresetOpen((prev) => !prev)}
-                  className="w-full p-3.5 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/40 hover:bg-zinc-100 dark:hover:bg-zinc-900/70 transition-colors text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 font-mono text-xs font-bold text-zinc-900 dark:text-white">
-                    <Bookmark className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Save as Preset</span>
+                  {/* Save as Preset Box */}
+                  <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#111118] p-3 space-y-2 shadow-xs">
+                    <div className="flex items-center gap-2 text-[11px] font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                      <Bookmark className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>Save as Preset</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Preset name (e.g. Cyberpunk Portrait)..."
+                        className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => alert("Preset saved successfully to your Local Workspace!")}
+                        className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-mono text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-xs"
+                      >
+                        Save
+                      </button>
+                    </div>
                   </div>
-                  <ChevronDown className={cn("w-4 h-4 text-zinc-400 transition-transform duration-200", savePresetOpen && "rotate-180")} />
-                </button>
-                {savePresetOpen && (
-                  <div className="p-4 space-y-2.5 bg-white dark:bg-[#0e0e16] border-t border-black/[0.06] dark:border-white/[0.06] animate-in fade-in duration-150">
-                    <input
-                      type="text"
-                      placeholder="Preset name (e.g. Cyberpunk Portrait Preset)..."
-                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        alert("Preset saved successfully to your Local Workspace!");
-                        setSavePresetOpen(false);
-                      }}
-                      className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-mono text-xs font-bold transition-all cursor-pointer"
-                    >
-                      Save Preset
-                    </button>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -3068,9 +3214,18 @@ export default function ImageStudioPage() {
                 <span>Vault</span>
               </button>
               <label className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-500/30 flex items-center gap-1 cursor-pointer transition-colors shadow-sm">
-                <Upload className="w-3 h-3" />
-                <span>Upload</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleRefFileUpload(e.target.files[0])} />
+                {uploadingRef ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin text-emerald-500" />
+                    <span>{refUploadProgress}%</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3 h-3" />
+                    <span>Upload</span>
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden" disabled={uploadingRef} onChange={(e) => e.target.files?.[0] && handleRefFileUpload(e.target.files[0])} />
               </label>
             </div>
           </div>
@@ -3505,25 +3660,46 @@ export default function ImageStudioPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="max-h-80 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-3 custom-scrollbar">
-              {vaultImages.map((img, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    if (studioMode === "image_editor") {
-                      setEditorImageUrl(img);
-                      setOriginalEditorImageUrl(img);
-                      setPromptDockCollapsed(true);
-                    } else {
-                      setRefImageUrl(img);
-                    }
-                    setVaultOpen(false);
-                  }}
-                  className="rounded-xl overflow-hidden aspect-square border border-black/[0.08] dark:border-white/[0.08] hover:border-violet-500/50 cursor-pointer transition-colors"
-                >
-                  <img src={getMediaUrl(img)} alt="Vault item" className="w-full h-full object-cover" />
+            <div className="max-h-96 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-3 custom-scrollbar">
+              {vaultImages.length === 0 ? (
+                <div className="col-span-full py-12 text-center space-y-2">
+                  <FolderArchive className="w-8 h-8 text-zinc-400 mx-auto" />
+                  <p className="text-xs text-zinc-400 font-mono">No images found in your Vault.</p>
                 </div>
-              ))}
+              ) : (
+                vaultImages.map((img, i) => {
+                  const itemUrl = typeof img === "string" ? img : (img.url || (img.filename ? `/outputs/images/${img.filename}` : ""));
+                  const itemName = typeof img === "string" ? img.split("/").pop() || "image.png" : (img.filename || "image.png");
+                  if (!itemUrl) return null;
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        if (studioMode === "image_editor") {
+                          setEditorImageUrl(itemUrl);
+                          setOriginalEditorImageUrl(itemUrl);
+                          setPromptDockCollapsed(true);
+                          window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
+                        } else {
+                          setRefImageUrl(itemUrl);
+                          setRefImages((prev) => {
+                            if (prev.some((p) => p.url === itemUrl)) return prev;
+                            return [...prev, { url: itemUrl, name: itemName }];
+                          });
+                        }
+                        setVaultOpen(false);
+                      }}
+                      className="rounded-xl overflow-hidden aspect-square border border-black/[0.08] dark:border-white/[0.08] hover:border-violet-500/50 cursor-pointer transition-all hover:scale-[1.02] relative group bg-black/5 dark:bg-white/5"
+                    >
+                      <img src={getMediaUrl(itemUrl)} alt={itemName} className="w-full h-full object-cover" />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="text-[10px] text-white font-mono truncate">{itemName}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

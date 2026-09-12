@@ -44,6 +44,13 @@ def safe_resolve_output_path(
         raise HTTPException(status_code=400, detail="Path parameter is required")
     
     raw = str(path_str).strip()
+    if "://" in raw:
+        try:
+            parts = raw.split("://", 1)[1].split("/", 1)
+            if len(parts) > 1:
+                raw = "/" + parts[1]
+        except Exception:
+            pass
     # Compatibility wrapper for existing call sites. New code must pass an
     # explicit media type to path_utils.safe_resolve_output_path.
     normalized = raw.replace("\\", "/")

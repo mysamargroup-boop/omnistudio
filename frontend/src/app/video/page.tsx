@@ -53,6 +53,9 @@ import {
   Lock,
   Shirt,
   Users,
+  Paperclip,
+  AtSign,
+  Tag,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -74,6 +77,14 @@ interface VideoModelOption {
   badge?: string;
   category?: string;
   active?: boolean;
+}
+
+export interface ReferenceAsset {
+  id: string;
+  url: string;
+  filename: string;
+  tag: string;
+  type: "image" | "video";
 }
 
 const VIDEO_MODELS: VideoModelOption[] = [
@@ -188,7 +199,7 @@ const QUALITY_PROFILES = [
   { value: "cinema", label: "Cinema Master", desc: "ProRes RAW" },
 ];
 
-const DURATION_PRESETS = [4, 8, 12, 16, 24, 30];
+const DURATION_PRESETS = [4, 5, 8, 10, 12, 16, 20, 30, 60];
 
 const INSPIRATION_VIDEOS = [
   {
@@ -240,12 +251,34 @@ function VideoStudioContent() {
   const [uploadingCharImage, setUploadingCharImage] = useState(false);
   const charFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Character Consistency Specific Toggles
+  // Character Consistency Specific Toggles (All ON by default for maximum fidelity)
   const [charSelectTab, setCharSelectTab] = useState<"presets" | "custom">("presets");
   const [lockFace, setLockFace] = useState<boolean>(true);
   const [lockDress, setLockDress] = useState<boolean>(true);
   const [lockJewelry, setLockJewelry] = useState<boolean>(true);
-  const [lockBackground, setLockBackground] = useState<boolean>(false);
+  const [lockBackground, setLockBackground] = useState<boolean>(true);
+  const [lockHair, setLockHair] = useState<boolean>(true);
+  const [lockLighting, setLockLighting] = useState<boolean>(true);
+  const [lockStyle, setLockStyle] = useState<boolean>(true);
+  const [lockPhysique, setLockPhysique] = useState<boolean>(true);
+  const [customLocks, setCustomLocks] = useState<string[]>([]);
+  const [newCustomLockInput, setNewCustomLockInput] = useState<string>("");
+  const [vaultSearch, setVaultSearch] = useState<string>("");
+
+  // Batch / Multi-Video Generation Variations (1x, 2x, 4x)
+  const [batchCount, setBatchCount] = useState<number>(1);
+
+  // Multi-Image / Reference Asset Tray & @ Mention Tagging
+  const [referenceAssets, setReferenceAssets] = useState<ReferenceAsset[]>([]);
+  const [uploadingRefs, setUploadingRefs] = useState<boolean>(false);
+  const refFileInputRef = useRef<HTMLInputElement>(null);
+
+  // @ Mention Autocomplete States
+  const [mentionMenuOpen, setMentionMenuOpen] = useState<boolean>(false);
+  const [mentionQuery, setMentionQuery] = useState<string>("");
+  const [mentionIndex, setMentionIndex] = useState<number>(0);
+  const [mentionAnchor, setMentionAnchor] = useState<{ start: number; end: number } | null>(null);
+  const mentionMenuRef = useRef<HTMLDivElement>(null);
 
   // Render Queue (Midjourney-Style Jobs)
   const [sidebarTab, setSidebarTab] = useState<"settings" | "queue">("settings");
@@ -406,6 +439,9 @@ function VideoStudioContent() {
       const target = e.target as HTMLElement;
       if (!target.closest('[data-popover-content="true"]') && !target.closest('[data-popover-trigger="true"]')) {
         closeAllPopovers();
+      }
+      if (mentionMenuRef.current && !mentionMenuRef.current.contains(target) && promptTextareaRef.current && !promptTextareaRef.current.contains(target)) {
+        setMentionMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -716,6 +752,115 @@ function VideoStudioContent() {
     setDirecting(false);
   };
 
+  // Multi-Asset Reference Handlers (@ Mention Assets)
+  const handleReferenceFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingRefs(true);
+    try {
+      const newAssets: ReferenceAsset[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const isVid = file.type.startsWith("video/");
+        const cleanTag = file.name.replace(/[^a-zA-Z0-9_\.\-]/g, "_");
+        let uploadRes;
+        if (isVid) {
+          uploadRes = await api.uploadSourceVideo(file);
+        } else {
+          uploadRes = await api.uploadReferenceImage(file);
+        }
+        const fileUrl = uploadRes?.url || uploadRes?.file_path || "";
+        if (fileUrl) {
+          newAssets.push({
+            id: `ref_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+            url: fileUrl,
+            filename: file.name,
+            tag: cleanTag,
+            type: isVid ? "video" : "image",
+          });
+        }
+      }
+      if (newAssets.length > 0) {
+        setReferenceAssets((prev) => [...prev, ...newAssets]);
+      }
+    } catch (err: any) {
+      console.error("Reference upload error:", err);
+      alert(err?.message || "Failed to upload reference assets");
+    } finally {
+      setUploadingRefs(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const removeReferenceAsset = (id: string) => {
+    setReferenceAssets((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const insertMentionTag = (tagWithAt: string) => {
+    const tagToInsert = tagWithAt.startsWith("@") ? tagWithAt : `@${tagWithAt}`;
+    if (mentionAnchor && promptTextareaRef.current) {
+      const before = prompt.substring(0, mentionAnchor.start);
+      const after = prompt.substring(mentionAnchor.end);
+      const updated = `${before}${tagToInsert} ${after}`;
+      setPrompt(updated);
+      setMentionMenuOpen(false);
+      setMentionAnchor(null);
+      setTimeout(() => {
+        if (promptTextareaRef.current) {
+          promptTextareaRef.current.focus();
+          const nextPos = before.length + tagToInsert.length + 1;
+          promptTextareaRef.current.setSelectionRange(nextPos, nextPos);
+        }
+      }, 10);
+    } else {
+      setPrompt((prev) => (prev.trim() ? `${prev.trim()} ${tagToInsert} ` : `${tagToInsert} `));
+      if (promptTextareaRef.current) {
+        promptTextareaRef.current.focus();
+      }
+    }
+  };
+
+  const mentionCandidates = [
+    ...referenceAssets.map((a) => ({
+      id: a.id,
+      tag: a.tag,
+      label: `@${a.tag}`,
+      sub: `${a.type === 'video' ? 'Video' : 'Image'} (${a.filename})`,
+      url: a.url,
+      type: a.type,
+      badge: a.type === 'video' ? 'VIDEO REF' : 'IMG REF',
+    })),
+    ...(startImage.trim() ? [{
+      id: "start_frame_ref",
+      tag: "start_frame",
+      label: "@start_frame",
+      sub: "Active Start Keyframe",
+      url: startImage,
+      type: "image" as const,
+      badge: "FRAME 1",
+    }] : []),
+    ...(endImage.trim() ? [{
+      id: "end_frame_ref",
+      tag: "end_frame",
+      label: "@end_frame",
+      sub: "Active End Keyframe",
+      url: endImage,
+      type: "image" as const,
+      badge: "FRAME 2",
+    }] : []),
+    ...(activeCharacter?.imageUrl ? [{
+      id: "character_ref",
+      tag: `char_${activeCharacter.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+      label: `@char_${activeCharacter.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+      sub: `Character: ${activeCharacter.name}`,
+      url: activeCharacter.imageUrl,
+      type: "image" as const,
+      badge: "PERSONA",
+    }] : []),
+  ].filter((c) =>
+    !mentionQuery || c.tag.toLowerCase().includes(mentionQuery) || c.sub.toLowerCase().includes(mentionQuery)
+  );
+
   // Validation: prompt alone or image alone is valid for first_frame mode
   const isFormValid = () => {
     if (mode === "first_frame") return !!startImage.trim() || !!prompt.trim();
@@ -744,6 +889,9 @@ function VideoStudioContent() {
       isFree = false;
     }
 
+    // Calculate total cost for batch variations
+    costUsd = costUsd * batchCount;
+
     const costInr = Math.round(costUsd * 83.5 * 100) / 100;
     const modelObj = availableModels.find((m) => m.value === model) || VIDEO_MODELS.find((m) => m.value === model);
     const isConfigured = modelObj ? (modelObj.active !== false) : true;
@@ -758,8 +906,8 @@ function VideoStudioContent() {
 
     setConfirmDetails({
       serviceType: "video",
-      modelName: modelObj?.label || model,
-      provider,
+      modelName: `${modelObj?.label || model}${batchCount > 1 ? ` (${batchCount}x Batch)` : ""}`,
+      provider: batchCount > 1 ? `${provider} • ${batchCount} Variations` : provider,
       prompt: displayPrompt,
       specs: {
         mode: effectiveMode,
@@ -768,6 +916,7 @@ function VideoStudioContent() {
         fps,
         motion,
         quality,
+        batchCount: `${batchCount}x`,
       },
       costUsd,
       costInr,
@@ -814,21 +963,42 @@ function VideoStudioContent() {
 
     if (isCharLockActive) {
       const consistencyDirectives: string[] = [];
-      if (lockFace) consistencyDirectives.push("exact facial geometry and likeness");
-      if (lockDress) consistencyDirectives.push("exact clothing costume and fabric texture");
+      if (lockFace) consistencyDirectives.push("exact facial geometry, features, and likeness");
+      if (lockDress) consistencyDirectives.push("exact outfit costume fabric texture and garment cut");
       if (lockJewelry) consistencyDirectives.push("consistent jewelry ornaments and accessories");
       if (lockBackground) consistencyDirectives.push("consistent background environment and atmosphere");
+      if (lockHair) consistencyDirectives.push("consistent hairstyle, hair color, and hairline");
+      if (lockLighting) consistencyDirectives.push("consistent lighting direction, color temperature, and rim lights");
+      if (lockStyle) consistencyDirectives.push("consistent cinematic color grade, lens optics, and film style");
+      if (lockPhysique) consistencyDirectives.push("consistent body proportions, physique, and posture");
+      
+      // Inject user custom lock tags
+      if (customLocks.length > 0) {
+        consistencyDirectives.push(...customLocks.map((c) => `strictly preserved ${c.trim()}`));
+      }
+
       const consistencyString = consistencyDirectives.length > 0 ? `[Consistency Lock: ${consistencyDirectives.join(", ")}]. ` : "";
 
       characterContext = activeCharacter?.prompt
         ? `[Featuring Character: ${activeCharacter.name}, ${activeCharacter.prompt}]. ${consistencyString}`
         : consistencyString;
 
-      // Negative Prompt with Consistency Enhancements
+      // Negative Prompt with Granular Consistency Suppressions
       const negativeDirectives: string[] = [];
-      if (lockFace) negativeDirectives.push("morphed face, mismatched face, distorted facial features");
-      if (lockDress) negativeDirectives.push("changing clothes, different costume, mismatched dress");
-      if (lockJewelry) negativeDirectives.push("missing jewelry, disappearing ornaments, changing necklace");
+      if (lockFace) negativeDirectives.push("morphed face, mismatched face, distorted facial features, different person");
+      if (lockDress) negativeDirectives.push("changing clothes, different costume, mismatched dress, fluctuating colors");
+      if (lockJewelry) negativeDirectives.push("missing jewelry, disappearing ornaments, changing necklace, shifting accessories");
+      if (lockBackground) negativeDirectives.push("disrupted background, abrupt environment change, inconsistent scenery");
+      if (lockHair) negativeDirectives.push("different hairstyle, shifting hair color, disappearing curls, bald spots");
+      if (lockLighting) negativeDirectives.push("flickering lighting, inconsistent shadow direction, random color casts");
+      if (lockStyle) negativeDirectives.push("inconsistent art style, cartoonish shift, blurry lens flare artifacts");
+      if (lockPhysique) negativeDirectives.push("distorted body proportions, changing height, mutated limbs");
+      
+      // Custom locks negative suppression
+      if (customLocks.length > 0) {
+        negativeDirectives.push(...customLocks.map((c) => `missing ${c.trim()}, distorted ${c.trim()}, changing ${c.trim()}`));
+      }
+
       if (negativeDirectives.length > 0) {
         effectiveNegative = effectiveNegative
           ? `${effectiveNegative}, ${negativeDirectives.join(", ")}`
@@ -847,9 +1017,132 @@ function VideoStudioContent() {
       }
     } catch {}
 
-    const finalPrompt = (characterContext + prompt + promptDirectiveText).trim();
+    const refDirectives = referenceAssets.length > 0
+      ? ` [Visual References: ${referenceAssets.map((r) => `@${r.tag}`).join(", ")}]`
+      : "";
+    const finalPrompt = (characterContext + prompt + promptDirectiveText + refDirectives).trim();
 
-    // Initialize Render Queue Record
+    const basePayload: any = {
+      mode: effectiveMode,
+      start_image_path: mode === "multi_frame" ? keyframeImages[0] : effectiveStartImage,
+      end_image_path: mode === "multi_frame" ? keyframeImages[keyframeImages.length - 1] : mode === "first_to_last_frame" ? endImage : null,
+      image_paths: mode === "multi_frame" ? keyframeImages : undefined,
+      source_video_path: mode === "motion_transfer" ? sourceVideoUrl : null,
+      prompt: finalPrompt,
+      negative_prompt: effectiveNegative,
+      motion_type: motion,
+      duration,
+      fps,
+      resolution,
+      aspect_ratio: aspectRatio,
+      quality,
+      motion_intensity: motionIntensity,
+      loop,
+      seed: seed ? parseInt(seed, 10) : undefined,
+      model,
+      character_name: activeCharacter?.isLocked ? activeCharacter.name : undefined,
+      character_image: activeCharacter?.isLocked ? activeCharacter.imageUrl : undefined,
+      reference_images: referenceAssets.map((r) => r.url),
+    };
+
+    // Batch Multi-Video Generation Flow (When batchCount > 1)
+    if (batchCount > 1) {
+      setSidebarOpen(true);
+      setSidebarTab("queue");
+
+      const batchJobs = Array.from({ length: batchCount }, (_, b) => {
+        const vIdx = b + 1;
+        const vId = `job_${Date.now()}_var${vIdx}`;
+        return {
+          id: vId,
+          prompt: `${finalPrompt} (Variation #${vIdx})`,
+          model: activeModel.label,
+          motion: activeMotion.label,
+          duration,
+          aspectRatio,
+          status: "rendering" as const,
+          progress: 10,
+          stage: `Queued Variation #${vIdx}`,
+          createdAt: Date.now() + b,
+          thumbnailUrl: effectiveStartImage || undefined,
+        };
+      });
+
+      persistJobs([...batchJobs, ...renderJobs]);
+
+      try {
+        for (let b = 0; b < batchCount; b++) {
+          const vIdx = b + 1;
+          const currentJob = batchJobs[b];
+          const vSeed = seed ? (parseInt(seed, 10) + b * 10007) : Math.floor(Math.random() * 9000000) + 1000000;
+
+          setStageTitle(`0${vIdx} • Synthesizing Variation ${vIdx} of ${batchCount}`);
+          setStatusMessage(`Rendering ${activeModel.label} • Seed: ${vSeed}`);
+          setProgress(Math.round(((b) / batchCount) * 100) + 10);
+
+          setRenderJobs((prev) =>
+            prev.map((j) => (j.id === currentJob.id ? { ...j, progress: 45, stage: `Rendering Var #${vIdx}` } : j))
+          );
+
+          const curPayload = {
+            ...basePayload,
+            prompt: `${finalPrompt} (Variation #${vIdx})`,
+            seed: vSeed,
+          };
+
+          const data = await api.generateVideo(curPayload);
+          if (data && data.success) {
+            setResult(data);
+            const doneJob = {
+              ...currentJob,
+              status: "completed" as const,
+              progress: 100,
+              stage: "Render Complete",
+              completedAt: Date.now(),
+              videoUrl: data.url,
+              thumbnailUrl: data.thumbnail_url || currentJob.thumbnailUrl,
+            };
+            setRenderJobs((prev) => {
+              const next = prev.map((j) => (j.id === currentJob.id ? doneJob : j));
+              persistJobs(next);
+              return next;
+            });
+            setTelemetryLogs((prev) => [
+              ...prev,
+              {
+                timestamp: new Date().toTimeString().split(" ")[0],
+                message: `Variation #${vIdx}/${batchCount} complete: ${data.filename}`,
+              },
+            ]);
+          } else {
+            const errorMsg = data?.error || "Variation synthesis failed";
+            const failJob = {
+              ...currentJob,
+              status: "failed" as const,
+              stage: "Failed",
+              error: errorMsg,
+            };
+            setRenderJobs((prev) => {
+              const next = prev.map((j) => (j.id === currentJob.id ? failJob : j));
+              persistJobs(next);
+              return next;
+            });
+          }
+        }
+
+        setProgress(100);
+        setStageTitle("BATCH RENDERING COMPLETE");
+        setStatusMessage(`Finished generating ${batchCount} video variations!`);
+      } catch (err: any) {
+        setStatusMessage(err?.message || "Batch synthesis failed");
+        setStageTitle("SYNTHESIS FAILED");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Initialize Render Queue Record for Single Job
     const newJobId = "job_" + Date.now();
     activeJobIdRef.current = newJobId;
     const initialJob = {
@@ -904,24 +1197,7 @@ function VideoStudioContent() {
 
     try {
       const payload: any = {
-        mode: effectiveMode,
-        start_image_path: mode === "multi_frame" ? keyframeImages[0] : effectiveStartImage,
-        end_image_path: mode === "multi_frame" ? keyframeImages[keyframeImages.length - 1] : mode === "first_to_last_frame" ? endImage : null,
-        image_paths: mode === "multi_frame" ? keyframeImages : undefined,
-        source_video_path: mode === "motion_transfer" ? sourceVideoUrl : null,
-        prompt: finalPrompt,
-        negative_prompt: effectiveNegative,
-        motion_type: motion,
-        duration,
-        fps,
-        resolution,
-        aspect_ratio: aspectRatio,
-        quality,
-        motion_intensity: motionIntensity,
-        loop,
-        seed: seed ? parseInt(seed, 10) : undefined,
-        model,
-        character_name: activeCharacter?.isLocked ? activeCharacter.name : undefined,
+        ...basePayload,
       };
 
       const data = await api.generateVideo(payload);
@@ -1242,7 +1518,7 @@ function VideoStudioContent() {
         ) : (
           <>
         {/* Left Workspace / Canvas */}
-        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-4 sm:p-6 pb-64 custom-scrollbar relative">
+        <div className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 pb-80 custom-scrollbar relative min-h-0">
           <div className="max-w-4xl w-full mx-auto space-y-6">
             {/* 1. Progress Telemetry */}
             {loading && (
@@ -1379,6 +1655,32 @@ function VideoStudioContent() {
                   </div>
                 )}
 
+                {/* Global File Inputs for Keyframe Staging (Always mounted in DOM) */}
+                <input
+                  ref={startFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleStartImageUpload(f);
+                    e.target.value = "";
+                  }}
+                  disabled={uploadingStartImage}
+                />
+                <input
+                  ref={endFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleEndImageUpload(f);
+                    e.target.value = "";
+                  }}
+                  disabled={uploadingEndImage}
+                />
+
                 {/* ── Mode 1: First Frame Single Staging ── */}
                 {mode === "first_frame" && (
                   <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl shadow-sm p-4 sm:p-5 space-y-3">
@@ -1393,34 +1695,21 @@ function VideoStudioContent() {
                         <button
                           type="button"
                           onClick={() => openVaultPicker("start")}
-                          className="text-[10px] font-mono text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-900 cursor-pointer transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold shadow-xs transition-all hover:scale-105 cursor-pointer"
                         >
-                          <FolderArchive className="h-3 w-3 text-emerald-500" />
-                          <span>Vault</span>
+                          <FolderArchive className="h-3.5 w-3.5 text-emerald-500" />
+                          <span>Select from Vault</span>
                         </button>
                       </div>
                     </div>
 
-                    <input
-                      ref={startFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleStartImageUpload(f);
-                        e.target.value = "";
-                      }}
-                      disabled={uploadingStartImage}
-                    />
-
                     {startImage ? (
                       /* Crisp Preview Card when Image is Uploaded - Displays in natural uploaded size and aspect ratio */
-                      <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-sm flex items-center justify-center p-2 min-h-[180px] max-h-[380px] w-full">
+                      <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-sm flex items-center justify-center p-2 min-h-[160px] max-h-[300px] w-full">
                         <img
                           src={getMediaUrl(startImage)}
                           alt="Start Frame"
-                          className="max-h-[360px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
+                          className="max-h-[280px] w-auto max-w-full object-contain rounded-xl shadow-md transition-all mx-auto"
                         />
                         <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-xs text-[10px] font-mono font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -1503,7 +1792,7 @@ function VideoStudioContent() {
                               e.stopPropagation();
                               openVaultPicker("start");
                             }}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono hover:text-emerald-500 transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-bold transition-all shadow-xs hover:scale-105 cursor-pointer"
                           >
                             <FolderArchive className="w-3.5 h-3.5 text-emerald-500" />
                             <span>Vault</span>
@@ -1540,9 +1829,10 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => openVaultPicker("start")}
-                            className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold transition-all shadow-2xs hover:scale-105 cursor-pointer"
                           >
-                            Vault
+                            <FolderArchive className="w-3 h-3 text-emerald-500" />
+                            <span>Vault</span>
                           </button>
                         </div>
 
@@ -1563,12 +1853,25 @@ function VideoStudioContent() {
                         ) : (
                           <div
                             onClick={() => startFileInputRef.current?.click()}
-                            className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const f = e.dataTransfer.files?.[0];
+                              if (f) handleStartImageUpload(f);
+                            }}
+                            className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-2 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group p-4"
                           >
-                            <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 group-hover:border-emerald-500/50 transition-all shadow-xs">
                               {uploadingStartImage ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
                             </div>
-                            <span className="text-[11px] font-semibold">Select Start Frame</span>
+                            <div className="text-center">
+                              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-500 block">
+                                {uploadingStartImage ? "Uploading Frame..." : "Select Start Frame"}
+                              </span>
+                              <span className="text-[10px] font-mono text-zinc-400">
+                                Click or drag image here
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1583,24 +1886,12 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => openVaultPicker("end")}
-                            className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30 text-[10px] font-mono font-bold transition-all shadow-2xs hover:scale-105 cursor-pointer"
                           >
-                            Vault
+                            <FolderArchive className="w-3 h-3 text-teal-500" />
+                            <span>Vault</span>
                           </button>
                         </div>
-
-                        <input
-                          ref={endFileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleEndImageUpload(f);
-                            e.target.value = "";
-                          }}
-                          disabled={uploadingEndImage}
-                        />
 
                         {endImage ? (
                           <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
@@ -1619,12 +1910,25 @@ function VideoStudioContent() {
                         ) : (
                           <div
                             onClick={() => endFileInputRef.current?.click()}
-                            className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-emerald-500 flex flex-col items-center justify-center gap-1.5 text-zinc-500 hover:text-emerald-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group"
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const f = e.dataTransfer.files?.[0];
+                              if (f) handleEndImageUpload(f);
+                            }}
+                            className="w-full min-h-[160px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 hover:border-teal-500 flex flex-col items-center justify-center gap-2 text-zinc-500 hover:text-teal-500 bg-white/40 dark:bg-zinc-900/40 transition-all cursor-pointer group p-4"
                           >
-                            <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 transition-transform">
-                              {uploadingEndImage ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
+                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center group-hover:scale-105 group-hover:border-teal-500/50 transition-all shadow-xs">
+                              {uploadingEndImage ? <Loader2 className="w-4 h-4 animate-spin text-teal-500" /> : <Upload className="w-4 h-4 text-teal-500" />}
                             </div>
-                            <span className="text-[11px] font-semibold">Select End Frame</span>
+                            <div className="text-center">
+                              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-teal-500 block">
+                                {uploadingEndImage ? "Uploading Frame..." : "Select End Frame"}
+                              </span>
+                              <span className="text-[10px] font-mono text-zinc-400">
+                                Click or drag image here
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2055,6 +2359,35 @@ function VideoStudioContent() {
                     </button>
                   )}
 
+                  {/* Attach Reference Assets Button */}
+                  <button
+                    type="button"
+                    onClick={() => refFileInputRef.current?.click()}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border shadow-xs active:scale-95",
+                      referenceAssets.length > 0
+                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold"
+                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    )}
+                    title="Upload reference images or videos to tag with @ in prompt"
+                  >
+                    <Paperclip className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <span>Attach @Refs</span>
+                    {referenceAssets.length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-black text-[9px] font-bold">
+                        {referenceAssets.length}
+                      </span>
+                    )}
+                  </button>
+                  <input
+                    ref={refFileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleReferenceFilesUpload}
+                  />
+
                   {/* Negative Prompt Toggle */}
                   <button
                     type="button"
@@ -2088,20 +2421,177 @@ function VideoStudioContent() {
                 </div>
               )}
 
-              {/* Textarea */}
+              {/* Reference Assets Preview Tray (When images/videos attached or uploading) */}
+              {(referenceAssets.length > 0 || uploadingRefs) && (
+                <div className="flex items-center gap-2 overflow-x-auto py-1.5 px-1 bg-zinc-100/70 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-zinc-800/80 custom-scrollbar">
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 font-bold px-1 shrink-0 uppercase tracking-wider">
+                    <AtSign className="w-3 h-3 text-emerald-500" />
+                    <span>Tagged Refs:</span>
+                  </div>
+                  {referenceAssets.map((asset) => (
+                    <div
+                      key={asset.id}
+                      className="group relative flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 shrink-0 shadow-xs hover:border-emerald-500/50 transition-all"
+                    >
+                      <div className="relative w-8 h-8 rounded-md overflow-hidden bg-black shrink-0 border border-black/10 dark:border-white/10">
+                        {asset.type === "video" ? (
+                          <video src={getMediaUrl(asset.url)} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={getMediaUrl(asset.url)} alt={asset.filename} className="w-full h-full object-cover" />
+                        )}
+                        <span className="absolute bottom-0 inset-x-0 bg-black/80 text-[7px] font-mono text-center text-zinc-200 uppercase leading-tight font-bold">
+                          {asset.type === "video" ? "VID" : "IMG"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col min-w-0 max-w-[110px]">
+                        <button
+                          type="button"
+                          onClick={() => insertMentionTag(asset.tag)}
+                          className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 hover:underline truncate text-left cursor-pointer"
+                          title={`Click to insert @${asset.tag} into prompt`}
+                        >
+                          @{asset.tag}
+                        </button>
+                        <span className="text-[9px] text-zinc-400 truncate">{asset.filename}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeReferenceAsset(asset.id)}
+                        className="p-1 rounded-md hover:bg-rose-500/10 hover:text-rose-500 text-zinc-400 transition-colors cursor-pointer shrink-0 ml-0.5"
+                        title="Remove reference asset"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {uploadingRefs && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-mono shrink-0 animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading ref...</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => refFileInputRef.current?.click()}
+                    className="h-8 px-2.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500/60 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-500 hover:text-emerald-500 flex items-center gap-1 text-[10px] font-mono shrink-0 transition-all cursor-pointer"
+                    title="Add more reference images or videos"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Textarea with Floating @ Mention Autocomplete */}
               <div className="relative">
+                {/* @ Mention Autocomplete Popover */}
+                {mentionMenuOpen && mentionCandidates.length > 0 && (
+                  <div
+                    ref={mentionMenuRef}
+                    data-popover-content="true"
+                    className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 rounded-2xl bg-white dark:bg-[#12121a] border border-zinc-200 dark:border-zinc-800 shadow-2xl p-2 z-50 animate-slide-up space-y-1"
+                  >
+                    <div className="flex items-center justify-between px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-bold border-b border-zinc-100 dark:border-zinc-800/80">
+                      <div className="flex items-center gap-1 text-emerald-500">
+                        <AtSign className="w-3 h-3" />
+                        <span>Tag Reference Asset</span>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 font-normal">
+                        Tab/Enter to tag
+                      </span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1 custom-scrollbar pt-1">
+                      {mentionCandidates.map((cand, idx) => {
+                        const isSelected = idx === mentionIndex;
+                        return (
+                          <button
+                            key={cand.id}
+                            type="button"
+                            onMouseEnter={() => setMentionIndex(idx)}
+                            onClick={() => insertMentionTag(cand.tag)}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-100 shadow-xs"
+                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-transparent"
+                            )}
+                          >
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black shrink-0 border border-black/10 dark:border-white/10">
+                              {cand.type === "video" ? (
+                                <video src={getMediaUrl(cand.url)} className="w-full h-full object-cover" />
+                              ) : (
+                                <img src={getMediaUrl(cand.url)} alt={cand.tag} className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400 truncate">
+                                  {cand.label}
+                                </span>
+                                <span className="text-[8px] font-mono uppercase px-1.5 py-0.2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 shrink-0 border border-zinc-200 dark:border-zinc-700">
+                                  {cand.badge}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-zinc-400 truncate block">
+                                {cand.sub}
+                              </span>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <textarea
                   ref={promptTextareaRef}
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPrompt(val);
+
+                    const cursorPos = e.target.selectionStart;
+                    const textBefore = val.substring(0, cursorPos);
+                    const match = textBefore.match(/(?:^|\s)@([a-zA-Z0-9_\.\-]*)$/);
+
+                    if (match) {
+                      setMentionQuery(match[1].toLowerCase());
+                      setMentionMenuOpen(true);
+                      setMentionIndex(0);
+                      const startIdx = cursorPos - match[1].length - 1;
+                      setMentionAnchor({ start: startIdx, end: cursorPos });
+                    } else {
+                      setMentionMenuOpen(false);
+                      setMentionAnchor(null);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (mentionMenuOpen && mentionCandidates.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setMentionIndex((prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
+                      } else if (e.key === "Enter" || e.key === "Tab") {
+                        e.preventDefault();
+                        insertMentionTag(mentionCandidates[mentionIndex].tag);
+                      } else if (e.key === "Escape") {
+                        setMentionMenuOpen(false);
+                      }
+                    }
+                  }}
                   placeholder={
                     mode === "first_frame"
-                      ? "Describe camera movement, lighting changes, or visual effects over the keyframe..."
+                      ? "Describe camera movement, lighting changes, or visual effects over the keyframe (type @ to tag images)..."
                       : mode === "multi_frame"
-                      ? "Describe the visual transition dynamics between the sequence of frames..."
+                      ? "Describe the visual transition dynamics between the sequence of frames (type @ to tag images)..."
                       : mode === "text_to_video"
-                      ? "Describe your scene in cinematic detail (e.g., drone shot through misty cyberpunk alley)..."
-                      : "Describe the desired motion synthesis..."
+                      ? "Describe your scene in cinematic detail (e.g., drone shot through misty cyberpunk alley, type @ to tag images)..."
+                      : "Describe the desired motion synthesis (type @ to tag images)..."
                   }
                   rows={2}
                   className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 resize-none font-sans leading-relaxed"
@@ -2375,13 +2865,24 @@ function VideoStudioContent() {
                                 type="button"
                                 onClick={() => setDuration(d)}
                                 className={cn(
-                                  "py-1.5 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer",
+                                  "py-1.5 px-1 text-center text-xs font-mono rounded-lg border transition-all cursor-pointer relative flex flex-col items-center justify-center",
                                   duration === d
-                                    ? "bg-emerald-600 text-white border-emerald-600 font-bold"
-                                    : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/30"
+                                    ? "bg-emerald-600 text-white border-emerald-600 font-bold shadow-xs"
+                                    : "bg-zinc-50 dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/30",
+                                  d === 10 && duration !== d && "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
                                 )}
                               >
-                                {d}s
+                                <span>{d}s</span>
+                                {d === 10 && (
+                                  <span className="text-[7.5px] font-mono tracking-tighter uppercase font-extrabold opacity-90">
+                                    Veo/Pro
+                                  </span>
+                                )}
+                                {d === 5 && (
+                                  <span className="text-[7.5px] font-mono tracking-tighter uppercase font-semibold opacity-75">
+                                    Quick
+                                  </span>
+                                )}
                               </button>
                             ))}
                           </div>
@@ -2495,27 +2996,55 @@ function VideoStudioContent() {
                   </div>
                 </div>
 
-                {/* Right: Submit Button with Cost Badge */}
-                <button
-                  type="button"
-                  onClick={requestVideoConfirm}
-                  disabled={loading || !isFormValid()}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-heading font-bold text-xs tracking-tight transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0 disabled:cursor-not-allowed ml-auto"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Synthesizing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>
-                        Generate {model === "ffmpeg_local" ? "• Free (₹0)" : `• ₹${videoCostInr.toFixed(0)} ($${videoCostUsd.toFixed(2)})`}
-                      </span>
-                    </>
-                  )}
-                </button>
+                {/* Right: Batch Variation Selector + Submit Button */}
+                <div className="flex items-center gap-2 ml-auto">
+                  {/* Batch Selector (1x, 2x, 4x) */}
+                  <div className="flex items-center bg-zinc-100 dark:bg-[#16161f] p-0.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] shrink-0 shadow-xs">
+                    <span className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 px-1.5 uppercase hidden sm:inline">
+                      Batch
+                    </span>
+                    {[1, 2, 4].map((cnt) => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => setBatchCount(cnt)}
+                        className={cn(
+                          "px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer",
+                          batchCount === cnt
+                            ? "bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-xs border border-emerald-500/30"
+                            : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        )}
+                        title={`Generate ${cnt} video variation${cnt > 1 ? "s" : ""} in bulk`}
+                      >
+                        {cnt}x
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={requestVideoConfirm}
+                    disabled={loading || !isFormValid()}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-heading font-bold text-xs tracking-tight transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap shrink-0 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Synthesizing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>
+                          Generate {batchCount > 1 ? `(${batchCount}x)` : ""}{" "}
+                          {model === "ffmpeg_local"
+                            ? "• Free (₹0)"
+                            : `• ₹${(videoCostInr * batchCount).toFixed(0)} ($${(videoCostUsd * batchCount).toFixed(2)})`}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2674,12 +3203,19 @@ function VideoStudioContent() {
                             </p>
 
                             {/* Live Consistency Toggles for Active Character */}
-                            <div className="pt-2 border-t border-emerald-500/20 space-y-1.5">
-                              <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-300 font-bold block">
-                                Character Consistency Locks
-                              </span>
+                            <div className="pt-2.5 border-t border-emerald-500/20 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-300 font-bold block">
+                                  Multi-Feature Consistency Locks
+                                </span>
+                                <span className="text-[9px] font-mono text-zinc-400">
+                                  8 Granular Locks Active
+                                </span>
+                              </div>
+
+                              {/* 8 Granular Locks Grid */}
                               <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={lockFace}
@@ -2688,7 +3224,7 @@ function VideoStudioContent() {
                                   />
                                   <span>Lock Face</span>
                                 </label>
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={lockDress}
@@ -2697,7 +3233,7 @@ function VideoStudioContent() {
                                   />
                                   <span>Lock Dress</span>
                                 </label>
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={lockJewelry}
@@ -2706,15 +3242,116 @@ function VideoStudioContent() {
                                   />
                                   <span>Lock Jewelry</span>
                                 </label>
-                                <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockHair}
+                                    onChange={(e) => setLockHair(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Hair & Cut</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={lockBackground}
                                     onChange={(e) => setLockBackground(e.target.checked)}
                                     className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
                                   />
-                                  <span>Lock Background</span>
+                                  <span>Lock Scenery</span>
                                 </label>
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockLighting}
+                                    onChange={(e) => setLockLighting(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Lighting</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockStyle}
+                                    onChange={(e) => setLockStyle(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Cinema Style</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 p-1 rounded-md hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockPhysique}
+                                    onChange={(e) => setLockPhysique(e.target.checked)}
+                                    className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5"
+                                  />
+                                  <span>Lock Physique</span>
+                                </label>
+                              </div>
+
+                              {/* Custom Locks Tag Manager */}
+                              <div className="pt-2 border-t border-emerald-500/20 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-300 font-bold">
+                                    Custom Feature Locks ({customLocks.length})
+                                  </span>
+                                  <span className="text-[9px] font-mono text-zinc-400">
+                                    Tattoos, props, scars
+                                  </span>
+                                </div>
+
+                                {/* Custom Lock Chips */}
+                                {customLocks.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {customLocks.map((tag, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[10px] font-mono"
+                                      >
+                                        <span>{tag}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setCustomLocks((prev) => prev.filter((_, i) => i !== idx))}
+                                          className="text-emerald-500 hover:text-rose-500 cursor-pointer"
+                                        >
+                                          <X className="w-2.5 h-2.5" />
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Add Custom Lock Input Bar */}
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="text"
+                                    value={newCustomLockInput}
+                                    onChange={(e) => setNewCustomLockInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && newCustomLockInput.trim()) {
+                                        e.preventDefault();
+                                        if (!customLocks.includes(newCustomLockInput.trim())) {
+                                          setCustomLocks((prev) => [...prev, newCustomLockInput.trim()]);
+                                        }
+                                        setNewCustomLockInput("");
+                                      }
+                                    }}
+                                    placeholder="Add custom lock (e.g. Red Scarf, Katana...)"
+                                    className="flex-1 px-2.5 py-1 text-[11px] font-mono rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (newCustomLockInput.trim() && !customLocks.includes(newCustomLockInput.trim())) {
+                                        setCustomLocks((prev) => [...prev, newCustomLockInput.trim()]);
+                                        setNewCustomLockInput("");
+                                      }
+                                    }}
+                                    className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                                  >
+                                    + Add
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2774,6 +3411,15 @@ function VideoStudioContent() {
                                         imageUrl: arch.avatar,
                                         isLocked: true,
                                       });
+                                      setLockFace(true);
+                                      setLockDress(true);
+                                      setLockJewelry(true);
+                                      setLockBackground(true);
+                                      setLockHair(true);
+                                      setLockLighting(true);
+                                      setLockStyle(true);
+                                      setLockPhysique(true);
+                                      setCharacterLockActive(true);
                                     }}
                                     className={cn(
                                       "p-2.5 rounded-xl text-left transition-all cursor-pointer border flex flex-col gap-1.5 relative group",
@@ -2852,6 +3498,15 @@ function VideoStudioContent() {
                                   const res = await api.uploadReferenceImage(file);
                                   if (res?.url) {
                                     setCustomCharImage(res.url);
+                                    setLockFace(true);
+                                    setLockDress(true);
+                                    setLockJewelry(true);
+                                    setLockBackground(true);
+                                    setLockHair(true);
+                                    setLockLighting(true);
+                                    setLockStyle(true);
+                                    setLockPhysique(true);
+                                    setCharacterLockActive(true);
                                   }
                                 } catch (err: any) {
                                   alert(err?.message || "Failed to upload reference character image");
@@ -2906,9 +3561,47 @@ function VideoStudioContent() {
 
                             {/* Fine-Grained Consistency Interactive Cards */}
                             <div className="space-y-1.5 pt-1">
-                              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block font-bold">
-                                Lock Consistency Matrix:
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 block font-bold">
+                                  Lock Consistency Matrix:
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLockFace(true);
+                                      setLockDress(true);
+                                      setLockJewelry(true);
+                                      setLockBackground(true);
+                                      setLockHair(true);
+                                      setLockLighting(true);
+                                      setLockStyle(true);
+                                      setLockPhysique(true);
+                                      setCharacterLockActive(true);
+                                    }}
+                                    className="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                                  >
+                                    All ON
+                                  </button>
+                                  <span className="text-zinc-400 text-[9px]">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLockFace(false);
+                                      setLockDress(false);
+                                      setLockJewelry(false);
+                                      setLockBackground(false);
+                                      setLockHair(false);
+                                      setLockLighting(false);
+                                      setLockStyle(false);
+                                      setLockPhysique(false);
+                                    }}
+                                    className="text-[9px] font-mono text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:underline cursor-pointer"
+                                  >
+                                    All OFF
+                                  </button>
+                                </div>
+                              </div>
                               <div className="grid grid-cols-2 gap-1.5">
                                 {/* Card 1: Face */}
                                 <button
@@ -3019,6 +3712,15 @@ function VideoStudioContent() {
                                     imageUrl: customCharImage || undefined,
                                     isLocked: true,
                                   });
+                                  setLockFace(true);
+                                  setLockDress(true);
+                                  setLockJewelry(true);
+                                  setLockBackground(true);
+                                  setLockHair(true);
+                                  setLockLighting(true);
+                                  setLockStyle(true);
+                                  setLockPhysique(true);
+                                  setCharacterLockActive(true);
                                 }}
                                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-mono text-xs font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
                               >
@@ -3460,65 +4162,156 @@ function VideoStudioContent() {
         )}
       </div>
 
-      {/* Vault Picker Modal */}
+      {/* Redesigned Asset Vault Keyframe Picker Modal */}
       {vaultOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs text-zinc-950 dark:text-white font-semibold">
-                <FolderArchive className="h-4 w-4 text-emerald-500" />
-                <span>SELECT {vaultTarget.toUpperCase()} FRAME FROM VAULT</span>
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setVaultOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <FolderArchive className="h-5 w-5 text-emerald-500" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-heading font-bold text-sm sm:text-base text-zinc-950 dark:text-white truncate">
+                      Select {vaultTarget.toUpperCase()} Frame from Vault
+                    </h3>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold shrink-0">
+                      {vaultImages.filter((img: any) => !vaultSearch.trim() || (img.filename || "").toLowerCase().includes(vaultSearch.toLowerCase())).length} Assets
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                    Select a high-resolution frame from your library to anchor cinematic video synthesis
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setVaultOpen(false)}
-                className="p-1 rounded-lg text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
+            {/* Search & Filter Bar */}
+            <div className="px-4 sm:px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#0e0e16] flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={vaultSearch}
+                  onChange={(e) => setVaultSearch(e.target.value)}
+                  placeholder="Search assets by filename or tag..."
+                  className="w-full pl-9 pr-8 py-2 text-xs font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+                {vaultSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setVaultSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 text-[11px] font-mono text-zinc-400">
+                <span className="hidden sm:inline">Target:</span>
+                <span className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold uppercase">
+                  {vaultTarget}
+                </span>
+              </div>
+            </div>
+
+            {/* Assets Grid Content */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar min-h-[300px]">
               {loadingVault ? (
-                <div className="py-12 text-center text-xs text-zinc-500 font-mono flex flex-col items-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-                  Loading vault images...
+                <div className="py-20 text-center text-xs text-zinc-500 font-mono flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                  <span>Loading Asset Vault library...</span>
                 </div>
               ) : vaultImages.length === 0 ? (
-                <div className="py-12 text-center text-xs text-zinc-500 font-mono">
-                  No images found in local vault. Generate an image in Image Studio first!
+                <div className="py-20 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 mx-auto flex items-center justify-center text-zinc-400">
+                    <FolderArchive className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-heading font-bold text-zinc-900 dark:text-white">
+                    No images in local vault yet
+                  </p>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    Generate an image in Image Studio or upload files to populate your asset repository.
+                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {vaultImages.map((img: any, idx: number) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        if (vaultTarget === "start") setStartImage(img.url);
-                        else if (vaultTarget === "end") setEndImage(img.url);
-                        else if (vaultTarget === "multi") {
-                          if (keyframeImages.length < 8) {
-                            setKeyframeImages((prev) => [...prev, img.url]);
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                  {vaultImages
+                    .filter((img: any) => !vaultSearch.trim() || (img.filename || "").toLowerCase().includes(vaultSearch.toLowerCase()))
+                    .map((img: any, idx: number) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (vaultTarget === "start") setStartImage(img.url);
+                          else if (vaultTarget === "end") setEndImage(img.url);
+                          else if (vaultTarget === "multi") {
+                            if (keyframeImages.length < 8) {
+                              setKeyframeImages((prev) => [...prev, img.url]);
+                            }
                           }
-                        }
-                        setVaultOpen(false);
-                      }}
-                      className="group rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 hover:shadow-md text-left transition-all relative aspect-video bg-zinc-100 dark:bg-zinc-900 cursor-pointer"
-                    >
-                      <LazyImage
-                        src={getMediaUrl(img.url)}
-                        alt={img.filename}
-                        aspectRatio="aspect-video"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-2">
-                        <p className="text-[10px] font-mono text-white truncate">{img.filename}</p>
-                      </div>
-                    </button>
-                  ))}
+                          setVaultOpen(false);
+                        }}
+                        className="group rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/80 hover:shadow-xl hover:shadow-emerald-500/10 text-left transition-all duration-200 relative aspect-video bg-zinc-950 cursor-pointer flex flex-col"
+                      >
+                        <LazyImage
+                          src={getMediaUrl(img.url)}
+                          alt={img.filename}
+                          aspectRatio="aspect-video"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        
+                        {/* Hover Overlay with 1-Click Select Badge */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 backdrop-blur-[1px]">
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-heading font-bold shadow-md flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Select Frame</span>
+                          </span>
+                        </div>
+
+                        {/* Bottom Label Bar */}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-2.5 flex items-center justify-between">
+                          <p className="text-[10px] font-mono text-zinc-200 truncate pr-1">
+                            {img.filename || `frame_${idx + 1}.png`}
+                          </p>
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-white/80 shrink-0">
+                            IMG
+                          </span>
+                        </div>
+                      </button>
+                    ))}
                 </div>
               )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3.5 sm:p-4 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center justify-between flex-wrap gap-2 text-xs font-mono text-zinc-500">
+              <span className="text-[11px] flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Selected frame will automatically populate the active stage</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setVaultOpen(false)}
+                className="px-4 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -3544,7 +4337,18 @@ function VideoStudioContent() {
         isOpen={characterModalOpen}
         onClose={() => setCharacterModalOpen(false)}
         activeCharacter={activeCharacter}
-        onSelectCharacter={(char) => setActiveCharacter(char)}
+        onSelectCharacter={(char) => {
+          setActiveCharacter(char);
+          setLockFace(true);
+          setLockDress(true);
+          setLockJewelry(true);
+          setLockBackground(true);
+          setLockHair(true);
+          setLockLighting(true);
+          setLockStyle(true);
+          setLockPhysique(true);
+          setCharacterLockActive(true);
+        }}
         onUnlockCharacter={() => setActiveCharacter(null)}
       />
 

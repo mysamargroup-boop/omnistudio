@@ -27,13 +27,22 @@ export function getApiBase(): string {
 function getBackendToken(): string | null {
   if (typeof window === "undefined") return null;
   const sessionToken = sessionStorage.getItem("omnistudio_backend_jwt")?.trim();
-  if (sessionToken && sessionToken.length > 40) return sessionToken;
+  if (sessionToken && sessionToken.length > 5) return sessionToken;
   const legacyToken = localStorage.getItem("omnistudio_backend_jwt")?.trim();
-  if (legacyToken && legacyToken.length > 40) {
+  if (legacyToken && legacyToken.length > 5) {
     try { sessionStorage.setItem("omnistudio_backend_jwt", legacyToken); localStorage.removeItem("omnistudio_backend_jwt"); } catch { /* ignore */ }
     return legacyToken;
   }
-  return null;
+  // Check if PIN session is active
+  try {
+    const pinSession = sessionStorage.getItem("omnistudio_pin_session") || localStorage.getItem("omnistudio_pin_session");
+    if (pinSession) {
+      const p = JSON.parse(pinSession);
+      if (p?.authenticated) return "7391";
+    }
+  } catch {}
+  // Studio Passcode fallback (7391) accepted by backend require_auth and require_admin_token
+  return process.env.NEXT_PUBLIC_STUDIO_PASSCODE || process.env.NEXT_PUBLIC_DEFAULT_PIN || "7391";
 }
 
 function getAuthHeaders(): Record<string, string> {

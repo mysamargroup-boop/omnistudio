@@ -35,6 +35,9 @@ class BrandKitPayload(BaseModel):
     typography: Optional[BrandTypography] = Field(default_factory=BrandTypography)
     style_guidelines: Optional[str] = ""
     negative_guidelines: Optional[str] = ""
+    brand_voice: Optional[str] = "Luxury & Sophisticated"
+    watermark_position: Optional[str] = "bottom_right"
+    watermark_opacity: Optional[int] = 80
     apply_to_generation: Optional[bool] = True
 
 

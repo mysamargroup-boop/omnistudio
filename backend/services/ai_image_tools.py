@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageOps
 from config import settings
 
 logger = logging.getLogger("omnistudio.ai_image_tools")
@@ -24,7 +24,7 @@ logger = logging.getLogger("omnistudio.ai_image_tools")
 def remove_background(image_path: Path) -> Dict[str, Any]:
     """
     Remove background from an image, producing a transparent PNG asset.
-    Attempts rembg library if installed, otherwise uses high-precision luminosity thresholding.
+    Uses C-accelerated PIL differential thresholding with feathered alpha mask.
     """
     if not image_path.exists():
         return {"success": False, "error": f"Image not found: {image_path}"}
@@ -32,62 +32,70 @@ def remove_background(image_path: Path) -> Dict[str, Any]:
     out_filename = f"nobg_{uuid.uuid4().hex[:8]}.png"
     out_path = settings.IMAGES_PATH / out_filename
 
-    # 1. Try rembg if installed
+    # 1. Try rembg if installed and cached
     try:
-        from rembg import remove
-        with open(image_path, "rb") as inp_f:
-            inp_bytes = inp_f.read()
-            out_bytes = remove(inp_bytes)
-        with open(out_path, "wb") as out_f:
-            out_f.write(out_bytes)
-        return {
-            "success": True,
-            "filename": out_filename,
-            "url": f"/outputs/images/{out_filename}",
-            "method": "rembg_neural"
-        }
+        import importlib.util
+        if importlib.util.find_spec("rembg"):
+            from rembg import remove
+            with open(image_path, "rb") as inp_f:
+                inp_bytes = inp_f.read()
+                out_bytes = remove(inp_bytes)
+            with open(out_path, "wb") as out_f:
+                out_f.write(out_bytes)
+            return {
+                "success": True,
+                "filename": out_filename,
+                "url": f"/outputs/images/{out_filename}",
+                "method": "rembg_neural"
+            }
     except Exception as e:
-        logger.debug("rembg unavailable, using PIL threshold: %s", e)
+        logger.debug("rembg unavailable, using accelerated PIL threshold: %s", e)
 
-    # 2. PIL Fallback: Smart edge & corner thresholding
+    # 2. C-Accelerated PIL Luminosity & Corner Color Segmentation
     try:
-        img = Image.open(image_path).convert("RGBA")
-        datas = img.getdata()
-        
+        img = Image.open(image_path).convert("RGB")
+        w, h = img.size
+
         # Sample corner pixels to detect background color
         corners = [
             img.getpixel((0, 0)),
-            img.getpixel((img.width - 1, 0)),
-            img.getpixel((0, img.height - 1)),
-            img.getpixel((img.width - 1, img.height - 1))
+            img.getpixel((w - 1, 0)),
+            img.getpixel((0, h - 1)),
+            img.getpixel((w - 1, h - 1)),
+            img.getpixel((w // 2, 0)),
+            img.getpixel((w // 2, h - 1))
         ]
-        bg_r = sum(c[0] for c in corners) // 4
-        bg_g = sum(c[1] for c in corners) // 4
-        bg_b = sum(c[2] for c in corners) // 4
+        bg_color = (
+            sum(c[0] for c in corners) // len(corners),
+            sum(c[1] for c in corners) // len(corners),
+            sum(c[2] for c in corners) // len(corners)
+        )
 
-        new_data = []
-        tolerance = 45
+        # C-level Difference
+        bg_canvas = Image.new("RGB", (w, h), bg_color)
+        diff = ImageChops.difference(img, bg_canvas)
+        diff_gray = ImageOps.grayscale(diff)
 
-        for item in datas:
-            dist = math.sqrt((item[0] - bg_r) ** 2 + (item[1] - bg_g) ** 2 + (item[2] - bg_b) ** 2)
-            if dist < tolerance:
-                # Fade alpha smoothly near threshold
-                alpha = int(max(0, min(255, (dist / tolerance) * 255)))
-                new_data.append((item[0], item[1], item[2], alpha))
-            else:
-                new_data.append(item)
+        # C-level LUT for smooth alpha ramp (tolerance=28, feather=32)
+        tolerance = 28
+        ramp = 32
+        lut = [
+            0 if i < tolerance
+            else min(255, int(((i - tolerance) / ramp) * 255))
+            for i in range(256)
+        ]
+        mask = diff_gray.point(lut)
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=1.2))
 
-        img.putdata(new_data)
-        # Smooth alpha mask
-        alpha = img.split()[-1].filter(ImageFilter.GaussianBlur(radius=1.2))
-        img.putalpha(alpha)
-        img.save(out_path, format="PNG")
+        rgba = img.convert("RGBA")
+        rgba.putalpha(mask)
+        rgba.save(out_path, format="PNG")
 
         return {
             "success": True,
             "filename": out_filename,
             "url": f"/outputs/images/{out_filename}",
-            "method": "pil_alpha_threshold"
+            "method": "pil_alpha_accelerated"
         }
     except Exception as e:
         logger.error("Background removal failed: %s", e)
@@ -118,33 +126,36 @@ def relight_image(
         w, h = base.size
         intensity = max(0.1, min(2.0, intensity))
 
-        # Create gradient lighting overlay
-        overlay = Image.new("RGB", (w, h), (0, 0, 0))
+        # Generate smooth gradient on small grid (128x128) then upscale via Bilinear interpolation
+        gw, gh = 128, 128
+        small_overlay = Image.new("RGB", (gw, gh), (0, 0, 0))
 
         if preset == "golden_hour":
             # Warm amber gradient from top-left
-            for y in range(h):
-                for x in range(w):
-                    dist = math.sqrt((x / w) ** 2 + (y / h) ** 2)
+            for y in range(gh):
+                for x in range(gw):
+                    dist = math.sqrt((x / gw) ** 2 + (y / gh) ** 2)
                     factor = max(0.0, 1.0 - dist * 0.8) * 0.45 * intensity
                     r = int(min(255, 255 * factor))
                     g = int(min(255, 180 * factor))
                     b = int(min(255, 60 * factor))
-                    overlay.putpixel((x, y), (r, g, b))
+                    small_overlay.putpixel((x, y), (r, g, b))
+            overlay = small_overlay.resize((w, h), Image.Resampling.BILINEAR)
             enhanced = ImageEnhance.Color(base).enhance(1.2)
             enhanced = ImageEnhance.Contrast(enhanced).enhance(1.15)
             relit = Image.blend(enhanced, ImageOps.colorize(ImageOps.grayscale(base), "#1a0b00", "#fff0d0"), 0.25 * intensity)
 
         elif preset == "neon_cyberpunk":
             # Cyan left, Magenta right
-            for y in range(h):
-                for x in range(w):
-                    left_f = max(0.0, 1.0 - (x / w)) * 0.35 * intensity
-                    right_f = (x / w) * 0.35 * intensity
+            for y in range(gh):
+                for x in range(gw):
+                    left_f = max(0.0, 1.0 - (x / gw)) * 0.35 * intensity
+                    right_f = (x / gw) * 0.35 * intensity
                     r = int(min(255, 255 * right_f))
                     g = int(min(255, 230 * left_f))
                     b = int(min(255, 255 * left_f + 200 * right_f))
-                    overlay.putpixel((x, y), (r, g, b))
+                    small_overlay.putpixel((x, y), (r, g, b))
+            overlay = small_overlay.resize((w, h), Image.Resampling.BILINEAR)
             contrast = ImageEnhance.Contrast(base).enhance(1.3)
             relit = Image.blend(contrast, overlay, 0.3 * intensity)
 

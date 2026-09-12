@@ -575,6 +575,12 @@ async def generate_video(req: VideoRequest, request: Request):
     else:
         effective_prompt = base_p
 
+    try:
+        from services.brand_kit_service import apply_brand_kit_to_prompt
+        effective_prompt = apply_brand_kit_to_prompt(effective_prompt)
+    except Exception as bke:
+        logger.debug(f"Brand kit video injection skipped: {bke}")
+
     # ─── Mode: Text-to-Video ───
     if req.mode == "text_to_video" or (not start_img and base_p):
         if settings.REPLICATE_API_TOKEN:

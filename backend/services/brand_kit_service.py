@@ -38,6 +38,9 @@ DEFAULT_BRAND_KIT: Dict[str, Any] = {
     },
     "style_guidelines": "Premium aesthetic, high contrast, clean studio lighting, pristine reflections, sophisticated and cohesive brand presentation.",
     "negative_guidelines": "cheap, oversaturated, blurry, low resolution, distorted text, low quality",
+    "brand_voice": "Luxury & Sophisticated",
+    "watermark_position": "bottom_right",
+    "watermark_opacity": 80,
     "apply_to_generation": True
 }
 
@@ -87,13 +90,14 @@ def save_brand_kit(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def apply_brand_kit_to_prompt(prompt: str, custom_kit: Optional[Dict[str, Any]] = None) -> str:
     """
-    Injects brand aesthetic guidelines, color palette cues, and style rules into prompt.
+    Injects brand aesthetic guidelines, color palette cues, brand voice, and style rules into prompt.
     """
     kit = custom_kit or load_brand_kit()
     if not kit.get("apply_to_generation", True):
         return prompt
 
     brand_name = kit.get("brand_name", "").strip()
+    brand_voice = kit.get("brand_voice", "").strip()
     colors = kit.get("colors", {})
     primary_color = colors.get("primary", "")
     accent_color = colors.get("accent", "")
@@ -103,6 +107,8 @@ def apply_brand_kit_to_prompt(prompt: str, custom_kit: Optional[Dict[str, Any]] 
     injections = []
     if brand_name and brand_name.lower() not in prompt.lower():
         injections.append(f"incorporating {brand_name} brand identity")
+    if brand_voice and brand_voice not in ("Neutral", "Standard"):
+        injections.append(f"{brand_voice} visual aesthetic")
     if guidelines:
         injections.append(guidelines)
     if primary_color or accent_color:
@@ -115,3 +121,26 @@ def apply_brand_kit_to_prompt(prompt: str, custom_kit: Optional[Dict[str, Any]] 
 
     clean = prompt.strip().rstrip(".")
     return f"{clean}, {', '.join(injections)}"
+
+
+def apply_brand_kit_to_negative_prompt(negative_prompt: str, custom_kit: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Appends brand kit negative guidelines to exclude unwanted elements automatically.
+    """
+    kit = custom_kit or load_brand_kit()
+    if not kit.get("apply_to_generation", True):
+        return negative_prompt
+
+    neg_rules = kit.get("negative_guidelines", "").strip()
+    if not neg_rules:
+        return negative_prompt
+
+    if not negative_prompt or not negative_prompt.strip():
+        return neg_rules
+
+    # If the negative rules aren't already included, append them cleanly
+    if neg_rules.lower() in negative_prompt.lower():
+        return negative_prompt
+
+    return f"{negative_prompt.strip().rstrip(',')}, {neg_rules}"
+

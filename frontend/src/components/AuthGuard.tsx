@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Sidebar from "@/components/Sidebar";
@@ -17,6 +17,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const isPublicRoute = pathname === "/login" || pathname?.startsWith("/auth/callback");
 
@@ -25,6 +26,20 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     }
   }, [loading, isAuthenticated, isPublicRoute, router]);
+
+  useEffect(() => {
+    const handleCollapse = () => setIsSidebarCollapsed(true);
+    const handleExpand = () => setIsSidebarCollapsed(false);
+    const handleToggle = () => setIsSidebarCollapsed((prev: boolean) => !prev);
+    window.addEventListener("omnistudio:collapse-sidebar", handleCollapse);
+    window.addEventListener("omnistudio:expand-sidebar", handleExpand);
+    window.addEventListener("omnistudio:toggle-sidebar", handleToggle);
+    return () => {
+      window.removeEventListener("omnistudio:collapse-sidebar", handleCollapse);
+      window.removeEventListener("omnistudio:expand-sidebar", handleExpand);
+      window.removeEventListener("omnistudio:toggle-sidebar", handleToggle);
+    };
+  }, []);
 
   // If on public login route, render standalone without sidebar/header
   if (isPublicRoute) {
@@ -73,7 +88,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       </Suspense>
       <Sidebar />
       <div className={cn(
-        "lg:ml-64 ml-0 flex flex-col bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 transition-colors duration-200 max-w-full overflow-x-clip",
+        isSidebarCollapsed ? "lg:ml-16 ml-0" : "lg:ml-64 ml-0",
+        "flex flex-col bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 transition-all duration-300 max-w-full overflow-x-clip",
         isStudioRoute ? "h-screen max-h-screen overflow-hidden" : "min-h-screen"
       )}>
         <div className="sticky top-0 z-40 w-full py-2 px-3 sm:px-6 bg-[var(--bg-primary)]/85 backdrop-blur-xl border-b border-transparent transition-all flex-shrink-0">
@@ -81,7 +97,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         </div>
         <main className={cn(
           "flex-1 w-full overflow-x-clip min-h-0 flex flex-col",
-          isStudioRoute ? "p-0 overflow-hidden" : "px-4 sm:px-8 py-4 max-w-7xl mx-auto"
+          isStudioRoute ? "p-0 overflow-hidden" : isSidebarCollapsed ? "px-3 sm:px-6 py-4 max-w-[1700px] mx-auto" : "px-4 sm:px-8 py-4 max-w-7xl mx-auto"
         )}>
           <PageTransition className={isStudioRoute ? "h-full flex-1 flex flex-col min-h-0" : undefined}>{children}</PageTransition>
         </main>
