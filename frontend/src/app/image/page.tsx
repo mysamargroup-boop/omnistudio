@@ -223,6 +223,8 @@ export default function ImageStudioPage() {
   const [lockBackground, setLockBackground] = useState(false);
   const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [applyBrandKit, setApplyBrandKit] = useState(false); // Default OFF
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
   const multiRefFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -641,6 +643,7 @@ export default function ImageStudioPage() {
         sampling_steps: samplingSteps,
         seed: seed ? parseInt(seed, 10) : undefined,
         count: imageCount,
+        apply_brand_kit: applyBrandKit,
       });
 
       setResult(data);
@@ -2963,12 +2966,45 @@ export default function ImageStudioPage() {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
+                        value={presetName}
+                        onChange={(e) => setPresetName(e.target.value)}
                         placeholder="Preset name (e.g. Cyberpunk Portrait)..."
                         className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                       <button
                         type="button"
-                        onClick={() => alert("Preset saved successfully to your Local Workspace!")}
+                        onClick={() => {
+                          if (!presetName.trim()) {
+                            alert("Please enter a name for the preset.");
+                            return;
+                          }
+                          try {
+                            const newPreset = {
+                              id: `preset_${Date.now()}`,
+                              name: presetName.trim(),
+                              prompt,
+                              negativePrompt,
+                              model,
+                              aspectRatio,
+                              quality,
+                              resolution,
+                              lens,
+                              aperture,
+                              lighting,
+                              filmStock,
+                              cfgScale,
+                              samplingSteps,
+                              createdAt: new Date().toISOString(),
+                            };
+                            const existing = JSON.parse(localStorage.getItem("omnistudio_image_presets") || "[]");
+                            existing.push(newPreset);
+                            localStorage.setItem("omnistudio_image_presets", JSON.stringify(existing));
+                            alert(`Preset "${presetName.trim()}" saved successfully to your Local Workspace!`);
+                            setPresetName("");
+                          } catch (_) {
+                            alert("Failed to save preset to local workspace.");
+                          }
+                        }}
                         className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-mono text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-xs"
                       >
                         Save
@@ -3123,15 +3159,37 @@ export default function ImageStudioPage() {
               </button>
             ))}
 
-            <button
-              type="button"
-              onClick={() => setBrandKitModalOpen(true)}
-              className="shrink-0 ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] border border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Open Brand Kit Guidelines"
-            >
-              <Palette className="w-3 h-3 text-emerald-500" />
-              <span>Brand Kit</span>
-            </button>
+            <div className="shrink-0 ml-auto flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setApplyBrandKit((prev) => !prev)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11px] font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                  applyBrandKit
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-xs ring-2 ring-emerald-500/20"
+                    : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500 dark:text-zinc-400 border-black/[0.08] dark:border-white/[0.08] hover:text-zinc-800 dark:hover:text-zinc-200"
+                )}
+                title="Tap to toggle Brand Kit injection ON / OFF (Default: OFF)"
+              >
+                <Palette className={cn("w-3 h-3 transition-colors", applyBrandKit ? "text-emerald-500" : "text-zinc-400")} />
+                <span>Brand Kit: {applyBrandKit ? "ON" : "OFF"}</span>
+                <span
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full transition-all",
+                    applyBrandKit ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"
+                  )}
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBrandKitModalOpen(true)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title="Configure Brand Guidelines & Palette"
+              >
+                <Sliders className="w-3 h-3" />
+              </button>
+            </div>
           </div>
 
           {/* Row 1: Professional Studio Prompt Input Bar */}

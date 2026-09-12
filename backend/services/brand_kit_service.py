@@ -37,11 +37,11 @@ DEFAULT_BRAND_KIT: Dict[str, Any] = {
         "heading_style": "Modern Sans"
     },
     "style_guidelines": "Premium aesthetic, high contrast, clean studio lighting, pristine reflections, sophisticated and cohesive brand presentation.",
-    "negative_guidelines": "cheap, oversaturated, blurry, low resolution, distorted text, low quality",
+    "negative_guidelines": "cheap, oversaturated, blurry, low resolution, distorted text, low quality, watermark, typography, logo, magazine cover",
     "brand_voice": "Luxury & Sophisticated",
     "watermark_position": "bottom_right",
     "watermark_opacity": 80,
-    "apply_to_generation": True
+    "apply_to_generation": False
 }
 
 
@@ -93,28 +93,22 @@ def apply_brand_kit_to_prompt(prompt: str, custom_kit: Optional[Dict[str, Any]] 
     Injects brand aesthetic guidelines, color palette cues, brand voice, and style rules into prompt.
     """
     kit = custom_kit or load_brand_kit()
-    if not kit.get("apply_to_generation", True):
+    if not kit.get("apply_to_generation", False):
         return prompt
 
-    brand_name = kit.get("brand_name", "").strip()
     brand_voice = kit.get("brand_voice", "").strip()
     colors = kit.get("colors", {})
     primary_color = colors.get("primary", "")
     accent_color = colors.get("accent", "")
     guidelines = kit.get("style_guidelines", "").strip()
-    heading_style = kit.get("typography", {}).get("heading_style", "")
 
     injections = []
-    if brand_name and brand_name.lower() not in prompt.lower():
-        injections.append(f"incorporating {brand_name} brand identity")
     if brand_voice and brand_voice not in ("Neutral", "Standard"):
         injections.append(f"{brand_voice} visual aesthetic")
     if guidelines:
         injections.append(guidelines)
     if primary_color or accent_color:
         injections.append(f"subtle color harmony accents in {primary_color} and {accent_color}")
-    if heading_style:
-        injections.append(f"{heading_style} typography tone")
 
     if not injections:
         return prompt

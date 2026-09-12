@@ -51,6 +51,7 @@ class ImageRequest(BaseModel):
     sampling_steps: Optional[int] = 30
     seed: Optional[int] = None
     count: Optional[int] = 1  # 1, 2, 4 images batch
+    apply_brand_kit: Optional[bool] = False  # Default OFF, user toggles explicitly
 
     @field_validator("prompt")
     @classmethod
@@ -275,6 +276,12 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
 async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_offset: int = 0):
     openai_quality = "hd" if req.quality in ["hd", "ultra"] else "standard"
 
+    # For models without native negative_prompt API param (OpenAI & Gemini), format avoid directive
+    effective_prompt = composed_prompt
+    if hasattr(req, "negative_prompt") and req.negative_prompt and req.negative_prompt.strip():
+        neg_clean = req.negative_prompt.strip()
+        effective_prompt = f"{composed_prompt}. [Avoid: {neg_clean}]"
+
     if req.model.startswith("flux"):
         result = await generate_flux_image(
             prompt=composed_prompt, aspect_ratio=req.aspect_ratio, model=req.model,
@@ -291,10 +298,10 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
                 "required_key": "GEMINI_API_KEY"
             }
         else:
-            result = await generate_gemini_image(composed_prompt, filename_hint=req.prompt)
+            result = await generate_gemini_image(effective_prompt, filename_hint=req.prompt)
     elif req.model in ["dall-e-3", "dall-e-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5", "gpt-image-2", "openai"]:
         result = await generate_openai_image(
-            prompt=composed_prompt, model=req.model, size=req.size,
+            prompt=effective_prompt, model=req.model, size=req.size,
             quality=openai_quality, style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural",
             filename_hint=req.prompt
         )
@@ -308,12 +315,12 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
     else:
         from services.gemini_service import get_gemini_key, generate_gemini_image
         if get_gemini_key():
-            result = await generate_gemini_image(composed_prompt, filename_hint=req.prompt)
+            result = await generate_gemini_image(effective_prompt, filename_hint=req.prompt)
             if result.get("success"):
                 result["model"] = f"{req.model} (Powered by Google Gemini)"
         elif settings.OPENAI_API_KEY:
             result = await generate_openai_image(
-                prompt=composed_prompt, model="dall-e-3", size=req.size,
+                prompt=effective_prompt, model="dall-e-3", size=req.size,
                 quality=openai_quality, style="vivid",
                 filename_hint=req.prompt
             )
@@ -382,13 +389,22 @@ async def generate_image(req: ImageRequest, request: Request):
     if req.enhance_prompt:
         composed_prompt = await enhance_prompt(composed_prompt, req.enhance_style)
 
-    try:
-        from services.brand_kit_service import apply_brand_kit_to_prompt, apply_brand_kit_to_negative_prompt
-        composed_prompt = apply_brand_kit_to_prompt(composed_prompt)
-        if hasattr(req, "negative_prompt"):
-            req.negative_prompt = apply_brand_kit_to_negative_prompt(req.negative_prompt or "")
-    except Exception as bke:
-        logger.debug(f"Brand kit prompt injection skipped: {bke}")
+    if getattr(req, "apply_brand_kit", False):
+        try:
+            from services.brand_kit_service import apply_brand_kit_to_prompt, apply_brand_kit_to_negative_prompt
+            composed_prompt = apply_brand_kit_to_prompt(composed_prompt)
+            if hasattr(req, "negative_prompt"):
+                req.negative_prompt = apply_brand_kit_to_negative_prompt(req.negative_prompt or "")
+        except Exception as bke:
+            logger.debug(f"Brand kit prompt injection skipped: {bke}")
+    else:
+        # Brand Kit is OFF: enforce clean negative prompt guard so AI never generates unwanted text/watermarks/branding
+        clean_guard = "text, watermark, typography, logo, magazine cover, words, font, letters, poster layout, branding, captions, signature"
+        current_neg = (req.negative_prompt or "").strip()
+        if not current_neg:
+            req.negative_prompt = clean_guard
+        elif "watermark" not in current_neg.lower():
+            req.negative_prompt = f"{current_neg}, {clean_guard}"
 
     batch_count = min(max(req.count or 1, 1), 4)
 
