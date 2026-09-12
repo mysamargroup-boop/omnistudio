@@ -68,6 +68,7 @@ class VideoRequest(BaseModel):
     motion_intensity: float = 1.0  # 0.5, 1.0, 1.5, 2.0
     loop: bool = False
     seed: Optional[int] = None
+    apply_brand_kit: Optional[bool] = False  # Default OFF
     model: str = "ffmpeg_local"
     character_prompt: Optional[str] = None
     character_image: Optional[str] = None
@@ -575,11 +576,12 @@ async def generate_video(req: VideoRequest, request: Request):
     else:
         effective_prompt = base_p
 
-    try:
-        from services.brand_kit_service import apply_brand_kit_to_prompt
-        effective_prompt = apply_brand_kit_to_prompt(effective_prompt)
-    except Exception as bke:
-        logger.debug(f"Brand kit video injection skipped: {bke}")
+    if getattr(req, "apply_brand_kit", False):
+        try:
+            from services.brand_kit_service import apply_brand_kit_to_prompt
+            effective_prompt = apply_brand_kit_to_prompt(effective_prompt)
+        except Exception as bke:
+            logger.debug(f"Brand kit video injection skipped: {bke}")
 
     # ─── Mode: Text-to-Video ───
     if req.mode == "text_to_video" or (not start_img and base_p):

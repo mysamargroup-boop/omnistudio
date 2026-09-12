@@ -87,16 +87,21 @@ def image_to_video_motion(
 
     total_frames = int(duration * fps)
     
+    intensity = max(0.1, min(3.0, float(motion_intensity or 1.0)))
+    z_step = round(0.0015 * intensity, 6)
+    pan_step = round(1.5 * intensity, 3)
+    tilt_step = round(1.2 * intensity, 3)
+
     motion_filters = {
         "none": f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
-        "zoom_in": f"zoompan=z='min(zoom+0.0015,1.5)':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
-        "zoom_out": f"zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
-        "pan_left": f"zoompan=z=1.15:x='if(lte(on,-1),(itld-1)*0.75,max(0,x-1.5))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
-        "pan_right": f"zoompan=z=1.15:x='if(lte(on,1),0,min(iw-iw/zoom,x+1.5))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
-        "tilt_up": f"zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,-1),0,max(0,y-1.2))':d={total_frames}:s={width}x{height}:fps={fps}",
-        "tilt_down": f"zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,1),0,min(ih-ih/zoom,y+1.2))':d={total_frames}:s={width}x{height}:fps={fps}",
-        "orbit": f"zoompan=z='1.1+0.05*sin(on/20)':x='(iw-iw/zoom)/2+sin(on/30)*20':y='(ih-ih/zoom)/2+cos(on/30)*15':d={total_frames}:s={width}x{height}:fps={fps}",
-        "subtle": f"zoompan=z='1.05+0.02*sin(on/25)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d={total_frames}:s={width}x{height}:fps={fps}",
+        "zoom_in": f"zoompan=z='min(zoom+{z_step},1.5)':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
+        "zoom_out": f"zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-{z_step}))':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
+        "pan_left": f"zoompan=z=1.15:x='if(lte(on,-1),(itld-1)*0.75,max(0,x-{pan_step}))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
+        "pan_right": f"zoompan=z=1.15:x='if(lte(on,1),0,min(iw-iw/zoom,x+{pan_step}))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
+        "tilt_up": f"zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,-1),0,max(0,y-{tilt_step}))':d={total_frames}:s={width}x{height}:fps={fps}",
+        "tilt_down": f"zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,1),0,min(ih-ih/zoom,y+{tilt_step}))':d={total_frames}:s={width}x{height}:fps={fps}",
+        "orbit": f"zoompan=z='1.1+{round(0.05 * intensity, 3)}*sin(on/20)':x='(iw-iw/zoom)/2+sin(on/30)*{round(20 * intensity, 1)}':y='(ih-ih/zoom)/2+cos(on/30)*{round(15 * intensity, 1)}':d={total_frames}:s={width}x{height}:fps={fps}",
+        "subtle": f"zoompan=z='1.05+{round(0.02 * intensity, 3)}*sin(on/25)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d={total_frames}:s={width}x{height}:fps={fps}",
     }
     
     vf = motion_filters.get(motion_type, motion_filters["none"])
