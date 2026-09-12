@@ -99,7 +99,7 @@ export default function Dropdown({
   };
 
   return (
-    <div className={cn("relative space-y-1.5", className)} ref={containerRef}>
+    <div className={cn("relative space-y-1.5", isOpen ? "z-40" : "z-10", className)} ref={containerRef}>
       {label && (
         <label className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block font-mono font-medium">
           {label}
@@ -117,23 +117,18 @@ export default function Dropdown({
           triggerClassName
         )}
       >
-        <div className="flex items-center gap-2 truncate font-medium text-zinc-800 dark:text-zinc-200 min-w-0">
+        <div className="flex items-center gap-1.5 truncate font-medium text-zinc-800 dark:text-zinc-200 min-w-0">
           {selectedOption?.icon && (
             <span className="shrink-0 flex items-center">{selectedOption.icon}</span>
           )}
           <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
           {selectedOption && selectedOption.active === true && (
-            <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              ACTIVE
-            </span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 shadow-xs" title="Active Engine" />
           )}
           {selectedOption && selectedOption.active === false && (
-            <span className="inline-flex items-center text-[8px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-700/60 font-medium shrink-0">
-              INACTIVE
-            </span>
+            <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-600 shrink-0" title="Key Required" />
           )}
-          {selectedOption?.badge && (
+          {selectedOption?.badge && !selectedOption.active && (
             <span className="rounded-full px-1.5 py-0.2 text-[8px] font-mono uppercase tracking-wider bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shrink-0">
               {selectedOption.badge}
             </span>

@@ -574,7 +574,7 @@ export default function VoiceStudioPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 relative z-30">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Provider</label>
                     <Dropdown 
@@ -591,11 +591,12 @@ export default function VoiceStudioPage() {
                       value={ttsModel} 
                       onChange={setTtsModel} 
                       className="w-full"
+                      align="right"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 relative z-20">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Voice Persona</label>
                     <Dropdown 

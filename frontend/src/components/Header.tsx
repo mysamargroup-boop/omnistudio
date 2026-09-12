@@ -50,6 +50,7 @@ const VIDEO_FEATURES = [
 ];
 
 const VIDEO_MODELS = [
+  { name: 'Google Omni / Veo', desc: 'Google Cloud AI 4K video (Default)', model: 'google_veo' },
   { name: 'FFmpeg Local', desc: 'Fast local renderer (100% Free)', model: 'ffmpeg_local' },
   { name: 'Kling AI 2.0', desc: 'Photorealistic physics', model: 'kling_2.0' },
   { name: 'Runway Gen-3', desc: 'Studio cinematic realism', model: 'runway_gen3' },

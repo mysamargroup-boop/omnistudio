@@ -620,7 +620,11 @@ export default function CharacterStudioPage() {
                   type="button"
                   onClick={() => {
                     setActiveCharacter(char);
-                    router.push('/video');
+                    const params = new URLSearchParams();
+                    params.set("character", char.id);
+                    if (char.imageUrl) params.set("image", char.imageUrl);
+                    if (char.prompt) params.set("char_prompt", encodeURIComponent(char.prompt));
+                    router.push(`/video?${params.toString()}`);
                   }}
                   className="p-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
                   title="Launch in Video Studio"

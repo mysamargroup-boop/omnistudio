@@ -53,12 +53,31 @@ export default function Sidebar() {
   const [currentDateTime, setCurrentDateTime] = useState<string>("");
   const [currentSearch, setCurrentSearch] = useState<string>("");
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("omnistudio_sidebar_collapsed") === "true";
+      } catch {}
+    }
+    return false;
+  });
 
   useEffect(() => {
-    const handleCollapse = () => setIsDesktopCollapsed(true);
-    const handleExpand = () => setIsDesktopCollapsed(false);
-    const handleToggle = () => setIsDesktopCollapsed((prev) => !prev);
+    const handleCollapse = () => {
+      setIsDesktopCollapsed(true);
+      try { localStorage.setItem("omnistudio_sidebar_collapsed", "true"); } catch {}
+    };
+    const handleExpand = () => {
+      setIsDesktopCollapsed(false);
+      try { localStorage.setItem("omnistudio_sidebar_collapsed", "false"); } catch {}
+    };
+    const handleToggle = () => {
+      setIsDesktopCollapsed((prev) => {
+        const next = !prev;
+        try { localStorage.setItem("omnistudio_sidebar_collapsed", String(next)); } catch {}
+        return next;
+      });
+    };
     window.addEventListener("omnistudio:collapse-sidebar", handleCollapse);
     window.addEventListener("omnistudio:expand-sidebar", handleExpand);
     window.addEventListener("omnistudio:toggle-sidebar", handleToggle);
@@ -200,7 +219,7 @@ export default function Sidebar() {
                 window.dispatchEvent(new CustomEvent("omnistudio:expand-sidebar"));
               }}
               title="Expand Sidebar"
-              className="h-8 w-8 rounded-lg bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center font-bold text-xs shadow-sm border border-black/10 dark:border-white/20 hover:scale-105 transition-transform cursor-pointer"
+              className="h-8 w-8 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center font-bold text-xs shadow-sm border border-black/10 dark:border-white/20 hover:scale-105 transition-transform cursor-pointer"
             >
               <span className="font-heading tracking-tighter text-[11px] font-bold">OS</span>
             </button>
@@ -251,7 +270,7 @@ export default function Sidebar() {
             className={cn(
               "flex items-center justify-center transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer",
               isDesktopCollapsed
-                ? "w-10 h-10 mx-auto p-0 bg-transparent hover:bg-transparent text-emerald-500 hover:text-emerald-400 hover:scale-110 shadow-none border-0"
+                ? "w-9 h-9 mx-auto rounded-full p-0 bg-transparent hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-400 hover:scale-110 shadow-none border-0"
                 : "w-full py-2 px-3 gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm"
             )}
           >
@@ -304,11 +323,16 @@ export default function Sidebar() {
                       }
                     }}
                     className={cn(
-                      "group flex items-center font-jakarta rounded-xl text-xs transition-all duration-150 relative cursor-pointer",
+                      "group flex items-center font-jakarta text-xs transition-all duration-150 relative cursor-pointer",
                       isDesktopCollapsed
-                        ? "w-10 h-10 mx-auto justify-center p-0 bg-transparent hover:bg-transparent border-transparent shadow-none"
+                        ? cn(
+                            "w-9 h-9 mx-auto justify-center rounded-full p-0 transition-transform",
+                            isActive
+                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                              : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                          )
                         : cn(
-                            "gap-2.5 mx-2 px-2.5 py-1.5",
+                            "rounded-xl gap-2.5 mx-2 px-2.5 py-1.5",
                             isActive
                               ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
                               : isPending
@@ -323,19 +347,16 @@ export default function Sidebar() {
                       <item.icon
                         className={cn(
                           "shrink-0 transition-all duration-150",
-                          isDesktopCollapsed ? "h-5 w-5" : "h-4 w-4",
+                          isDesktopCollapsed ? "h-4 w-4" : "h-4 w-4",
                           isDesktopCollapsed
                             ? isActive
-                              ? "text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.55)] scale-110"
+                              ? "text-emerald-400 dark:text-emerald-600 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"
                               : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:scale-110"
                             : isActive
                             ? "text-white dark:text-zinc-950"
                             : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
                         )}
                       />
-                    )}
-                    {isDesktopCollapsed && isActive && (
-                      <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
                     )}
                     {!isDesktopCollapsed && (
                       <>

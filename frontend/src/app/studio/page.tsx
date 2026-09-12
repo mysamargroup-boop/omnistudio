@@ -93,7 +93,7 @@ function AllInOneStudioContent() {
   return (
     <div className="min-h-screen pb-20">
       {/* ── Studio Master Switcher Bar (Sticky Top Header) ── */}
-      <div className="sticky top-12 z-40 bg-white/90 dark:bg-[#0c0c11]/90 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] py-2 px-3 sm:px-6 transition-all shadow-xs">
+      <div className="sticky top-[56px] z-30 bg-white/95 dark:bg-[#0c0c11]/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] py-2 px-3 sm:px-6 transition-all shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
           
           {/* Left: Studio Identity & Live Sync Pill */}

@@ -1360,7 +1360,7 @@ function PublishStudioContent() {
                         )}
                       >
                         <SocialIcon platform="instagram" size={13} monochrome={captionPlatformTab !== "instagram"} showBg={false} />
-                        <span>📸 Instagram Caption</span>
+                        <span>Instagram Caption</span>
                         {adaptedData["instagram"]?.caption && (
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         )}
@@ -1422,7 +1422,7 @@ function PublishStudioContent() {
                           Master Post Copy & Universal Prompt
                         </label>
                         <span className="text-[11px] text-zinc-400">
-                          Base copy for all platforms (click <strong>📸 Instagram Caption</strong> above for Instagram-specific copy)
+                          Base copy for all platforms (click <strong>Instagram Caption</strong> above for Instagram-specific copy)
                         </span>
                       </div>
                       <textarea
@@ -1987,7 +1987,7 @@ function PublishStudioContent() {
                             <span className="text-[9px] text-zinc-400 font-normal shrink-0">• 1st</span>
                           </div>
                           <div className="text-[9px] text-zinc-500 truncate">Autonomous Media Engine • Enterprise</div>
-                          <div className="text-[8px] text-zinc-400">1h • Edited • 🌐</div>
+                          <div className="text-[8px] text-zinc-400">1h • Edited • Public</div>
                         </div>
                       </div>
                       <SocialIcon platform="linkedin" size={14} monochrome={true} showBg={false} className="shrink-0" />
@@ -2011,8 +2011,12 @@ function PublishStudioContent() {
 
                     {/* Reaction Summary */}
                     <div className="flex items-center justify-between pt-1 text-[9px] text-zinc-500 border-b border-zinc-100 dark:border-zinc-900 pb-1.5">
-                      <span className="flex items-center gap-1 whitespace-nowrap">
-                        <span>👍 💡 ❤️</span>
+                      <span className="flex items-center gap-1.5 whitespace-nowrap text-zinc-600 dark:text-zinc-400 font-medium">
+                        <span className="flex items-center -space-x-1">
+                          <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[7px] font-bold">L</span>
+                          <span className="w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[7px] font-bold">I</span>
+                          <span className="w-3.5 h-3.5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[7px] font-bold">H</span>
+                        </span>
                         <span>548</span>
                       </span>
                       <span className="whitespace-nowrap">42 comments • 18 reposts</span>

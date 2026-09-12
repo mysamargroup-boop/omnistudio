@@ -64,6 +64,8 @@ import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
 import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/video/CharacterStudioModal";
+import { getActiveCharacter, getStoredCharacters } from "@/lib/characters";
+import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
 import BrandKitModal from "@/components/brand/BrandKitModal";
@@ -97,7 +99,7 @@ const VIDEO_MODELS: VideoModelOption[] = [
   },
   {
     value: "google_veo",
-    label: "Google Veo 3.1 / 2 (DeepMind)",
+    label: "Google Omni / Veo 3.1 (DeepMind)",
     description: "High-Definition 4K Video Generation (Google Cloud AI)",
     badge: "ACTIVE",
     category: "Featured Cloud",
@@ -332,6 +334,7 @@ function VideoStudioContent() {
   const [directing, setDirecting] = useState(false);
   const [directorNotes, setDirectorNotes] = useState<any>(null);
   const [brandKitModalOpen, setBrandKitModalOpen] = useState(false);
+  const [applyBrandKit, setApplyBrandKit] = useState(false);
 
   // Auto-resize prompt textarea
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -406,7 +409,7 @@ function VideoStudioContent() {
   }, [prompt]);
 
   // Video Settings (Camera motion defaults to "none")
-  const [model, setModel] = useState("ffmpeg_local");
+  const [model, setModel] = useState("google_veo");
   const [motion, setMotion] = useState("none");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [duration, setDuration] = useState(4);
@@ -480,6 +483,22 @@ function VideoStudioContent() {
     render: false,
   });
 
+  // Desktop Left Sidebar Collapsed Tracking (for perfect canvas centering)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    const handleCollapse = () => setIsSidebarCollapsed(true);
+    const handleExpand = () => setIsSidebarCollapsed(false);
+    const handleToggle = () => setIsSidebarCollapsed((prev) => !prev);
+    window.addEventListener("omnistudio:collapse-sidebar", handleCollapse);
+    window.addEventListener("omnistudio:expand-sidebar", handleExpand);
+    window.addEventListener("omnistudio:toggle-sidebar", handleToggle);
+    return () => {
+      window.removeEventListener("omnistudio:collapse-sidebar", handleCollapse);
+      window.removeEventListener("omnistudio:expand-sidebar", handleExpand);
+      window.removeEventListener("omnistudio:toggle-sidebar", handleToggle);
+    };
+  }, []);
+
   // Real Upload Progress Tracking (0-100%)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadType, setUploadType] = useState<string>("");
@@ -527,7 +546,7 @@ function VideoStudioContent() {
   const activeModel = availableModels.find((m) => m.value === model) || availableModels[0] || VIDEO_MODELS[0];
   const activeMotion = MOTIONS.find((m) => m.id === motion) || MOTIONS[0];
 
-  // URL query sync
+  // URL query sync & Character Lock Integration
   useEffect(() => {
     const qImg = searchParams?.get("image");
     if (qImg) {
@@ -543,7 +562,63 @@ function VideoStudioContent() {
       const found = VIDEO_MODELS.find((m) => m.value === qModel);
       if (found) setModel(qModel);
     }
+
+    // Character Lock Query & Storage Sync
+    try {
+      const charId = searchParams?.get("character");
+      if (charId) {
+        const stored = getStoredCharacters();
+        const found = stored.find((c) => c.id === charId);
+        if (found) {
+          setActiveCharacter(found);
+          setCharacterLockActive(true);
+          if (found.imageUrl) {
+            setStartImage(found.imageUrl);
+            setMode("first_frame");
+          }
+          const charPromptParam = searchParams?.get("char_prompt");
+          if (charPromptParam) {
+            setPrompt(decodeURIComponent(charPromptParam));
+          } else if (found.prompt && !prompt.trim()) {
+            setPrompt(found.prompt);
+          }
+          setOpenSections((prev) => ({ ...prev, character: true }));
+          return;
+        }
+      }
+
+      // Check active character in storage
+      const active = getActiveCharacter();
+      if (active) {
+        setActiveCharacter(active);
+        setCharacterLockActive(true);
+        if (active.imageUrl && !startImage) {
+          setStartImage(active.imageUrl);
+        }
+      }
+    } catch (e) {
+      console.warn("Character sync error in video page:", e);
+    }
   }, [searchParams]);
+
+  // Real-time listener for character updates across tabs/modals
+  useEffect(() => {
+    const handleCharUpdate = (e: any) => {
+      const char = e?.detail;
+      if (char) {
+        setActiveCharacter(char);
+        setCharacterLockActive(true);
+        if (char.imageUrl) {
+          setStartImage(char.imageUrl);
+          setMode("first_frame");
+        }
+      } else {
+        setActiveCharacter(null);
+      }
+    };
+    window.addEventListener("omnistudio:active_character_updated", handleCharUpdate as EventListener);
+    return () => window.removeEventListener("omnistudio:active_character_updated", handleCharUpdate as EventListener);
+  }, []);
 
   // Load Studio Preferences from localStorage on mount
   useEffect(() => {
@@ -783,6 +858,7 @@ function VideoStudioContent() {
       }
       if (newAssets.length > 0) {
         setReferenceAssets((prev) => [...prev, ...newAssets]);
+        insertMentionTag(newAssets[0].tag);
       }
     } catch (err: any) {
       console.error("Reference upload error:", err);
@@ -798,27 +874,46 @@ function VideoStudioContent() {
   };
 
   const insertMentionTag = (tagWithAt: string) => {
-    const tagToInsert = tagWithAt.startsWith("@") ? tagWithAt : `@${tagWithAt}`;
+    const cleanTag = tagWithAt.startsWith("@") ? tagWithAt : `@${tagWithAt}`;
     if (mentionAnchor && promptTextareaRef.current) {
       const before = prompt.substring(0, mentionAnchor.start);
       const after = prompt.substring(mentionAnchor.end);
-      const updated = `${before}${tagToInsert} ${after}`;
+      const updated = `${before}${cleanTag} ${after}`;
       setPrompt(updated);
       setMentionMenuOpen(false);
       setMentionAnchor(null);
       setTimeout(() => {
         if (promptTextareaRef.current) {
           promptTextareaRef.current.focus();
-          const nextPos = before.length + tagToInsert.length + 1;
+          const nextPos = before.length + cleanTag.length + 1;
           promptTextareaRef.current.setSelectionRange(nextPos, nextPos);
         }
       }, 10);
     } else {
-      setPrompt((prev) => (prev.trim() ? `${prev.trim()} ${tagToInsert} ` : `${tagToInsert} `));
+      setPrompt((prev) => (prev.trim() ? `${prev.trim()} ${cleanTag} ` : `${cleanTag} `));
+      setMentionMenuOpen(false);
+      setMentionAnchor(null);
       if (promptTextareaRef.current) {
         promptTextareaRef.current.focus();
       }
     }
+  };
+
+  const handleSelectMention = (item: MentionCandidate) => {
+    const alreadyInRefs = referenceAssets.some((r) => r.url === item.url);
+    if (!alreadyInRefs) {
+      setReferenceAssets((prev) => [
+        ...prev,
+        {
+          id: item.id || `ref_${Date.now()}`,
+          url: item.url,
+          filename: item.filename,
+          tag: item.tag,
+          type: item.type,
+        },
+      ]);
+    }
+    insertMentionTag(item.tag);
   };
 
   const mentionCandidates = [
@@ -2172,9 +2267,8 @@ function VideoStudioContent() {
               onClick={() => setVideoDockCollapsed(false)}
               className={cn(
                 "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center cursor-pointer",
-                sidebarOpen
-                  ? "left-0 lg:left-64 right-0 lg:right-96"
-                  : "left-0 lg:left-64 right-0"
+                isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
+                sidebarOpen ? "right-0 lg:right-96" : "right-0"
               )}
             >
               <div className="w-full max-w-xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-2xl px-5 py-2.5 flex items-center justify-between hover:border-emerald-500/50 transition-all group">
@@ -2207,9 +2301,8 @@ function VideoStudioContent() {
               ref={dockRef}
               className={cn(
                 "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center",
-                sidebarOpen
-                  ? "left-0 lg:left-64 right-0 lg:right-96"
-                  : "left-0 lg:left-64 right-0"
+                isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
+                sidebarOpen ? "right-0 lg:right-96" : "right-0"
               )}
             >
               <div
@@ -2309,12 +2402,12 @@ function VideoStudioContent() {
                   Prompt Engineer:
                 </span>
                 {[
-                  { label: "More Realistic", style: "more_realistic", icon: "📷" },
-                  { label: "More Cinematic", style: "more_cinematic", icon: "🎬" },
-                  { label: "More Luxury", style: "more_luxury", icon: "✨" },
-                  { label: "More Fashion", style: "more_fashion", icon: "👗" },
-                  { label: "More Commercial", style: "more_commercial", icon: "💎" },
-                  { label: "More Viral", style: "more_viral", icon: "🔥" },
+                  { label: "More Realistic", style: "more_realistic" },
+                  { label: "More Cinematic", style: "more_cinematic" },
+                  { label: "More Luxury", style: "more_luxury" },
+                  { label: "More Fashion", style: "more_fashion" },
+                  { label: "More Commercial", style: "more_commercial" },
+                  { label: "More Viral", style: "more_viral" },
                 ].map((btn) => (
                   <button
                     key={btn.style}
@@ -2323,20 +2416,41 @@ function VideoStudioContent() {
                     disabled={enhancingPrompt}
                     className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 hover:bg-indigo-500/10 dark:bg-white/[0.05] dark:hover:bg-indigo-500/10 border border-zinc-200/80 dark:border-white/10 hover:border-indigo-500/40 text-zinc-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
-                    <span>{btn.icon}</span>
                     <span>{btn.label}</span>
                   </button>
                 ))}
 
-                <button
-                  type="button"
-                  onClick={() => setBrandKitModalOpen(true)}
-                  className="shrink-0 ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] border border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Open Brand Kit Guidelines"
-                >
-                  <Palette className="w-3 h-3 text-emerald-500" />
-                  <span>Brand Kit</span>
-                </button>
+                <div className="shrink-0 ml-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setApplyBrandKit((prev) => !prev)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[11px] font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                      applyBrandKit
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-xs ring-2 ring-emerald-500/20"
+                        : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500 dark:text-zinc-400 border-black/[0.08] dark:border-white/[0.08] hover:text-zinc-800 dark:hover:text-zinc-200"
+                    )}
+                    title="Tap to toggle Brand Kit (Active indicated by green highlight)"
+                  >
+                    <Palette className={cn("w-3 h-3 transition-colors", applyBrandKit ? "text-emerald-500" : "text-zinc-400")} />
+                    <span>Brand Kit</span>
+                    <span
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-all",
+                        applyBrandKit ? "bg-emerald-500 animate-pulse" : "bg-zinc-400"
+                      )}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBrandKitModalOpen(true)}
+                    className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                    title="Configure Brand Guidelines & Palette"
+                  >
+                    <Sliders className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
 
               {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt + Character Lock */}
@@ -2475,130 +2589,72 @@ function VideoStudioContent() {
                 </div>
               )}
 
-              {/* Reference Assets Preview Tray (When images/videos attached or uploading) */}
-              {(referenceAssets.length > 0 || uploadingRefs) && (
-                <div className="flex items-center gap-2 overflow-x-auto py-1.5 px-1 bg-zinc-100/70 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-zinc-800/80 custom-scrollbar">
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 font-bold px-1 shrink-0 uppercase tracking-wider">
-                    <AtSign className="w-3 h-3 text-emerald-500" />
-                    <span>Tagged Refs:</span>
-                  </div>
-                  {referenceAssets.map((asset) => (
-                    <div
-                      key={asset.id}
-                      className="group relative flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 shrink-0 shadow-xs hover:border-emerald-500/50 transition-all"
-                    >
-                      <div className="relative w-8 h-8 rounded-md overflow-hidden bg-black shrink-0 border border-black/10 dark:border-white/10">
-                        {asset.type === "video" ? (
-                          <video src={getMediaUrl(asset.url)} className="w-full h-full object-cover" />
-                        ) : (
-                          <img src={getMediaUrl(asset.url)} alt={asset.filename} className="w-full h-full object-cover" />
-                        )}
-                        <span className="absolute bottom-0 inset-x-0 bg-black/80 text-[7px] font-mono text-center text-zinc-200 uppercase leading-tight font-bold">
+              {/* Modern Unified Studio Prompt Box with Embedded Badged References */}
+              <div className="relative rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all p-2.5 space-y-2">
+                
+                {/* Embedded Badged Labels for Tagged References (INSIDE PROMPT BOX) */}
+                {referenceAssets.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider mr-1">
+                      <AtSign className="w-3 h-3 text-emerald-500" />
+                      <span>Tagged:</span>
+                    </div>
+                    {referenceAssets.map((asset) => (
+                      <span
+                        key={asset.id}
+                        className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-medium shadow-xs hover:bg-emerald-500/20 transition-all group select-none animate-in fade-in zoom-in-95 duration-150"
+                      >
+                        <div className="relative w-5 h-5 rounded-full overflow-hidden bg-black shrink-0 border border-emerald-500/40">
+                          {asset.type === "video" ? (
+                            <video src={getMediaUrl(asset.url)} className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={getMediaUrl(asset.url)} alt={asset.tag} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <span className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400">@{asset.tag}</span>
+                        <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
                           {asset.type === "video" ? "VID" : "IMG"}
                         </span>
-                      </div>
-                      <div className="flex flex-col min-w-0 max-w-[110px]">
                         <button
                           type="button"
-                          onClick={() => insertMentionTag(asset.tag)}
-                          className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 hover:underline truncate text-left cursor-pointer"
-                          title={`Click to insert @${asset.tag} into prompt`}
+                          onClick={() => removeReferenceAsset(asset.id)}
+                          className="hover:text-rose-500 hover:bg-rose-500/10 rounded-full p-0.5 text-zinc-400 transition-colors cursor-pointer ml-0.5"
+                          title={`Remove @${asset.tag}`}
                         >
-                          @{asset.tag}
+                          <X className="w-3 h-3" />
                         </button>
-                        <span className="text-[9px] text-zinc-400 truncate">{asset.filename}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeReferenceAsset(asset.id)}
-                        className="p-1 rounded-md hover:bg-rose-500/10 hover:text-rose-500 text-zinc-400 transition-colors cursor-pointer shrink-0 ml-0.5"
-                        title="Remove reference asset"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-
-                  {uploadingRefs && (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-mono shrink-0 animate-pulse">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Uploading ref...</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => refFileInputRef.current?.click()}
-                    className="h-8 px-2.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500/60 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-500 hover:text-emerald-500 flex items-center gap-1 text-[10px] font-mono shrink-0 transition-all cursor-pointer"
-                    title="Add more reference images or videos"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Textarea with Floating @ Mention Autocomplete */}
-              <div className="relative">
-                {/* @ Mention Autocomplete Popover */}
-                {mentionMenuOpen && mentionCandidates.length > 0 && (
-                  <div
-                    ref={mentionMenuRef}
-                    data-popover-content="true"
-                    className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 rounded-2xl bg-white dark:bg-[#12121a] border border-zinc-200 dark:border-zinc-800 shadow-2xl p-2 z-50 animate-slide-up space-y-1"
-                  >
-                    <div className="flex items-center justify-between px-2 py-1 text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-bold border-b border-zinc-100 dark:border-zinc-800/80">
-                      <div className="flex items-center gap-1 text-emerald-500">
-                        <AtSign className="w-3 h-3" />
-                        <span>Tag Reference Asset</span>
-                      </div>
-                      <span className="text-[9px] text-zinc-500 font-normal">
-                        Tab/Enter to tag
                       </span>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto space-y-1 custom-scrollbar pt-1">
-                      {mentionCandidates.map((cand, idx) => {
-                        const isSelected = idx === mentionIndex;
-                        return (
-                          <button
-                            key={cand.id}
-                            type="button"
-                            onMouseEnter={() => setMentionIndex(idx)}
-                            onClick={() => insertMentionTag(cand.tag)}
-                            className={cn(
-                              "w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer",
-                              isSelected
-                                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-100 shadow-xs"
-                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 border border-transparent"
-                            )}
-                          >
-                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black shrink-0 border border-black/10 dark:border-white/10">
-                              {cand.type === "video" ? (
-                                <video src={getMediaUrl(cand.url)} className="w-full h-full object-cover" />
-                              ) : (
-                                <img src={getMediaUrl(cand.url)} alt={cand.tag} className="w-full h-full object-cover" />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400 truncate">
-                                  {cand.label}
-                                </span>
-                                <span className="text-[8px] font-mono uppercase px-1.5 py-0.2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 shrink-0 border border-zinc-200 dark:border-zinc-700">
-                                  {cand.badge}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-zinc-400 truncate block">
-                                {cand.sub}
-                              </span>
-                            </div>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    ))}
+
+                    {uploadingRefs && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono shrink-0 animate-pulse">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Uploading ref...</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => refFileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-400 hover:text-emerald-500 text-[10px] font-mono transition-colors cursor-pointer"
+                      title="Add more reference images or videos"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Tag More</span>
+                    </button>
                   </div>
                 )}
+
+                {/* Floating Autocomplete Popover */}
+                <MentionReferencePopover
+                  isOpen={mentionMenuOpen}
+                  query={mentionQuery}
+                  onClose={() => setMentionMenuOpen(false)}
+                  onSelect={handleSelectMention}
+                  onUploadClick={() => refFileInputRef.current?.click()}
+                  currentRefs={mentionCandidates}
+                  isUploading={uploadingRefs}
+                />
 
                 <textarea
                   ref={promptTextareaRef}
@@ -2648,7 +2704,7 @@ function VideoStudioContent() {
                       : "Describe the desired motion synthesis (type @ to tag images)..."
                   }
                   rows={2}
-                  className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 resize-none font-sans leading-relaxed"
+                  className="w-full bg-transparent border-0 p-1 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-0 resize-none font-sans leading-relaxed"
                 />
               </div>
 

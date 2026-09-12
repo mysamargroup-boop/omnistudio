@@ -3,9 +3,6 @@
 import React, { useState } from "react";
 import {
   Sparkles,
-  Crown,
-  Camera,
-  Layers,
   Check,
   Copy,
   ChevronRight,
@@ -16,7 +13,10 @@ import {
   Sun,
   Flame,
   ArrowRight,
-  X
+  X,
+  Upload,
+  FolderArchive,
+  Image as ImageIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,12 +31,12 @@ export interface JewelleryPreset {
 }
 
 export const JEWELLERY_ITEMS = [
-  { id: "necklace", label: "Necklace / Choker", icon: "💎", focus: "collarbone, neckline & décolletage" },
-  { id: "earrings", label: "Earrings / Drops", icon: "✨", focus: "earlobes, jawline & tucked hairstyle" },
-  { id: "ring", label: "Gemstone / Diamond Ring", icon: "💍", focus: "manicured hand, elegant fingers & velvet" },
-  { id: "bracelet", label: "Bracelet / Bangle", icon: "💫", focus: "wrist, forearm & silk cuff" },
-  { id: "bridal_set", label: "Full Bridal Jewellery Set", icon: "👑", focus: "royal bride neck, maang tikka, earrings" },
-  { id: "watch", label: "Luxury Chronograph Watch", icon: "⌚", focus: "wrist, metallic dial & sapphire crystal" },
+  { id: "necklace", label: "Necklace / Choker", focus: "collarbone, neckline & décolletage" },
+  { id: "earrings", label: "Earrings / Drops", focus: "earlobes, jawline & tucked hairstyle" },
+  { id: "ring", label: "Gemstone / Diamond Ring", focus: "manicured hand, elegant fingers & velvet" },
+  { id: "bracelet", label: "Bracelet / Bangle", focus: "wrist, forearm & silk cuff" },
+  { id: "bridal_set", label: "Full Bridal Jewellery Set", focus: "royal bride neck, maang tikka, earrings" },
+  { id: "watch", label: "Luxury Chronograph Watch", focus: "wrist, metallic dial & sapphire crystal" },
 ];
 
 export const JEWELLERY_PRESETS: JewelleryPreset[] = [
@@ -125,6 +125,8 @@ export const JEWELLERY_PRESETS: JewelleryPreset[] = [
 interface JewelleryPromptSuiteProps {
   hasReferenceImage?: boolean;
   onSelectPrompt: (promptText: string, recommendedRatio?: string) => void;
+  onUploadImage?: (file: File) => void;
+  onOpenVault?: () => void;
   className?: string;
   isCompact?: boolean;
 }
@@ -132,6 +134,8 @@ interface JewelleryPromptSuiteProps {
 export default function JewelleryPromptSuite({
   hasReferenceImage = false,
   onSelectPrompt,
+  onUploadImage,
+  onOpenVault,
   className,
   isCompact = false,
 }: JewelleryPromptSuiteProps) {
@@ -164,46 +168,73 @@ export default function JewelleryPromptSuite({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.04] via-zinc-900/40 to-black/60 backdrop-blur-md p-4 sm:p-5 space-y-4 shadow-xl",
+        "rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-white/95 dark:bg-[#121218]/95 backdrop-blur-md p-4 sm:p-5 space-y-4 shadow-xl text-zinc-900 dark:text-zinc-100",
         className
       )}
     >
       {/* Top Banner & Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-amber-500/15 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-black/[0.06] dark:border-white/[0.08] pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs">
             <Gem className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-heading font-bold text-zinc-950 dark:text-amber-100 flex items-center gap-1.5">
-                Jewellery Reference Prompt Suite
+              <h3 className="text-xs sm:text-sm font-heading font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                Jewellery Reference Variations
               </h3>
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 uppercase">
                 PRO PRESETS
               </span>
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               {hasReferenceImage
-                ? "Pre-engineered luxury prompts adapted to your uploaded jewellery reference image"
-                : "Select your jewellery type & 1-click apply high-conversion editorial and aesthetic prompts"}
+                ? "Pre-engineered luxury prompts adapted to your uploaded reference piece"
+                : "Select jewellery piece & 1-click apply high-conversion editorial and aesthetic prompts"}
             </p>
           </div>
         </div>
 
-        {appliedId && (
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono animate-in fade-in">
-            <Check className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Prompt Applied to Console!</span>
-          </div>
-        )}
+        {/* Action Controls & Small Upload Button */}
+        <div className="flex items-center gap-2">
+          {onUploadImage && (
+            <label className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono cursor-pointer transition-colors shadow-xs">
+              <Upload className="w-3 h-3 text-amber-500" />
+              <span>Upload Jewellery</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && onUploadImage(e.target.files[0])}
+              />
+            </label>
+          )}
+
+          {onOpenVault && (
+            <button
+              type="button"
+              onClick={onOpenVault}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono cursor-pointer transition-colors shadow-xs"
+            >
+              <FolderArchive className="w-3 h-3 text-violet-500" />
+              <span>From Vault</span>
+            </button>
+          )}
+
+          {appliedId && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono animate-in fade-in">
+              <Check className="w-3.5 h-3.5" />
+              <span>Prompt Applied</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Item Type Selector Pills */}
+      {/* Item Type Selector Pills - Zero Emojis */}
       <div className="space-y-1.5">
         <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold flex items-center gap-1">
           <span>Target Jewellery Piece:</span>
-          <span className="text-amber-500 font-bold">{activeItemObj.label}</span>
+          <span className="text-amber-600 dark:text-amber-400 font-bold">{activeItemObj.label}</span>
         </label>
         <div className="flex flex-wrap gap-1.5">
           {JEWELLERY_ITEMS.map((item) => {
@@ -214,13 +245,12 @@ export default function JewelleryPromptSuite({
                 type="button"
                 onClick={() => setSelectedItem(item.id)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-heading font-medium transition-all duration-150 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-heading transition-all duration-150 cursor-pointer",
                   isSelected
-                    ? "bg-amber-500 text-black font-bold shadow-md shadow-amber-500/25 scale-[1.02]"
-                    : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/30"
+                    ? "bg-amber-500 text-zinc-950 font-bold shadow-xs scale-[1.01]"
+                    : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border border-black/[0.06] dark:border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-zinc-900 dark:hover:text-white"
                 )}
               >
-                <span>{item.icon}</span>
                 <span>{item.label}</span>
               </button>
             );
@@ -228,26 +258,26 @@ export default function JewelleryPromptSuite({
         </div>
       </div>
 
-      {/* Category Tabs */}
+      {/* Category Tabs - Clean Text Without Emojis */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1 custom-scrollbar">
         {[
           { id: "all", label: "All Variations (8)" },
-          { id: "model", label: "👑 Model Wearing" },
-          { id: "aesthetic", label: "🌿 Aesthetic Still-Life" },
-          { id: "macro", label: "🔍 Macro Sparkle" },
-          { id: "bridal", label: "🏛️ Royal Bridal" },
-          { id: "dark_moody", label: "🖤 Dark Obsidian" },
-          { id: "cinema", label: "🎬 360 Video Motion" },
+          { id: "model", label: "Model Wearing" },
+          { id: "aesthetic", label: "Aesthetic Still-Life" },
+          { id: "macro", label: "Macro Sparkle" },
+          { id: "bridal", label: "Royal Bridal" },
+          { id: "dark_moody", label: "Dark Obsidian" },
+          { id: "cinema", label: "360 Video Motion" },
         ].map((cat) => (
           <button
             key={cat.id}
             type="button"
             onClick={() => setSelectedCategory(cat.id)}
             className={cn(
-              "px-2.5 py-1 rounded-lg text-[11px] font-mono whitespace-nowrap transition-colors cursor-pointer",
+              "px-3 py-1 rounded-lg text-xs font-mono whitespace-nowrap transition-colors cursor-pointer border",
               selectedCategory === cat.id
-                ? "bg-zinc-800 text-amber-400 border border-amber-500/30 font-bold"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40 font-bold"
+                : "text-zinc-600 dark:text-zinc-400 border-transparent hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.04]"
             )}
           >
             {cat.label}
@@ -256,7 +286,7 @@ export default function JewelleryPromptSuite({
       </div>
 
       {/* Preset Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
         {filteredPresets.map((preset) => {
           const isApplied = appliedId === preset.id;
           const isCopied = copiedId === preset.id;
@@ -267,16 +297,16 @@ export default function JewelleryPromptSuite({
               key={preset.id}
               onClick={() => handleApply(preset)}
               className={cn(
-                "group relative rounded-xl border p-3 flex flex-col justify-between gap-2.5 transition-all duration-200 cursor-pointer",
+                "group relative rounded-xl border p-3.5 flex flex-col justify-between gap-2.5 transition-all duration-200 cursor-pointer",
                 isApplied
-                  ? "border-emerald-500 bg-emerald-500/[0.08] ring-1 ring-emerald-500/40"
-                  : "border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-zinc-900/60 hover:border-amber-500/50 hover:bg-amber-500/[0.03]"
+                  ? "border-emerald-500 bg-emerald-500/[0.06] ring-1 ring-emerald-500/40"
+                  : "border-black/[0.08] dark:border-white/[0.08] bg-zinc-50/70 dark:bg-zinc-900/60 hover:border-amber-500/40 hover:bg-amber-500/[0.03]"
               )}
             >
               {/* Card Header */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-1.5">
-                  <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/15 text-amber-500 dark:text-amber-300 border border-amber-500/20 uppercase">
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20 uppercase">
                     {preset.badge}
                   </span>
                   <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-500">
@@ -287,7 +317,7 @@ export default function JewelleryPromptSuite({
                   </div>
                 </div>
 
-                <h4 className="text-xs font-heading font-bold text-zinc-900 dark:text-white group-hover:text-amber-500 dark:group-hover:text-amber-300 transition-colors">
+                <h4 className="text-xs font-heading font-bold text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
                   {preset.title}
                 </h4>
 
@@ -298,13 +328,13 @@ export default function JewelleryPromptSuite({
 
               {/* Prompt Snippet Preview */}
               <div className="rounded-lg bg-zinc-100 dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.04] p-2 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 line-clamp-2 italic">
-                "{promptText}"
+                &ldquo;{promptText}&rdquo;
               </div>
 
               {/* Card Footer Actions */}
               <div className="flex items-center justify-between pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-amber-500 group-hover:translate-x-0.5 transition-transform">
-                  <span>Apply to Prompt Console</span>
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform font-medium">
+                  <span>Apply to Prompt</span>
                   <ArrowRight className="w-3 h-3" />
                 </div>
 
@@ -312,11 +342,11 @@ export default function JewelleryPromptSuite({
                   <button
                     type="button"
                     onClick={(e) => handleCopy(preset, e)}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                     title="Copy full prompt text"
                   >
                     {isCopied ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
@@ -331,8 +361,8 @@ export default function JewelleryPromptSuite({
                     className={cn(
                       "px-2.5 py-1 rounded-lg text-[10px] font-heading font-bold flex items-center gap-1 transition-all",
                       isApplied
-                        ? "bg-emerald-500 text-white"
-                        : "bg-amber-500 hover:bg-amber-400 text-black shadow-xs"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-xs"
                     )}
                   >
                     {isApplied ? (

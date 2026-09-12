@@ -49,6 +49,7 @@ import {
   ShieldCheck,
   Info,
   Gem,
+  AtSign,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ import BrandKitModal from "@/components/brand/BrandKitModal";
 import BeforeAfterSlider from "@/components/ui/BeforeAfterSlider";
 import SocialRepurposerModal from "@/components/social/SocialRepurposerModal";
 import JewelleryPromptSuite from "@/components/studio/JewelleryPromptSuite";
+import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
 
 interface ModelOption {
   value: string;
@@ -275,6 +277,46 @@ export default function ImageStudioPage() {
     setRefImageUrl("");
   };
 
+  // @ Mention Autocomplete States for Vault Assets & Direct Upload
+  const [mentionMenuOpen, setMentionMenuOpen] = useState<boolean>(false);
+  const [mentionQuery, setMentionQuery] = useState<string>("");
+  const [mentionAnchor, setMentionAnchor] = useState<{ start: number; end: number } | null>(null);
+
+  const insertMentionTag = (tagWithAt: string) => {
+    const cleanTag = tagWithAt.startsWith("@") ? tagWithAt : `@${tagWithAt}`;
+    if (mentionAnchor && promptTextareaRef.current) {
+      const before = prompt.substring(0, mentionAnchor.start);
+      const after = prompt.substring(mentionAnchor.end);
+      const updated = `${before}${cleanTag} ${after}`;
+      setPrompt(updated);
+      setMentionMenuOpen(false);
+      setMentionAnchor(null);
+      setTimeout(() => {
+        if (promptTextareaRef.current) {
+          promptTextareaRef.current.focus();
+          const nextPos = before.length + cleanTag.length + 1;
+          promptTextareaRef.current.setSelectionRange(nextPos, nextPos);
+        }
+      }, 10);
+    } else {
+      setPrompt((prev) => (prev.trim() ? `${prev.trim()} ${cleanTag} ` : `${cleanTag} `));
+      setMentionMenuOpen(false);
+      setMentionAnchor(null);
+      if (promptTextareaRef.current) {
+        promptTextareaRef.current.focus();
+      }
+    }
+  };
+
+  const handleSelectMention = (item: MentionCandidate) => {
+    const alreadyInRefs = refImages.some((r) => r.url === item.url);
+    if (!alreadyInRefs) {
+      setRefImages((prev) => [...prev, { url: item.url, name: item.filename }]);
+      if (!refImageUrl) setRefImageUrl(item.url);
+    }
+    insertMentionTag(item.tag);
+  };
+
   // Image Precision Editor State
   const [editorImageFile, setEditorImageFile] = useState<File | null>(null);
   const [editorImageUrl, setEditorImageUrl] = useState<string>("");
@@ -326,8 +368,29 @@ export default function ImageStudioPage() {
   const [processingFaceRestore, setProcessingFaceRestore] = useState<boolean>(false);
   const [processingOutpaint, setProcessingOutpaint] = useState<boolean>(false);
   const [relightPreset, setRelightPreset] = useState<string>("golden_hour");
-  const [relightIntensity, setRelightIntensity] = useState<number>(1.0);
   const [outpaintAspect, setOutpaintAspect] = useState<string>("16:9");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("omnistudio_sidebar_collapsed") === "true";
+      } catch {}
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleCollapse = () => setIsSidebarCollapsed(true);
+    const handleExpand = () => setIsSidebarCollapsed(false);
+    const handleToggle = () => setIsSidebarCollapsed((prev) => !prev);
+    window.addEventListener("omnistudio:collapse-sidebar", handleCollapse);
+    window.addEventListener("omnistudio:expand-sidebar", handleExpand);
+    window.addEventListener("omnistudio:toggle-sidebar", handleToggle);
+    return () => {
+      window.removeEventListener("omnistudio:collapse-sidebar", handleCollapse);
+      window.removeEventListener("omnistudio:expand-sidebar", handleExpand);
+      window.removeEventListener("omnistudio:toggle-sidebar", handleToggle);
+    };
+  }, []);
 
   // Vault Picker Modal State
   const [vaultOpen, setVaultOpen] = useState(false);
@@ -3191,7 +3254,10 @@ export default function ImageStudioPage() {
       {promptDockCollapsed ? (
         <div
           onClick={() => setPromptDockCollapsed(false)}
-          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
+          className={cn(
+            "fixed bottom-6 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group",
+            isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
+          )}
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -3221,7 +3287,8 @@ export default function ImageStudioPage() {
           ref={dockRef}
           data-lenis-prevent="true"
           className={cn(
-            "fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock",
+            "fixed bottom-6 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock",
+            isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
             (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
           )}
         >
@@ -3247,12 +3314,12 @@ export default function ImageStudioPage() {
               Prompt Engineer:
             </span>
             {[
-              { label: "More Realistic", style: "more_realistic", icon: "📷" },
-              { label: "More Cinematic", style: "more_cinematic", icon: "🎬" },
-              { label: "More Luxury", style: "more_luxury", icon: "✨" },
-              { label: "More Fashion", style: "more_fashion", icon: "👗" },
-              { label: "More Commercial", style: "more_commercial", icon: "💎" },
-              { label: "More Viral", style: "more_viral", icon: "🔥" },
+              { label: "More Realistic", style: "more_realistic" },
+              { label: "More Cinematic", style: "more_cinematic" },
+              { label: "More Luxury", style: "more_luxury" },
+              { label: "More Fashion", style: "more_fashion" },
+              { label: "More Commercial", style: "more_commercial" },
+              { label: "More Viral", style: "more_viral" },
             ].map((btn) => (
               <button
                 key={btn.style}
@@ -3261,7 +3328,6 @@ export default function ImageStudioPage() {
                 disabled={enhancingPrompt}
                 className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 hover:bg-indigo-500/10 dark:bg-white/[0.05] dark:hover:bg-indigo-500/10 border border-zinc-200/80 dark:border-white/10 hover:border-indigo-500/40 text-zinc-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
               >
-                <span>{btn.icon}</span>
                 <span>{btn.label}</span>
               </button>
             ))}
@@ -3279,7 +3345,7 @@ export default function ImageStudioPage() {
                 title="Tap to toggle Brand Kit injection ON / OFF (Default: OFF)"
               >
                 <Palette className={cn("w-3 h-3 transition-colors", applyBrandKit ? "text-emerald-500" : "text-zinc-400")} />
-                <span>Brand Kit: {applyBrandKit ? "ON" : "OFF"}</span>
+                <span>Brand Kit</span>
                 <span
                   className={cn(
                     "w-1.5 h-1.5 rounded-full transition-all",
@@ -3301,28 +3367,115 @@ export default function ImageStudioPage() {
 
           {/* Row 1: Professional Studio Prompt Input Bar */}
           <div className={cn(
-            "relative flex items-start rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-1",
+            "relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-2.5 space-y-1.5",
             enhancingPrompt
               ? "border-violet-500/60 ring-2 ring-violet-500/30 shadow-[0_0_22px_rgba(139,92,246,0.25)] dark:bg-violet-950/15"
-              : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30"
+              : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
           )}>
-          <textarea
-            ref={promptTextareaRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                requestImageConfirm();
-              }
-            }}
-            placeholder={
-              studioMode === "text_to_image"
-                ? "Describe what you want to create (subject, scene, lighting, camera angle)..."
-                : "Describe modifications or style directives for reference image..."
-            }
-            className="w-full bg-transparent border-none px-3.5 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-16 min-h-[48px] max-h-36 leading-relaxed overflow-y-auto"
-          />
+            {/* Embedded Badged Labels for Tagged References (INSIDE PROMPT BOX) */}
+            {refImages.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-black/[0.06] dark:border-white/[0.06] w-full">
+                <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider mr-1">
+                  <AtSign className="w-3 h-3 text-emerald-500" />
+                  <span>Tagged ({refImages.length}):</span>
+                </div>
+                {refImages.map((img, idx) => {
+                  const tagName = (img.name || `ref_${idx + 1}`).replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-]/g, "_").toLowerCase();
+                  return (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-medium shadow-xs hover:bg-emerald-500/20 transition-all select-none animate-in fade-in zoom-in-95 duration-150"
+                    >
+                      <img
+                        src={getMediaUrl(img.url)}
+                        alt={img.name}
+                        className="w-5 h-5 rounded-full object-cover border border-emerald-500/40 shrink-0"
+                      />
+                      <span className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400">@{tagName}</span>
+                      <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
+                        IMG
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeRefImage(idx)}
+                        className="hover:text-rose-500 hover:bg-rose-500/10 rounded-full p-0.5 text-zinc-400 transition-colors cursor-pointer ml-0.5"
+                        title={`Remove @${tagName}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => multiRefFileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-400 hover:text-emerald-500 text-[10px] font-mono transition-colors cursor-pointer"
+                  title="Tag more reference images"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Tag More</span>
+                </button>
+              </div>
+            )}
+
+            <div className="relative w-full flex items-start">
+              {/* @ Mention Autocomplete Popover with Vault Assets & Direct Device Upload */}
+              <MentionReferencePopover
+                isOpen={mentionMenuOpen}
+                query={mentionQuery}
+                onClose={() => setMentionMenuOpen(false)}
+                onSelect={handleSelectMention}
+                onUploadClick={() => multiRefFileInputRef.current?.click()}
+                currentRefs={refImages.map((img, i) => ({
+                  id: `current_ref_${i}`,
+                  url: img.url,
+                  filename: img.name || `Ref ${i + 1}`,
+                  tag: (img.name || `ref_${i + 1}`).replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-]/g, "_").toLowerCase(),
+                  type: "image",
+                  badge: "CURRENT REF",
+                  source: "current",
+                }))}
+                isUploading={uploadingMultiRef}
+              />
+
+              <textarea
+                ref={promptTextareaRef}
+                value={prompt}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPrompt(val);
+
+                  const cursorPos = e.target.selectionStart;
+                  const textBefore = val.substring(0, cursorPos);
+                  const match = textBefore.match(/(?:^|\s)@([a-zA-Z0-9_\.\-]*)$/);
+
+                  if (match) {
+                    setMentionQuery(match[1].toLowerCase());
+                    setMentionMenuOpen(true);
+                    const startIdx = cursorPos - match[1].length - 1;
+                    setMentionAnchor({ start: startIdx, end: cursorPos });
+                  } else {
+                    setMentionMenuOpen(false);
+                    setMentionAnchor(null);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && mentionMenuOpen) {
+                    setMentionMenuOpen(false);
+                    return;
+                  }
+                  if (e.key === "Enter" && !e.shiftKey && !mentionMenuOpen) {
+                    e.preventDefault();
+                    requestImageConfirm();
+                  }
+                }}
+                placeholder={
+                  studioMode === "text_to_image"
+                    ? "Describe what you want to create (type @ to tag from Vault or upload)..."
+                    : "Describe modifications or style directives (type @ to tag from Vault or upload)..."
+                }
+                className="w-full bg-transparent border-none px-1 py-1 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-16 min-h-[44px] max-h-36 leading-relaxed overflow-y-auto"
+              />
 
           {/* Prompt Bar Actions */}
           <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 z-10">
@@ -3399,6 +3552,7 @@ export default function ImageStudioPage() {
             </button>
           </div>
         </div>
+      </div>
 
         {/* Negative Prompt Expandable Input */}
         {showNegativePrompt && (

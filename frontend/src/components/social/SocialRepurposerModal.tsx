@@ -87,7 +87,7 @@ export default function SocialRepurposerModal({
 
   const generateSocialCaption = () => {
     const base = prompt ? prompt.trim() : "Created with OmniStudio AI";
-    return `${base}\n\n✨ Made with OmniStudio AI Next-Gen Suite\n#OmniStudio #AIGeneration #CinematicAI #CreativeProduction #VisualContent`;
+    return `${base}\n\nMade with OmniStudio AI Next-Gen Suite\n#OmniStudio #AIGeneration #CinematicAI #CreativeProduction #VisualContent`;
   };
 
   const handleCopyCaption = () => {
