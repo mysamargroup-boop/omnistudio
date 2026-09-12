@@ -389,3 +389,54 @@ code, pre, kbd, .font-mono {
 .focus-ring:focus-visible {
   box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent);
 }
+
+/* Lightning Gradient Animated Border (Runs during active synthesis/generation) */
+@keyframes lightning-gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes lightning-electric-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.45), 0 0 24px rgba(6, 182, 212, 0.35), inset 0 0 8px rgba(139, 92, 246, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(16, 185, 129, 0.75), 0 0 44px rgba(6, 182, 212, 0.6), inset 0 0 14px rgba(236, 72, 153, 0.3);
+  }
+}
+
+.lightning-border-active {
+  position: relative !important;
+  animation: lightning-electric-glow 2s ease-in-out infinite !important;
+}
+
+.lightning-border-active::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2.5px;
+  background: linear-gradient(
+    90deg,
+    #10b981 0%,
+    #06b6d4 20%,
+    #3b82f6 40%,
+    #8b5cf6 60%,
+    #ec4899 80%,
+    #10b981 100%
+  );
+  background-size: 250% 250%;
+  animation: lightning-gradient-flow 2.2s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 25;
+}

@@ -1639,7 +1639,10 @@ function StudioContent() {
         <div
           ref={dockRef}
           data-lenis-prevent="true"
-          className="glass-dock fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#111114]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto"
+          className={cn(
+            "glass-dock fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[94%] max-w-4xl bg-white/95 dark:bg-[#111114]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-200 pointer-events-auto",
+            loading && "lightning-border-active ring-2 ring-emerald-500/40"
+          )}
         >
           {/* Header Bar with Minimize Button */}
           <div className="flex items-center justify-between pb-1 border-b border-black/[0.04] dark:border-white/[0.04]">

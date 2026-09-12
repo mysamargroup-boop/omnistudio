@@ -332,6 +332,13 @@ export default function DashboardPage() {
     } catch {}
   }, []);
 
+  // Close active card menu on click outside
+  useEffect(() => {
+    const handleDocClick = () => setActiveMenuKey(null);
+    window.addEventListener("click", handleDocClick);
+    return () => window.removeEventListener("click", handleDocClick);
+  }, []);
+
   const handleOpenMotionRig = (shotId?: string) => {
     const targetId = shotId || selectedShotId || "01";
     setMotionRigShotId(targetId);
@@ -1188,6 +1195,20 @@ export default function DashboardPage() {
                       {hasMedia ? "REAL MEDIA" : "VIRTUAL CAM"}
                     </div>
 
+                    {/* Motion Rig Quick Trigger */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenMotionRig(shot.id);
+                      }}
+                      className="absolute top-1.5 left-1.5 z-20 px-1.5 py-0.5 rounded bg-black/75 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 opacity-0 group-hover/media:opacity-100 transition-all cursor-pointer flex items-center gap-1 text-[9px] font-mono shadow-md"
+                      title={`Open 6-Axis Motion Rig for Shot ${shot.id}`}
+                    >
+                      <Compass className="w-3 h-3 text-emerald-400 group-hover:text-white" />
+                      <span>RIG</span>
+                    </button>
+
                     {/* Lightbox Quick View Icon */}
                     {shot.rawAsset && (
                       <button
@@ -1196,7 +1217,7 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           openAssetModal(shot.rawAsset);
                         }}
-                        className="absolute top-1.5 left-1.5 z-20 p-1 rounded bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/10 opacity-0 group-hover/media:opacity-100 transition-opacity cursor-pointer"
+                        className="absolute top-1.5 left-14 z-20 p-1 rounded bg-black/60 hover:bg-black/90 text-white/80 hover:text-white border border-white/10 opacity-0 group-hover/media:opacity-100 transition-opacity cursor-pointer"
                         title="Enlarge Keyframe"
                       >
                         <Maximize2 className="w-3 h-3" />
@@ -1478,12 +1499,17 @@ export default function DashboardPage() {
             {recentAssets.map((asset, idx) => {
               const isImg = asset.type === "images" || (asset.filename && /\.(png|jpe?g|webp)$/i.test(asset.filename));
               const isVid = asset.type === "videos" || asset.type === "final" || (asset.filename && /\.(mp4|webm|mov)$/i.test(asset.filename));
+              const isFav = favorites.has(asset.filename);
+              const isMenuOpen = activeMenuKey === asset.filename;
 
               return (
                 <div
                   key={idx}
                   onClick={() => openAssetModal(asset)}
-                  className="group rounded-xl border border-black/[0.08] dark:border-[#2A2A2D] overflow-hidden bg-white dark:bg-[#0E0E10] hover:border-black/[0.15] dark:hover:border-zinc-500 cursor-pointer transition-all flex flex-col shadow-xs"
+                  className={cn(
+                    "group rounded-xl border border-black/[0.08] dark:border-[#2A2A2D] bg-white dark:bg-[#0E0E10] hover:border-black/[0.15] dark:hover:border-zinc-500 cursor-pointer transition-all flex flex-col shadow-xs relative",
+                    isMenuOpen ? "overflow-visible z-40" : "overflow-hidden z-10"
+                  )}
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-100 dark:bg-[#161618]">
                     {isImg ? (
@@ -1506,13 +1532,146 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+                    {/* Media Type Badge */}
+                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 pointer-events-none">
                       <span className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md text-white border border-white/10">
                         {isImg ? "IMAGE" : "VIDEO"}
                       </span>
                     </div>
 
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20 flex flex-col items-center justify-center p-3 text-center gap-2">
+                    {/* Top Right Floating Capsule: Heart (Favorite) + Three-Dots (Options) */}
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-black/60 hover:bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-full border border-white/15 text-white transition-all shadow-md"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleFavorite(e, asset.filename)}
+                        className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                        title={isFav ? "Remove Favorite" : "Favorite"}
+                      >
+                        <Heart
+                          className={cn(
+                            "w-3.5 h-3.5 transition-colors",
+                            isFav ? "text-rose-500 fill-current" : "text-white/80 hover:text-white"
+                          )}
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuKey(isMenuOpen ? null : asset.filename);
+                        }}
+                        className={cn(
+                          "p-1 hover:scale-110 transition-transform cursor-pointer",
+                          isMenuOpen ? "text-white" : "text-white/80 hover:text-white"
+                        )}
+                        title="More Options"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Floating Context Menu */}
+                    {isMenuOpen && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-9 right-2 z-50 w-48 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-xl p-1.5 shadow-2xl text-xs font-sans space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuKey(null);
+                            openAssetModal(asset);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Inspect View</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            handleToggleFavorite(e, asset.filename);
+                            setActiveMenuKey(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left cursor-pointer"
+                        >
+                          <Heart className={cn("w-3.5 h-3.5", isFav ? "text-rose-500 fill-current" : "text-zinc-400")} />
+                          <span>{isFav ? "Unfavorite" : "Favorite"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuKey(null);
+                            router.push(`/video?image=${encodeURIComponent(asset.url)}`);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-cyan-400 transition-colors text-left cursor-pointer"
+                        >
+                          <Video className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Animate in Video</span>
+                        </button>
+
+                        {isImg && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuKey(null);
+                              router.push(`/image?input_image=${encodeURIComponent(asset.url)}`);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-emerald-400 transition-colors text-left cursor-pointer"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Edit in Image Studio</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setActiveMenuKey(null);
+                            try {
+                              await navigator.clipboard.writeText(getMediaUrl(asset.url));
+                            } catch {}
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Copy Link</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleDownloadCreation(e, asset.url, asset.filename)}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Download</span>
+                        </button>
+
+                        <div className="my-1 border-t border-white/10" />
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteCreation(asset, e)}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors text-left cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Move to Trash</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Hover Inspect Overlay */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20 flex flex-col items-center justify-center p-3 text-center gap-2 pointer-events-none">
                       <div className="w-8 h-8 rounded-full bg-white text-zinc-950 flex items-center justify-center shadow-lg">
                         {isVid ? <Play className="w-4 h-4 ml-0.5" /> : <Eye className="w-4 h-4" />}
                       </div>
@@ -1666,6 +1825,91 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 6-AXIS KINEMATICS MOTION RIG MODAL */}
+      {isMotionRigOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setIsMotionRigOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl bg-white dark:bg-[#0E0E12] border border-black/15 dark:border-[#2A2A32] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/10 dark:border-[#202028] bg-zinc-50 dark:bg-[#121217]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <Compass className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                    <span>6-Axis Camera Kinematics Rig</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px]">
+                      SHOT {motionRigShotId}
+                    </span>
+                  </h3>
+                  <p className="text-[10px] font-mono text-zinc-500">
+                    Interactive Pan, Tilt, Dolly, Crane & Optical Focal Kinematics
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMotionRigOpen(false)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Motion Rig Vector Pad Body */}
+            <div className="p-5 max-h-[72vh] overflow-y-auto">
+              <MotionRigVectorPad
+                config={motionRigConfig}
+                onChange={(cfg) => setMotionRigConfig(cfg)}
+              />
+            </div>
+
+            {/* Footer CTAs */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-black/10 dark:border-[#202028] bg-zinc-50 dark:bg-[#121217] font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => setMotionRigConfig(DEFAULT_MOTION_RIG)}
+                className="px-3 py-1.5 rounded-lg border border-black/10 dark:border-[#2A2A32] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                Reset Defaults
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleApplyRigToShot}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors cursor-pointer shadow-xs active:scale-95"
+                >
+                  Apply to Shot {motionRigShotId}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLaunchVideoWithRig()}
+                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
+                >
+                  <span>Launch Video Studio</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LANDSCAPE GENERATION CONFIRMATION MODAL */}
+      <GenerationConfirmModal
+        isOpen={isConfirmOpen}
+        details={confirmDetails}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmLaunch}
+      />
 
     </div>
   );

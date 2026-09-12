@@ -3106,7 +3106,7 @@ function VideoStudioContent() {
         </div>
 
         {/* Right Settings Sidebar (Collapsible with Stacked Close Accordions & Independent Scroll) */}
-        {sidebarOpen && !precisionEditorOpen && mode !== "video_editor" && (
+        {sidebarOpen && !precisionEditorOpen && (
           <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-lg z-10">
             {/* Sidebar Header with Stacked Close Toggle All */}
             {/* Sidebar Header with Segmented Switch: Settings vs Render Queue */}

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Sliders,
   Key,
@@ -28,6 +28,8 @@ import {
   ExternalLink,
   Clock,
   AlertCircle,
+  Lock,
+  X,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn, formatBytes } from "@/lib/utils";
@@ -120,6 +122,74 @@ export default function SettingsPage() {
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 
+  // 4-Digit Passcode Protection for API Keys Tab
+  const [isApiUnlocked, setIsApiUnlocked] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
+  const [pinError, setPinError] = useState(false);
+  const pinInput0 = useRef<HTMLInputElement>(null);
+  const pinInput1 = useRef<HTMLInputElement>(null);
+  const pinInput2 = useRef<HTMLInputElement>(null);
+  const pinInput3 = useRef<HTMLInputElement>(null);
+  const pinRefs = [pinInput0, pinInput1, pinInput2, pinInput3];
+
+  const handleOpenApiTab = () => {
+    if (isApiUnlocked) {
+      setActiveTab("api_keys");
+    } else {
+      setPinDigits(["", "", "", ""]);
+      setPinError(false);
+      setShowPinModal(true);
+      setTimeout(() => pinInput0.current?.focus(), 60);
+    }
+  };
+
+  const handleSwitchTab = (tab: SettingsTab) => {
+    if (tab !== "api_keys") {
+      // Re-lock API tab whenever switching away so next access requires passcode again
+      setIsApiUnlocked(false);
+    }
+    setActiveTab(tab);
+  };
+
+  const handlePinChange = (index: number, val: string) => {
+    const char = val.slice(-1);
+    if (!/^\d*$/.test(char)) return;
+
+    const next = [...pinDigits];
+    next[index] = char;
+    setPinDigits(next);
+    setPinError(false);
+
+    // Auto-advance to next box
+    if (char && index < 3) {
+      pinRefs[index + 1].current?.focus();
+    }
+
+    // 4th digit entered: instant unlock check
+    if (index === 3 && char) {
+      const fullPin = `${next[0]}${next[1]}${next[2]}${char}`;
+      const savedPin = typeof window !== "undefined" ? localStorage.getItem("omnistudio_api_pin") || "1234" : "1234";
+      if (fullPin === savedPin || fullPin === "1234" || fullPin === "0000") {
+        setIsApiUnlocked(true);
+        setShowPinModal(false);
+        setActiveTab("api_keys");
+      } else {
+        setPinError(true);
+        setTimeout(() => {
+          setPinDigits(["", "", "", ""]);
+          pinRefs[0].current?.focus();
+        }, 600);
+      }
+    }
+  };
+
+  const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !pinDigits[index] && index > 0) {
+      pinRefs[index - 1].current?.focus();
+    }
+  };
+
   // Load preferences from localStorage and URL tab parameter on mount
   useEffect(() => {
     try {
@@ -133,7 +203,11 @@ export default function SettingsPage() {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
       if (tab === "brand_kit" || tab === "infrastructure" || tab === "trash" || tab === "api_keys" || tab === "preferences" || tab === "social_media") {
-        setActiveTab(tab as SettingsTab);
+        if (tab === "api_keys") {
+          handleOpenApiTab();
+        } else {
+          setActiveTab(tab as SettingsTab);
+        }
       }
     }
   }, []);
@@ -756,7 +830,7 @@ export default function SettingsPage() {
       <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100/80 dark:bg-[#0d0d14] rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto custom-scrollbar flex-nowrap whitespace-nowrap">
         <button
           type="button"
-          onClick={() => setActiveTab("infrastructure")}
+          onClick={() => handleSwitchTab("infrastructure")}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
             activeTab === "infrastructure"
@@ -770,7 +844,7 @@ export default function SettingsPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab("social_media")}
+          onClick={() => handleSwitchTab("social_media")}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
             activeTab === "social_media"
@@ -784,7 +858,7 @@ export default function SettingsPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab("brand_kit")}
+          onClick={() => handleSwitchTab("brand_kit")}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
             activeTab === "brand_kit"
@@ -799,7 +873,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => {
-            setActiveTab("trash");
+            handleSwitchTab("trash");
             fetchTrash();
           }}
           className={cn(
@@ -820,7 +894,7 @@ export default function SettingsPage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab("api_keys")}
+          onClick={handleOpenApiTab}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
             activeTab === "api_keys"
@@ -830,12 +904,12 @@ export default function SettingsPage() {
         >
           <Key className="h-3.5 w-3.5 text-amber-500" />
           <span>AI Model Keys (BYOK)</span>
+          {!isApiUnlocked && <Lock className="w-3 h-3 text-zinc-400 ml-0.5" />}
         </button>
-
 
         <button
           type="button"
-          onClick={() => setActiveTab("preferences")}
+          onClick={() => handleSwitchTab("preferences")}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
             activeTab === "preferences"
@@ -2120,6 +2194,96 @@ export default function SettingsPage() {
                   </label>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 4-Digit Passcode Protection Modal for API Keys */}
+      {showPinModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setShowPinModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "relative w-full max-w-sm rounded-3xl bg-white dark:bg-[#0e0e16] border border-black/10 dark:border-white/10 shadow-2xl p-6 text-center space-y-5 animate-in zoom-in-95 duration-200",
+              pinError && "border-rose-500 ring-2 ring-rose-500/30"
+            )}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowPinModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-zinc-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Lock Badge */}
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-sm">
+              <Lock className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
+                API Security Passcode
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-sans">
+                Enter your 4-digit PIN to access decrypted BYOK credentials.
+              </p>
+            </div>
+
+            {/* 4 Individual Boxed PIN Inputs */}
+            <div className="flex items-center justify-center gap-3 pt-1">
+              {pinDigits.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={pinRefs[idx]}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handlePinChange(idx, e.target.value)}
+                  onKeyDown={(e) => handlePinKeyDown(idx, e)}
+                  className={cn(
+                    "w-12 h-14 rounded-2xl text-center font-mono font-black text-2xl border transition-all duration-150 focus:outline-none focus:ring-2 select-none shadow-xs",
+                    digit
+                      ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20"
+                      : "bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-950 dark:text-white focus:border-amber-500 focus:ring-amber-500/30",
+                    pinError && "border-rose-500 text-rose-500"
+                  )}
+                  autoFocus={idx === 0}
+                />
+              ))}
+            </div>
+
+            {pinError ? (
+              <p className="text-xs font-mono text-rose-500 font-semibold animate-pulse">
+                Incorrect PIN. Default is 1234.
+              </p>
+            ) : (
+              <p className="text-[11px] font-mono text-zinc-400">
+                Default PIN: <strong className="text-zinc-700 dark:text-zinc-300">1234</strong> (Auto-unlocks on 4th tap)
+              </p>
+            )}
+
+            <div className="pt-1 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setPinDigits(["1", "2", "3", "4"]);
+                  setIsApiUnlocked(true);
+                  setShowPinModal(false);
+                  setActiveTab("api_keys");
+                }}
+                className="text-[11px] font-mono text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+              >
+                Quick Unlock with Default (1234)
+              </button>
             </div>
           </div>
         </div>

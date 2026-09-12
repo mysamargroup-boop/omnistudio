@@ -52,6 +52,25 @@ function PublishStudioContent() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishSuccessMessage, setPublishSuccessMessage] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState(false);
+  const [captionPlatformTab, setCaptionPlatformTab] = useState<string>("master"); // "master" | "instagram" | any platform id
+
+  const updatePlatformCaption = (pid: string, newCaption: string) => {
+    const maxChars = PLATFORMS.find(p => p.id === pid)?.maxChars || 2200;
+    setAdaptedData(prev => {
+      const current = prev[pid] || {};
+      return {
+        ...prev,
+        [pid]: {
+          ...current,
+          caption: newCaption,
+          character_count: newCaption.length,
+          max_chars: maxChars,
+          hashtags: current.hashtags || ["#OmniStudio", "#AIGeneration"],
+          tone: current.tone || "Customized Platform Tone"
+        }
+      };
+    });
+  };
 
   // Media Staging & Vault Picker State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -637,11 +656,11 @@ function PublishStudioContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#07080a] text-zinc-900 dark:text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-[#07080a] text-zinc-900 dark:text-zinc-100 flex flex-col overflow-x-hidden max-w-full w-full">
       {/* Top Header Banner - Fixed / Sticky on Scroll with Unified Professional Icons */}
-      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#07080a]/95 backdrop-blur-xl sticky top-[56px] sm:top-[64px] z-30 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-row items-center justify-between gap-3 shadow-xs transition-all">
+      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#07080a]/95 backdrop-blur-xl sticky top-[56px] sm:top-[64px] z-30 px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 shadow-xs transition-all max-w-full overflow-hidden">
         {/* Single-line Brand + Badge + Status */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-nowrap overflow-x-auto no-scrollbar shrink-0">
+        <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
               <Share2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -658,24 +677,24 @@ function PublishStudioContent() {
           </span>
         </div>
 
-        {/* Action Pills / Mode Navigation - Unified Professional Palette */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-zinc-100 dark:bg-zinc-900/90 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
+        {/* Action Pills / Mode Navigation - Responsive & Touch Scrollable within Screen */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 px-1 bg-zinc-100 dark:bg-zinc-900/90 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0 max-w-full touch-pan-x scroll-smooth">
           <button
             onClick={() => setActiveTab("compose")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "compose"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
             <Send className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>1-Click Compose</span>
+            <span>Compose</span>
           </button>
           <button
             onClick={() => setActiveTab("calendar")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "calendar"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -687,43 +706,43 @@ function PublishStudioContent() {
           <button
             onClick={() => setActiveTab("ai_manager")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "ai_manager"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>AI Social Manager</span>
+            <span>AI Manager</span>
           </button>
           <button
             onClick={() => setActiveTab("creator_mode")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "creator_mode"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
             <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Creator Mode</span>
+            <span>Creator</span>
           </button>
           <button
             onClick={() => setActiveTab("repurpose")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "repurpose"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
             )}
           >
             <Repeat className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Repurposer</span>
+            <span>Repurpose</span>
           </button>
           <button
             onClick={() => setActiveTab("thumbnail")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "thumbnail"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -735,7 +754,7 @@ function PublishStudioContent() {
           <button
             onClick={() => setActiveTab("analytics")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "analytics"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -747,7 +766,7 @@ function PublishStudioContent() {
           <button
             onClick={() => setActiveTab("accounts")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
+              "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap",
               activeTab === "accounts"
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -1263,22 +1282,200 @@ function PublishStudioContent() {
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                      Master Creative Copy / Prompt
-                    </label>
-                    <span className="text-[11px] text-zinc-400">
-                      Write once — AI adapts it for all 15 platforms
-                    </span>
+                {/* Multi-Platform Caption Studio & Dedicated Instagram Caption */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    {/* Platform Caption Switcher Pills */}
+                    <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-xl text-xs border border-zinc-200/80 dark:border-zinc-700/80 overflow-x-auto no-scrollbar max-w-full">
+                      <button
+                        type="button"
+                        onClick={() => setCaptionPlatformTab("master")}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                          captionPlatformTab === "master"
+                            ? "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                            : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                        )}
+                      >
+                        <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span>Master Copy (All 15)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCaptionPlatformTab("instagram");
+                          setPreviewPlatform("instagram");
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                          captionPlatformTab === "instagram"
+                            ? "bg-gradient-to-r from-purple-600 to-rose-600 text-white font-bold shadow-xs"
+                            : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                        )}
+                      >
+                        <SocialIcon platform="instagram" size={13} monochrome={captionPlatformTab !== "instagram"} showBg={false} />
+                        <span>📸 Instagram Caption</span>
+                        {adaptedData["instagram"]?.caption && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        )}
+                      </button>
+
+                      {selectedPlatforms.filter(p => p !== "instagram").length > 0 && (
+                        <Dropdown
+                          size="sm"
+                          value={captionPlatformTab !== "master" && captionPlatformTab !== "instagram" ? captionPlatformTab : ""}
+                          placeholder="Other Channels..."
+                          onChange={(platId) => {
+                            setCaptionPlatformTab(platId);
+                            setPreviewPlatform(platId);
+                          }}
+                          options={selectedPlatforms
+                            .filter(p => p !== "instagram")
+                            .map(pid => {
+                              const plat = PLATFORMS.find(p => p.id === pid);
+                              return {
+                                value: pid,
+                                label: `${plat?.name || pid} Caption`,
+                                icon: <SocialIcon platform={pid} size={14} monochrome={true} showBg={false} />,
+                                badge: plat?.aspect
+                              };
+                            })}
+                          triggerClassName="py-1 min-w-[130px]"
+                        />
+                      )}
+                    </div>
+
+                    {/* Character Counter and Platform Limit */}
+                    <div className="flex items-center gap-2 text-[11px] shrink-0 font-mono">
+                      {captionPlatformTab === "instagram" ? (
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-md font-bold",
+                          (adaptedData["instagram"]?.caption ?? postContent ?? "").length > 2200
+                            ? "bg-rose-500/15 text-rose-500"
+                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        )}>
+                          Instagram: {(adaptedData["instagram"]?.caption ?? postContent ?? "").length} / 2200 chars
+                        </span>
+                      ) : captionPlatformTab === "master" ? (
+                        <span className="text-zinc-400 font-sans">
+                          {(postContent || "").length} chars • Syncs across all channels
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
+                          {PLATFORMS.find(p => p.id === captionPlatformTab)?.name}: {(adaptedData[captionPlatformTab]?.caption ?? postContent ?? "").length} / {PLATFORMS.find(p => p.id === captionPlatformTab)?.maxChars || 2000} chars
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <textarea
-                    rows={4}
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                    placeholder="Describe your visual concept, product details, key takeaways, and call to action..."
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
+
+                  {/* Dynamic Caption Input Area */}
+                  {captionPlatformTab === "master" ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          Master Post Copy & Universal Prompt
+                        </label>
+                        <span className="text-[11px] text-zinc-400">
+                          Base copy for all platforms (click <strong>📸 Instagram Caption</strong> above for Instagram-specific copy)
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={postContent}
+                        onChange={(e) => setPostContent(e.target.value)}
+                        placeholder="Describe your visual concept, product details, key takeaways, and call to action..."
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  ) : captionPlatformTab === "instagram" ? (
+                    <div className="space-y-2.5 p-3.5 rounded-xl border border-rose-500/30 bg-gradient-to-b from-rose-500/5 via-transparent to-transparent">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                          <SocialIcon platform="instagram" size={14} showBg={false} />
+                          <span>Dedicated Instagram Caption (Feed, Reels & Stories)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updatePlatformCaption("instagram", postContent)}
+                            className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer font-semibold whitespace-nowrap"
+                          >
+                            Copy from Master
+                          </button>
+                          {adaptedData["instagram"]?.caption && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAdaptedData(prev => {
+                                  const next = { ...prev };
+                                  delete next["instagram"];
+                                  return next;
+                                });
+                              }}
+                              className="text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer whitespace-nowrap"
+                            >
+                              Reset to Default
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <textarea
+                        rows={4}
+                        value={adaptedData["instagram"]?.caption ?? postContent}
+                        onChange={(e) => updatePlatformCaption("instagram", e.target.value)}
+                        placeholder="Write your custom Instagram caption, storytelling hook, call-to-action, and emojis..."
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-rose-500/40 dark:border-rose-500/30 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-rose-500"
+                      />
+
+                      {/* Quick Instagram Hashtags Generator Bar */}
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase font-mono mr-1">
+                          + Add Hashtags:
+                        </span>
+                        {["#reels", "#trending", "#viral", "#omnistudio", "#explorepage", "#aesthetic", "#instadaily", "#contentcreator"].map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              const current = adaptedData["instagram"]?.caption ?? postContent ?? "";
+                              const updated = current.includes(tag) ? current : `${current.trim()} ${tag}`.trim();
+                              updatePlatformCaption("instagram", updated);
+                            }}
+                            className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition cursor-pointer whitespace-nowrap"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Other Selected Custom Platform Caption */
+                    <div className="space-y-2 p-3.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/30">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                          <SocialIcon platform={captionPlatformTab} size={14} showBg={false} monochrome={true} />
+                          <span>Dedicated {PLATFORMS.find(p => p.id === captionPlatformTab)?.name || captionPlatformTab} Caption</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => updatePlatformCaption(captionPlatformTab, postContent)}
+                          className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer font-semibold whitespace-nowrap"
+                        >
+                          Copy from Master
+                        </button>
+                      </div>
+
+                      <textarea
+                        rows={4}
+                        value={adaptedData[captionPlatformTab]?.caption ?? postContent}
+                        onChange={(e) => updatePlatformCaption(captionPlatformTab, e.target.value)}
+                        placeholder={`Write custom caption for ${PLATFORMS.find(p => p.id === captionPlatformTab)?.name}...`}
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* AI Optimization Trigger */}
@@ -1521,7 +1718,7 @@ function PublishStudioContent() {
                 {/* 1. TIKTOK 9:16 VERTICAL SIMULATOR (COMPACT)                   */}
                 {/* ───────────────────────────────────────────────────────────── */}
                 {previewPlatform === "tiktok" && (
-                  <div className="relative w-full max-w-[240px] aspect-[9/16] max-h-[420px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
+                  <div className="relative w-full max-w-[260px] aspect-[9/16] max-h-[460px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
                     {/* Background Media */}
                     {mediaUrl ? (
                       mediaType === "video" ? (
@@ -1601,7 +1798,7 @@ function PublishStudioContent() {
                 {/* 2. YOUTUBE SHORTS 9:16 SIMULATOR (COMPACT)                    */}
                 {/* ───────────────────────────────────────────────────────────── */}
                 {previewPlatform === "youtube_shorts" && (
-                  <div className="relative w-full max-w-[240px] aspect-[9/16] max-h-[420px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
+                  <div className="relative w-full max-w-[260px] aspect-[9/16] max-h-[460px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
                     {/* Media */}
                     {mediaUrl ? (
                       mediaType === "video" ? (
@@ -1673,7 +1870,7 @@ function PublishStudioContent() {
                 {/* 3. X / TWITTER POST SIMULATOR (COMPACT)                       */}
                 {/* ───────────────────────────────────────────────────────────── */}
                 {previewPlatform === "twitter" && (
-                  <div className="w-full max-w-[320px] mx-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3 text-xs shadow-xl space-y-2.5">
+                  <div className="w-full max-w-[340px] mx-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black p-3 text-xs shadow-xl space-y-2.5">
                     {/* Tweet Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -1732,7 +1929,7 @@ function PublishStudioContent() {
                 {/* 4. LINKEDIN PROFESSIONAL FEED SIMULATOR (COMPACT)             */}
                 {/* ───────────────────────────────────────────────────────────── */}
                 {(previewPlatform === "linkedin_personal" || previewPlatform === "linkedin_company") && (
-                  <div className="w-full max-w-[320px] mx-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3 text-xs shadow-xl space-y-2.5">
+                  <div className="w-full max-w-[340px] mx-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3 text-xs shadow-xl space-y-2.5">
                     {/* LinkedIn Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -1798,25 +1995,25 @@ function PublishStudioContent() {
                 {/* 5. INSTAGRAM & DEFAULT FEED CARD SIMULATOR (COMPACT)          */}
                 {/* ───────────────────────────────────────────────────────────── */}
                 {previewPlatform !== "tiktok" && previewPlatform !== "youtube_shorts" && previewPlatform !== "twitter" && previewPlatform !== "linkedin_personal" && previewPlatform !== "linkedin_company" && (
-                  <div className="w-full max-w-[280px] mx-auto bg-white dark:bg-black rounded-2xl border border-zinc-300 dark:border-zinc-800 shadow-xl overflow-hidden text-xs">
+                  <div className="w-full max-w-[340px] mx-auto bg-white dark:bg-black rounded-2xl border border-zinc-300 dark:border-zinc-800 shadow-xl overflow-hidden text-xs">
                     {/* Header */}
                     <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-[1.5px] shrink-0">
-                          <div className="w-full h-full rounded-full bg-white dark:bg-black flex items-center justify-center font-bold text-[8px]">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-[1.5px] shrink-0">
+                          <div className="w-full h-full rounded-full bg-white dark:bg-black flex items-center justify-center font-bold text-[9px]">
                             OS
                           </div>
                         </div>
                         <div>
-                          <div className="font-bold text-[10px] leading-tight">omnistudio.ai</div>
-                          <div className="text-[8px] text-zinc-400">Sponsored • Studio</div>
+                          <div className="font-bold text-[11px] leading-tight">omnistudio.ai</div>
+                          <div className="text-[9px] text-zinc-400">Sponsored • Studio</div>
                         </div>
                       </div>
-                      <SocialIcon platform={previewPlatform} size={14} monochrome={true} showBg={false} className="shrink-0" />
+                      <SocialIcon platform={previewPlatform} size={16} monochrome={true} showBg={false} className="shrink-0" />
                     </div>
 
                     {/* Media Display */}
-                    <div className="aspect-square max-h-[200px] bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500 group">
+                    <div className="aspect-square w-full bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500 group">
                       {mediaUrl ? (
                         <>
                           {mediaType === "video" ? (
@@ -1883,8 +2080,18 @@ function PublishStudioContent() {
 
                     {/* Caption Body */}
                     <div className="p-2.5 pt-1.5 space-y-1 bg-white dark:bg-black">
-                      <div className="font-bold text-[10px] text-zinc-900 dark:text-zinc-100">
-                        Liked by creative_hub and 1,842 others
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-[10px] text-zinc-900 dark:text-zinc-100">
+                          Liked by creative_hub and 1,842 others
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCaptionPlatformTab("instagram")}
+                          className="text-[9px] text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold cursor-pointer shrink-0"
+                          title="Click to edit Instagram caption in composer"
+                        >
+                          <span>Edit Caption</span>
+                        </button>
                       </div>
                       <div className="text-zinc-800 dark:text-zinc-200 text-[11px] leading-relaxed max-h-20 overflow-y-auto pr-1 whitespace-pre-line">
                         <span className="font-bold mr-1.5 text-zinc-900 dark:text-white">omnistudio.ai</span>
@@ -1900,7 +2107,7 @@ function PublishStudioContent() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {/* Simulator Footer Details & 1-Click Copy                       */}
                 {/* ───────────────────────────────────────────────────────────── */}
-                <div className="w-full max-w-[320px] mx-auto space-y-2 mt-3">
+                <div className="w-full max-w-[340px] mx-auto space-y-2 mt-3">
                   <div className="flex items-center justify-between text-[11px] text-zinc-400 px-1">
                     <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate">
                       {activeAdapted.tone || "Algorithmic Adaptation"}

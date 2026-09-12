@@ -673,7 +673,10 @@ function PipelineContent() {
                       }
                     }}
                     placeholder="Describe your film's scene concepts, visual atmosphere, characters, camera pacing, and tone (Press Ctrl+Enter to Generate)..."
-                    className="w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed"
+                    className={cn(
+                      "w-full h-28 bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed",
+                      loading && "lightning-border-active ring-2 ring-emerald-500/40"
+                    )}
                   />
 
                   {/* Inspiration Presets */}

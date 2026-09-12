@@ -2,6 +2,7 @@ import uuid
 import asyncio
 import httpx
 import logging
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 from config import settings
 from services.ffmpeg_service import image_to_video_motion

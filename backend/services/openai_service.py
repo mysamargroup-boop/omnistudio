@@ -1,6 +1,7 @@
 import uuid
 import httpx
 import logging
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 from config import settings
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type

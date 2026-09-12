@@ -329,6 +329,7 @@ export const api = {
   getAllAssets: () => fetchApi<any>("/api/assets/all"),
   getVaultImages: () => fetchApi<any>("/api/assets/images"),
   getVaultVideos: () => fetchApi<any>("/api/assets/videos"),
+  getVaultAudios: () => fetchApi<any>("/api/assets/audio"),
   getTrashAssets: () => fetchApi<any>("/api/assets/trash"),
   deleteAsset: (type: string, filename: string, permanent: boolean = false, fromTrash: boolean = false) =>
     fetchApi<any>(`/api/assets/${type}/${encodeURIComponent(filename)}?permanent=${permanent}&from_trash=${fromTrash}`, { method: "DELETE" }),

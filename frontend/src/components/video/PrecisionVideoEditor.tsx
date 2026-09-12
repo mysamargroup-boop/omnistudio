@@ -13,6 +13,8 @@ import {
   Pause,
   RotateCcw,
   Sparkles,
+  Zap,
+  Cpu,
   Download,
   Loader2,
   CheckCircle2,
@@ -172,11 +174,28 @@ export default function PrecisionVideoEditor({
   const [chromaTolerance, setChromaTolerance] = useState(0.25);
   const [chromaBgUrl, setChromaBgUrl] = useState("");
 
-  // 7. Audio Mixing
+  // 7. Audio Mixing & AI Voiceover Studio
   const [muteOriginal, setMuteOriginal] = useState(false);
   const [originalVolume, setOriginalVolume] = useState(1.0);
   const [bgAudioUrl, setBgAudioUrl] = useState("");
-  const [bgAudioVolume, setBgAudioVolume] = useState(0.5);
+  const [bgAudioName, setBgAudioName] = useState("");
+  const [bgAudioVolume, setBgAudioVolume] = useState(0.8);
+  const [audioFadeIn, setAudioFadeIn] = useState(0.0);
+  const [audioFadeOut, setAudioFadeOut] = useState(0.0);
+  const [audioModeTab, setAudioModeTab] = useState<"track" | "ai_voice">("track");
+  const [audioPreviewPlaying, setAudioPreviewPlaying] = useState(false);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
+  // AI Voiceover Generator State
+  const [aiVoiceScript, setAiVoiceScript] = useState("");
+  const [aiVoiceProvider, setAiVoiceProvider] = useState<"edge" | "elevenlabs" | "openai">("edge");
+  const [aiVoiceModel, setAiVoiceModel] = useState("seed_audio");
+  const [aiVoiceId, setAiVoiceId] = useState("en-US-GuyNeural");
+  const [aiVoiceSpeed, setAiVoiceSpeed] = useState(1.0);
+  const [isGeneratingAiVoice, setIsGeneratingAiVoice] = useState(false);
+  const [generatedVoiceUrl, setGeneratedVoiceUrl] = useState("");
+  const [generatedVoiceName, setGeneratedVoiceName] = useState("");
+  const [autoMuteOnVoice, setAutoMuteOnVoice] = useState(true);
 
   // 8. Multi-Video Concat / Merge
   const [concatClips, setConcatClips] = useState<ConcatClip[]>([]);
@@ -207,7 +226,7 @@ export default function PrecisionVideoEditor({
 
   // 13. Asset Vault Picker State
   const [vaultPickerOpen, setVaultPickerOpen] = useState(false);
-  const [vaultTarget, setVaultTarget] = useState<"main" | "concat">("main");
+  const [vaultTarget, setVaultTarget] = useState<"main" | "concat" | "audio">("main");
   const [vaultVideos, setVaultVideos] = useState<any[]>([]);
   const [vaultLoading, setVaultLoading] = useState(false);
   const [vaultSearch, setVaultSearch] = useState("");
@@ -522,12 +541,50 @@ export default function PrecisionVideoEditor({
       const res = await api.uploadVideoWithProgress(file, (pct) => setUploadProgress(pct));
       if (res && res.url) {
         setBgAudioUrl(res.url);
+        setBgAudioName(file.name);
       }
     } catch (e: any) {
       alert("Failed to upload background audio: " + e.message);
     } finally {
       setUploadProgress(null);
     }
+  };
+
+  // AI Voiceover Generation Handler
+  const handleGenerateAiVoice = async () => {
+    if (!aiVoiceScript.trim()) {
+      alert("Please enter a voiceover script or dialogue first.");
+      return;
+    }
+    setIsGeneratingAiVoice(true);
+    try {
+      const res = await api.generateVoice({
+        text: aiVoiceScript.trim(),
+        provider: aiVoiceProvider,
+        voice_id: aiVoiceId,
+        model: aiVoiceModel,
+      });
+      if (res && res.success && res.audio_url) {
+        setGeneratedVoiceUrl(res.audio_url);
+        setGeneratedVoiceName(res.filename || `voice_${aiVoiceProvider}_${Date.now()}.mp3`);
+      } else {
+        alert(res?.error || "Failed to generate AI voice. Please check provider settings.");
+      }
+    } catch (e: any) {
+      alert("Error generating voice: " + (e?.message || "Unknown error"));
+    } finally {
+      setIsGeneratingAiVoice(false);
+    }
+  };
+
+  const handleAttachGeneratedVoice = () => {
+    if (!generatedVoiceUrl) return;
+    setBgAudioUrl(generatedVoiceUrl);
+    setBgAudioName(generatedVoiceName || "AI Voiceover");
+    if (autoMuteOnVoice) {
+      setMuteOriginal(true);
+    }
+    setAudioModeTab("track");
   };
 
   const handleWatermarkUpload = async (file: File) => {
@@ -569,23 +626,32 @@ export default function PrecisionVideoEditor({
   };
 
   // Asset Vault Picker Handlers
-  const openVaultPicker = async (target: "main" | "concat" = "main") => {
+  const openVaultPicker = async (target: "main" | "concat" | "audio" = "main") => {
     setVaultTarget(target);
     setVaultPickerOpen(true);
     setVaultLoading(true);
     try {
-      const res = await api.getVaultVideos();
-      const files = res?.files || (Array.isArray(res) ? res : []);
-      setVaultVideos(files);
+      if (target === "audio") {
+        const res = await api.getVaultAudios();
+        const files = res?.files || (Array.isArray(res) ? res : []);
+        setVaultVideos(files);
+      } else {
+        const res = await api.getVaultVideos();
+        const files = res?.files || (Array.isArray(res) ? res : []);
+        setVaultVideos(files);
+      }
     } catch (err) {
-      console.error("Failed to load vault videos:", err);
+      console.error("Failed to load vault assets:", err);
     } finally {
       setVaultLoading(false);
     }
   };
 
   const handleSelectFromVault = (asset: { filename: string; url: string }) => {
-    if (vaultTarget === "concat") {
+    if (vaultTarget === "audio") {
+      setBgAudioUrl(asset.url);
+      setBgAudioName(asset.filename);
+    } else if (vaultTarget === "concat") {
       setConcatClips((prev) => [
         ...prev,
         {
@@ -758,6 +824,8 @@ export default function PrecisionVideoEditor({
         original_audio_volume: originalVolume,
         bg_audio_path: bgAudioUrl || null,
         bg_audio_volume: bgAudioVolume,
+        audio_fade_in: audioFadeIn,
+        audio_fade_out: audioFadeOut,
         text_overlay: textOverlay.trim() || null,
         text_position: textPosition,
         watermark_path: watermarkUrl || null,
@@ -1851,65 +1919,570 @@ export default function PrecisionVideoEditor({
               </div>
             )}
 
-            {/* 8. AUDIO CONTROLS & BGM */}
+            {/* 8. AUDIO CONTROLS, SOUNDTRACK & AI VOICEOVER SUITE */}
             {activeTab === "audio" && (
-              <div className="space-y-3.5">
-                <span className="text-xs font-mono font-bold uppercase text-white flex items-center gap-1.5">
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                  Audio Mixing & BGM
-                </span>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800">
-                    <span className="text-xs font-mono text-zinc-300">Mute Original Video Audio</span>
-                    <button
-                      type="button"
-                      onClick={() => setMuteOriginal(!muteOriginal)}
-                      className={cn(
-                        "px-3 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer",
-                        muteOriginal ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-zinc-800 text-zinc-400"
-                      )}
-                    >
-                      {muteOriginal ? "Muted" : "Active"}
-                    </button>
-                  </div>
+              <div className="space-y-4">
+                {/* Mode Selector: Audio Track Mix vs AI Voiceover Generator */}
+                <div className="flex rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 text-xs font-mono">
+                  <button
+                    type="button"
+                    onClick={() => setAudioModeTab("track")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer font-semibold",
+                      audioModeTab === "track"
+                        ? "bg-zinc-800 text-emerald-400 border border-zinc-700/60 shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Audio Track & Mix</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAudioModeTab("ai_voice")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer font-semibold",
+                      audioModeTab === "ai_voice"
+                        ? "bg-zinc-800 text-teal-400 border border-zinc-700/60 shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <Mic className="w-3.5 h-3.5 text-teal-400" />
+                    <span>AI Voiceover Generator</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] bg-teal-500/20 text-teal-300 font-bold">AI</span>
+                  </button>
+                </div>
 
-                  <div>
-                    <input
-                      ref={bgAudioInputRef}
-                      type="file"
-                      accept="audio/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleBgAudioUpload(f);
-                        e.target.value = "";
-                      }}
-                    />
-                    <div
-                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(true); }}
-                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(false); }}
-                      onDrop={(e) => {
-                        e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(false);
-                        const f = e.dataTransfer.files?.[0];
-                        if (f && (f.type.startsWith("audio/") || f.name.endsWith(".mp3") || f.name.endsWith(".wav") || f.name.endsWith(".m4a") || f.name.endsWith(".aac"))) {
-                          handleBgAudioUpload(f);
-                        } else if (f) {
-                          alert("Please drop a valid audio file (MP3, WAV, M4A, AAC).");
-                        }
-                      }}
-                      onClick={() => bgAudioInputRef.current?.click()}
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer",
-                        isDraggingBgAudio
-                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-300 scale-[1.01]"
-                          : "border-zinc-800 bg-zinc-900 hover:border-zinc-700 text-zinc-300"
+                {/* TAB 1: AUDIO TRACK & MIX */}
+                {audioModeTab === "track" && (
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
+                    {/* Master Original Video Audio */}
+                    <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {muteOriginal ? (
+                            <VolumeX className="w-4 h-4 text-rose-400" />
+                          ) : (
+                            <Volume2 className="w-4 h-4 text-emerald-400" />
+                          )}
+                          <div>
+                            <span className="text-xs font-mono font-bold text-white block">Original Video Audio</span>
+                            <span className="text-[10px] font-mono text-zinc-400">
+                              {muteOriginal ? "Muted during export" : `Volume: ${Math.round(originalVolume * 100)}%`}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setMuteOriginal(!muteOriginal)}
+                          className={cn(
+                            "px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer",
+                            muteOriginal
+                              ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                              : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          )}
+                        >
+                          {muteOriginal ? "MUTED" : "ACTIVE"}
+                        </button>
+                      </div>
+
+                      {!muteOriginal && (
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                            <span>Original Gain Level</span>
+                            <span className="text-emerald-400">{Math.round(originalVolume * 100)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1.5"
+                            step="0.05"
+                            value={originalVolume}
+                            onChange={(e) => setOriginalVolume(parseFloat(e.target.value))}
+                            className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                          />
+                        </div>
                       )}
-                    >
-                      <Music className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{isDraggingBgAudio ? "Drop Audio Track Here" : (bgAudioUrl ? "Change Background Music" : "Upload / Drop Music (MP3, WAV)")}</span>
+                    </div>
+
+                    {/* Added Soundtrack / Voiceover Track */}
+                    <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                          <Music className="w-3.5 h-3.5 text-blue-400" />
+                          Added Audio / Soundtrack
+                        </span>
+                        {bgAudioUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBgAudioUrl("");
+                              setBgAudioName("");
+                              if (audioPreviewRef.current) audioPreviewRef.current.pause();
+                              setAudioPreviewPlaying(false);
+                            }}
+                            className="text-[10px] font-mono text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Remove
+                          </button>
+                        )}
+                      </div>
+
+                      {/* If track is loaded */}
+                      {bgAudioUrl ? (
+                        <div className="space-y-3">
+                          <div className="p-2.5 rounded-xl bg-blue-950/20 border border-blue-500/30 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!audioPreviewRef.current) return;
+                                  if (audioPreviewPlaying) {
+                                    audioPreviewRef.current.pause();
+                                    setAudioPreviewPlaying(false);
+                                  } else {
+                                    audioPreviewRef.current.play();
+                                    setAudioPreviewPlaying(true);
+                                  }
+                                }}
+                                className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 transition-all cursor-pointer shrink-0"
+                                title={audioPreviewPlaying ? "Pause preview" : "Play preview"}
+                              >
+                                {audioPreviewPlaying ? (
+                                  <Pause className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Play className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                              <div className="min-w-0">
+                                <p className="text-xs font-mono font-semibold text-blue-200 truncate" title={bgAudioName || bgAudioUrl}>
+                                  {bgAudioName || "Attached Audio Track"}
+                                </p>
+                                <span className="text-[10px] font-mono text-blue-400/80 block">Ready to mix on timeline</span>
+                              </div>
+                              <audio
+                                ref={audioPreviewRef}
+                                src={getMediaUrl(bgAudioUrl)}
+                                onEnded={() => setAudioPreviewPlaying(false)}
+                                className="hidden"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => openVaultPicker("audio")}
+                                className="px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono transition-colors cursor-pointer"
+                              >
+                                Vault
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => bgAudioInputRef.current?.click()}
+                                className="px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono transition-colors cursor-pointer"
+                              >
+                                Upload
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Added Track Volume Slider */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                              <span>Soundtrack Volume Gain</span>
+                              <span className="text-blue-400">{Math.round(bgAudioVolume * 100)}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1.5"
+                              step="0.05"
+                              value={bgAudioVolume}
+                              onChange={(e) => setBgAudioVolume(parseFloat(e.target.value))}
+                              className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                            />
+                          </div>
+
+                          {/* Audio Fade In & Fade Out Sliders */}
+                          <div className="grid grid-cols-2 gap-3 pt-1">
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                                <span>Fade In</span>
+                                <span className="text-blue-400">{audioFadeIn}s</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0"
+                                max="5.0"
+                                step="0.5"
+                                value={audioFadeIn}
+                                onChange={(e) => setAudioFadeIn(parseFloat(e.target.value))}
+                                className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                                <span>Fade Out</span>
+                                <span className="text-blue-400">{audioFadeOut}s</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0"
+                                max="5.0"
+                                step="0.5"
+                                value={audioFadeOut}
+                                onChange={(e) => setAudioFadeOut(parseFloat(e.target.value))}
+                                className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* No track loaded: show upload from PC and vault picker */
+                        <div className="space-y-2">
+                          <input
+                            ref={bgAudioInputRef}
+                            type="file"
+                            accept="audio/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleBgAudioUpload(f);
+                              e.target.value = "";
+                            }}
+                          />
+                          <div
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(true); }}
+                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(false); }}
+                            onDrop={(e) => {
+                              e.preventDefault(); e.stopPropagation(); setIsDraggingBgAudio(false);
+                              const f = e.dataTransfer.files?.[0];
+                              if (f && (f.type.startsWith("audio/") || f.name.endsWith(".mp3") || f.name.endsWith(".wav") || f.name.endsWith(".m4a") || f.name.endsWith(".aac"))) {
+                                handleBgAudioUpload(f);
+                              } else if (f) {
+                                alert("Please drop a valid audio file (MP3, WAV, M4A, AAC).");
+                              }
+                            }}
+                            onClick={() => bgAudioInputRef.current?.click()}
+                            className={cn(
+                              "w-full flex flex-col items-center justify-center gap-1.5 py-4 px-3 rounded-xl border border-dashed text-xs font-mono transition-all cursor-pointer",
+                              isDraggingBgAudio
+                                ? "border-blue-400 bg-blue-500/20 text-blue-300 scale-[1.01]"
+                                : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:bg-zinc-900 text-zinc-300"
+                            )}
+                          >
+                            <Upload className="w-5 h-5 text-blue-400" />
+                            <span className="font-semibold text-white">
+                              {isDraggingBgAudio ? "Drop Audio Track Here" : "Upload Audio from PC (MP3, WAV, AAC)"}
+                            </span>
+                            <span className="text-[10px] text-zinc-500">Drag & drop or click to browse local files</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openVaultPicker("audio")}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Select from Asset Vault</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAudioModeTab("ai_voice")}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal-950/30 hover:bg-teal-900/40 border border-teal-500/30 text-xs font-mono text-teal-300 hover:text-teal-200 transition-colors cursor-pointer"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                              <span>Generate by AI</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* TAB 2: AI VOICEOVER GENERATOR */}
+                {audioModeTab === "ai_voice" && (
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                          <Mic className="w-3.5 h-3.5 text-teal-400" />
+                          AI Voiceover & Dialogue Engine
+                        </span>
+                        <p className="text-[10px] font-mono text-zinc-400 mt-0.5">
+                          Synthesize realistic speech with multiple neural models & attach directly to video
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-[10px] font-mono">
+                        {aiVoiceProvider === "edge" ? "FREE ACTIVE" : "PRO ENGINE"}
+                      </span>
+                    </div>
+
+                    {/* Script Prompt Input */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                        <span>Voiceover Script / Dialogue</span>
+                        <div className="flex items-center gap-2">
+                          <span>{aiVoiceScript.length} chars</span>
+                          <span className="text-teal-400">
+                            ~{Math.max(1, Math.round(aiVoiceScript.split(/\s+/).filter(Boolean).length / 2.5))}s duration
+                          </span>
+                        </div>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={aiVoiceScript}
+                        onChange={(e) => setAiVoiceScript(e.target.value)}
+                        placeholder="Type narration or dialogue script... (e.g. 'In the heart of the neon city, memories are the only currency that matters.')"
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-xs font-mono text-white placeholder-zinc-500 focus:outline-hidden focus:border-teal-500 transition-colors"
+                      />
+
+                      {/* Quick starter script chips */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
+                        {[
+                          { label: "Cinematic", text: "In a world sculpted by shadows, one final spark will ignite the revolution." },
+                          { label: "Product Ad", text: "Engineered for pure precision. Designed to transcend the ordinary." },
+                          { label: "Viral Hook", text: "Wait until you see what happens next. This completely changed everything." },
+                          { label: "Documentary", text: "Centuries of untouched history, preserved in absolute silence beneath the surface." }
+                        ].map((chip) => (
+                          <button
+                            key={chip.label}
+                            type="button"
+                            onClick={() => setAiVoiceScript(chip.text)}
+                            className="px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-teal-500/40 text-[10px] font-mono text-zinc-400 hover:text-teal-300 transition-colors whitespace-nowrap cursor-pointer"
+                          >
+                            + {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Provider Selection */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono text-zinc-400 uppercase">1. Select AI Engine / Provider</label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: "edge", label: "Edge Neural", sub: "100% Free", icon: Zap, color: "text-emerald-400" },
+                          { id: "elevenlabs", label: "ElevenLabs", sub: "Pro Expressive", icon: Sparkles, color: "text-amber-400" },
+                          { id: "openai", label: "OpenAI TTS", sub: "Studio HD", icon: Cpu, color: "text-blue-400" },
+                        ].map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              const newProv = p.id as "edge" | "elevenlabs" | "openai";
+                              setAiVoiceProvider(newProv);
+                              if (newProv === "edge") {
+                                setAiVoiceModel("seed_audio");
+                                setAiVoiceId("en-US-GuyNeural");
+                              } else if (newProv === "elevenlabs") {
+                                setAiVoiceModel("eleven_v3");
+                                setAiVoiceId("pNInz6obpgDQGcFmaJgB");
+                              } else {
+                                setAiVoiceModel("tts-1-hd");
+                                setAiVoiceId("alloy");
+                              }
+                            }}
+                            className={cn(
+                              "p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-0.5",
+                              aiVoiceProvider === p.id
+                                ? "bg-zinc-850 border-teal-500/60 ring-1 ring-teal-500/30"
+                                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={cn("text-xs font-mono font-bold", aiVoiceProvider === p.id ? "text-teal-300" : "text-zinc-200")}>
+                                {p.label}
+                              </span>
+                              <p.icon className={cn("w-3 h-3", p.color)} />
+                            </div>
+                            <span className="text-[9px] font-mono text-zinc-500">{p.sub}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Model & Voice Configuration */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Model Selector */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-mono text-zinc-400 uppercase">2. AI Model</label>
+                        <select
+                          value={aiVoiceModel}
+                          onChange={(e) => setAiVoiceModel(e.target.value)}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-hidden focus:border-teal-500"
+                        >
+                          {aiVoiceProvider === "edge" && (
+                            <>
+                              <option value="seed_audio">Seed Audio 1.0 (HD Neural)</option>
+                              <option value="minimax">MiniMax Speech 2.8 HD</option>
+                              <option value="qwen_audio">Qwen Audio 3.0</option>
+                              <option value="edge_standard">Edge Neural Standard</option>
+                            </>
+                          )}
+                          {aiVoiceProvider === "elevenlabs" && (
+                            <>
+                              <option value="eleven_v3">Eleven v3 Multilingual</option>
+                              <option value="eleven_turbo">Eleven Turbo v2.5 (Fast)</option>
+                              <option value="eleven_multilingual_v2">Eleven Multilingual v2</option>
+                            </>
+                          )}
+                          {aiVoiceProvider === "openai" && (
+                            <>
+                              <option value="tts-1-hd">TTS-1-HD (Studio High Definition)</option>
+                              <option value="tts-1">TTS-1 (Standard Fast)</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      {/* Voice Persona Selector */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-mono text-zinc-400 uppercase">3. Voice Persona</label>
+                        <select
+                          value={aiVoiceId}
+                          onChange={(e) => setAiVoiceId(e.target.value)}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-hidden focus:border-teal-500"
+                        >
+                          {aiVoiceProvider === "edge" && (
+                            <>
+                              <option value="en-US-GuyNeural">Guy (Male - Deep & Narrative)</option>
+                              <option value="en-US-JennyNeural">Jenny (Female - Expressive & Warm)</option>
+                              <option value="en-US-ChristopherNeural">Christopher (Male - Authoritative)</option>
+                              <option value="en-US-AriaNeural">Aria (Female - Crisp Professional)</option>
+                              <option value="en-GB-SoniaNeural">Sonia (British Female - Elegant)</option>
+                              <option value="en-GB-RyanNeural">Ryan (British Male - Dynamic)</option>
+                              <option value="hi-IN-MadhurNeural">Madhur (Hindi Male - Studio)</option>
+                              <option value="hi-IN-SwaraNeural">Swara (Hindi Female - Clear)</option>
+                            </>
+                          )}
+                          {aiVoiceProvider === "elevenlabs" && (
+                            <>
+                              <option value="pNInz6obpgDQGcFmaJgB">Adam (Deep Cinema & Narrative)</option>
+                              <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Calm Professional)</option>
+                              <option value="ErXwobaYiN019PkySvjV">Antoni (Smooth Storyteller)</option>
+                              <option value="EXAVITQu4vr4xnSDxMaL">Bella (Soft & Intimate)</option>
+                              <option value="TxGEqnHWrfWFTfGW9XjX">Josh (Young & Energetic)</option>
+                            </>
+                          )}
+                          {aiVoiceProvider === "openai" && (
+                            <>
+                              <option value="alloy">Alloy (Balanced & Neutral)</option>
+                              <option value="echo">Echo (Warm & Dynamic)</option>
+                              <option value="fable">Fable (British & Expressive)</option>
+                              <option value="onyx">Onyx (Deep Cinema)</option>
+                              <option value="nova">Nova (Bright & Energetic)</option>
+                              <option value="shimmer">Shimmer (Gentle & Smooth)</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Pacing Speed & Auto-mute option */}
+                    <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-zinc-400">Pacing:</span>
+                        {[0.8, 1.0, 1.25].map((spd) => (
+                          <button
+                            key={spd}
+                            type="button"
+                            onClick={() => setAiVoiceSpeed(spd)}
+                            className={cn(
+                              "px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer",
+                              aiVoiceSpeed === spd ? "bg-teal-500/20 text-teal-300 border border-teal-500/40" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                            )}
+                          >
+                            {spd}x
+                          </button>
+                        ))}
+                      </div>
+
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] text-zinc-300">
+                        <input
+                          type="checkbox"
+                          checked={autoMuteOnVoice}
+                          onChange={(e) => setAutoMuteOnVoice(e.target.checked)}
+                          className="rounded border-zinc-700 bg-zinc-800 text-teal-500 focus:ring-0 cursor-pointer"
+                        />
+                        <span>Auto-mute video audio</span>
+                      </label>
+                    </div>
+
+                    {/* Generate Voice Button */}
+                    <button
+                      type="button"
+                      onClick={handleGenerateAiVoice}
+                      disabled={isGeneratingAiVoice || !aiVoiceScript.trim()}
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer shadow-md",
+                        isGeneratingAiVoice || !aiVoiceScript.trim()
+                          ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                          : "bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 hover:from-teal-400 hover:to-emerald-500 text-black shadow-teal-500/20 active:scale-[0.99]"
+                      )}
+                    >
+                      {isGeneratingAiVoice ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Synthesizing Neural Voiceover...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span>Generate Voice with AI ({aiVoiceProvider.toUpperCase()})</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Generated Voiceover Result Card */}
+                    {generatedVoiceUrl && (
+                      <div className="p-3 rounded-xl bg-teal-950/30 border border-teal-500/40 space-y-2.5 animate-in fade-in">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-teal-400" />
+                            <span className="text-xs font-mono font-bold text-white">Voiceover Audio Generated</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-teal-400 px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20">
+                            Ready to Attach
+                          </span>
+                        </div>
+
+                        {/* Inline Audio Preview Player */}
+                        <div className="flex items-center gap-2 bg-zinc-900/80 p-2 rounded-lg border border-zinc-800">
+                          <audio
+                            controls
+                            src={getMediaUrl(generatedVoiceUrl)}
+                            className="w-full h-8 accent-teal-400"
+                          />
+                        </div>
+
+                        {/* Attach to Video Track CTA */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleAttachGeneratedVoice}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-mono font-bold text-xs transition-all cursor-pointer shadow-md active:scale-95"
+                          >
+                            <Music className="w-3.5 h-3.5" />
+                            <span>1-Click Attach to Video Track</span>
+                          </button>
+                          <a
+                            href={getMediaUrl(generatedVoiceUrl)}
+                            download={generatedVoiceName || "voiceover.mp3"}
+                            className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                            title="Download MP3"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2430,12 +3003,14 @@ export default function PrecisionVideoEditor({
                   <h3 className="text-sm font-heading font-bold text-white flex items-center gap-2">
                     Select from Asset Vault
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      {vaultTarget === "concat" ? "Concat Track" : "Master Track"}
+                      {vaultTarget === "concat" ? "Concat Track" : vaultTarget === "audio" ? "Audio Track" : "Master Track"}
                     </span>
                   </h3>
                   <p className="text-[11px] font-mono text-zinc-400">
                     {vaultTarget === "concat"
                       ? "Pick a video clip from your vault to append into the merge sequence"
+                      : vaultTarget === "audio"
+                      ? "Choose any soundtrack or generated AI voiceover from your vault"
                       : "Choose any generated or saved video to load directly into the precision timeline"}
                   </p>
                 </div>
@@ -2455,7 +3030,7 @@ export default function PrecisionVideoEditor({
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Search vault videos by name..."
+                  placeholder={vaultTarget === "audio" ? "Search vault audios by name..." : "Search vault videos by name..."}
                   value={vaultSearch}
                   onChange={(e) => setVaultSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-mono text-white placeholder-zinc-500 focus:outline-hidden focus:border-emerald-500"
@@ -2463,19 +3038,21 @@ export default function PrecisionVideoEditor({
               </div>
             </div>
 
-            {/* Video Cards Grid */}
+            {/* Video & Audio Cards Grid */}
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1">
               {vaultLoading ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2.5 text-zinc-400 text-xs font-mono">
                   <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-                  <span>Scanning Asset Vault for video files...</span>
+                  <span>{vaultTarget === "audio" ? "Scanning Asset Vault for audio files..." : "Scanning Asset Vault for video files..."}</span>
                 </div>
               ) : filteredVaultVideos.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 text-center text-zinc-500 text-xs font-mono">
-                  <Film className="w-10 h-10 text-zinc-700 mb-1" />
-                  <p className="font-semibold text-zinc-400">No matching video assets found</p>
+                  {vaultTarget === "audio" ? <Music className="w-10 h-10 text-zinc-700 mb-1" /> : <Film className="w-10 h-10 text-zinc-700 mb-1" />}
+                  <p className="font-semibold text-zinc-400">
+                    {vaultTarget === "audio" ? "No matching audio tracks found in vault" : "No matching video assets found"}
+                  </p>
                   <p className="text-[10px] text-zinc-600 max-w-xs">
-                    Try another search term or upload a video file directly from your device.
+                    {vaultTarget === "audio" ? "Upload an audio file from PC or generate one with AI Voiceover Studio." : "Try another search term or upload a video file directly from your device."}
                   </p>
                 </div>
               ) : (
@@ -2486,25 +3063,45 @@ export default function PrecisionVideoEditor({
                       onClick={() => handleSelectFromVault(item)}
                       className="group cursor-pointer rounded-xl border border-zinc-800 hover:border-emerald-500/60 bg-zinc-900/50 hover:bg-zinc-850 p-2.5 transition-all flex flex-col gap-2 hover:shadow-xl hover:shadow-emerald-500/5"
                     >
-                      <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center border border-zinc-800/80 group-hover:border-emerald-500/40 transition-colors">
-                        <video
-                          src={getMediaUrl(item.url)}
-                          className="w-full h-full object-cover"
-                          preload="metadata"
-                          muted
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-mono font-bold shadow-md active:scale-95 transition-transform">
-                            {vaultTarget === "concat" ? "+ Append Clip" : "Load into Timeline"}
-                          </span>
+                      {vaultTarget === "audio" ? (
+                        <div className="aspect-video bg-gradient-to-br from-zinc-950 via-zinc-900 to-blue-950/40 rounded-lg overflow-hidden relative flex flex-col items-center justify-center p-3 border border-zinc-800/80 group-hover:border-blue-500/40 transition-colors">
+                          <Music className="w-8 h-8 text-blue-400 mb-1 group-hover:scale-110 transition-transform" />
+                          <div className="flex items-center gap-0.5 opacity-60 w-3/4 justify-center">
+                            {Array.from({ length: 16 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className="w-1 bg-blue-400 rounded-full"
+                                style={{ height: `${8 + Math.abs(Math.sin(i * 0.6)) * 18}px` }}
+                              />
+                            ))}
+                          </div>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-mono font-bold shadow-md active:scale-95 transition-transform">
+                              Select Audio Track
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center border border-zinc-800/80 group-hover:border-emerald-500/40 transition-colors">
+                          <video
+                            src={getMediaUrl(item.url)}
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            muted
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-mono font-bold shadow-md active:scale-95 transition-transform">
+                              {vaultTarget === "concat" ? "+ Append Clip" : "Load into Timeline"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="text-xs font-mono text-zinc-200 truncate font-semibold group-hover:text-emerald-300 transition-colors" title={item.filename}>
                           {item.filename}
                         </p>
                         <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 mt-0.5">
-                          <span>{item.size_mb ? `${item.size_mb} MB` : (item.size_bytes ? `${Math.round(item.size_bytes / 1024)} KB` : "Video")}</span>
+                          <span>{item.size_mb ? `${item.size_mb} MB` : (item.size_bytes ? `${Math.round(item.size_bytes / 1024)} KB` : (vaultTarget === "audio" ? "Audio Track" : "Video"))}</span>
                           <span className="text-emerald-400 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">1-Click Load →</span>
                         </div>
                       </div>
