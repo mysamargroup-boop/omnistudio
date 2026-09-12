@@ -386,6 +386,17 @@ export default function ImageStudioPage() {
       }
     };
   }, []);
+
+  // Pre-fill prompt from URL query params (e.g. when 'Reuse Prompt' is clicked in Vault)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlPrompt = params.get("prompt");
+      if (urlPrompt && urlPrompt.trim()) {
+        setPrompt(urlPrompt.trim());
+      }
+    }
+  }, []);
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -631,6 +642,7 @@ export default function ImageStudioPage() {
         setProgress(100);
         setStageTitle("CANVAS DIFFUSION COMPLETE");
         setStatusMessage("Visual canvas synthesized successfully!");
+        setPromptDockCollapsed(true);
         setTelemetryLogs((prev) => [
           ...prev,
           {
@@ -701,6 +713,7 @@ export default function ImageStudioPage() {
         setProgress(100);
         setStageTitle("VARIATIONS COMPLETE");
         setStatusMessage(`Successfully generated ${data.total_generated || data.variations?.length || batchSize} variations!`);
+        setPromptDockCollapsed(true);
       }
     } catch (e: any) {
       setVariationsResult({ success: false, error: e.message });
@@ -1067,121 +1080,184 @@ export default function ImageStudioPage() {
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-72 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
-      {/* Top Bar: Studio Mode Tabs & Guide Trigger */}
-      <div className="flex items-center justify-between gap-4 pb-4 border-b border-black/[0.06] dark:border-white/[0.06] px-4 pt-4">
-        <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
-          <button
-            type="button"
-            onClick={() => setStudioMode("text_to_image")}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
-              studioMode === "text_to_image"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
-            )}
-          >
-            <ImageIcon className="w-3.5 h-3.5" />
-            <span>Text to Image</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setStudioMode("image_variations")}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
-              studioMode === "image_variations"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
-            )}
-          >
-            <Grid className="w-3.5 h-3.5" />
-            <span>Image Variations</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setStudioMode("image_editor")}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
-              studioMode === "image_editor"
-                ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
-            )}
-          >
-            <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Image Editor</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
-              STUDIO
-            </span>
-          </button>
-        </div>
+      {/* Top Bar: Studio Mode Tabs & Guide Trigger (Sticky in Image Editor) */}
+      <div className={cn(
+        "transition-all",
+        studioMode === "image_editor"
+          ? "sticky top-14 sm:top-16 z-30 bg-[#fafafa]/95 dark:bg-[#06060a]/95 backdrop-blur-md shadow-xs border-b border-black/[0.08] dark:border-white/[0.08]"
+          : "border-b border-black/[0.06] dark:border-white/[0.06]"
+      )}>
+        {/* Row 1: Studio Mode Tabs & Action Buttons */}
+        <div className="flex items-center justify-between gap-4 py-3 px-4 w-full">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => setStudioMode("text_to_image")}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+                studioMode === "text_to_image"
+                  ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+              )}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>Text to Image</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStudioMode("image_variations")}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+                studioMode === "image_variations"
+                  ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+              )}
+            >
+              <Grid className="w-3.5 h-3.5" />
+              <span>Image Variations</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStudioMode("image_editor")}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
+                studioMode === "image_editor"
+                  ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 font-bold shadow-sm border border-violet-200 dark:border-violet-500/20"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
+              )}
+            >
+              <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Image Editor</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                STUDIO
+              </span>
+            </button>
+          </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick Image Upload Button */}
-          <input
-            ref={quickUploadInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleEditorImageUpload(f);
-              e.target.value = "";
-            }}
-            disabled={uploadingEditorImage}
-          />
-          <button
-            type="button"
-            onClick={() => quickUploadInputRef.current?.click()}
-            disabled={uploadingEditorImage}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-          >
-            {uploadingEditorImage ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                <span>Uploading {editorUploadProgress}%</span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Upload Image</span>
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={openVaultPicker}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-violet-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
-            title="Pick from Vault"
-          >
-            <FolderArchive className="w-3.5 h-3.5 text-violet-500" />
-            <span>From Vault</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setReferenceDrawerOpen((prev) => !prev)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
-              referenceDrawerOpen || refImages.length > 0
-                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold"
-                : "bg-white dark:bg-[#0d0d14] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
-            )}
-          >
-            <ImagePlus className="w-3.5 h-3.5 text-emerald-500" />
-            <span>References {refImages.length > 0 ? `(${refImages.length})` : ""}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setHowItWorksOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-            <span>Studio Guide</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Image Upload Button */}
+            <input
+              ref={quickUploadInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleEditorImageUpload(f);
+                e.target.value = "";
+              }}
+              disabled={uploadingEditorImage}
+            />
+            <button
+              type="button"
+              onClick={() => quickUploadInputRef.current?.click()}
+              disabled={uploadingEditorImage}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+            >
+              {uploadingEditorImage ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                  <span>Uploading {editorUploadProgress}%</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Upload Image</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={openVaultPicker}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-violet-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              title="Pick from Vault"
+            >
+              <FolderArchive className="w-3.5 h-3.5 text-violet-500" />
+              <span>From Vault</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setReferenceDrawerOpen((prev) => !prev)}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-mono transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs",
+                referenceDrawerOpen || refImages.length > 0
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold"
+                  : "bg-white dark:bg-[#0d0d14] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
+              )}
+            >
+              <ImagePlus className="w-3.5 h-3.5 text-emerald-500" />
+              <span>References {refImages.length > 0 ? `(${refImages.length})` : ""}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setHowItWorksOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+              <span>Studio Guide</span>
+            </button>
 
-          <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
-            <span>ACTIVE: {activeModel.label}</span>
+            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+              <span>ACTIVE: {activeModel.label}</span>
+            </div>
           </div>
         </div>
+
+        {/* Row 2: Precision Image Studio & Color Lab Toolbar (Shown in image_editor mode) */}
+        {studioMode === "image_editor" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 py-2 px-4 border-t border-black/[0.04] dark:border-white/[0.04] w-full bg-white/50 dark:bg-black/25">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-emerald-500" />
+              <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
+                Precision Image Studio & Color Lab
+              </h2>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold">
+                LIVE REAL-TIME PREVIEW
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                ref={editorFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleEditorImageUpload(f);
+                  e.target.value = "";
+                }}
+                disabled={uploadingEditorImage}
+              />
+              <button
+                type="button"
+                onClick={() => editorFileInputRef.current?.click()}
+                disabled={uploadingEditorImage}
+                className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              >
+                {uploadingEditorImage ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                    <span>{editorUploadProgress}%</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload New</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={openVaultPicker}
+                className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              >
+                <FolderArchive className="w-3.5 h-3.5 text-violet-400" />
+                <span>Pick from Vault</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Center Canvas Viewport */}
@@ -1306,10 +1382,10 @@ export default function ImageStudioPage() {
                       setSocialMediaUrl(currentDisplayImage.url);
                       setSocialModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-mono border border-pink-500/30 backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
                     title="1-Click Multi-Platform Social Media Repurposer"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
+                    <Share2 className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Socials</span>
                   </button>
 
@@ -1481,58 +1557,6 @@ export default function ImageStudioPage() {
         {/* State E: Image Precision Editor & Color Lab */}
         {studioMode === "image_editor" && (
           <div className="w-full max-w-[1650px] mx-auto space-y-6 animate-in fade-in duration-200">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-emerald-500" />
-                <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-zinc-950 dark:text-white">
-                  Precision Image Studio & Color Lab
-                </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold">
-                  LIVE REAL-TIME PREVIEW
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  ref={editorFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleEditorImageUpload(f);
-                    e.target.value = "";
-                  }}
-                  disabled={uploadingEditorImage}
-                />
-                <button
-                  type="button"
-                  onClick={() => editorFileInputRef.current?.click()}
-                  disabled={uploadingEditorImage}
-                  className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  {uploadingEditorImage ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                      <span>{editorUploadProgress}%</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload New</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={openVaultPicker}
-                  className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <FolderArchive className="w-3.5 h-3.5 text-violet-400" />
-                  <span>Pick from Vault</span>
-                </button>
-              </div>
-            </div>
-
             {editorImageUrl ? (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Image Live Viewport & Canvas */}
@@ -1562,67 +1586,76 @@ export default function ImageStudioPage() {
                         setSocialMediaUrl(editorImageUrl);
                         setSocialModalOpen(true);
                       }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-105"
+                      title="1-Click Multi-Platform Social Media Repurposer"
                     >
-                      <Share2 className="w-3.5 h-3.5" />
+                      <Share2 className="w-3.5 h-3.5 text-emerald-500" />
                       <span>Social Repurpose</span>
                     </button>
                   </div>
 
-                  {/* Aspect Ratio Canvas Container */}
-                  <div
-                    className={cn(
-                      "relative rounded-2xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] bg-black/95 shadow-xl flex items-center justify-center transition-all duration-300 mx-auto w-full",
-                      getAspectRatioClass(editorCropRatio)
-                    )}
-                  >
-                    {showBeforeAfter && originalEditorImageUrl ? (
-                      <BeforeAfterSlider
-                        beforeSrc={getMediaUrl(originalEditorImageUrl)}
-                        afterSrc={getMediaUrl(editorImageUrl)}
-                        beforeLabel="Original"
-                        afterLabel="AI Edited"
-                        className="w-full h-full min-h-[380px]"
-                      />
-                    ) : (
-                      <img
-                        src={getMediaUrl(editorImageUrl)}
-                        alt="Editor Preview"
-                        style={{
-                          filter: computeLiveFilterStyle(),
-                        }}
-                        className={cn(
-                          "transition-all duration-150",
-                          editorCropRatio !== "original" ? "w-full h-full object-cover" : "max-h-[500px] w-auto object-contain mx-auto"
-                        )}
-                      />
-                    )}
+                  {/* Aspect Ratio Canvas Container (Tightly fits the image's actual size) */}
+                  <div className="flex justify-center items-center w-full min-h-[300px]">
+                    <div
+                      className={cn(
+                        "relative rounded-2xl overflow-hidden border border-black/[0.12] dark:border-white/[0.14] bg-zinc-950 shadow-2xl transition-all duration-300 flex items-center justify-center",
+                        editorCropRatio === "original"
+                          ? "w-fit max-w-full"
+                          : cn("w-full max-w-2xl", getAspectRatioClass(editorCropRatio))
+                      )}
+                    >
+                      {showBeforeAfter && originalEditorImageUrl ? (
+                        <BeforeAfterSlider
+                          beforeSrc={getMediaUrl(originalEditorImageUrl)}
+                          afterSrc={getMediaUrl(editorImageUrl)}
+                          beforeLabel="Original"
+                          afterLabel="AI Edited"
+                          className="max-h-[58vh] sm:max-h-[66vh] max-w-full w-auto"
+                        />
+                      ) : (
+                        <div className="relative inline-flex items-center justify-center max-w-full">
+                          <img
+                            src={getMediaUrl(editorImageUrl)}
+                            alt="Editor Preview"
+                            style={{
+                              filter: computeLiveFilterStyle(),
+                            }}
+                            className={cn(
+                              "block transition-all duration-150 select-none",
+                              editorCropRatio !== "original"
+                                ? "w-full h-full object-cover"
+                                : "max-h-[58vh] sm:max-h-[66vh] max-w-full w-auto h-auto object-contain"
+                            )}
+                          />
 
-                    {/* Live Text Overlay on Canvas */}
-                    {editorTextOverlay.trim() && (
-                      <div
-                        className={cn(
-                          "absolute left-0 right-0 px-6 text-center font-bold tracking-wide pointer-events-none select-none",
-                          editorTextPosition === "top" && "top-6",
-                          editorTextPosition === "center" && "top-1/2 -translate-y-1/2",
-                          editorTextPosition === "bottom" && "bottom-6"
-                        )}
-                        style={{
-                          color: editorTextColor,
-                          fontSize: `${Math.max(14, Math.min(52, editorTextSize))}px`,
-                          textShadow: "0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8)",
-                        }}
-                      >
-                        {editorTextOverlay}
-                      </div>
-                    )}
+                          {/* Live Text Overlay on Canvas */}
+                          {editorTextOverlay.trim() && (
+                            <div
+                              className={cn(
+                                "absolute left-0 right-0 px-4 text-center font-bold tracking-wide pointer-events-none select-none",
+                                editorTextPosition === "top" && "top-4",
+                                editorTextPosition === "center" && "top-1/2 -translate-y-1/2",
+                                editorTextPosition === "bottom" && "bottom-4"
+                              )}
+                              style={{
+                                color: editorTextColor,
+                                fontSize: `${Math.max(12, Math.min(48, editorTextSize))}px`,
+                                textShadow: "0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8)",
+                              }}
+                            >
+                              {editorTextOverlay}
+                            </div>
+                          )}
 
-                    {/* Live Status Overlay Badge */}
-                    <div className="absolute top-3 left-3 text-[10px] font-mono px-2.5 py-1 rounded-lg bg-black/80 text-white backdrop-blur-md border border-white/10 flex items-center gap-2 shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>{getAspectRatioLabel(editorCropRatio)}</span>
-                      {editorFilter !== "none" && <span className="opacity-75">• {editorFilter.toUpperCase()}</span>}
-                      {editorCurvePreset !== "linear" && <span className="opacity-75">• {editorCurvePreset.toUpperCase()}</span>}
+                          {/* Live Status Overlay Badge */}
+                          <div className="absolute top-2.5 left-2.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/75 text-white backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm pointer-events-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>{getAspectRatioLabel(editorCropRatio)}</span>
+                            {editorFilter !== "none" && <span className="opacity-75">• {editorFilter.toUpperCase()}</span>}
+                            {editorCurvePreset !== "linear" && <span className="opacity-75">• {editorCurvePreset.toUpperCase()}</span>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -3038,23 +3071,26 @@ export default function ImageStudioPage() {
         <div
           ref={dockRef}
           data-lenis-prevent="true"
-          className="fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock"
-        >
-          {studioMode === "image_editor" && (
-            <div className="flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
-              <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider">
-                Diffusion Prompt & Model Dock
-              </span>
-              <button
-                type="button"
-                onClick={() => setPromptDockCollapsed(true)}
-                className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white cursor-pointer transition-colors px-2 py-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
-              >
-                <span>Collapse for full workspace</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
-            </div>
+          className={cn(
+            "fixed bottom-6 left-0 lg:left-64 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock",
+            (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
           )}
+        >
+          <div className="flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
+            <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
+              {(loading || loadingVariations) && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
+              <span>{loading || loadingVariations ? "Active Diffusion Synthesis in Progress..." : studioMode === "image_editor" ? "Precision Image Studio Canvas" : studioMode === "image_variations" ? "Image Variations Studio" : "Diffusion Prompt & Model Dock"}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setPromptDockCollapsed(true)}
+              className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white cursor-pointer transition-colors px-2 py-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+              title="Collapse Prompt Bar to view full canvas"
+            >
+              <span>Collapse Bar</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
           {/* Prompt Engineer 6 Quick-Modifier Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
             <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-1 shrink-0 font-bold">

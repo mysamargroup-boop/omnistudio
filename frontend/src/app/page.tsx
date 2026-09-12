@@ -46,11 +46,16 @@ import {
   Scissors,
   Volume2,
   Clapperboard,
-  Wand2
+  Wand2,
+  MoreVertical,
+  Heart,
+  Trash2,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatBytes } from "@/lib/utils";
 import LazyImage from "@/components/ui/LazyImage";
+import MotionRigVectorPad, { MotionRigConfig, DEFAULT_MOTION_RIG } from "@/components/video/MotionRigVectorPad";
+import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 
 interface StudioCard {
   href: string;
@@ -231,13 +236,6 @@ const STORYBOARD_FALLBACK = [
   }
 ];
 
-function formatBytes(bytes?: number) {
-  if (!bytes || bytes === 0) return "—";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -310,6 +308,124 @@ export default function DashboardPage() {
   });
   const [customLenses, setCustomLenses] = useState<Record<string, string>>({});
   const [customMotions, setCustomMotions] = useState<Record<string, string>>({});
+
+  // Motion Rig Interactive Modal States
+  const [isMotionRigOpen, setIsMotionRigOpen] = useState(false);
+  const [motionRigShotId, setMotionRigShotId] = useState("01");
+  const [motionRigConfig, setMotionRigConfig] = useState<MotionRigConfig>(DEFAULT_MOTION_RIG);
+  const [shotRigConfigs, setShotRigConfigs] = useState<Record<string, MotionRigConfig>>({});
+
+  // Recent Studio Creations Context Menu & Favorites
+  const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // Generation Confirm Modal & Execution States
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmDetails, setConfirmDetails] = useState<GenerationConfirmDetails | null>(null);
+  const [isExecutingShot, setIsExecutingShot] = useState(false);
+  const [seedCopied, setSeedCopied] = useState(false);
+
+  useEffect(() => {
+    try {
+      const fav = localStorage.getItem("omnistudio_favorites");
+      if (fav) setFavorites(new Set(JSON.parse(fav)));
+    } catch {}
+  }, []);
+
+  const handleOpenMotionRig = (shotId?: string) => {
+    const targetId = shotId || selectedShotId || "01";
+    setMotionRigShotId(targetId);
+    setMotionRigConfig(shotRigConfigs[targetId] || DEFAULT_MOTION_RIG);
+    setIsMotionRigOpen(true);
+  };
+
+  const handleApplyRigToShot = () => {
+    setShotRigConfigs((prev) => ({ ...prev, [motionRigShotId]: motionRigConfig }));
+    const motionStr = `Orbit ${motionRigConfig.orbitX > 0 ? "+" : ""}${motionRigConfig.orbitX.toFixed(1)}° • Crane ${motionRigConfig.craneElevation.toFixed(1)}m • Push ${motionRigConfig.pushSpeed.toFixed(1)}m/s`;
+    setCustomMotions((prev) => ({ ...prev, [motionRigShotId]: motionStr }));
+    setCustomLenses((prev) => ({ ...prev, [motionRigShotId]: motionRigConfig.focalLens }));
+    setIsMotionRigOpen(false);
+  };
+
+  const handleLaunchVideoWithRig = (shot?: any) => {
+    const lensParam = encodeURIComponent(motionRigConfig.focalLens);
+    const motionParam = encodeURIComponent(`Orbit ${motionRigConfig.orbitX.toFixed(1)}deg, Crane ${motionRigConfig.craneElevation.toFixed(1)}m, Push ${motionRigConfig.pushSpeed.toFixed(1)}m/s`);
+    const imgParam = shot?.url ? `&image=${encodeURIComponent(shot.url)}` : "";
+    setIsMotionRigOpen(false);
+    router.push(`/video?mode=text_to_video&camera_motion=${motionParam}&lens=${lensParam}${imgParam}`);
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent, filename: string) => {
+    e.stopPropagation();
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(filename)) next.delete(filename);
+      else next.add(filename);
+      try {
+        localStorage.setItem("omnistudio_favorites", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleDeleteCreation = async (asset: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!asset || !asset.filename) return;
+    if (!confirm(`Move "${asset.filename}" to Trash Bin?`)) return;
+    try {
+      await api.deleteAsset(asset.filename, asset.category || asset.type || "images");
+      setRecentAssets((prev) => prev.filter((a) => a.filename !== asset.filename));
+      setActiveMenuKey(null);
+    } catch (err: any) {
+      alert(`Delete failed: ${err?.message || "Unknown error"}`);
+    }
+  };
+
+  const handleDownloadCreation = (e: React.MouseEvent, url: string, filename: string) => {
+    e.stopPropagation();
+    setActiveMenuKey(null);
+    const link = document.createElement("a");
+    link.href = getMediaUrl(url);
+    link.download = filename || "creation";
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePromptExecute = () => {
+    const promptText = prompt.trim() || PROMPT_SUGGESTIONS[0];
+    const fullPrompt = activeTokens.length > 0 ? `${promptText}, ${activeTokens.join(", ")}` : promptText;
+
+    setConfirmDetails({
+      serviceType: "video",
+      modelName: "Higgsfield Cinema v2.5 Pro (Direct Master)",
+      provider: "Hostinger Cloud Compute",
+      prompt: fullPrompt,
+      specs: {
+        aspectRatio,
+        seed,
+        fps: "24.00 SMPTE",
+        tokens: `${tokenMetrics.total}/75`,
+        colorSpace: "DCI-P3 D65",
+      },
+      costUsd: 0,
+      costInr: 0,
+      isFree: true,
+      isKeyConfigured: true,
+    });
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmLaunch = () => {
+    setIsConfirmOpen(false);
+    setIsExecutingShot(true);
+    const promptText = prompt.trim() || PROMPT_SUGGESTIONS[0];
+    const fullPrompt = activeTokens.length > 0 ? `${promptText}, ${activeTokens.join(", ")}` : promptText;
+    setTimeout(() => {
+      router.push(`/video?prompt=${encodeURIComponent(fullPrompt)}&ratio=${encodeURIComponent(aspectRatio)}&seed=${seed}`);
+    }, 500);
+  };
 
   // Play sequence simulation
   useEffect(() => {
@@ -407,6 +523,14 @@ export default function DashboardPage() {
 
   const handleRandomizeSeed = () => {
     setSeed(Math.floor(100000000000 + Math.random() * 900000000000).toString());
+  };
+
+  const handleCopySeed = async () => {
+    try {
+      await navigator.clipboard.writeText(seed);
+      setSeedCopied(true);
+      setTimeout(() => setSeedCopied(false), 2000);
+    } catch {}
   };
 
   const handleAddCustomToken = () => {
@@ -510,9 +634,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* HERO COMMAND CENTER: POSITIVE PROMPT MATRIX & DIRECTOR RIG CONTROLS */}
       {/* HERO COMMAND CENTER: POSITIVE PROMPT MATRIX & DIRECTOR RIG CONTROLS (Cinematic Gradient Border) */}
-      <section className="relative rounded-3xl p-[1.5px] bg-gradient-to-r from-emerald-500/50 via-cyan-500/40 to-violet-500/50 shadow-2xl shadow-emerald-500/10 group">
+      <section className={cn(
+        "relative rounded-3xl p-[1.5px] bg-gradient-to-r from-emerald-500/50 via-cyan-500/40 to-violet-500/50 shadow-2xl shadow-emerald-500/10 group transition-all duration-300",
+        isExecutingShot && "lightning-border-active ring-2 ring-emerald-500/40"
+      )}>
         {/* Inner Dark Glass Director Deck */}
         <div className="relative rounded-[23px] bg-white/95 dark:bg-[#0c0c14]/95 backdrop-blur-2xl p-5 sm:p-6 space-y-5 overflow-hidden">
           {/* Subtle Viewfinder Optical Reticle Brackets */}
@@ -563,10 +689,28 @@ export default function DashboardPage() {
 
               <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">•</span>
 
-              {/* Interactive Seed Box */}
+              {/* Interactive Seed Box with Copy & Edit */}
               <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-[#13131a] px-2.5 py-1 rounded-lg border border-black/[0.06] dark:border-[#2A2A35]">
-                <span className="text-zinc-500">SEED:</span>
-                <span className="text-zinc-800 dark:text-zinc-200 font-mono font-semibold">{seed}</span>
+                <span className="text-zinc-500 font-bold">SEED:</span>
+                <input
+                  type="text"
+                  value={seed}
+                  onChange={(e) => setSeed(e.target.value.replace(/\D/g, ""))}
+                  className="w-24 bg-transparent text-zinc-800 dark:text-zinc-200 font-mono font-semibold text-[10px] focus:outline-none focus:ring-1 focus:ring-emerald-500/40 rounded px-1"
+                  title="Click to edit custom seed"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopySeed}
+                  className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+                  title="Copy Seed Number"
+                >
+                  {seedCopied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-200" />
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={handleRandomizeSeed}
@@ -623,15 +767,24 @@ export default function DashboardPage() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleLaunchPrompt(prompt);
+            handlePromptExecute();
           }}
           className="space-y-4"
         >
           {/* Main Input Matrix Area */}
-          <div className="relative rounded-xl border border-black/[0.08] dark:border-[#2A2A2D] bg-zinc-50/80 dark:bg-[#0E0E10] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all p-3">
+          <div className={cn(
+            "relative rounded-xl border border-black/[0.08] dark:border-[#2A2A2D] bg-zinc-50/80 dark:bg-[#0E0E10] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all p-3",
+            isExecutingShot && "lightning-border-active ring-2 ring-emerald-500/40"
+          )}>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handlePromptExecute();
+                }
+              }}
               placeholder="Describe any cinematic sequence, actor choreography, camera optics, or visual diffusion prompt... (e.g. 35mm anamorphic, neon reflections, rain drenched asphalt, cyberpunk operative)"
               rows={3}
               className="w-full bg-transparent text-sm sm:text-base text-zinc-900 dark:text-[#F7F7F6] placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
@@ -762,21 +915,25 @@ export default function DashboardPage() {
 
             {/* Rig Shortcut & High-Visibility Primary Execute CTA */}
             <div className="flex items-center gap-2 ml-auto">
-              <Link
-                href="/video"
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1C1B1C] dark:hover:bg-[#252528] border border-black/[0.08] dark:border-[#2A2A2D] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={() => handleOpenMotionRig()}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1C1B1C] dark:hover:bg-[#252528] border border-black/[0.08] dark:border-[#2A2A2D] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-colors cursor-pointer active:scale-95"
               >
                 <Compass className="w-3.5 h-3.5 text-emerald-500" />
                 <span>6-Axis Kinematics Rig</span>
-              </Link>
+              </button>
 
               <button
-                type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 hover:from-black hover:to-zinc-900 text-white dark:from-white dark:via-zinc-100 dark:to-zinc-200 dark:hover:from-white dark:hover:to-white dark:text-zinc-950 font-mono font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md ring-1 ring-emerald-500/30 hover:shadow-emerald-500/10 active:scale-95"
+                type="button"
+                onClick={handlePromptExecute}
+                className="group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 hover:from-black hover:to-zinc-900 text-white dark:from-white dark:via-zinc-100 dark:to-zinc-200 dark:hover:from-white dark:hover:to-white dark:text-zinc-950 font-mono font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md ring-1 ring-emerald-500/30 hover:shadow-emerald-500/10 active:scale-95"
               >
                 <Film className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
                 <span>Execute Shot</span>
-                <span className="hidden sm:inline text-[10px] opacity-70 border-l border-white/20 dark:border-black/20 pl-1.5">[⌘ ↵]</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-md bg-white/10 dark:bg-black/10 border border-white/20 dark:border-black/20 text-emerald-400 dark:text-emerald-600 group-hover:translate-x-0.5 group-hover:border-emerald-500/50 transition-all shadow-xs">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
               </button>
             </div>
           </div>
@@ -1131,13 +1288,15 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                <Link
-                  href="/video"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold transition-all shadow-xs shrink-0"
+                <button
+                  type="button"
+                  onClick={() => handleOpenMotionRig(activeShot.id)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
+                  title={`Open 6-Axis Kinematics Rig for Shot ${activeShot.id}`}
                 >
                   <Camera className="w-3.5 h-3.5" />
                   <span>DIRECT IN MOTION RIG</span>
-                </Link>
+                </button>
               </div>
             </div>
           );

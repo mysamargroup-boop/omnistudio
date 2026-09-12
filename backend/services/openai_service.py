@@ -30,7 +30,8 @@ async def generate_openai_image(
     model: str = "gpt-image-1-mini",
     size: str = "1024x1024",
     quality: str = "standard",
-    style: str = "vivid"
+    style: str = "vivid",
+    filename_hint: Optional[str] = None
 ) -> dict:
     """Generate image via OpenAI Image API (GPT-image-1-mini / GPT-image-1 / DALL-E 3) and save to local vault"""
     if not settings.OPENAI_API_KEY:
@@ -88,7 +89,8 @@ async def generate_openai_image(
         if not response:
             raise last_error or Exception("No compatible OpenAI image model found.")
         
-        filename = f"openai_{uuid.uuid4().hex[:8]}.png"
+        from services.prompt_utils import generate_image_filename
+        filename = generate_image_filename(filename_hint or prompt, ext=".png")
         local_path = settings.IMAGES_PATH / filename
         
         # Handle Base64 output (GPT Image family) or URL (DALL-E)

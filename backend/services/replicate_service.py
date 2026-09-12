@@ -69,10 +69,12 @@ async def generate_video_from_image(
 async def generate_flux_image(
     prompt: str,
     aspect_ratio: str = "16:9",
-    model: str = "flux-schnell"
+    model: str = "flux-schnell",
+    filename_hint: Optional[str] = None
 ) -> dict:
     """Generate image via Black Forest Labs Flux model (Replicate) or fallback"""
-    filename = f"flux_{uuid.uuid4().hex[:8]}.png"
+    from services.prompt_utils import generate_image_filename
+    filename = generate_image_filename(filename_hint or prompt, ext=".png")
     local_path = settings.IMAGES_PATH / filename
     
     if not settings.REPLICATE_API_TOKEN:

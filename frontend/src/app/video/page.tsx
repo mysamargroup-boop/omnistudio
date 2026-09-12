@@ -230,6 +230,7 @@ function VideoStudioContent() {
 
   // Mode Selection
   const [mode, setMode] = useState<VideoMode>("first_frame");
+  const [videoDockCollapsed, setVideoDockCollapsed] = useState(false);
 
   // Frames State
   const [startImage, setStartImage] = useState(searchParams?.get("image") || "");
@@ -1518,7 +1519,7 @@ function VideoStudioContent() {
         ) : (
           <>
         {/* Left Workspace / Canvas */}
-        <div className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 pb-80 custom-scrollbar relative min-h-0">
+        <div className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 pb-[540px] sm:pb-[620px] custom-scrollbar relative min-h-0">
           <div className="max-w-4xl w-full mx-auto space-y-6">
             {/* 1. Progress Telemetry */}
             {loading && (
@@ -1837,8 +1838,8 @@ function VideoStudioContent() {
                         </div>
 
                         {startImage ? (
-                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
-                            <img src={getMediaUrl(startImage)} alt="Start Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5 pointer-events-auto">
+                            <img src={getMediaUrl(startImage)} alt="Start Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all select-none pointer-events-none" />
                             <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 text-[9px] font-mono font-bold text-emerald-400 border border-emerald-500/30">
                               01 START
                             </div>
@@ -1894,8 +1895,8 @@ function VideoStudioContent() {
                         </div>
 
                         {endImage ? (
-                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5">
-                            <img src={getMediaUrl(endImage)} alt="End Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all" />
+                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-zinc-950/90 group shadow-xs flex items-center justify-center p-1.5 pointer-events-auto">
+                            <img src={getMediaUrl(endImage)} alt="End Frame" className="max-h-[240px] w-auto max-w-full object-contain rounded-lg mx-auto shadow-sm transition-all select-none pointer-events-none" />
                             <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 text-[9px] font-mono font-bold text-teal-400 border border-teal-500/30">
                               02 END
                             </div>
@@ -2166,21 +2167,74 @@ function VideoStudioContent() {
           )}
 
           {/* Prompt Control Bar Fixed at Bottom of Canvas (Auto-shrinks when sidebar is open) */}
-          <div
-            ref={dockRef}
-            className={cn(
-              "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center",
-              sidebarOpen
-                ? "left-0 lg:left-64 right-0 lg:right-96"
-                : "left-0 lg:left-64 right-0"
-            )}
-          >
+          {videoDockCollapsed ? (
             <div
+              onClick={() => setVideoDockCollapsed(false)}
               className={cn(
-                "w-full p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3 transition-all duration-300",
-                sidebarOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-5xl xl:max-w-6xl"
+                "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center cursor-pointer",
+                sidebarOpen
+                  ? "left-0 lg:left-64 right-0 lg:right-96"
+                  : "left-0 lg:left-64 right-0"
               )}
             >
+              <div className="w-full max-w-xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-2xl px-5 py-2.5 flex items-center justify-between hover:border-emerald-500/50 transition-all group">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={cn("w-2 h-2 rounded-full", loading ? "bg-emerald-400 animate-ping" : "bg-emerald-500 animate-pulse")} />
+                  <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
+                    {loading ? "Video Rendering in Progress..." : "Video Studio Dock Collapsed"}
+                  </span>
+                  {prompt.trim() && (
+                    <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
+                      • &ldquo;{prompt.slice(0, 35)}...&rdquo;
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setVideoDockCollapsed(false);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors cursor-pointer"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span>Expand Controls</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              ref={dockRef}
+              className={cn(
+                "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center",
+                sidebarOpen
+                  ? "left-0 lg:left-64 right-0 lg:right-96"
+                  : "left-0 lg:left-64 right-0"
+              )}
+            >
+              <div
+                className={cn(
+                  "w-full p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3 transition-all duration-300",
+                  sidebarOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-5xl xl:max-w-6xl",
+                  loading && "lightning-border-active ring-2 ring-emerald-500/40"
+                )}
+              >
+                {/* Header with collapse button */}
+                <div className="flex items-center justify-between pb-1 border-b border-black/[0.06] dark:border-white/[0.06]">
+                  <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
+                    {loading && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
+                    <span>{loading ? "Neural Video Engine Processing..." : "Motion Studio Director Dock"}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setVideoDockCollapsed(true)}
+                    className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white cursor-pointer transition-colors px-2 py-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                    title="Collapse Dock to view full canvas without obstruction"
+                  >
+                    <span>Collapse Dock</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </div>
               {/* Active Character Lock Pill (Reference Image 1) with ON/OFF Toggle */}
               {activeCharacter?.isLocked && (
                 <div className="flex items-center justify-between p-2 sm:p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 animate-in fade-in flex-wrap gap-2">
@@ -3048,9 +3102,8 @@ function VideoStudioContent() {
               </div>
             </div>
           </div>
-        </div>
-        </>
         )}
+        </div>
 
         {/* Right Settings Sidebar (Collapsible with Stacked Close Accordions & Independent Scroll) */}
         {sidebarOpen && !precisionEditorOpen && mode !== "video_editor" && (
@@ -4160,6 +4213,8 @@ function VideoStudioContent() {
 
           </aside>
         )}
+        </>
+      )}
       </div>
 
       {/* Redesigned Asset Vault Keyframe Picker Modal */}

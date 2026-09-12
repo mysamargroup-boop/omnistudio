@@ -60,6 +60,8 @@ interface VaultAsset {
   modified: number;
   type: string;
   is_trash?: boolean;
+  prompt?: string;
+  has_prompt?: boolean;
 }
 
 export default function VaultPage() {
@@ -177,6 +179,16 @@ export default function VaultPage() {
     navigator.clipboard.writeText(fullUrl);
     setCopiedKey(file.filename);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleReusePrompt = (promptText: string) => {
+    if (!promptText) return;
+    try {
+      navigator.clipboard.writeText(promptText);
+    } catch (e) {
+      console.warn("Clipboard copy failed", e);
+    }
+    router.push(`/image?prompt=${encodeURIComponent(promptText)}`);
   };
 
   const downloadAsset = async (url: string, filename: string) => {
@@ -1086,6 +1098,25 @@ export default function VaultPage() {
                     <span>{favorites.has(file.filename) ? "Unfavorite" : "Favorite"}</span>
                   </button>
 
+                  {/* Reuse Prompt (Only for platform-generated media that has prompt metadata) */}
+                  {file.prompt && tab !== "trash" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenuKey(null);
+                        handleReusePrompt(file.prompt!);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-emerald-500/15 text-emerald-400 hover:text-emerald-300 transition-colors text-left cursor-pointer group/reuse"
+                      title={file.prompt}
+                    >
+                      <Sparkles className="w-4 h-4 text-emerald-400 group-hover/reuse:rotate-12 transition-transform shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-emerald-400">Reuse Prompt</span>
+                        <span className="text-[10px] text-zinc-400 truncate max-w-[150px]">{file.prompt}</span>
+                      </div>
+                    </button>
+                  )}
+
                   {(isImage || isVideo) && tab !== "trash" && (
                     <button
                       type="button"
@@ -1688,6 +1719,22 @@ export default function VaultPage() {
                   <Download className="w-3.5 h-3.5" />
                   <span>DOWNLOAD</span>
                 </button>
+
+                {tab !== "trash" && lightboxAsset.prompt && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = lightboxAsset.prompt!;
+                      setLightboxAsset(null);
+                      handleReusePrompt(p);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-mono transition-colors cursor-pointer"
+                    title={lightboxAsset.prompt}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>REUSE PROMPT</span>
+                  </button>
+                )}
 
                 {tab !== "trash" && isLbImage && (
                   <button

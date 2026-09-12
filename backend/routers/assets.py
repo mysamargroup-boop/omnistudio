@@ -123,14 +123,83 @@ class CollectionItemsRequest(BaseModel):
             raise ValueError("filenames list cannot be empty")
         return [f.strip() for f in v if f.strip()]
 
-def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False) -> list[dict]:
+import json
+from services.security_service import sanitize_filename
+import logging
+
+assets_logger = logging.getLogger("omnistudio.assets")
+
+def get_assets_prompt_map() -> dict[str, str]:
+    """
+    Returns a mapping of {filename: prompt} for assets generated on this platform.
+    Pulls from usage_logs.json, SQLite generations table, and assets metadata.
+    """
+    prompt_map: dict[str, str] = {}
+
+    # 1. From usage_logs.json (covers all recent UI generations)
+    try:
+        from services.usage_tracker import USAGE_FILE, load_usage_data
+        if USAGE_FILE.exists():
+            data = load_usage_data()
+            for rec in data.get("records", []):
+                p = (rec.get("full_prompt") or rec.get("prompt") or "").strip()
+                out_url = (rec.get("output_url") or "").strip()
+                if p and out_url:
+                    fn = Path(out_url).name
+                    if fn and fn not in prompt_map:
+                        prompt_map[fn] = p
+    except Exception as e:
+        assets_logger.debug("Prompt map usage_logs error: %s", e)
+
+    # 2. From SQLite generations table
+    try:
+        from database import db_session
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT prompt, output_url FROM generations WHERE prompt IS NOT NULL AND output_url IS NOT NULL")
+            for row in cur.fetchall():
+                p = (row[0] or "").strip()
+                out_url = (row[1] or "").strip()
+                if p and out_url:
+                    fn = Path(out_url).name
+                    if fn and fn not in prompt_map:
+                        prompt_map[fn] = p
+    except Exception as e:
+        assets_logger.debug("Prompt map generations error: %s", e)
+
+    # 3. From SQLite assets table (metadata.prompt)
+    try:
+        from database import db_session
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT filename, metadata FROM assets WHERE metadata IS NOT NULL")
+            for row in cur.fetchall():
+                fn = (row[0] or "").strip()
+                meta_raw = row[1]
+                if fn and meta_raw:
+                    try:
+                        meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
+                        p = (meta.get("prompt") or "").strip()
+                        if p and fn not in prompt_map:
+                            prompt_map[fn] = p
+                    except Exception:
+                        pass
+    except Exception as e:
+        assets_logger.debug("Prompt map assets error: %s", e)
+
+    return prompt_map
+
+def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None) -> list[dict]:
     files = []
     if not dir_path.exists():
         return files
+    if prompt_map is None:
+        prompt_map = get_assets_prompt_map()
     for f in sorted(dir_path.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
         if f.is_file() and not f.name.startswith("."):
             stat = f.stat()
             url_prefix = f"/outputs/trash/{media_type}" if is_trash else f"/outputs/{media_type}"
+            prompt_val = prompt_map.get(f.name)
             files.append({
                 "filename": f.name,
                 "url": f"{url_prefix}/{f.name}",
@@ -139,7 +208,9 @@ def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False) -> l
                 "size_mb": round(stat.st_size / (1024 * 1024), 2),
                 "modified": stat.st_mtime,
                 "type": media_type,
-                "is_trash": is_trash
+                "is_trash": is_trash,
+                "prompt": prompt_val,
+                "has_prompt": bool(prompt_val)
             })
     return files
 
@@ -320,18 +391,19 @@ async def safe_permanent_delete(media_type: str, filename: str, from_trash: bool
 @router.get("/all")
 @limiter.limit("60/minute")
 async def get_all_assets(request: Request):
+    prompt_map = await asyncio.to_thread(get_assets_prompt_map)
     (
         images, videos, audio, final,
         trash_images, trash_videos, trash_audio, trash_final
     ) = await asyncio.gather(
-        asyncio.to_thread(scan_directory, settings.IMAGES_PATH, "images"),
-        asyncio.to_thread(scan_directory, settings.VIDEOS_PATH, "videos"),
-        asyncio.to_thread(scan_directory, settings.AUDIO_PATH, "audio"),
-        asyncio.to_thread(scan_directory, settings.FINAL_PATH, "final"),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "images", "images", is_trash=True),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "videos", "videos", is_trash=True),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "audio", "audio", is_trash=True),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "final", "final", is_trash=True),
+        asyncio.to_thread(scan_directory, settings.IMAGES_PATH, "images", False, prompt_map),
+        asyncio.to_thread(scan_directory, settings.VIDEOS_PATH, "videos", False, prompt_map),
+        asyncio.to_thread(scan_directory, settings.AUDIO_PATH, "audio", False, prompt_map),
+        asyncio.to_thread(scan_directory, settings.FINAL_PATH, "final", False, prompt_map),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "images", "images", True, prompt_map),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "videos", "videos", True, prompt_map),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "audio", "audio", True, prompt_map),
+        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "final", "final", True, prompt_map),
     )
 
     total_trash = len(trash_images) + len(trash_videos) + len(trash_audio) + len(trash_final)
@@ -347,21 +419,38 @@ async def get_all_assets(request: Request):
         "trash_bytes": total_trash_bytes
     }
 
+@router.get("/prompt/{filename}")
+async def get_asset_prompt(filename: str):
+    """Retrieve the generation prompt for an asset if it was generated on this platform"""
+    clean_fn = sanitize_filename(filename)
+    prompt_map = get_assets_prompt_map()
+    p = prompt_map.get(clean_fn)
+    return {
+        "success": bool(p),
+        "filename": clean_fn,
+        "prompt": p,
+        "has_prompt": bool(p)
+    }
+
 @router.get("/images")
 async def get_images():
-    return {"files": scan_directory(settings.IMAGES_PATH, "images")}
+    prompt_map = await asyncio.to_thread(get_assets_prompt_map)
+    return {"files": scan_directory(settings.IMAGES_PATH, "images", False, prompt_map)}
 
 @router.get("/videos")
 async def get_videos():
-    return {"files": scan_directory(settings.VIDEOS_PATH, "videos")}
+    prompt_map = await asyncio.to_thread(get_assets_prompt_map)
+    return {"files": scan_directory(settings.VIDEOS_PATH, "videos", False, prompt_map)}
 
 @router.get("/audio")
 async def get_audio():
-    return {"files": scan_directory(settings.AUDIO_PATH, "audio")}
+    prompt_map = await asyncio.to_thread(get_assets_prompt_map)
+    return {"files": scan_directory(settings.AUDIO_PATH, "audio", False, prompt_map)}
 
 @router.get("/final")
 async def get_final():
-    return {"files": scan_directory(settings.FINAL_PATH, "final")}
+    prompt_map = await asyncio.to_thread(get_assets_prompt_map)
+    return {"files": scan_directory(settings.FINAL_PATH, "final", False, prompt_map)}
 
 @router.get("/trash")
 async def get_trash_assets():

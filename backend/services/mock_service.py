@@ -20,7 +20,8 @@ def generate_mock_image(
 ) -> Path:
     """Generate a high-aesthetic local visual card using Pillow when no cloud image key is supplied"""
     if not output_path:
-        filename = f"img_{uuid.uuid4().hex[:8]}.png"
+        from services.prompt_utils import generate_image_filename
+        filename = generate_image_filename(prompt, ext=".png")
         output_path = settings.IMAGES_PATH / filename
     else:
         output_path = Path(output_path)

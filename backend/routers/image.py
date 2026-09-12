@@ -215,7 +215,8 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
                     model=req.model,
                     size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024",
                     quality="hd" if req.quality in ["hd", "ultra"] else "standard",
-                    style="vivid"
+                    style="vivid",
+                    filename_hint=f"{user_prompt} var {i+1}"
                 )
                 if res.get("success"):
                     variations.append({
@@ -276,7 +277,8 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
 
     if req.model.startswith("flux"):
         result = await generate_flux_image(
-            prompt=composed_prompt, aspect_ratio=req.aspect_ratio, model=req.model
+            prompt=composed_prompt, aspect_ratio=req.aspect_ratio, model=req.model,
+            filename_hint=req.prompt
         )
     elif req.model in ["imagen_3", "gemini_flash_image", "google_gemini"]:
         from services.gemini_service import get_gemini_key, generate_gemini_image
@@ -289,11 +291,12 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
                 "required_key": "GEMINI_API_KEY"
             }
         else:
-            result = await generate_gemini_image(composed_prompt)
+            result = await generate_gemini_image(composed_prompt, filename_hint=req.prompt)
     elif req.model in ["dall-e-3", "dall-e-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5", "gpt-image-2", "openai"]:
         result = await generate_openai_image(
             prompt=composed_prompt, model=req.model, size=req.size,
-            quality=openai_quality, style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural"
+            quality=openai_quality, style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural",
+            filename_hint=req.prompt
         )
     elif req.model == "omni_diffusion":
         result = {
@@ -305,13 +308,14 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
     else:
         from services.gemini_service import get_gemini_key, generate_gemini_image
         if get_gemini_key():
-            result = await generate_gemini_image(composed_prompt)
+            result = await generate_gemini_image(composed_prompt, filename_hint=req.prompt)
             if result.get("success"):
                 result["model"] = f"{req.model} (Powered by Google Gemini)"
         elif settings.OPENAI_API_KEY:
             result = await generate_openai_image(
                 prompt=composed_prompt, model="dall-e-3", size=req.size,
-                quality=openai_quality, style="vivid"
+                quality=openai_quality, style="vivid",
+                filename_hint=req.prompt
             )
             if result.get("success"):
                 result["model"] = f"{req.model} (Powered by DALL-E 3)"

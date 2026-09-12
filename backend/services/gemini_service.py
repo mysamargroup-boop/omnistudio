@@ -71,11 +71,12 @@ async def generate_veo_video(prompt: str, aspect_ratio: str = "16:9", model: str
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def generate_gemini_image(prompt: str, model: str = "gemini-2.5-flash-image") -> Dict[str, Any]:
+async def generate_gemini_image(prompt: str, model: str = "gemini-2.5-flash-image", filename_hint: Optional[str] = None) -> Dict[str, Any]:
     """Generate image via Google Gemini multimodal generation with active billing key"""
     import base64
     import uuid
     from pathlib import Path
+    from services.prompt_utils import generate_image_filename
     
     key = get_gemini_key()
     if not key:
@@ -99,7 +100,7 @@ async def generate_gemini_image(prompt: str, model: str = "gemini-2.5-flash-imag
                 b64 = p["inlineData"]["data"]
                 mime = p["inlineData"].get("mimeType", "image/png")
                 ext = ".png" if "png" in mime else ".jpg"
-                filename = f"gemini_{uuid.uuid4().hex[:8]}{ext}"
+                filename = generate_image_filename(filename_hint or prompt, ext=ext)
                 local_path = settings.IMAGES_PATH / filename
                 with open(local_path, "wb") as f:
                     f.write(base64.b64decode(b64))
