@@ -47,6 +47,7 @@ import {
   ImagePlus,
   Bookmark,
   ShieldCheck,
+  Info,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -226,6 +227,7 @@ export default function ImageStudioPage() {
   const [presetName, setPresetName] = useState("");
   const [applyBrandKit, setApplyBrandKit] = useState(false); // Default OFF
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
+  const [showAdvancedInfo, setShowAdvancedInfo] = useState(false);
   const multiRefFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleMultiRefUpload = async (files: FileList | File[]) => {
@@ -2909,13 +2911,53 @@ export default function ImageStudioPage() {
 
                   {/* Advanced Settings */}
                   <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#111118] p-3.5 space-y-3 shadow-xs">
-                    <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 block">
-                      Advanced Synthesis Parameters
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                          Advanced Synthesis Parameters
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedInfo((p) => !p)}
+                          className={cn(
+                            "px-2 py-0.5 rounded-md text-[10px] font-mono transition-all flex items-center gap-1 cursor-pointer select-none",
+                            showAdvancedInfo
+                              ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30"
+                              : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 border border-black/[0.06] dark:border-white/[0.06]"
+                          )}
+                          title="Tap to see model compatibility details"
+                        >
+                          <Info className="w-3 h-3 text-emerald-500" />
+                          <span>Model Support</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {showAdvancedInfo && (
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-[11px] space-y-1.5 transition-all">
+                        <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-300">
+                          <Info className="w-3.5 h-3.5 shrink-0" />
+                          <span>Supported AI Models:</span>
+                        </div>
+                        <p className="text-[10.5px] leading-relaxed text-zinc-600 dark:text-zinc-400">
+                          • <strong>Applies directly to:</strong> Flux.1 (Schnell/Dev), Stable Diffusion 3.5, and Replicate diffusion backends.<br />
+                          • <strong>Server-side managed:</strong> OpenAI (DALL-E 3) and Google Gemini calibrate guidance and denoising steps automatically on their server clusters.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
-                          <span>CFG Guidance:</span>
+                          <div className="flex items-center gap-1">
+                            <span>CFG Guidance:</span>
+                            <span className="group relative cursor-help inline-flex items-center">
+                              <Info className="w-3 h-3 text-zinc-400 hover:text-emerald-500 transition-colors" />
+                              <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover:block w-52 p-2 bg-zinc-900/95 backdrop-blur-md text-zinc-100 text-[10px] rounded-lg shadow-xl border border-zinc-700 z-50 font-sans normal-case leading-snug">
+                                <strong className="text-emerald-400 block mb-0.5">CFG Scale (1-20):</strong> Controls how strictly the AI adheres to your prompt. <strong>7.0-8.5</strong> is optimal. Lower (3-5) gives creative freedom; higher (12+) forces prompt strictly.
+                              </span>
+                            </span>
+                          </div>
                           <span className="font-bold text-emerald-600 dark:text-emerald-400">{cfgScale}</span>
                         </div>
                         <input
@@ -2931,7 +2973,15 @@ export default function ImageStudioPage() {
 
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
-                          <span>Sampling Steps:</span>
+                          <div className="flex items-center gap-1">
+                            <span>Sampling Steps:</span>
+                            <span className="group relative cursor-help inline-flex items-center">
+                              <Info className="w-3 h-3 text-zinc-400 hover:text-emerald-500 transition-colors" />
+                              <span className="pointer-events-none absolute bottom-full right-0 sm:left-0 mb-1.5 hidden group-hover:block w-52 p-2 bg-zinc-900/95 backdrop-blur-md text-zinc-100 text-[10px] rounded-lg shadow-xl border border-zinc-700 z-50 font-sans normal-case leading-snug">
+                                <strong className="text-emerald-400 block mb-0.5">Sampling Steps (10-50):</strong> Denoising passes used to sculpt detail. Default <strong>30</strong> is balanced; <strong>40-50</strong> delivers finer micro-textures and sharp details.
+                              </span>
+                            </span>
+                          </div>
                           <span className="font-bold text-emerald-600 dark:text-emerald-400">{samplingSteps}</span>
                         </div>
                         <input
@@ -2946,7 +2996,18 @@ export default function ImageStudioPage() {
                     </div>
 
                     <div className="pt-1">
-                      <span className="text-[10px] font-mono uppercase text-zinc-400 block font-semibold mb-1">Seed (Optional)</span>
+                      <div className="flex items-center justify-between text-[10px] font-mono uppercase text-zinc-400 font-semibold mb-1">
+                        <div className="flex items-center gap-1">
+                          <span>Seed (Optional)</span>
+                          <span className="group relative cursor-help inline-flex items-center">
+                            <Info className="w-3 h-3 text-zinc-400 hover:text-emerald-500 transition-colors" />
+                            <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover:block w-56 p-2 bg-zinc-900/95 backdrop-blur-md text-zinc-100 text-[10px] rounded-lg shadow-xl border border-zinc-700 z-50 font-sans normal-case leading-snug">
+                              <strong className="text-emerald-400 block mb-0.5">Random Seed:</strong> Numerical seed for reproducible noise. Identical seed + identical prompt reproduces the exact same image. Leave blank for random generation.
+                            </span>
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-normal lowercase">leave blank for random</span>
+                      </div>
                       <input
                         type="text"
                         value={seed}
@@ -3193,7 +3254,12 @@ export default function ImageStudioPage() {
           </div>
 
           {/* Row 1: Professional Studio Prompt Input Bar */}
-          <div className="relative flex items-start rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30 transition-all p-1">
+          <div className={cn(
+            "relative flex items-start rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-1",
+            enhancingPrompt
+              ? "border-violet-500/60 ring-2 ring-violet-500/30 shadow-[0_0_22px_rgba(139,92,246,0.25)] dark:bg-violet-950/15"
+              : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/30"
+          )}>
           <textarea
             ref={promptTextareaRef}
             value={prompt}
@@ -3230,14 +3296,14 @@ export default function ImageStudioPage() {
               onClick={enhancePromptText}
               disabled={!prompt.trim() || enhancingPrompt}
               className={cn(
-                "p-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer",
+                "relative p-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer overflow-hidden select-none",
                 enhancingPrompt
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 shadow-sm animate-pulse"
-                  : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 border-black/[0.08] dark:border-white/[0.08] disabled:opacity-30"
+                  ? "magic-pulse-active bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 text-white border-violet-400/80 shadow-[0_0_15px_rgba(168,85,247,0.6)]"
+                  : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 border-black/[0.08] dark:border-white/[0.08] hover:border-violet-500/30 disabled:opacity-30 hover:shadow-xs"
               )}
-              title="Improve Prompt with AI (GPT-4o-mini)"
+              title="Improve Prompt with AI Copilot (GPT-4o-mini & Gemini)"
             >
-              <Wand2 className="w-3.5 h-3.5" />
+              <Wand2 className={cn("w-3.5 h-3.5 transition-all duration-300", enhancingPrompt ? "scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.95)] animate-pulse text-white" : "")} />
             </button>
 
             <button

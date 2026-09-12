@@ -440,3 +440,19 @@ code, pre, kbd, .font-mono {
   pointer-events: none;
   z-index: 25;
 }
+
+@keyframes magic-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.4), 0 0 18px rgba(236, 72, 153, 0.25);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.8), 0 0 32px rgba(236, 72, 153, 0.5);
+    transform: scale(1.06);
+  }
+}
+
+.magic-pulse-active {
+  animation: magic-pulse-glow 1.5s ease-in-out infinite !important;
+}
+
