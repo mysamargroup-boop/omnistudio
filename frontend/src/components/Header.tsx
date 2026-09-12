@@ -218,31 +218,31 @@ export default function Header() {
 
         {/* Image Dropdown Panel */}
         {activeDropdown === 'image' && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 shadow-xl w-[500px] flex gap-4 animate-scale-in z-50">
-            <div className="flex-1 space-y-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Creation Modes</div>
+          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[500px] flex gap-4 animate-scale-in z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+            <div className="flex-1 space-y-1">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Creation Modes</div>
               {IMAGE_FEATURES.map((f) => (
                 <div 
                   key={f.name}
                   onClick={() => { setActiveDropdown(null); router.push(`/image?mode=${f.mode}`); }}
-                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
-                  <div className="text-xs text-zinc-500">{f.desc}</div>
+                  <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">{f.name}</div>
+                  <div className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400">{f.desc}</div>
                 </div>
               ))}
             </div>
-            <div className="w-px bg-black/[0.08] dark:bg-white/[0.08]" />
-            <div className="flex-1 space-y-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Diffusion Engines</div>
+            <div className="w-px bg-black/[0.08] dark:border-white/[0.08]" />
+            <div className="flex-1 space-y-1">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Diffusion Engines</div>
               {IMAGE_MODELS.map((m) => (
                 <div 
                   key={m.name}
                   onClick={() => { setActiveDropdown(null); router.push(`/image?model=${m.model}`); }}
-                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
-                  <div className="text-xs text-zinc-500">{m.desc}</div>
+                  <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">{m.name}</div>
+                  <div className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400">{m.desc}</div>
                 </div>
               ))}
             </div>
@@ -251,31 +251,31 @@ export default function Header() {
 
         {/* Video Dropdown Panel */}
         {activeDropdown === 'video' && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 shadow-xl w-[500px] flex gap-4 animate-scale-in z-50">
-            <div className="flex-1 space-y-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Features</div>
+          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[500px] flex gap-4 animate-scale-in z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+            <div className="flex-1 space-y-1">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Features</div>
               {VIDEO_FEATURES.map((f) => (
                 <div 
                   key={f.name}
                   onClick={() => { setActiveDropdown(null); router.push(`/video?mode=${f.mode}`); }}
-                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
-                  <div className="text-xs text-zinc-500">{f.desc}</div>
+                  <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">{f.name}</div>
+                  <div className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400">{f.desc}</div>
                 </div>
               ))}
             </div>
-            <div className="w-px bg-black/[0.08] dark:bg-white/[0.08]" />
-            <div className="flex-1 space-y-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Motion Engines</div>
+            <div className="w-px bg-black/[0.08] dark:border-white/[0.08]" />
+            <div className="flex-1 space-y-1">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Motion Engines</div>
               {VIDEO_MODELS.map((m) => (
                 <div 
                   key={m.name}
                   onClick={() => { setActiveDropdown(null); router.push(`/video?model=${m.model}`); }}
-                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
-                  <div className="text-xs text-zinc-500">{m.desc}</div>
+                  <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">{m.name}</div>
+                  <div className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400">{m.desc}</div>
                 </div>
               ))}
             </div>
@@ -284,31 +284,31 @@ export default function Header() {
 
         {/* Audio Dropdown Panel */}
         {activeDropdown === 'audio' && (
-          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 shadow-xl w-[480px] flex gap-4 animate-scale-in z-50">
-            <div className="flex-1 space-y-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Audio Modes</div>
+          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[480px] flex gap-4 animate-scale-in z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+            <div className="flex-1 space-y-1">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Audio Modes</div>
               {AUDIO_FEATURES.map((f) => (
                 <div 
                   key={f.name}
                   onClick={() => { setActiveDropdown(null); router.push(`/voice?mode=${f.mode}`); }}
-                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{f.name}</div>
-                  <div className="text-xs text-zinc-500">{f.desc}</div>
+                  <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">{f.name}</div>
+                  <div className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400">{f.desc}</div>
                 </div>
               ))}
             </div>
-            <div className="w-px bg-black/[0.08] dark:bg-white/[0.08]" />
-            <div className="flex-1 space-y-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 px-2 mb-1">Speech Models</div>
+            <div className="w-px bg-black/[0.08] dark:border-white/[0.08]" />
+            <div className="flex-1 space-y-1">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Speech Models</div>
               {AUDIO_MODELS.map((m) => (
                 <div 
                   key={m.name}
                   onClick={() => { setActiveDropdown(null); router.push(`/voice?model=${m.model}`); }}
-                  className="p-2.5 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{m.name}</div>
-                  <div className="text-xs text-zinc-500">{m.desc}</div>
+                  <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">{m.name}</div>
+                  <div className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400">{m.desc}</div>
                 </div>
               ))}
             </div>
@@ -317,8 +317,8 @@ export default function Header() {
 
         {/* More Tools Dropdown Panel */}
         {activeDropdown === 'more' && (
-          <div className="absolute top-full mt-2 right-0 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-2.5 shadow-2xl w-72 animate-scale-in z-50 space-y-1">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 px-2.5 py-1 font-bold">
+          <div className="absolute top-full -mt-0.5 right-0 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-2.5 shadow-2xl w-72 animate-scale-in z-50 space-y-1 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 py-1 font-bold">
               Studio Tools & Utilities
             </div>
             
@@ -333,10 +333,10 @@ export default function Header() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Studio Hub</span>
+                  <span className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">Studio Hub</span>
                   <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">ALL</span>
                 </div>
-                <p className="text-[10px] text-zinc-500 line-clamp-1">Unified multi-modal generator</p>
+                <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-1">Unified multi-modal generator</p>
               </div>
             </Link>
 
@@ -351,10 +351,10 @@ export default function Header() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Usage & Spend</span>
+                  <span className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">Usage & Spend</span>
                   <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">TELEMETRY</span>
                 </div>
-                <p className="text-[10px] text-zinc-500 line-clamp-1">Real-time spend & API analytics</p>
+                <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-1">Real-time spend & API analytics</p>
               </div>
             </Link>
 
@@ -368,8 +368,8 @@ export default function Header() {
                 <Sliders className="w-4 h-4 text-blue-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">System Settings</div>
-                <p className="text-[10px] text-zinc-500 line-clamp-1">BYOK API keys & passcodes</p>
+                <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">System Settings</div>
+                <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-1">BYOK API keys & passcodes</p>
               </div>
             </Link>
 
@@ -385,8 +385,8 @@ export default function Header() {
                 <Palette className="w-4 h-4 text-emerald-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Brand Kit Studio</div>
-                <p className="text-[10px] text-zinc-500 line-clamp-1">Logos, colors & visual identity</p>
+                <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">Brand Kit Studio</div>
+                <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-1">Logos, colors & visual identity</p>
               </div>
             </Link>
 
@@ -399,8 +399,8 @@ export default function Header() {
                 <BookOpen className="w-4 h-4 text-amber-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100">How It Works</div>
-                <p className="text-[10px] text-zinc-500 line-clamp-1">Studio workflow & model guide</p>
+                <div className="text-xs font-heading font-bold text-zinc-900 dark:text-zinc-100">How It Works</div>
+                <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-1">Studio workflow & model guide</p>
               </div>
             </button>
           </div>

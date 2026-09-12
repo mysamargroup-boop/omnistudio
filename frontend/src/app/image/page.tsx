@@ -48,6 +48,7 @@ import {
   Bookmark,
   ShieldCheck,
   Info,
+  Gem,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import BrandKitModal from "@/components/brand/BrandKitModal";
 import BeforeAfterSlider from "@/components/ui/BeforeAfterSlider";
 import SocialRepurposerModal from "@/components/social/SocialRepurposerModal";
+import JewelleryPromptSuite from "@/components/studio/JewelleryPromptSuite";
 
 interface ModelOption {
   value: string;
@@ -228,6 +230,7 @@ export default function ImageStudioPage() {
   const [applyBrandKit, setApplyBrandKit] = useState(false); // Default OFF
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
   const [showAdvancedInfo, setShowAdvancedInfo] = useState(false);
+  const [showJewellerySuite, setShowJewellerySuite] = useState(false);
   const multiRefFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleMultiRefUpload = async (files: FileList | File[]) => {
@@ -2862,6 +2865,49 @@ export default function ImageStudioPage() {
                       </label>
                     </div>
                   </div>
+
+                  {/* 💎 Jewellery Reference Prompt Suite */}
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-500/[0.04] border border-amber-500/25 space-y-2.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Gem className="w-4 h-4 text-amber-500 shrink-0" />
+                        <div>
+                          <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white block">
+                            Jewellery Reference Suite
+                          </span>
+                          <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                            Pre-filled prompts for models, aesthetics & macro jewelry
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowJewellerySuite(!showJewellerySuite)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
+                          showJewellerySuite
+                            ? "bg-amber-500 text-zinc-950 border-amber-500 font-extrabold"
+                            : "bg-white dark:bg-zinc-800 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
+                        )}
+                      >
+                        <Gem className="w-3 h-3" />
+                        <span>{showJewellerySuite ? "Hide Suite" : "Open Suite"}</span>
+                      </button>
+                    </div>
+
+                    {showJewellerySuite && (
+                      <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <JewelleryPromptSuite
+                          hasReferenceImage={refImages.length > 0 || Boolean(refImageUrl)}
+                          onSelectPrompt={(text, ratio) => {
+                            setPrompt(text);
+                            if (ratio) setAspectRatio(ratio);
+                            setLockJewelry(true);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* ── RIGHT COLUMN: Negative Prompt & Advanced Settings ── */}
@@ -3333,6 +3379,23 @@ export default function ImageStudioPage() {
             >
               <ImagePlus className="w-3.5 h-3.5 text-emerald-500" />
               {refImages.length > 0 && <span className="text-[10px] font-bold">{refImages.length}</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowJewellerySuite((p) => !p);
+                setStudioMode("image_variations");
+              }}
+              className={cn(
+                "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer flex items-center gap-1",
+                showJewellerySuite
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 shadow-sm"
+                  : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 border-black/[0.08] dark:border-white/[0.08]"
+              )}
+              title="Toggle Jewellery Prompt Suite"
+            >
+              <Gem className="w-3.5 h-3.5 text-amber-500" />
             </button>
           </div>
         </div>
