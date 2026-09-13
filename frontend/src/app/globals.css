@@ -38,6 +38,13 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Universal Non-Wrapping for All Action Buttons Across OmniStudio */
+button,
+[role="button"],
+.btn {
+  white-space: nowrap !important;
+}
+
 /* Universal silky smooth scrolling across all studio tab containers, sidebars, drawers and viewports */
 *,
 *::before,

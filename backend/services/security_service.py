@@ -44,6 +44,12 @@ def safe_resolve_output_path(
         raise HTTPException(status_code=400, detail="Path parameter is required")
     
     raw = str(path_str).strip()
+    if "?" in raw:
+        raw = raw.split("?", 1)[0]
+    if "#" in raw:
+        raw = raw.split("#", 1)[0]
+    raw = raw.strip()
+
     if "://" in raw:
         try:
             parts = raw.split("://", 1)[1].split("/", 1)

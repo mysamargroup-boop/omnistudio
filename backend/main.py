@@ -167,7 +167,27 @@ async def serve_trash_output(media_type: str, filename: str):
 async def serve_output(media_type: str, filename: str):
     if media_type == "trash":
         raise HTTPException(status_code=400, detail="Use /outputs/trash/<type>/<filename> for trash assets")
-    path = safe_resolve_output_path(filename, media_type, must_exist=True)
+    try:
+        path = safe_resolve_output_path(filename, media_type, must_exist=True)
+    except HTTPException as e:
+        if e.status_code == 404:
+            # Fallback search in alternate media folders (e.g. images vs final vs publish)
+            alt_types = [t for t in ("images", "final", "publish", "videos", "audio") if t != media_type]
+            found_path = None
+            for alt in alt_types:
+                try:
+                    alt_p = safe_resolve_output_path(filename, alt, must_exist=True)
+                    if alt_p.exists() and alt_p.is_file():
+                        found_path = alt_p
+                        break
+                except Exception:
+                    continue
+            if found_path:
+                path = found_path
+            else:
+                raise e
+        else:
+            raise e
     return FileResponse(path, headers={"Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer"})
 
 class PinVerificationRequest(BaseModel):

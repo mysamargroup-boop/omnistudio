@@ -56,6 +56,22 @@ def safe_resolve_output_path(user_provided_path: str, media_type: str, *, must_e
     if "\x00" in decoded:
         raise HTTPException(status_code=400, detail="Security error: null bytes are not allowed")
 
+    # Strip full URLs with protocols (e.g. http://localhost:8000/outputs/images/...)
+    if "://" in decoded:
+        try:
+            parts = decoded.split("://", 1)[1].split("/", 1)
+            if len(parts) > 1:
+                decoded = "/" + parts[1]
+        except Exception:
+            pass
+
+    # Strip URL query parameters (?access_token=...) and fragments (#...)
+    if "?" in decoded:
+        decoded = decoded.split("?", 1)[0]
+    if "#" in decoded:
+        decoded = decoded.split("#", 1)[0]
+    decoded = decoded.strip()
+
     raw = decoded.replace("\\", "/")
     dir_str = str(directory.resolve()).replace("\\", "/")
     if raw.lower().startswith(dir_str.lower() + "/"):

@@ -76,16 +76,16 @@ function AllInOneStudioContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Read initial mode from URL search params (?mode=video|image|voice or ?tab=...)
+  // Read initial mode from URL search params (?mode=video|image|voice|apify or ?tab=...)
   const initialMode = (searchParams?.get("mode") || searchParams?.get("tab") || "video") as StudioTab;
   const [activeTab, setActiveTab] = useState<StudioTab>(
-    ["video", "image", "voice"].includes(initialMode) ? initialMode : "video"
+    ["video", "image", "voice", "apify"].includes(initialMode) ? initialMode : "video"
   );
 
   // Sync state if URL query changes externally
   useEffect(() => {
     const modeParam = searchParams?.get("mode") || searchParams?.get("tab");
-    if (modeParam && ["video", "image", "voice"].includes(modeParam) && modeParam !== activeTab) {
+    if (modeParam && ["video", "image", "voice", "apify"].includes(modeParam) && modeParam !== activeTab) {
       setActiveTab(modeParam as StudioTab);
     }
   }, [searchParams]);
@@ -95,6 +95,32 @@ function AllInOneStudioContent() {
     // Update URL query without full reload
     const url = new URL(window.location.href);
     url.searchParams.set("mode", tabId);
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const handleTransferToStudio = (
+    target: "video" | "image" | "voice",
+    payload: { prompt?: string; script?: string; cameraMotion?: string }
+  ) => {
+    // 1. Save to sessionStorage draft so VideoStudio/ImageStudio/VoiceStudio picks it up
+    if (payload.prompt) {
+      sessionStorage.setItem("omnistudio_draft_prompt", payload.prompt);
+      try {
+        const videoDraft = JSON.parse(sessionStorage.getItem("omnistudio_draft_video_studio") || "{}");
+        videoDraft.prompt = payload.prompt;
+        if (payload.cameraMotion) videoDraft.motion = payload.cameraMotion;
+        sessionStorage.setItem("omnistudio_draft_video_studio", JSON.stringify(videoDraft));
+      } catch (_) {}
+    }
+    if (payload.script) {
+      sessionStorage.setItem("omnistudio_draft_script", payload.script);
+    }
+
+    // 2. Switch tab & update URL
+    handleTabChange(target);
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", target);
+    if (payload.prompt) url.searchParams.set("prompt", payload.prompt);
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -165,7 +191,7 @@ function AllInOneStudioContent() {
       </div>
 
       {/* ── Studio Direct Layout Engine ── */}
-      {/* Renders the EXACT same layout and components as /video, /image, and /voice so any future changes automatically reflect here */}
+      {/* Renders the EXACT same layout and components as /video, /image, /voice, and /apify */}
       <main className="w-full">
         {activeTab === "video" && (
           <div className="animate-in fade-in duration-200">
@@ -182,6 +208,12 @@ function AllInOneStudioContent() {
         {activeTab === "voice" && (
           <div className="animate-in fade-in duration-200">
             <VoiceStudioPage />
+          </div>
+        )}
+
+        {activeTab === "apify" && (
+          <div className="animate-in fade-in duration-200">
+            <ApifyIntelligenceSuite onTransferToStudio={handleTransferToStudio} />
           </div>
         )}
       </main>

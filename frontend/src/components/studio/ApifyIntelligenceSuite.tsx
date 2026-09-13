@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Globe,
-  Youtube,
-  Instagram,
   Share2,
   Sparkles,
   Terminal,
@@ -42,6 +40,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { FaYoutube, FaInstagram, FaTiktok } from "react-icons/fa6";
 
 interface ActorConfig {
   id: string;
@@ -339,11 +338,11 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
   const renderActorIcon = (iconName: string) => {
     switch (iconName) {
       case "youtube":
-        return <Youtube className="w-4 h-4 text-rose-500" />;
+        return <FaYoutube className="w-4 h-4 text-rose-500" />;
       case "instagram":
-        return <Instagram className="w-4 h-4 text-pink-500" />;
+        return <FaInstagram className="w-4 h-4 text-pink-500" />;
       case "tiktok":
-        return <Share2 className="w-4 h-4 text-cyan-500" />;
+        return <FaTiktok className="w-4 h-4 text-cyan-500" />;
       case "globe":
         return <Globe className="w-4 h-4 text-blue-500" />;
       case "search":

@@ -398,6 +398,7 @@ export default function ImageStudioPage() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [vaultImages, setVaultImages] = useState<any[]>([]);
   const [loadingVault, setLoadingVault] = useState(false);
+  const [vaultPickerTarget, setVaultPickerTarget] = useState<"reference" | "editor">("reference");
 
   // Safeguard Confirmation Modal State
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -957,10 +958,11 @@ export default function ImageStudioPage() {
     if (!editorImageUrl) return;
     setProcessingImageEdit(true);
     try {
-      const filename = editorImageUrl.split("/").pop() || "source_image.png";
+      const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
+      const filename = cleanPath.split("/").pop() || "source_image.png";
       const res = await api.editImage({
         filename: filename,
-        image_path: editorImageUrl,
+        image_path: cleanPath,
         brightness: editorBrightness,
         contrast: editorContrast,
         saturation: editorSaturation,
@@ -1007,8 +1009,9 @@ export default function ImageStudioPage() {
     if (!editorImageUrl) return;
     setProcessingBgRemoval(true);
     try {
+      const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
       if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
-      const res = await api.aiRemoveBackground(editorImageUrl);
+      const res = await api.aiRemoveBackground(cleanPath);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
         setShowBeforeAfter(true);
@@ -1027,8 +1030,9 @@ export default function ImageStudioPage() {
     if (!editorImageUrl) return;
     setProcessingRelight(true);
     try {
+      const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
       if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
-      const res = await api.aiRelight(editorImageUrl, relightPreset, relightIntensity);
+      const res = await api.aiRelight(cleanPath, relightPreset, relightIntensity);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
         setShowBeforeAfter(true);
@@ -1047,8 +1051,9 @@ export default function ImageStudioPage() {
     if (!editorImageUrl) return;
     setProcessingFaceRestore(true);
     try {
+      const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
       if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
-      const res = await api.aiFaceRestore(editorImageUrl);
+      const res = await api.aiFaceRestore(cleanPath);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
         setShowBeforeAfter(true);
@@ -1067,8 +1072,9 @@ export default function ImageStudioPage() {
     if (!editorImageUrl) return;
     setProcessingOutpaint(true);
     try {
+      const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
       if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
-      const res = await api.aiOutpaint(editorImageUrl, outpaintAspect);
+      const res = await api.aiOutpaint(cleanPath, outpaintAspect);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
         setShowBeforeAfter(true);
@@ -1083,7 +1089,8 @@ export default function ImageStudioPage() {
   };
 
   // Open Vault Picker Modal
-  const openVaultPicker = async () => {
+  const openVaultPicker = async (target: "reference" | "editor" = "reference") => {
+    setVaultPickerTarget(target);
     setVaultOpen(true);
     setLoadingVault(true);
     try {
@@ -1258,6 +1265,8 @@ export default function ImageStudioPage() {
     return parts.join(" ");
   };
 
+  const isShiftedLeft = showJewellerySuite || studioMode === "image_variations";
+
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-72 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Bar: Studio Mode Tabs & Guide Trigger (Sticky in Image Editor) */}
@@ -1348,7 +1357,7 @@ export default function ImageStudioPage() {
             </button>
             <button
               type="button"
-              onClick={openVaultPicker}
+              onClick={() => openVaultPicker("editor")}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-violet-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
               title="Pick from Vault"
             >
@@ -1429,7 +1438,7 @@ export default function ImageStudioPage() {
               </button>
               <button
                 type="button"
-                onClick={openVaultPicker}
+                onClick={() => openVaultPicker("editor")}
                 className="px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
                 <FolderArchive className="w-3.5 h-3.5 text-violet-400" />
@@ -2804,7 +2813,7 @@ export default function ImageStudioPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={openVaultPicker}
+                        onClick={() => openVaultPicker("editor")}
                         className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 font-semibold text-xs border border-black/10 dark:border-white/10 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                       >
                         <FolderArchive className="w-4 h-4 text-violet-400" />
@@ -2869,7 +2878,7 @@ export default function ImageStudioPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={openVaultPicker}
+                        onClick={() => openVaultPicker("reference")}
                         className="text-[11px] font-mono text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1.5 cursor-pointer transition-colors px-2.5 py-1 rounded-lg border border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/20"
                         title="Pick reference from Vault"
                       >
@@ -3292,24 +3301,24 @@ export default function ImageStudioPage() {
 
         {/* State D: Idle Showcase Hero (only shown if not in variations and no references attached) */}
         {!loading && !loadingVariations && !result && !variationsResult && studioMode !== "image_editor" && studioMode !== "image_variations" && !referenceDrawerOpen && refImages.length === 0 && (
-          <div className="w-full flex flex-col items-center justify-center text-center space-y-6 py-6 animate-in fade-in duration-300">
+          <div className="w-full flex flex-col items-center justify-center text-center space-y-3 py-2 pb-48 sm:pb-56 animate-in fade-in duration-300">
             {/* Visual Overlapping Gallery Cards */}
-            <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 overflow-hidden max-w-md sm:max-w-xl mx-auto">
-              <div className="w-24 sm:w-28 h-36 sm:h-44 rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] shadow-sm transform -rotate-6 transition-transform hover:rotate-0 hover:scale-[1.02]">
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 py-2 overflow-hidden max-w-sm sm:max-w-md mx-auto">
+              <div className="w-14 sm:w-16 h-20 sm:h-24 rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] shadow-sm transform -rotate-6 transition-transform hover:rotate-0 hover:scale-[1.02]">
                 <img
                   src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
                   alt="Fashion Portrait"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="w-24 sm:w-28 h-36 sm:h-44 rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] shadow-md transform -translate-y-2 hover:scale-[1.02] transition-transform">
+              <div className="w-14 sm:w-16 h-20 sm:h-24 rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] shadow-md transform -translate-y-1.5 hover:scale-[1.02] transition-transform">
                 <img
                   src="https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=400&q=80"
                   alt="Sculpture Art"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="w-24 sm:w-28 h-36 sm:h-44 rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] shadow-sm transform rotate-6 transition-transform hover:rotate-0 hover:scale-[1.02]">
+              <div className="w-14 sm:w-16 h-20 sm:h-24 rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] shadow-sm transform rotate-6 transition-transform hover:rotate-0 hover:scale-[1.02]">
                 <img
                   src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=400&q=80"
                   alt="Neon Architecture"
@@ -3319,26 +3328,26 @@ export default function ImageStudioPage() {
             </div>
 
             {/* Hero Headlines */}
-            <div className="space-y-2 max-w-xl">
-              <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-tight text-zinc-950 dark:text-white uppercase">
+            <div className="space-y-1.5 max-w-md sm:max-w-lg mx-auto">
+              <h1 className="text-base sm:text-lg font-bold font-heading tracking-tight text-zinc-950 dark:text-white uppercase">
                 START CREATING WITH{" "}
                 <span className="text-violet-600 dark:text-violet-400 underline decoration-violet-500/30">
                   {activeModel.label}
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-jakarta leading-normal max-w-md mx-auto">
                 Describe a character, mood, or style — and watch it come to life with studio-grade lighting and precision optics.
               </p>
             </div>
 
             {/* Quick Inspiration Prompt Chips */}
-            <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-xl pt-1">
               {INSPIRATION_PROMPTS.map((item, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setPrompt(item.prompt)}
-                  className="flex items-center px-3.5 py-1.5 rounded-full bg-white dark:bg-[#111118] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-300 border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-200 dark:hover:border-violet-500/30 text-xs font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer font-medium shadow-sm"
+                  className="flex items-center px-2.5 py-1 rounded-full bg-white dark:bg-[#111118] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-300 border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-200 dark:hover:border-violet-500/30 text-[10px] sm:text-[11px] font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer font-medium shadow-xs whitespace-nowrap"
                 >
                   <span>{item.title}</span>
                 </button>
@@ -3353,48 +3362,52 @@ export default function ImageStudioPage() {
         <div className="fixed inset-0 z-30 bg-black/10 dark:bg-black/25 backdrop-blur-[0.5px]" onClick={closeAllPopovers} />
       )}
 
-      {/* Floating Bottom Studio Dock */}
+      {/* Floating Bottom Studio Dock: shifts left when Jewellery Prompt Suite or Image Variations mode is active */}
       {promptDockCollapsed ? (
-        <div
-          onClick={() => setPromptDockCollapsed(false)}
-          className={cn(
-            "fixed bottom-6 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group",
-            isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
-          )}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
-              {studioMode === "image_editor" ? "Precision Image Studio Canvas Active" : "Prompt Dock Minimized"}
-            </span>
-            {prompt.trim() && (
-              <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
-                • &ldquo;{prompt.slice(0, 45)}...&rdquo;
-              </span>
+          <div
+            onClick={() => setPromptDockCollapsed(false)}
+            className={cn(
+              "fixed bottom-6 z-40 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
+              isShiftedLeft
+                ? cn("right-auto mx-0 w-[94%] sm:w-[88%] md:w-[65%] lg:w-[50%] xl:w-[45%] max-w-2xl", isSidebarCollapsed ? "left-3 lg:left-20" : "left-3 lg:left-72")
+                : cn("right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
             )}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPromptDockCollapsed(false);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors cursor-pointer"
           >
-            <ChevronUp className="w-3.5 h-3.5" />
-            <span>Expand Prompt Bar</span>
-          </button>
-        </div>
-      ) : (
-        <div
-          ref={dockRef}
-          data-lenis-prevent="true"
-          className={cn(
-            "fixed bottom-6 right-0 mx-auto z-40 w-[96%] max-w-5xl xl:max-w-6xl bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-200 pointer-events-auto glass-dock",
-            isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
-            (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
-          )}
-        >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
+                {studioMode === "image_editor" ? "Precision Image Studio Canvas Active" : "Prompt Dock Minimized"}
+              </span>
+              {prompt.trim() && (
+                <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
+                  • &ldquo;{prompt.slice(0, 45)}...&rdquo;
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPromptDockCollapsed(false);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+              <span>Expand Prompt Bar</span>
+            </button>
+          </div>
+        ) : (
+          <div
+            ref={dockRef}
+            data-lenis-prevent="true"
+            className={cn(
+              "fixed bottom-6 z-40 bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-300 pointer-events-auto glass-dock",
+              isShiftedLeft
+                ? cn("right-auto mx-0 w-[94%] sm:w-[88%] md:w-[65%] lg:w-[50%] xl:w-[45%] max-w-2xl", isSidebarCollapsed ? "left-3 lg:left-20" : "left-3 lg:left-72")
+                : cn("right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"),
+              (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
+            )}
+          >
           <div className="flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
             <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
               {(loading || loadingVariations) && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
@@ -3693,7 +3706,7 @@ export default function ImageStudioPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={openVaultPicker}
+                onClick={() => openVaultPicker("reference")}
                 className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#16161f] border border-black/[0.08] dark:border-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-500/30 flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
               >
                 <FolderArchive className="w-3 h-3" />
@@ -4162,16 +4175,18 @@ export default function ImageStudioPage() {
                     <div
                       key={i}
                       onClick={() => {
-                        if (studioMode === "image_editor") {
-                          setEditorImageUrl(itemUrl);
-                          setOriginalEditorImageUrl(itemUrl);
+                        const cleanUrl = (itemUrl || "").split("?")[0].split("#")[0];
+                        if (vaultPickerTarget === "editor" || studioMode === "image_editor") {
+                          setStudioMode("image_editor");
+                          setEditorImageUrl(cleanUrl);
+                          setOriginalEditorImageUrl(cleanUrl);
                           setPromptDockCollapsed(true);
                           window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
                         } else {
-                          setRefImageUrl(itemUrl);
+                          setRefImageUrl(cleanUrl);
                           setRefImages((prev) => {
-                            if (prev.some((p) => p.url === itemUrl)) return prev;
-                            return [...prev, { url: itemUrl, name: itemName }];
+                            if (prev.some((p) => p.url === cleanUrl)) return prev;
+                            return [...prev, { url: cleanUrl, name: itemName }];
                           });
                         }
                         setVaultOpen(false);

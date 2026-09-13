@@ -700,29 +700,31 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 @limiter.limit("20/minute")
 async def edit_image(req: ImageEditRequest, request: Request):
     """Edit an existing image with filters, HSL, color temperature, curves, text, upscaling, and aspect ratio crop"""
-    target_name = None
-    if req.filename and req.filename.strip():
-        target_name = sanitize_filename(req.filename.strip())
-    elif req.image_path and req.image_path.strip():
-        target_name = sanitize_filename(Path(req.image_path.strip()).name)
+    raw_path = (req.image_path or req.filename or "").strip()
+    if "?" in raw_path:
+        raw_path = raw_path.split("?", 1)[0]
+    if "#" in raw_path:
+        raw_path = raw_path.split("#", 1)[0]
 
+    target_name = sanitize_filename(Path(raw_path).name) if raw_path else None
     if not target_name:
         raise HTTPException(status_code=400, detail="Missing filename or image_path")
 
-    src_file = settings.IMAGES_PATH / target_name
-    if not src_file.exists():
-        alt_paths = [
-            settings.OUTPUTS_PATH / "images" / target_name,
-            settings.OUTPUTS_PATH / target_name,
-        ]
-        found = False
-        for p in alt_paths:
-            if p.exists():
-                src_file = p
-                found = True
-                break
-        if not found:
-            raise HTTPException(status_code=404, detail=f"Source image '{target_name}' not found")
+    candidate_paths = [
+        settings.IMAGES_PATH / target_name,
+        settings.FINAL_PATH / target_name,
+        settings.OUTPUTS_PATH / "images" / target_name,
+        settings.OUTPUTS_PATH / "final" / target_name,
+        settings.OUTPUTS_PATH / "publish" / target_name,
+        settings.OUTPUTS_PATH / target_name,
+    ]
+    src_file = None
+    for p in candidate_paths:
+        if p.exists() and p.is_file():
+            src_file = p
+            break
+    if not src_file:
+        raise HTTPException(status_code=404, detail=f"Source image '{target_name}' not found")
 
     try:
         img = Image.open(src_file).convert("RGB")
@@ -1016,14 +1018,36 @@ def _save_ai_tool_asset(res: dict, src_name: str, tool_name: str):
                 logger.warning("Failed to save AI tool asset: %s", e)
 
 
+def _resolve_tool_image_path(raw_path: str) -> Path:
+    from services.security_service import safe_resolve_output_path, sanitize_filename
+    clean = str(raw_path or "").strip()
+    if "?" in clean:
+        clean = clean.split("?", 1)[0]
+    if "#" in clean:
+        clean = clean.split("#", 1)[0]
+    try:
+        return safe_resolve_output_path(clean, must_exist=True)
+    except Exception:
+        fn = sanitize_filename(Path(clean).name)
+        candidates = [
+            settings.IMAGES_PATH / fn,
+            settings.FINAL_PATH / fn,
+            settings.OUTPUTS_PATH / "images" / fn,
+            settings.OUTPUTS_PATH / "final" / fn,
+            settings.OUTPUTS_PATH / "publish" / fn,
+        ]
+        for c in candidates:
+            if c.exists() and c.is_file():
+                return c
+        raise HTTPException(status_code=404, detail=f"Image file '{fn}' not found")
+
 @router.post("/remove-background")
 @limiter.limit("20/minute")
 async def api_remove_background(req: ImageToolRequest, request: Request):
     """Remove background from image and export transparent PNG"""
     from services.ai_image_tools import remove_background
-    from services.security_service import safe_resolve_output_path
     try:
-        src = safe_resolve_output_path(req.image_path, must_exist=True)
+        src = _resolve_tool_image_path(req.image_path)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(remove_background, src)
@@ -1036,9 +1060,8 @@ async def api_remove_background(req: ImageToolRequest, request: Request):
 async def api_relight(req: ImageToolRequest, request: Request):
     """Apply studio relighting to an image"""
     from services.ai_image_tools import relight_image
-    from services.security_service import safe_resolve_output_path
     try:
-        src = safe_resolve_output_path(req.image_path, must_exist=True)
+        src = _resolve_tool_image_path(req.image_path)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(relight_image, src, preset=req.preset or "golden_hour", intensity=req.intensity or 1.0)
@@ -1051,9 +1074,8 @@ async def api_relight(req: ImageToolRequest, request: Request):
 async def api_face_restore(req: ImageToolRequest, request: Request):
     """Restore facial micro-textures and sharpness"""
     from services.ai_image_tools import restore_face
-    from services.security_service import safe_resolve_output_path
     try:
-        src = safe_resolve_output_path(req.image_path, must_exist=True)
+        src = _resolve_tool_image_path(req.image_path)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(restore_face, src)
@@ -1066,9 +1088,8 @@ async def api_face_restore(req: ImageToolRequest, request: Request):
 async def api_outpaint(req: ImageToolRequest, request: Request):
     """Expand canvas to wide or vertical aspect ratio"""
     from services.ai_image_tools import outpaint_expand
-    from services.security_service import safe_resolve_output_path
     try:
-        src = safe_resolve_output_path(req.image_path, must_exist=True)
+        src = _resolve_tool_image_path(req.image_path)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(outpaint_expand, src, target_aspect=req.target_aspect or "16:9")
