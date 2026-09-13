@@ -214,6 +214,7 @@ function PipelineContent() {
   const [socialCopy, setSocialCopy] = useState<{ title?: string; caption?: string; hashtags?: string[] } | null>(null);
   const [retentionScore, setRetentionScore] = useState<number | null>(null);
   const [abHookVariants, setAbHookVariants] = useState<string[]>([]);
+  const [showDebugTelemetry, setShowDebugTelemetry] = useState(false);
 
   // Navigation refs
   const deskRef = useRef<HTMLDivElement>(null);
@@ -533,547 +534,418 @@ function PipelineContent() {
   const estimatedCostUsd = costPerScene * scenes;
   const estimatedCostInr = Math.round(estimatedCostUsd * 83.5 * 100) / 100;
 
-  return (
-    <div className="space-y-8 pb-20 font-jakarta max-w-7xl mx-auto">
-      {/* ── TOP EXECUTIVE BAR ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.25em] text-zinc-500 uppercase">
-            <span className="text-emerald-500 font-bold">OMNISTUDIO OS 5.0</span>
-            <span>•</span>
-            <span>AUTONOMOUS CREATIVE AGENCY</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
-              Creative Operating System
-            </h1>
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 select-none">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>22 SPECIALIZED AGENTS ACTIVE</span>
-            </div>
-          </div>
+  // ── Render 4-Department Live Progress Bar (Clean, uncluttered) ──
+  const renderDepartmentProgress = () => (
+    <div className="p-5 rounded-3xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-4 animate-in fade-in duration-200">
+      <div className="flex items-center justify-between font-mono text-xs">
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+          <span className="font-bold text-zinc-900 dark:text-white">
+            {agentMode === "autonomous" ? "Autonomous 22-Agent Flow Active" : "Directorial Review Pipeline Active"}
+          </span>
         </div>
+        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+          {pausedState ? `Awaiting Sign-Off: ${pausedState.toUpperCase()}` : "Synthesizing Pipeline"}
+        </span>
+      </div>
 
-        {/* Quick Smooth Navigation Buttons */}
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <button
-            type="button"
-            onClick={() => deskRef.current?.scrollIntoView({ behavior: "smooth" })}
-            className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer"
-          >
-            01 • Directive Desk
-          </button>
-          <button
-            type="button"
-            onClick={() => studioRef.current?.scrollIntoView({ behavior: "smooth" })}
-            className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white cursor-pointer"
-          >
-            02 • 22 Agents
-          </button>
-          {(masterVideo || choreographedScenes.length > 0) && (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+        <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
+          <p className="text-zinc-400 text-[9px] font-bold uppercase">Phase 1</p>
+          <p className="font-bold text-zinc-800 dark:text-zinc-200">Creative & Script</p>
+        </div>
+        <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
+          <p className="text-zinc-400 text-[9px] font-bold uppercase">Phase 2</p>
+          <p className="font-bold text-zinc-800 dark:text-zinc-200">Diffusion & Visuals</p>
+        </div>
+        <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
+          <p className="text-zinc-400 text-[9px] font-bold uppercase">Phase 3</p>
+          <p className="font-bold text-zinc-800 dark:text-zinc-200">Audio & Dubbing</p>
+        </div>
+        <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
+          <p className="text-zinc-400 text-[9px] font-bold uppercase">Phase 4</p>
+          <p className="font-bold text-zinc-800 dark:text-zinc-200">Master & Release</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Render Directive Desk Form (Prompt + Specs + Launch) ──
+  const renderDirectiveForm = (mode: "autonomous" | "assisted") => (
+    <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-xs space-y-6 relative overflow-hidden">
+      {/* Subtle Ambient Accent */}
+      <div className={cn(
+        "absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none",
+        mode === "autonomous" ? "bg-emerald-500/[0.03]" : "bg-violet-500/[0.03]"
+      )} />
+
+      {/* Section Header */}
+      <div className="flex items-center justify-between font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <span className={cn("w-2 h-2 rounded-full", mode === "autonomous" ? "bg-emerald-500" : "bg-violet-500")} />
+          <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
+            {mode === "autonomous" ? "01 • AUTONOMOUS CREATIVE DIRECTIVE" : "01 • DIRECTORIAL CREATIVE DIRECTIVE"}
+          </span>
+        </div>
+        <span className={cn("text-[10px] font-bold", mode === "autonomous" ? "text-emerald-600 dark:text-emerald-400" : "text-violet-600 dark:text-violet-400")}>
+          {mode === "autonomous" ? "Autonomous 22-agent execution" : "Directorial review popups enabled"}
+        </span>
+      </div>
+
+      {/* Master Prompt Input Box */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-[11px] font-mono">
+          <span className="text-zinc-500">
+            Describe characters, setting, lighting, mood, camera style, or commercial goal:
+          </span>
+          <div className="flex items-center gap-2">
+            {topic.trim() && (
+              <button
+                type="button"
+                onClick={() => setTopic("")}
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer px-2 py-0.5 rounded"
+              >
+                Clear
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => screeningRef.current?.scrollIntoView({ behavior: "smooth" })}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold shadow-xs cursor-pointer"
+              onClick={enhancePrompt}
+              disabled={enhancing || !topic.trim()}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer border",
+                enhancing
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse"
+                  : mode === "autonomous"
+                  ? "bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 disabled:opacity-40"
+                  : "bg-violet-500/10 hover:bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30 disabled:opacity-40"
+              )}
             >
-              03 • Screen & Publish
+              <Wand2 className={cn("w-3 h-3", enhancing && "animate-spin")} />
+              <span>{enhancing ? "ENHANCING..." : "DIRECTORIAL POLISH"}</span>
             </button>
+          </div>
+        </div>
+
+        <textarea
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" && e.ctrlKey) || (e.key === "Enter" && e.metaKey)) {
+              e.preventDefault();
+              handleLaunchAgency();
+            }
+          }}
+          placeholder={
+            mode === "autonomous"
+              ? "E.g. Create an ultra-luxury commercial for an emerald jewelry collection featuring an elegant protagonist walking through a grand moonlit palace with flowing silks..."
+              : "E.g. Formulate a cinematic sci-fi documentary with multiple acts, dramatic rim lighting, and orchestral soundtrack..."
+          }
+          rows={3}
+          className={cn(
+            "w-full min-h-[110px] bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed",
+            running && "ring-2 ring-emerald-500/30 border-emerald-500/50"
           )}
+        />
+
+        {/* Quick Inspiration Concept Chips */}
+        <div className="pt-1 flex flex-wrap items-center gap-2 font-mono">
+          <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold shrink-0">
+            QUICK CONCEPTS:
+          </span>
+          {PRESETS.map((p, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setTopic(p.text)}
+              className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span className="font-bold text-emerald-500">[{p.genre}]</span>
+              <span className="truncate max-w-[170px]">{p.text}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── TWO INTERACTIVE STUDIO MODE CARDS ── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between font-mono text-[11px] text-zinc-500 uppercase tracking-wider font-bold">
-          <span>SELECT OPERATING MODE:</span>
-          <span>Click either card to activate</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* CARD 1: 100% Autonomous Creative Agency */}
-          <div
-            onClick={() => setAgentMode("autonomous")}
-            className={cn(
-              "p-5 rounded-3xl border-2 text-left cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between group",
-              agentMode === "autonomous"
-                ? "bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] border-emerald-500 shadow-md shadow-emerald-500/5 ring-2 ring-emerald-500/20"
-                : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600"
-            )}
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn(
-                    "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors",
-                    agentMode === "autonomous"
-                      ? "bg-emerald-500 text-white shadow-xs"
-                      : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500"
-                  )}>
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
-                      Autonomous Creative Agency
-                    </h3>
-                    <p className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
-                      One-Click Zero-Intervention Mode
-                    </p>
-                  </div>
-                </div>
-
-                <div className={cn(
-                  "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
-                  agentMode === "autonomous"
-                    ? "bg-emerald-500 border-emerald-500 text-white"
-                    : "border-zinc-300 dark:border-zinc-700"
-                )}>
-                  {agentMode === "autonomous" && <Check className="w-3.5 h-3.5" />}
-                </div>
-              </div>
-
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-jakarta">
-                Single master prompt into complete 4K cinematic production and distribution. All 22 AI agents coordinate autonomously without requiring manual steps.
-              </p>
-            </div>
-
-            <div className="pt-4 mt-2 flex flex-wrap items-center gap-2 border-t border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono">
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                Continuous Flow
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Auto-Master & Compile
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Auto-Publish Ready
-              </span>
-            </div>
-          </div>
-
-          {/* CARD 2: Directorial Review Gates (With Popups) */}
-          <div
-            onClick={() => setAgentMode("assisted")}
-            className={cn(
-              "p-5 rounded-3xl border-2 text-left cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between group",
-              agentMode === "assisted"
-                ? "bg-violet-500/[0.03] dark:bg-violet-500/[0.05] border-violet-500 shadow-md shadow-violet-500/5 ring-2 ring-violet-500/20"
-                : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600"
-            )}
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn(
-                    "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors",
-                    agentMode === "assisted"
-                      ? "bg-violet-500 text-white shadow-xs"
-                      : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500"
-                  )}>
-                    <Sliders className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
-                      Directorial Review Gates
-                    </h3>
-                    <p className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase">
-                      Interactive Approval Popups
-                    </p>
-                  </div>
-                </div>
-
-                <div className={cn(
-                  "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
-                  agentMode === "assisted"
-                    ? "bg-violet-500 border-violet-500 text-white"
-                    : "border-zinc-300 dark:border-zinc-700"
-                )}>
-                  {agentMode === "assisted" && <Check className="w-3.5 h-3.5" />}
-                </div>
-              </div>
-
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-jakarta">
-                Human-in-the-loop studio. The agents pause at key milestones (Screenplay, Visual Keyframes, Master Cut) and present interactive approval popups for your sign-off.
-              </p>
-            </div>
-
-            <div className="pt-4 mt-2 flex flex-wrap items-center gap-2 border-t border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono">
-              <span className="px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20">
-                Approval Popups
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Directorial Feedback
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Revisions & Sign-Off
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── STAGE 1: MASTER CREATIVE DIRECTIVE (EXECUTIVE DESK) ── */}
-      <div ref={deskRef} className="space-y-5">
-        <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-xs space-y-6 relative overflow-hidden">
-          {/* Subtle Ambient Accent */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/[0.03] rounded-full blur-3xl pointer-events-none" />
-
-          {/* Section Header */}
-          <div className="flex items-center justify-between font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
-                01 • CREATIVE CONCEPT & DIRECTIVE
-              </span>
-            </div>
-            <span className="text-[10px] text-zinc-400">
-              {agentMode === "autonomous" ? "Autonomous 22-agent execution" : "Directorial review popups enabled"}
-            </span>
-          </div>
-
-          {/* Master Prompt Input Box */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-mono">
-              <span className="text-zinc-500">
-                Describe characters, setting, lighting, mood, camera style, or commercial goal:
-              </span>
-              <div className="flex items-center gap-2">
-                {topic.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setTopic("")}
-                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer px-2 py-0.5 rounded"
-                  >
-                    Clear
-                  </button>
-                )}
+      {/* ── 1-ROW PRODUCTION SPECIFICATIONS BAR ── */}
+      <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. Scene Timeline */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+              SCENE TIMELINE
+            </label>
+            <div className="grid grid-cols-4 gap-1">
+              {[2, 3, 4, 5].map((num) => (
                 <button
+                  key={num}
                   type="button"
-                  onClick={enhancePrompt}
-                  disabled={enhancing || !topic.trim()}
+                  onClick={() => setScenes(num)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold transition-all cursor-pointer border",
-                    enhancing
-                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse"
-                      : "bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 disabled:opacity-40"
+                    "py-1.5 rounded-lg text-center font-mono transition-all cursor-pointer",
+                    scenes === num
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                      : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs"
                   )}
                 >
-                  <Wand2 className={cn("w-3 h-3", enhancing && "animate-spin")} />
-                  <span>{enhancing ? "ENHANCING..." : "DIRECTORIAL POLISH"}</span>
+                  <span className="text-xs">{num}</span>
                 </button>
-              </div>
+              ))}
             </div>
+            <div className="text-[9px] font-mono text-zinc-400 text-center">
+              ~{scenes * 5}s runtime • {scenes} keyframes
+            </div>
+          </div>
 
-            <textarea
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" && e.ctrlKey) || (e.key === "Enter" && e.metaKey)) {
-                  e.preventDefault();
-                  handleLaunchAgency();
-                }
-              }}
-              placeholder="E.g. Create a luxury cinema commercial for an emerald jewelry collection featuring a royal protagonist walking through a grand moonlit palace with flowing silks and orchestral strings..."
-              rows={3}
-              className={cn(
-                "w-full min-h-[110px] bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed",
-                running && "ring-2 ring-emerald-500/30 border-emerald-500/50"
-              )}
-            />
-
-            {/* Quick Inspiration Concept Chips */}
-            <div className="pt-1 flex flex-wrap items-center gap-2 font-mono">
-              <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold shrink-0">
-                QUICK CONCEPTS:
-              </span>
-              {PRESETS.map((p, idx) => (
+          {/* 2. Aspect Ratio */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+              ASPECT RATIO
+            </label>
+            <div className="grid grid-cols-3 gap-1">
+              {[
+                { id: "16:9", label: "16:9", desc: "Cinema" },
+                { id: "9:16", label: "9:16", desc: "Shorts" },
+                { id: "1:1", label: "1:1", desc: "Feed" },
+              ].map((ar) => (
                 <button
-                  key={idx}
+                  key={ar.id}
                   type="button"
-                  onClick={() => setTopic(p.text)}
-                  className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
+                  onClick={() => setAspectRatio(ar.id)}
+                  className={cn(
+                    "py-1.5 rounded-lg text-center transition-all cursor-pointer",
+                    aspectRatio === ar.id
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                      : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 text-xs"
+                  )}
                 >
-                  <span className="font-bold text-emerald-500">[{p.genre}]</span>
-                  <span className="truncate max-w-[170px]">{p.text}</span>
+                  <span className="text-xs block font-bold font-mono">{ar.label}</span>
+                  <span className="text-[8px] opacity-70 block">{ar.desc}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ── 1-ROW PRODUCTION SPECIFICATIONS BAR ── */}
-          <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* 1. Scene Timeline */}
-              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-                  SCENE TIMELINE
-                </label>
-                <div className="grid grid-cols-4 gap-1">
-                  {[2, 3, 4, 5].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setScenes(num)}
-                      className={cn(
-                        "py-1.5 rounded-lg text-center font-mono transition-all cursor-pointer",
-                        scenes === num
-                          ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
-                          : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs"
-                      )}
-                    >
-                      <span className="text-xs">{num}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="text-[9px] font-mono text-zinc-400 text-center">
-                  ~{scenes * 5}s runtime • {scenes} keyframes
-                </div>
-              </div>
-
-              {/* 2. Aspect Ratio */}
-              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-                  ASPECT RATIO
-                </label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { id: "16:9", label: "16:9", desc: "Cinema" },
-                    { id: "9:16", label: "9:16", desc: "Shorts" },
-                    { id: "1:1", label: "1:1", desc: "Feed" },
-                  ].map((ar) => (
-                    <button
-                      key={ar.id}
-                      type="button"
-                      onClick={() => setAspectRatio(ar.id)}
-                      className={cn(
-                        "py-1.5 rounded-lg text-center transition-all cursor-pointer",
-                        aspectRatio === ar.id
-                          ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
-                          : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400 text-xs"
-                      )}
-                    >
-                      <span className="text-xs block font-bold font-mono">{ar.label}</span>
-                      <span className="text-[8px] opacity-70 block">{ar.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3. Diffusion Engine */}
-              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5">
-                <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-                  DIFFUSION ENGINE
-                </label>
-                <select
-                  value={imageModel}
-                  onChange={(e) => setImageModel(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  {DIFFUSION_MODELS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} [{m.badge}]
-                    </option>
-                  ))}
-                </select>
-                <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span>Engine: {DIFFUSION_MODELS.find(m => m.id === imageModel)?.badge || "READY"}</span>
-                </div>
-              </div>
-
-              {/* 4. Neural Voice Provider */}
-              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-                  NEURAL SPEECH DUB
-                </label>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setVoiceProvider("edge")}
-                    className={cn(
-                      "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
-                      voiceProvider === "edge"
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
-                        : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
-                    )}
-                  >
-                    <span className="text-[11px] block font-bold">Edge Neural</span>
-                    <span className="text-[8px] font-mono text-emerald-500 block">Instant Free</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVoiceProvider("elevenlabs")}
-                    className={cn(
-                      "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
-                      voiceProvider === "elevenlabs"
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
-                        : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
-                    )}
-                  >
-                    <span className="text-[11px] block font-bold">ElevenLabs</span>
-                    <span className="text-[8px] font-mono text-zinc-400 block">Studio Voice</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Optional Advanced Director Accordion */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-[11px] font-mono text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1.5 cursor-pointer py-1"
+          {/* 3. Diffusion Engine */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5">
+            <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+              DIFFUSION ENGINE
+            </label>
+            <select
+              value={imageModel}
+              onChange={(e) => setImageModel(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              <span>{showAdvanced ? "Hide" : "Show"} Advanced Directorial Controls (Reference Image & Cinematography Palette)</span>
-            </button>
-
-            {showAdvanced && (
-              <div className="pt-3 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-black/[0.04] dark:border-white/[0.04] animate-in fade-in duration-200">
-                {/* Visual Reference Anchor */}
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-                    VISUAL STYLE & CHARACTER REFERENCE ANCHOR
-                  </label>
-                  {referenceImage ? (
-                    <div className="flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                      <img src={getMediaUrl(referenceImage)} alt="Reference" className="w-12 h-12 rounded-lg object-cover" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-mono font-bold truncate">{referenceImage.split("/").pop()}</p>
-                        <p className="text-[9px] font-mono text-emerald-500">Active Visual Anchor</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setReferenceImage("")}
-                        className="p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => refFileInputRef.current?.click()}
-                      className="rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 bg-white dark:bg-zinc-900/50 p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1"
-                    >
-                      <input
-                        ref={refFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => e.target.files?.[0] && handleRefUpload(e.target.files[0])}
-                      />
-                      {uploadingRef ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-                      ) : (
-                        <Upload className="w-5 h-5 text-zinc-400" />
-                      )}
-                      <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                        {uploadingRef ? "Uploading..." : "Upload Character or Style Reference"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Aesthetic Preset Selector */}
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                  <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-                    CINEMATOGRAPHY PALETTE
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-[110px] overflow-y-auto custom-scrollbar">
-                    {STYLES.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => setStyle(s.id)}
-                        className={cn(
-                          "px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer",
-                          style === s.id
-                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
-                            : "bg-white dark:bg-zinc-900 border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
-                        )}
-                      >
-                        <span className="text-xs block font-bold">{s.label}</span>
-                        <span className="text-[8px] font-mono opacity-70 block truncate">{s.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+              {DIFFUSION_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} [{m.badge}]
+                </option>
+              ))}
+            </select>
+            <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Engine: {DIFFUSION_MODELS.find((m) => m.id === imageModel)?.badge || "READY"}</span>
+            </div>
           </div>
 
-          {/* Launch Command Bar */}
-          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-black/[0.06] dark:border-white/[0.06]">
-            <div className="flex items-center gap-3 font-mono text-xs text-zinc-500">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-emerald-500" />
-                Est. Time: ~{scenes * 6}s
-              </span>
-              <span>•</span>
-              <span>
-                Est. Cost: <strong className="text-zinc-900 dark:text-white">₹{estimatedCostInr}</strong> (${estimatedCostUsd.toFixed(2)})
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {running && (
-                <button
-                  type="button"
-                  onClick={handleAbortPipeline}
-                  className="px-4 py-3 rounded-2xl border border-rose-500/30 text-rose-500 hover:bg-rose-500/10 font-mono text-xs font-bold transition-all cursor-pointer"
-                >
-                  Abort Agents
-                </button>
-              )}
-
+          {/* 4. Neural Voice Provider */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+              NEURAL SPEECH DUB
+            </label>
+            <div className="grid grid-cols-2 gap-1">
               <button
                 type="button"
-                onClick={handleLaunchAgency}
-                disabled={running || !topic.trim()}
+                onClick={() => setVoiceProvider("edge")}
                 className={cn(
-                  "px-8 py-3.5 rounded-2xl font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50",
-                  agentMode === "autonomous"
-                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white"
-                    : "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white"
+                  "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
+                  voiceProvider === "edge"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
                 )}
               >
-                {running ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>22 AGENTS EXECUTING PRODUCTION...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 text-emerald-200" />
-                    <span>
-                      {agentMode === "autonomous"
-                        ? "Launch Autonomous 22-Agent Agency"
-                        : "Launch Director Review Pipeline"}
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-emerald-200" />
-                  </>
+                <span className="text-[11px] block font-bold">Edge Neural</span>
+                <span className="text-[8px] font-mono text-emerald-500 block">Instant Free</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceProvider("elevenlabs")}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
+                  voiceProvider === "elevenlabs"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
                 )}
+              >
+                <span className="text-[11px] block font-bold">ElevenLabs</span>
+                <span className="text-[8px] font-mono text-zinc-400 block">Studio Voice</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── STAGE 2: 4-DEPARTMENT LIVE PRODUCTION HUB ── */}
-      <div ref={studioRef} className="scroll-mt-6 space-y-6">
-        <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
-          {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
-                02 • 4-DEPARTMENT PRODUCTION HUB (22 SPECIALIZED AGENTS)
-              </span>
-            </div>
-            <span className="text-[10px] text-zinc-400">
-              Click any agent card below to inspect telemetry & artifacts
-            </span>
-          </div>
+      {/* Optional Advanced Director Accordion */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-[11px] font-mono text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1.5 cursor-pointer py-1"
+        >
+          {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          <span>{showAdvanced ? "Hide" : "Show"} Advanced Directorial Controls (Reference Image & Cinematography Palette)</span>
+        </button>
 
+        {showAdvanced && (
+          <div className="pt-3 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-black/[0.04] dark:border-white/[0.04] animate-in fade-in duration-200">
+            {/* Visual Reference Anchor */}
+            <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+                VISUAL STYLE & CHARACTER REFERENCE ANCHOR
+              </label>
+              {referenceImage ? (
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                  <img src={getMediaUrl(referenceImage)} alt="Reference" className="w-12 h-12 rounded-lg object-cover" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-mono font-bold truncate">{referenceImage.split("/").pop()}</p>
+                    <p className="text-[9px] font-mono text-emerald-500">Active Visual Anchor</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReferenceImage("")}
+                    className="p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => refFileInputRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 bg-white dark:bg-zinc-900/50 p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1"
+                >
+                  <input
+                    ref={refFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && handleRefUpload(e.target.files[0])}
+                  />
+                  {uploadingRef ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                  ) : (
+                    <Upload className="w-5 h-5 text-zinc-400" />
+                  )}
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                    {uploadingRef ? "Uploading..." : "Upload Character or Style Reference"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Aesthetic Preset Selector */}
+            <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+              <label className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+                CINEMATOGRAPHY PALETTE
+              </label>
+              <div className="grid grid-cols-2 gap-1.5 max-h-[110px] overflow-y-auto custom-scrollbar">
+                {STYLES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStyle(s.id)}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer",
+                      style === s.id
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold border-zinc-900 dark:border-white shadow-xs"
+                        : "bg-white dark:bg-zinc-900 border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300"
+                    )}
+                  >
+                    <span className="text-xs block font-bold">{s.label}</span>
+                    <span className="text-[8px] font-mono opacity-70 block truncate">{s.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Launch Command Bar */}
+      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-3 font-mono text-xs text-zinc-500">
+          <span className="flex items-center gap-1.5">
+            <Clock className={cn("w-3.5 h-3.5", mode === "autonomous" ? "text-emerald-500" : "text-violet-500")} />
+            Est. Time: ~{scenes * 6}s
+          </span>
+          <span>•</span>
+          <span>
+            Est. Cost: <strong className="text-zinc-900 dark:text-white">₹{estimatedCostInr}</strong> (${estimatedCostUsd.toFixed(2)})
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {running && (
+            <button
+              type="button"
+              onClick={handleAbortPipeline}
+              className="px-4 py-3 rounded-2xl border border-rose-500/30 text-rose-500 hover:bg-rose-500/10 font-mono text-xs font-bold transition-all cursor-pointer"
+            >
+              Abort Agents
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleLaunchAgency}
+            disabled={running || !topic.trim()}
+            className={cn(
+              "px-8 py-3.5 rounded-2xl font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50 text-white",
+              mode === "autonomous"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500"
+                : "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
+            )}
+          >
+            {running ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>22 AGENTS EXECUTING PRODUCTION...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-white/80" />
+                <span>
+                  {mode === "autonomous"
+                    ? "Launch Autonomous 22-Agent Pipeline"
+                    : "Launch Directorial Review Pipeline"}
+                </span>
+                <ArrowRight className="w-4 h-4 text-white/80" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Render Collapsible 22-Agent Architecture & Telemetry ──
+  const renderTelemetrySection = () => (
+    <div className="pt-2">
+      <button
+        type="button"
+        onClick={() => setShowDebugTelemetry(!showDebugTelemetry)}
+        className="w-full py-3 px-4 rounded-2xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400 transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
+          <Cpu className="w-4 h-4 text-emerald-500" />
+          <span className="font-bold">
+            {showDebugTelemetry ? "Hide" : "Inspect"} 22 Specialized Agents Architecture & Live Telemetry Stream
+          </span>
+        </div>
+        {showDebugTelemetry ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+
+      {showDebugTelemetry && (
+        <div className="mt-4 space-y-5 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] animate-in fade-in">
           {/* Formulated Project Brief Card (If Created by Director) */}
           {projectBrief && (
             <div className="p-4 rounded-2xl bg-violet-500/[0.04] border border-violet-500/20 space-y-2">
@@ -1160,237 +1032,500 @@ function PipelineContent() {
             </div>
           </div>
         </div>
-      </div>
+      )}
+    </div>
+  );
 
-      {/* ── STAGE 3: MASTER SCREENING & OMNICHANNEL PUBLISHING HUB ── */}
-      {(masterVideo || choreographedScenes.some((s) => s.video_path || s.image_path)) && (
-        <div ref={screeningRef} className="scroll-mt-6 space-y-6 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-[#0d0d14] border border-emerald-500/20 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
-            {/* Section Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+  // ── Render Master Screening Room & Omnichannel Distribution ──
+  const renderPublishingHub = () => {
+    if (!masterVideo && !choreographedScenes.some((s) => s.video_path || s.image_path)) {
+      return null;
+    }
+    return (
+      <div ref={screeningRef} className="scroll-mt-6 space-y-6 animate-in fade-in duration-300">
+        <div className="bg-white dark:bg-[#0d0d14] border border-emerald-500/20 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
+                MASTER SCREENING & OMNICHANNEL PUBLISHING LAUNCHPAD
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+              Master 4K Compilation Complete
+            </span>
+          </div>
+
+          {/* Video Player Showcase */}
+          {masterVideo && (
+            <div className="aspect-video max-w-3xl mx-auto rounded-2xl overflow-hidden bg-black shadow-xl relative group">
+              <video
+                src={getMediaUrl(masterVideo)}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+          )}
+
+          {/* Executive Master Action Row */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {masterVideo && (
+              <a
+                href={getMediaUrl(masterVideo)}
+                download
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download MP4 Master</span>
+              </a>
+            )}
+
+            <a
+              href="/video"
+              className="px-5 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 font-mono font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Film className="w-4 h-4" />
+              <span>Open in Video Studio</span>
+            </a>
+          </div>
+
+          {/* ── INTEGRATED SOCIAL PUBLISHING SECTION ── */}
+          <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
-                  03 • MASTER SCREENING & OMNICHANNEL PUBLISHING LAUNCHPAD
+                <Share2 className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">
+                  OMNICHANNEL PUBLISHER (PUBLISHING AGENT INTEGRATION)
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                Master 4K Compilation Complete
+              <span className="text-[10px] text-zinc-400">
+                Direct 1-Click Release across connected accounts
               </span>
             </div>
 
-            {/* Video Player Showcase */}
-            {masterVideo && (
-              <div className="aspect-video max-w-3xl mx-auto rounded-2xl overflow-hidden bg-black shadow-xl relative group">
-                <video
-                  src={getMediaUrl(masterVideo)}
-                  controls
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            )}
-
-            {/* ── INTEGRATED SOCIAL PUBLISHING SECTION (22 AGENTS PUBLISH HUB) ── */}
-            <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono">
-                <div className="flex items-center gap-2">
-                  <Share2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">
-                    OMNICHANNEL PUBLISHER (PUBLISHING AGENT INTEGRATION)
-                  </span>
-                </div>
-                <span className="text-[10px] text-zinc-400">
-                  Direct 1-Click Release across connected accounts
-                </span>
-              </div>
-
-              {/* Social Channels Selection Checkboxes */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
-                {SOCIAL_PLATFORMS.map((plat) => {
-                  const isSelected = selectedPublishChannels.includes(plat.id);
-                  return (
-                    <button
-                      key={plat.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPublishChannels((prev) =>
-                          isSelected ? prev.filter((p) => p !== plat.id) : [...prev, plat.id]
-                        );
-                      }}
-                      className={cn(
-                        "p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-2xs",
-                        isSelected
-                          ? `bg-white dark:bg-[#151520] ${plat.border} ring-1 ${plat.border}`
-                          : "bg-white dark:bg-white/[0.03] border-black/[0.06] dark:border-white/[0.06] text-zinc-500 opacity-60 hover:opacity-100"
-                      )}
-                    >
-                      <span className={cn("text-xs font-bold font-heading truncate", isSelected ? plat.color : "text-zinc-600 dark:text-zinc-400")}>
-                        {plat.name}
-                      </span>
-                      <div className={cn(
-                        "w-4 h-4 rounded-md border flex items-center justify-center shrink-0",
-                        isSelected ? "bg-emerald-500 border-emerald-500 text-white" : "border-zinc-300 dark:border-zinc-700"
-                      )}>
-                        {isSelected && <Check className="w-3 h-3" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Publish Action & Status Banner */}
-              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-black/[0.04] dark:border-white/[0.04]">
-                <div className="text-xs font-mono text-zinc-500">
-                  {publishMessage ? (
-                    <span className={cn(
-                      "flex items-center gap-1.5 font-bold",
-                      publishStatus === "published" ? "text-emerald-500" : publishStatus === "error" ? "text-rose-500" : "text-zinc-400"
-                    )}>
-                      {publishStatus === "published" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                      <span>{publishMessage}</span>
-                    </span>
-                  ) : (
-                    <span>Ready to distribute master cut to {selectedPublishChannels.length} channels</span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <a
-                    href="/publish"
-                    className="px-4 py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-                  >
-                    Open Publish Studio
-                  </a>
-
+            {/* Social Channels Selection Checkboxes */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+              {SOCIAL_PLATFORMS.map((plat) => {
+                const isSelected = selectedPublishChannels.includes(plat.id);
+                return (
                   <button
-                    type="button"
-                    onClick={handlePublishNow}
-                    disabled={publishStatus === "publishing" || !selectedPublishChannels.length}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-heading font-extrabold flex items-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    {publishStatus === "publishing" ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Publishing to Channels...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Publish Now Across {selectedPublishChannels.length} Channels</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Executive Master Action Row */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {masterVideo && (
-                <a
-                  href={getMediaUrl(masterVideo)}
-                  download
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs flex items-center gap-2 transition-all shadow-xs cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download MP4 Master</span>
-                </a>
-              )}
-
-              <a
-                href="/video"
-                className="px-5 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 font-mono font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
-              >
-                <Film className="w-4 h-4" />
-                <span>Open in Video Studio</span>
-              </a>
-            </div>
-
-            {/* Post-Production Insights & Social Copy Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-              {/* 1. AI Social Copy (SocialCopyAgent) */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-zinc-500">
-                    <Share2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>SEO SOCIAL COPY</span>
-                  </div>
-                  <button
+                    key={plat.id}
                     type="button"
                     onClick={() => {
-                      if (socialCopy) {
-                        navigator.clipboard.writeText(`${socialCopy.title}\n\n${socialCopy.caption}\n\n${socialCopy.hashtags?.join(" ")}`);
-                        setCopiedCopy(true);
-                        setTimeout(() => setCopiedCopy(false), 2000);
-                      }
+                      setSelectedPublishChannels((prev) =>
+                        isSelected ? prev.filter((p) => p !== plat.id) : [...prev, plat.id]
+                      );
                     }}
-                    className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    className={cn(
+                      "p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 shadow-2xs",
+                      isSelected
+                        ? `bg-white dark:bg-[#151520] ${plat.border} ring-1 ${plat.border}`
+                        : "bg-white dark:bg-white/[0.03] border-black/[0.06] dark:border-white/[0.06] text-zinc-500 opacity-60 hover:opacity-100"
+                    )}
                   >
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedCopy ? "Copied!" : "Copy"}</span>
+                    <span className={cn("text-xs font-bold font-heading truncate", isSelected ? plat.color : "text-zinc-600 dark:text-zinc-400")}>
+                      {plat.name}
+                    </span>
+                    <div className={cn(
+                      "w-4 h-4 rounded-md border flex items-center justify-center shrink-0",
+                      isSelected ? "bg-emerald-500 border-emerald-500 text-white" : "border-zinc-300 dark:border-zinc-700"
+                    )}>
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                    </div>
                   </button>
-                </div>
-                {socialCopy ? (
-                  <div className="space-y-1.5 text-xs font-jakarta">
-                    <p className="font-bold text-zinc-900 dark:text-white line-clamp-1">{socialCopy.title}</p>
-                    <p className="text-[11px] text-zinc-500 line-clamp-3">{socialCopy.caption}</p>
-                    <div className="flex flex-wrap gap-1 pt-1 font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
-                      {socialCopy.hashtags?.map((t, i) => (
-                        <span key={i}>{t}</span>
-                      ))}
-                    </div>
-                  </div>
+                );
+              })}
+            </div>
+
+            {/* Publish Action & Status Banner */}
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-black/[0.04] dark:border-white/[0.04]">
+              <div className="text-xs font-mono text-zinc-500">
+                {publishMessage ? (
+                  <span className={cn(
+                    "flex items-center gap-1.5 font-bold",
+                    publishStatus === "published" ? "text-emerald-500" : publishStatus === "error" ? "text-rose-500" : "text-zinc-400"
+                  )}>
+                    {publishStatus === "published" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                    <span>{publishMessage}</span>
+                  </span>
                 ) : (
-                  <p className="text-xs text-zinc-400 font-mono">Social copy synthesizing...</p>
+                  <span>Ready to distribute master cut to {selectedPublishChannels.length} channels</span>
                 )}
               </div>
 
-              {/* 2. Predictive Audience Retention (AnalyticsAgent) */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-zinc-500">
-                  <BarChart2 className="w-3.5 h-3.5 text-blue-500" />
-                  <span>PREDICTIVE AUDIENCE ENGAGEMENT</span>
-                </div>
-                {retentionScore !== null ? (
-                  <div className="space-y-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-extrabold font-heading text-zinc-950 dark:text-white">{retentionScore}%</span>
-                      <span className="text-[10px] font-mono text-emerald-500 font-bold">Top 5% Viral Potential</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${retentionScore}%` }} />
-                    </div>
-                    <p className="text-[10px] text-zinc-500 font-mono">
-                      Fast visual pacing and high contrast lighting optimize scroll-stop retention.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-zinc-400 font-mono">Calculating audience retention...</p>
-                )}
-              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/publish"
+                  className="px-4 py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                >
+                  Open Publish Studio
+                </a>
 
-              {/* 3. A/B Hook Variants (ABTestingAgent) */}
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
-                <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-zinc-500">
-                  <GitCompare className="w-3.5 h-3.5 text-rose-500" />
-                  <span>A/B HOOK VARIATIONS</span>
-                </div>
-                {abHookVariants.length > 0 ? (
-                  <div className="space-y-1.5 text-[11px] font-mono">
-                    {abHookVariants.map((v, i) => (
-                      <div key={i} className="p-1.5 rounded-lg bg-white dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] text-zinc-700 dark:text-zinc-300">
-                        {v}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-zinc-400 font-mono">Formulating A/B hook variants...</p>
-                )}
+                <button
+                  type="button"
+                  onClick={handlePublishNow}
+                  disabled={publishStatus === "publishing" || !selectedPublishChannels.length}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-heading font-extrabold flex items-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {publishStatus === "publishing" ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Publishing to Channels...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Publish Now Across {selectedPublishChannels.length} Channels</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Post-Production Insights & Social Copy Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+            {/* 1. AI Social Copy */}
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-zinc-500">
+                  <Share2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>SEO SOCIAL COPY</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (socialCopy) {
+                      navigator.clipboard.writeText(`${socialCopy.title}\n\n${socialCopy.caption}\n\n${socialCopy.hashtags?.join(" ")}`);
+                      setCopiedCopy(true);
+                      setTimeout(() => setCopiedCopy(false), 2000);
+                    }
+                  }}
+                  className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>{copiedCopy ? "Copied!" : "Copy"}</span>
+                </button>
+              </div>
+              {socialCopy ? (
+                <div className="space-y-1.5 text-xs font-jakarta">
+                  <p className="font-bold text-zinc-900 dark:text-white line-clamp-1">{socialCopy.title}</p>
+                  <p className="text-[11px] text-zinc-500 line-clamp-3">{socialCopy.caption}</p>
+                  <div className="flex flex-wrap gap-1 pt-1 font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
+                    {socialCopy.hashtags?.map((t, i) => (
+                      <span key={i}>{t}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 font-mono">Social copy synthesizing...</p>
+              )}
+            </div>
+
+            {/* 2. Predictive Audience Retention */}
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+              <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-zinc-500">
+                <BarChart2 className="w-3.5 h-3.5 text-blue-500" />
+                <span>PREDICTIVE AUDIENCE ENGAGEMENT</span>
+              </div>
+              {retentionScore !== null ? (
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-extrabold font-heading text-zinc-950 dark:text-white">{retentionScore}%</span>
+                    <span className="text-[10px] font-mono text-emerald-500 font-bold">Top 5% Viral Potential</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${retentionScore}%` }} />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 font-mono">
+                    Fast visual pacing and high contrast lighting optimize scroll-stop retention.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 font-mono">Calculating audience retention...</p>
+              )}
+            </div>
+
+            {/* 3. A/B Hook Variants */}
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+              <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-zinc-500">
+                <GitCompare className="w-3.5 h-3.5 text-rose-500" />
+                <span>A/B HOOK VARIATIONS</span>
+              </div>
+              {abHookVariants.length > 0 ? (
+                <div className="space-y-1.5 text-[11px] font-mono">
+                  {abHookVariants.map((v, i) => (
+                    <div key={i} className="p-1.5 rounded-lg bg-white dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.04] text-zinc-700 dark:text-zinc-300">
+                      {v}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-400 font-mono">Formulating A/B hook variants...</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8 pb-20 font-jakarta max-w-7xl mx-auto">
+      {/* ── TOP EXECUTIVE BAR ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.25em] text-zinc-500 uppercase">
+            <span className="text-emerald-500 font-bold">OMNISTUDIO OS 5.0</span>
+            <span>•</span>
+            <span>AUTONOMOUS CREATIVE AGENCY</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-zinc-950 dark:text-white tracking-tight">
+              Creative Operating System
+            </h1>
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>22 SPECIALIZED AGENTS ACTIVE</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Action Bar */}
+        <div className="flex items-center gap-2 text-xs font-mono">
+          <div className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+            <span className={cn("w-2 h-2 rounded-full", agentMode === "autonomous" ? "bg-emerald-500" : "bg-violet-500")} />
+            <span className="font-bold uppercase text-[11px]">
+              {agentMode === "autonomous" ? "Autonomous Tab Active" : "Directorial Gates Active"}
+            </span>
+          </div>
+          {(topic || masterVideo || choreographedScenes.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                setTopic("");
+                setMasterVideo(null);
+                setChoreographedScenes([]);
+                setActivityLogs([]);
+                setSocialCopy(null);
+                setPausedState(null);
+              }}
+              className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
+              title="Reset Workspace"
+            >
+              Reset Session
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── TWO DEDICATED STUDIO TABS ("SIRF DO TABS") ── */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between font-mono text-[11px] text-zinc-500 uppercase tracking-wider font-bold">
+          <span>OPERATING MODE TABS:</span>
+          <span>Click either tab to open its dedicated studio</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* TAB 1: 100% Autonomous Creative Agency */}
+          <div
+            onClick={() => setAgentMode("autonomous")}
+            className={cn(
+              "p-5 rounded-3xl border-2 text-left cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between group",
+              agentMode === "autonomous"
+                ? "bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06] border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20"
+                : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600 opacity-75 hover:opacity-100"
+            )}
+          >
+            <div className="space-y-3 w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn(
+                    "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors",
+                    agentMode === "autonomous"
+                      ? "bg-emerald-500 text-white shadow-xs"
+                      : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500"
+                  )}>
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
+                      Autonomous Pipeline
+                    </h3>
+                    <p className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
+                      One-Click Zero-Intervention Mode
+                    </p>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
+                  agentMode === "autonomous"
+                    ? "bg-emerald-500 border-emerald-500 text-white"
+                    : "border-zinc-300 dark:border-zinc-700"
+                )}>
+                  {agentMode === "autonomous" && <Check className="w-3.5 h-3.5" />}
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-jakarta">
+                Single prompt into finished 4K cinematic video and omnichannel social distribution. All 22 AI agents coordinate autonomously without manual approval stops.
+              </p>
+            </div>
+
+            <div className="pt-4 mt-2 flex flex-wrap items-center gap-2 border-t border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono">
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                Continuous Flow
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
+                Auto-Master & Compile
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
+                Auto-Publish Ready
+              </span>
+            </div>
+          </div>
+
+          {/* TAB 2: Directorial Review Gates */}
+          <div
+            onClick={() => setAgentMode("assisted")}
+            className={cn(
+              "p-5 rounded-3xl border-2 text-left cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between group",
+              agentMode === "assisted"
+                ? "bg-violet-500/[0.04] dark:bg-violet-500/[0.06] border-violet-500 shadow-md shadow-violet-500/10 ring-2 ring-violet-500/20"
+                : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600 opacity-75 hover:opacity-100"
+            )}
+          >
+            <div className="space-y-3 w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn(
+                    "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors",
+                    agentMode === "assisted"
+                      ? "bg-violet-500 text-white shadow-xs"
+                      : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500"
+                  )}>
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
+                      Directorial Review Gates
+                    </h3>
+                    <p className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase">
+                      Interactive Approval Popups
+                    </p>
+                  </div>
+                </div>
+
+                <div className={cn(
+                  "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
+                  agentMode === "assisted"
+                    ? "bg-violet-500 border-violet-500 text-white"
+                    : "border-zinc-300 dark:border-zinc-700"
+                )}>
+                  {agentMode === "assisted" && <Check className="w-3.5 h-3.5" />}
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-jakarta">
+                Human-in-the-loop studio. Agents pause at key milestones (Screenplay, Visual Keyframes, Master Cut) with approval popups for directorial sign-off and revisions.
+              </p>
+            </div>
+
+            <div className="pt-4 mt-2 flex flex-wrap items-center gap-2 border-t border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono">
+              <span className="px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20">
+                Approval Popups
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
+                Directorial Feedback
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
+                Revisions & Sign-Off
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CONDITIONAL WORKSPACE: ONLY THE OPENED TAB RENDERS ── */}
+      {agentMode === "autonomous" ? (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {renderDirectiveForm("autonomous")}
+          {running && renderDepartmentProgress()}
+          {renderPublishingHub()}
+          {renderTelemetrySection()}
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* 3 Milestone Gates Banner */}
+          <div className="p-4 rounded-2xl bg-violet-500/[0.05] border border-violet-500/20 space-y-2.5">
+            <div className="flex items-center justify-between font-mono text-[11px]">
+              <span className="font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">
+                3 DIRECTORIAL REVIEW GATES ACTIVE
+              </span>
+              <span className="text-zinc-500 text-[10px]">Popups appear at each milestone</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
+              <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-violet-500/20">
+                <span className="text-[9px] font-bold text-violet-500 block uppercase">Gate 1 • Scripting</span>
+                <span className="font-bold text-zinc-900 dark:text-zinc-100">Screenplay & Brief Sign-Off</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-violet-500/20">
+                <span className="text-[9px] font-bold text-violet-500 block uppercase">Gate 2 • Visuals</span>
+                <span className="font-bold text-zinc-900 dark:text-zinc-100">Keyframe Aesthetics Approval</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-violet-500/20">
+                <span className="text-[9px] font-bold text-violet-500 block uppercase">Gate 3 • Master Cut</span>
+                <span className="font-bold text-zinc-900 dark:text-zinc-100">Final Audio & Video Release</span>
+              </div>
+            </div>
+          </div>
+
+          {renderDirectiveForm("assisted")}
+
+          {/* Milestone Approval Alert (when paused) */}
+          {pausedState && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 animate-pulse" />
+                <div>
+                  <p className="text-xs font-bold text-zinc-950 dark:text-white">
+                    Directorial Sign-Off Required: {pausedState.toUpperCase()}
+                  </p>
+                  <p className="text-[10px] text-zinc-500 font-mono">
+                    Review artifacts, formulate feedback notes, and sign off to proceed.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApprovalModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-heading font-bold transition-all cursor-pointer shrink-0 shadow-xs"
+              >
+                Open Approval Popup
+              </button>
+            </div>
+          )}
+
+          {/* Choreographed Scene Review Grid */}
+          {choreographedScenes.length > 0 && (
+            <div className="space-y-3 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08]">
+              <div className="flex items-center justify-between font-mono border-b border-black/[0.06] dark:border-white/[0.06] pb-2">
+                <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
+                  CHOREOGRAPHED SCENE REVIEW ({choreographedScenes.length} SCENES)
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  {choreographedScenes.filter((s) => s.video_path || s.image_path).length} Rendered
+                </span>
+              </div>
+              <SceneReviewGrid scenes={choreographedScenes} compact={false} />
+            </div>
+          )}
+
+          {renderPublishingHub()}
         </div>
       )}
 
