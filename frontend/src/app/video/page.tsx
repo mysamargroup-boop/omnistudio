@@ -4576,29 +4576,29 @@ function VideoStudioContent() {
                           }
                           setVaultOpen(false);
                         }}
-                        className="group rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/80 hover:shadow-xl hover:shadow-emerald-500/10 text-left transition-all duration-200 relative aspect-video bg-zinc-950 cursor-pointer flex flex-col"
+                        className="group rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 hover:ring-2 hover:ring-emerald-500/20 text-left transition-colors duration-150 relative aspect-video bg-zinc-950 cursor-pointer flex flex-col"
                       >
                         <LazyImage
                           src={getMediaUrl(img.url)}
                           alt={img.filename}
                           aspectRatio="aspect-video"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover"
                         />
                         
-                        {/* Hover Overlay with 1-Click Select Badge */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 backdrop-blur-[1px]">
-                          <span className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-heading font-bold shadow-md flex items-center gap-1.5 transform scale-95 group-hover:scale-100 transition-transform">
+                        {/* Hover Overlay with 1-Click Select Badge (Solid, no scale drift) */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-2 backdrop-blur-[1px]">
+                          <span className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-heading font-bold shadow-md flex items-center gap-1.5">
                             <Check className="w-3.5 h-3.5" />
                             <span>Select Frame</span>
                           </span>
                         </div>
 
                         {/* Bottom Label Bar */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-2.5 flex items-center justify-between">
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-2.5 flex items-center justify-between">
                           <p className="text-[10px] font-mono text-zinc-200 truncate pr-1">
                             {img.filename || `frame_${idx + 1}.png`}
                           </p>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-white/80 shrink-0">
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/15 text-white/90 shrink-0 font-bold">
                             IMG
                           </span>
                         </div>

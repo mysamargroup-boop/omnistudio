@@ -64,6 +64,7 @@ import SocialRepurposerModal from "@/components/social/SocialRepurposerModal";
 import JewelleryPromptSuite from "@/components/studio/JewelleryPromptSuite";
 import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
 import PromptVaultModal from "@/components/prompt/PromptVaultModal";
+import LazyImage from "@/components/ui/LazyImage";
 
 interface ModelOption {
   value: string;
@@ -402,6 +403,7 @@ export default function ImageStudioPage() {
   const [vaultImages, setVaultImages] = useState<any[]>([]);
   const [loadingVault, setLoadingVault] = useState(false);
   const [vaultPickerTarget, setVaultPickerTarget] = useState<"reference" | "editor">("reference");
+  const [vaultSearch, setVaultSearch] = useState("");
 
   // Safeguard Confirmation Modal State
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -4167,56 +4169,156 @@ export default function ImageStudioPage() {
 
       {/* Vault Picker Modal */}
       {vaultOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.1] dark:border-white/[0.1] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-900 dark:text-white">Select From Vault</span>
-              <button onClick={() => setVaultOpen(false)} className="text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setVaultOpen(false)}
+        >
+          <div 
+            className="w-full max-w-3xl rounded-3xl bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <FolderArchive className="h-5 w-5 text-violet-500" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-heading font-bold text-sm sm:text-base text-zinc-950 dark:text-white truncate">
+                      Select {vaultPickerTarget === "editor" ? "Canvas Image" : "Reference Image"} from Vault
+                    </h3>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 font-bold shrink-0">
+                      {vaultImages.filter((img: any) => {
+                        const name = typeof img === "string" ? img : (img.filename || "");
+                        return !vaultSearch.trim() || name.toLowerCase().includes(vaultSearch.toLowerCase());
+                      }).length} Assets
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                    Pick any previously generated or uploaded asset to anchor your studio session
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setVaultOpen(false)} 
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="max-h-96 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 gap-3 custom-scrollbar">
-              {vaultImages.length === 0 ? (
-                <div className="col-span-full py-12 text-center space-y-2">
+
+            {/* Search Bar */}
+            <div className="px-4 sm:px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#0e0e16] flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={vaultSearch}
+                  onChange={(e) => setVaultSearch(e.target.value)}
+                  placeholder="Search assets by filename..."
+                  className="w-full pl-9 pr-8 py-2 text-xs font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+                />
+                {vaultSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setVaultSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Solid, Non-Drifting Grid */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar min-h-[250px]">
+              {loadingVault ? (
+                <div className="py-20 text-center text-xs text-zinc-500 font-mono flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                  <span>Loading Asset Vault library...</span>
+                </div>
+              ) : vaultImages.length === 0 ? (
+                <div className="py-16 text-center space-y-2">
                   <FolderArchive className="w-8 h-8 text-zinc-400 mx-auto" />
                   <p className="text-xs text-zinc-400 font-mono">No images found in your Vault.</p>
                 </div>
               ) : (
-                vaultImages.map((img, i) => {
-                  const itemUrl = typeof img === "string" ? img : (img.url || (img.filename ? `/outputs/images/${img.filename}` : ""));
-                  const itemName = typeof img === "string" ? img.split("/").pop() || "image.png" : (img.filename || "image.png");
-                  if (!itemUrl) return null;
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {vaultImages
+                    .filter((img: any) => {
+                      const name = typeof img === "string" ? img : (img.filename || "");
+                      return !vaultSearch.trim() || name.toLowerCase().includes(vaultSearch.toLowerCase());
+                    })
+                    .map((img, i) => {
+                      const itemUrl = typeof img === "string" ? img : (img.url || (img.filename ? `/outputs/images/${img.filename}` : ""));
+                      const itemName = typeof img === "string" ? img.split("/").pop() || "image.png" : (img.filename || "image.png");
+                      if (!itemUrl) return null;
 
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => {
-                        const cleanUrl = (itemUrl || "").split("?")[0].split("#")[0];
-                        if (vaultPickerTarget === "editor" || studioMode === "image_editor") {
-                          setStudioMode("image_editor");
-                          setEditorImageUrl(cleanUrl);
-                          setOriginalEditorImageUrl(cleanUrl);
-                          setPromptDockCollapsed(true);
-                          window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
-                        } else {
-                          setRefImageUrl(cleanUrl);
-                          setRefImages((prev) => {
-                            if (prev.some((p) => p.url === cleanUrl)) return prev;
-                            return [...prev, { url: cleanUrl, name: itemName }];
-                          });
-                        }
-                        setVaultOpen(false);
-                      }}
-                      className="rounded-xl overflow-hidden aspect-square border border-black/[0.08] dark:border-white/[0.08] hover:border-violet-500/50 cursor-pointer transition-all hover:scale-[1.02] relative group bg-black/5 dark:bg-white/5"
-                    >
-                      <img src={getMediaUrl(itemUrl)} alt={itemName} className="w-full h-full object-cover" />
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p className="text-[10px] text-white font-mono truncate">{itemName}</p>
-                      </div>
-                    </div>
-                  );
-                })
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => {
+                            const cleanUrl = (itemUrl || "").split("?")[0].split("#")[0];
+                            if (vaultPickerTarget === "editor" || studioMode === "image_editor") {
+                              setStudioMode("image_editor");
+                              setEditorImageUrl(cleanUrl);
+                              setOriginalEditorImageUrl(cleanUrl);
+                              setPromptDockCollapsed(true);
+                              window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
+                            } else {
+                              setRefImageUrl(cleanUrl);
+                              setRefImages((prev) => {
+                                if (prev.some((p) => p.url === cleanUrl)) return prev;
+                                return [...prev, { url: cleanUrl, name: itemName }];
+                              });
+                            }
+                            setVaultOpen(false);
+                          }}
+                          className="rounded-2xl overflow-hidden aspect-square border border-zinc-200 dark:border-zinc-800 hover:border-violet-500 hover:ring-2 hover:ring-violet-500/20 cursor-pointer transition-colors duration-150 relative group bg-zinc-950 select-none flex flex-col"
+                        >
+                          <LazyImage 
+                            src={getMediaUrl(itemUrl)} 
+                            alt={itemName} 
+                            aspectRatio="aspect-square"
+                            className="w-full h-full object-cover" 
+                          />
+                          
+                          {/* Hover Overlay with 1-Click Select Badge (Solid, zero scale drift) */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-2 backdrop-blur-[1px]">
+                            <span className="px-3 py-1.5 rounded-xl bg-violet-600 text-white text-[11px] font-heading font-bold shadow-md flex items-center gap-1.5">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Select Image</span>
+                            </span>
+                          </div>
+
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-2.5 flex items-center justify-between">
+                            <p className="text-[10px] text-zinc-200 font-mono truncate pr-1">{itemName}</p>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/15 text-white/90 shrink-0 font-bold">
+                              IMG
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
               )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3.5 sm:p-4 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center justify-between flex-wrap gap-2 text-xs font-mono text-zinc-500">
+              <span className="text-[11px] flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-violet-500" />
+                <span>Selected asset will load into current session</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setVaultOpen(false)}
+                className="px-4 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

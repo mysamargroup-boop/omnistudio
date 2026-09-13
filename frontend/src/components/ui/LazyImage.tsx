@@ -49,7 +49,6 @@ export default function LazyImage({
           <span className="text-[10px] font-mono uppercase tracking-wider">Preview Unavailable</span>
         </div>
       ) : (
-        /* Image with Smooth Fade & Blur-up Transition */
         <img
           src={src}
           alt={alt}
@@ -58,8 +57,8 @@ export default function LazyImage({
           onLoad={() => setIsLoaded(true)}
           onError={() => setHasError(true)}
           className={cn(
-            "w-full h-full object-cover transition-all duration-700 ease-out will-change-[opacity,transform,filter]",
-            isLoaded ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-[1.03] blur-xs",
+            "w-full h-full object-cover transition-opacity duration-150 ease-out",
+            isLoaded ? "opacity-100" : "opacity-0",
             className
           )}
           {...props}
