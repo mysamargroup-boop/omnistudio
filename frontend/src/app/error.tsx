@@ -19,7 +19,9 @@ export default function GlobalError({
   const handleClearCacheAndReset = () => {
     try {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('omnistudio_studio_draft_v1');
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('omnistudio_'))
+          .forEach((k) => localStorage.removeItem(k));
         sessionStorage.clear();
       }
     } catch (e) {

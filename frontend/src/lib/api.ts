@@ -554,6 +554,42 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ url }),
     }),
+
+  // Prompt Vault / Prompt Maker Collection
+  getPrompts: (params?: { search?: string; category?: string; studio_type?: string; favorite_only?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.category && params.category !== "all") query.append("category", params.category);
+    if (params?.studio_type && params.studio_type !== "all") query.append("studio_type", params.studio_type);
+    if (params?.favorite_only) query.append("favorite_only", "true");
+    const qs = query.toString();
+    return fetchApi<{ success: boolean; prompts: any[]; total: number }>(`/api/prompts${qs ? `?${qs}` : ""}`);
+  },
+  createPrompt: (data: {
+    title: string;
+    prompt: string;
+    negative_prompt?: string;
+    category?: string;
+    tags?: string[];
+    studio_type?: string;
+    metadata?: Record<string, any>;
+  }) => fetchApi<{ success: boolean; prompt?: any; id?: string }>("/api/prompts", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }),
+  updatePrompt: (id: string, data: any) =>
+    fetchApi<any>(`/api/prompts/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deletePrompt: (id: string) =>
+    fetchApi<{ success: boolean; id: string }>(`/api/prompts/${id}`, {
+      method: "DELETE",
+    }),
+  toggleFavoritePrompt: (id: string) =>
+    fetchApi<{ success: boolean; id: string; is_favorite: number; isFavorite: boolean }>(`/api/prompts/${id}/favorite`, {
+      method: "POST",
+    }),
 };
 
 

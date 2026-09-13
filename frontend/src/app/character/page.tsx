@@ -470,8 +470,8 @@ export default function CharacterStudioPage() {
         </div>
       )}
 
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+      {/* Filter & Search Bar — Sticky Navigation */}
+      <div className="sticky top-0 z-20 bg-zinc-50/95 dark:bg-[#0b0b0f]/95 backdrop-blur-md py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 border-b border-zinc-200/80 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 bg-zinc-200/70 dark:bg-zinc-900 p-1 rounded-xl w-fit border border-zinc-300/60 dark:border-zinc-800">
           <button
             type="button"

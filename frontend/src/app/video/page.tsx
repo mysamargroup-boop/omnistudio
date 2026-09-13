@@ -57,10 +57,12 @@ import {
   AtSign,
   Tag,
   Music,
+  Bookmark,
+  ShieldAlert,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { loadStudioDraft, saveStudioDraft } from "@/lib/draftStorage";
+import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
@@ -72,6 +74,7 @@ import VideoEditorModal from "@/components/video/VideoEditorModal";
 import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
 import BrandKitModal from "@/components/brand/BrandKitModal";
 import AudioMusicLibraryModal from "@/components/audio/AudioMusicLibraryModal";
+import PromptVaultModal from "@/components/prompt/PromptVaultModal";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
@@ -347,10 +350,11 @@ function VideoStudioContent() {
     volume: number;
     loop: boolean;
   } | null>(null);
+  const [promptVaultOpen, setPromptVaultOpen] = useState(false);
 
-  // Video Settings (Camera motion defaults to "none")
+  // Video Settings (Camera motion defaults to "zoom_in" - Cinematic Dolly Push)
   const [model, setModel] = useState("google_veo");
-  const [motion, setMotion] = useState("none");
+  const [motion, setMotion] = useState("zoom_in");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [duration, setDuration] = useState(4);
   const [fps, setFps] = useState(30);
@@ -382,7 +386,7 @@ function VideoStudioContent() {
         prompt: "",
         negativePrompt: "",
         model: "google_veo",
-        motion: "none",
+        motion: "zoom_in",
         aspectRatio: "16:9",
         duration: 4,
         fps: 30,
@@ -444,7 +448,7 @@ function VideoStudioContent() {
   // Persist draft to localStorage whenever settings or prompt change
   useEffect(() => {
     if (!hasHydrated.current) return;
-    saveStudioDraft("video_studio", {
+    saveStudioDraftDebounced("video_studio", {
       mode,
       prompt,
       negativePrompt,
@@ -1522,7 +1526,7 @@ function VideoStudioContent() {
   return (
     <div className="relative h-full flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
-      <div className="flex-shrink-0 sticky top-0 flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-black/[0.06] dark:border-white/[0.06] bg-white/95 dark:bg-[#0c0c12]/95 backdrop-blur-md z-20 w-full overflow-hidden">
+      <div className="flex-shrink-0 sticky top-0 flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md z-30 w-full overflow-hidden">
         {/* Left: Mode Tabs (flex-1 scrollable, never pushes right utilities off-screen) */}
         <div className="flex-1 min-w-0 overflow-x-auto no-scrollbar flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
           <button
@@ -2403,9 +2407,9 @@ function VideoStudioContent() {
             <div
               onClick={() => setVideoDockCollapsed(false)}
               className={cn(
-                "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center cursor-pointer",
-                isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
-                sidebarOpen ? "right-0 lg:right-96" : "right-0"
+                "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 justify-center cursor-pointer",
+                sidebarOpen ? "hidden lg:flex right-0 lg:right-96" : "flex right-0",
+                isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
               )}
             >
               <div className="w-full max-w-xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-2xl px-5 py-2.5 flex items-center justify-between hover:border-emerald-500/50 transition-all group">
@@ -2437,9 +2441,9 @@ function VideoStudioContent() {
             <div
               ref={dockRef}
               className={cn(
-                "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 flex justify-center",
-                isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
-                sidebarOpen ? "right-0 lg:right-96" : "right-0"
+                "fixed bottom-4 z-40 transition-all duration-300 pointer-events-auto px-3 sm:px-4 justify-center",
+                sidebarOpen ? "hidden lg:flex right-0 lg:right-96" : "flex right-0",
+                isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
               )}
             >
               <div
@@ -2587,6 +2591,10 @@ function VideoStudioContent() {
                   >
                     <Sliders className="w-3 h-3" />
                   </button>
+
+                  <div className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 shrink-0">
+                    {prompt.length} / 1,000 chars
+                  </div>
                 </div>
               </div>
 
@@ -2598,10 +2606,15 @@ function VideoStudioContent() {
                     type="button"
                     onClick={handleEnhancePrompt}
                     disabled={enhancingPrompt}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95"
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95 select-none",
+                      enhancingPrompt
+                        ? "magic-pulse-active bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 text-white border-violet-400/80 shadow-[0_0_15px_rgba(168,85,247,0.6)]"
+                        : "bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300"
+                    )}
                     title="1-Click AI Prompt Enhancer"
                   >
-                    <Wand2 className={cn("h-3.5 w-3.5 text-purple-600 dark:text-purple-400", enhancingPrompt && "animate-spin")} />
+                    <Wand2 className={cn("h-3.5 w-3.5 transition-all duration-300", enhancingPrompt ? "scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.95)] animate-pulse text-white" : "text-purple-600 dark:text-purple-400")} />
                     <span>{enhancingPrompt ? "Enhancing..." : "Improve Prompt"}</span>
                   </button>
 
@@ -2613,8 +2626,19 @@ function VideoStudioContent() {
                     className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-mono cursor-pointer transition-all"
                     title="OpenAI Visual Director"
                   >
-                    <Sparkle className={cn("h-3 w-3 text-amber-500", directing && "animate-spin")} />
+                    <Sparkle className={cn("h-3 w-3 text-amber-500 transition-all", directing ? "animate-pulse scale-110 text-amber-400" : "")} />
                     <span>Director Agent</span>
+                  </button>
+
+                  {/* Prompt Vault Drawer Button */}
+                  <button
+                    type="button"
+                    onClick={() => setPromptVaultOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border shadow-xs active:scale-95 select-none bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/40"
+                    title="Open Prompt Vault & Presets"
+                  >
+                    <Bookmark className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <span>Prompt Vault</span>
                   </button>
 
                   {/* Character Lock Quick Toggle Button */}
@@ -2698,13 +2722,15 @@ function VideoStudioContent() {
                     type="button"
                     onClick={() => setShowNegativePrompt(!showNegativePrompt)}
                     className={cn(
-                      "px-2.5 py-1 rounded-xl text-xs font-mono transition-colors cursor-pointer",
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border select-none shadow-xs active:scale-95",
                       showNegativePrompt
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold"
-                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        ? "bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold"
+                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                     )}
+                    title="Toggle Negative Prompt (Exclude unwanted visuals)"
                   >
-                    Negative Prompt
+                    <ShieldAlert className={cn("w-3.5 h-3.5 shrink-0 transition-colors", showNegativePrompt ? "text-rose-500" : "text-zinc-400")} />
+                    <span>Negative Prompt</span>
                   </button>
 
                   {/* Audio & Music Library Selector */}
@@ -2734,10 +2760,6 @@ function VideoStudioContent() {
                       </span>
                     )}
                   </button>
-                </div>
-
-                <div className="text-[11px] font-mono text-zinc-400">
-                  {prompt.length} chars
                 </div>
               </div>
 
@@ -3054,8 +3076,13 @@ function VideoStudioContent() {
                           : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300"
                       )}
                     >
-                      <Video className="w-3.5 h-3.5 text-emerald-500" />
+                      {React.createElement(activeMotion.icon, {
+                        className: cn("w-3.5 h-3.5 shrink-0", motion !== "none" ? "text-emerald-500 animate-pulse" : "text-zinc-400")
+                      })}
                       <span>{activeMotion.label}</span>
+                      {motion !== "none" && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30 animate-ping" />
+                      )}
                       <ChevronUp className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", motionPopoverOpen && "rotate-180")} />
                     </button>
 
@@ -4664,6 +4691,22 @@ function VideoStudioContent() {
         onClose={() => setAudioLibraryOpen(false)}
         onSelectTrack={(t) => setSelectedBgmTrack(t)}
         initialSelectedId={selectedBgmTrack?.id}
+      />
+
+      {/* Prompt Vault Modal */}
+      <PromptVaultModal
+        isOpen={promptVaultOpen}
+        onClose={() => setPromptVaultOpen(false)}
+        onSelectPrompt={(pText, negText) => {
+          setPrompt(pText);
+          if (negText) {
+            setNegativePrompt(negText);
+            setShowNegativePrompt(true);
+          }
+        }}
+        currentPrompt={prompt}
+        currentNegativePrompt={negativePrompt}
+        studioType="video"
       />
     </div>
   );

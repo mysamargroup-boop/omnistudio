@@ -43,6 +43,7 @@ backend/outputs/trash/*
 backend/outputs/publish/*
 backend/outputs/analytics/*
 backend/outputs/brand_kit/*
+backend/outputs/backups/*
 scratch/
 backend/outputs/*.db
 backend/outputs/*.sqlite

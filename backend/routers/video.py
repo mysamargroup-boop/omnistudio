@@ -803,9 +803,16 @@ async def generate_video(req: VideoRequest, request: Request):
             logger.error("VEO generation failed: %s", e)
             return record_failure(f"Google Veo Error: {str(e)}")
     elif req.model == "ffmpeg_local" or "ffmpeg" in req.model.lower() or "local" in req.model.lower():
+        # Video Animation Fix: If motion is static/none, upgrade to cinematic motion so an animated video is always rendered
+        effective_motion = req.motion_type
+        if effective_motion in ("none", "static", ""):
+            if base_p and len(base_p) > 2:
+                effective_motion = "zoom_in"  # Cinematic Dolly
+            else:
+                effective_motion = "subtle"   # Cinematic drift
         result = await generate_video_from_image(
             image_path=str(start_resolved),
-            motion_type=req.motion_type if req.motion_type != "orbit" else "orbit",
+            motion_type=effective_motion if effective_motion != "orbit" else "orbit",
             duration=clip_duration,
             fps=fps_int,
             width=w,
@@ -815,6 +822,7 @@ async def generate_video(req: VideoRequest, request: Request):
             loop=req.loop,
             model=req.model
         )
+        result["motion_type"] = effective_motion
     else:
         return record_failure(
             f"Keyframe video motion for model '{req.model}' is not available or requires external credentials. Please choose 'Google Veo 3.1' or 'Local Ken Burns (FFmpeg)'."
@@ -962,31 +970,32 @@ async def edit_video_endpoint(req: EditVideoRequest, request: Request):
     Apply pure video editing tools (trimming, speed curve, aspect ratio,
     color grading/LUTs, audio track mixing, text overlay) to any generated or vault video.
     """
-    res = await edit_video(
-        video_path=req.video_path,
-        start_time=req.start_time,
-        end_time=req.end_time,
-        speed=req.speed,
-        aspect_ratio=req.aspect_ratio,
-        brightness=req.brightness,
-        contrast=req.contrast,
-        saturation=req.saturation,
-        preset_lut=req.preset_lut,
-        mute_original=req.mute_original,
-        bg_audio_path=req.bg_audio_path,
-        bg_audio_volume=req.bg_audio_volume,
-        original_audio_volume=req.original_audio_volume,
-        text_overlay=req.text_overlay,
-        text_position=req.text_position,
-        video_fade_in=req.video_fade_in,
-        video_fade_out=req.video_fade_out,
-        audio_fade_in=req.audio_fade_in,
-        audio_fade_out=req.audio_fade_out,
-        watermark_path=req.watermark_path,
-        watermark_position=req.watermark_position,
-        chroma_key_color=req.chroma_key_color,
-        chroma_bg_path=req.chroma_bg_path
-    )
+    async with FFMPEG_SEMAPHORE:
+        res = await edit_video(
+            video_path=req.video_path,
+            start_time=req.start_time,
+            end_time=req.end_time,
+            speed=req.speed,
+            aspect_ratio=req.aspect_ratio,
+            brightness=req.brightness,
+            contrast=req.contrast,
+            saturation=req.saturation,
+            preset_lut=req.preset_lut,
+            mute_original=req.mute_original,
+            bg_audio_path=req.bg_audio_path,
+            bg_audio_volume=req.bg_audio_volume,
+            original_audio_volume=req.original_audio_volume,
+            text_overlay=req.text_overlay,
+            text_position=req.text_position,
+            video_fade_in=req.video_fade_in,
+            video_fade_out=req.video_fade_out,
+            audio_fade_in=req.audio_fade_in,
+            audio_fade_out=req.audio_fade_out,
+            watermark_path=req.watermark_path,
+            watermark_position=req.watermark_position,
+            chroma_key_color=req.chroma_key_color,
+            chroma_bg_path=req.chroma_bg_path
+        )
     return res
 
 
@@ -1014,8 +1023,9 @@ async def concat_videos_endpoint(req: ConcatVideoRequest, request: Request):
     out_file = settings.VIDEOS_PATH / out_filename
     
     try:
-        await asyncio.to_thread(concatenate_videos, resolved_paths, out_file)
-        duration = await asyncio.to_thread(get_media_duration, out_file)
+        async with FFMPEG_SEMAPHORE:
+            await asyncio.to_thread(concatenate_videos, resolved_paths, out_file)
+            duration = await asyncio.to_thread(get_media_duration, out_file)
         
         try:
             db_save_asset(
@@ -1131,11 +1141,12 @@ async def api_remove_silence(req: SilenceRemovalRequest, request: Request):
     except Exception as e:
         return {"success": False, "error": f"Invalid video path: {e}"}
 
-    res = await remove_silence_from_video(
-        src,
-        noise_threshold_db=req.noise_threshold_db,
-        min_silence_duration=req.min_silence_duration
-    )
+    async with FFMPEG_SEMAPHORE:
+        res = await remove_silence_from_video(
+            src,
+            noise_threshold_db=req.noise_threshold_db,
+            min_silence_duration=req.min_silence_duration
+        )
     return res
 
 
@@ -1151,7 +1162,8 @@ async def api_denoise_audio(req: AudioFilterRequest, request: Request):
     except Exception as e:
         return {"success": False, "error": f"Invalid video path: {e}"}
 
-    res = await denoise_video_audio(src)
+    async with FFMPEG_SEMAPHORE:
+        res = await denoise_video_audio(src)
     return res
 
 
@@ -1167,7 +1179,8 @@ async def api_enhance_voice(req: AudioFilterRequest, request: Request):
     except Exception as e:
         return {"success": False, "error": f"Invalid video path: {e}"}
 
-    res = await enhance_voice_audio(src)
+    async with FFMPEG_SEMAPHORE:
+        res = await enhance_voice_audio(src)
     return res
 
 

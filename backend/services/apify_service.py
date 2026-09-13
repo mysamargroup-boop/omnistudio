@@ -375,9 +375,28 @@ async def fetch_web_content(url: str) -> Dict[str, Any]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         }
-        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
+        current_url = url
+        resp = None
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=False) as client:
+            for _ in range(4):  # Allow up to 3 safe redirects
+                resp = await client.get(current_url, headers=headers)
+                if resp.is_redirect:
+                    redirect_target = resp.headers.get("location")
+                    if not redirect_target:
+                        break
+                    from urllib.parse import urljoin
+                    current_url = urljoin(current_url, redirect_target)
+                    if not _is_safe_web_url(current_url):
+                        return {
+                            "success": False,
+                            "url": url,
+                            "title": "Blocked Redirect",
+                            "content": "Security Notice: Redirect to internal or prohibited address blocked."
+                        }
+                    continue
+                break
+
+        if resp and resp.status_code == 200:
                 html_text = resp.text
                 import re
                 clean = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', html_text, flags=re.IGNORECASE)

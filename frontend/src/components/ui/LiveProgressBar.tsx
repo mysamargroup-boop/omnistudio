@@ -49,14 +49,14 @@ export default function LiveProgressBar({
 
   // Estimate remaining time based on elapsed and progress
   const estimatedRemaining = (() => {
-    if (clampedProgress <= 5 || clampedProgress >= 100 || elapsedSeconds < 3) return null;
+    if (clampedProgress <= 5 || clampedProgress >= 100 || elapsedSeconds < 2) return null;
     const totalEstimated = (elapsedSeconds / clampedProgress) * 100;
-    const remaining = Math.max(0, Math.round(totalEstimated - elapsedSeconds));
+    const remaining = Math.max(1, Math.round(totalEstimated - elapsedSeconds));
     if (remaining > 600) return null; // Cap at 10 min to avoid wild estimates early on
     const m = Math.floor(remaining / 60);
     const s = remaining % 60;
-    if (m > 0) return `~${m}m ${s}s remaining`;
-    return `~${s}s remaining`;
+    if (m > 0) return `Estimated time remaining: ~${m}m ${s}s`;
+    return `Estimated time remaining: ~${remaining}s`;
   })();
 
   // Determine if nearing completion for glow effect

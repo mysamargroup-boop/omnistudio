@@ -337,3 +337,43 @@ async def clear_system_cache(request: Request):
         "freed_mb": round(freed_bytes / (1024 * 1024), 2),
         "files_removed": files_removed
     }
+
+
+class RestoreBackupRequest(BaseModel):
+    filename: str
+
+
+@router.post("/backup/create", dependencies=[Depends(require_admin_token)])
+@limiter.limit("5/minute")
+async def trigger_backup_endpoint(request: Request):
+    """Trigger an on-demand atomic backup of SQLite database and Supabase cloud tables"""
+    from services.backup_service import create_system_backup
+    res = await asyncio.to_thread(create_system_backup)
+    return res
+
+
+@router.get("/backup/list", dependencies=[Depends(require_admin_token)])
+@limiter.limit("20/minute")
+async def list_backups_endpoint(request: Request):
+    """List all available system backup archives with size and timestamp"""
+    from services.backup_service import list_system_backups
+    backups = await asyncio.to_thread(list_system_backups)
+    return {"success": True, "backups": backups}
+
+
+@router.post("/backup/restore", dependencies=[Depends(require_admin_token)])
+@limiter.limit("3/minute")
+async def restore_backup_endpoint(req: RestoreBackupRequest, request: Request):
+    """Restore system database from a verified backup archive"""
+    from services.backup_service import restore_system_backup
+    res = await asyncio.to_thread(restore_system_backup, req.filename)
+    return res
+
+
+@router.get("/cron/status")
+@limiter.limit("30/minute")
+async def cron_status_endpoint(request: Request):
+    """Return background cron status, Supabase keep-alive timestamp, and next scheduled tasks"""
+    from services.cron_service import cron_scheduler
+    return {"success": True, "scheduler": cron_scheduler.get_status()}
+

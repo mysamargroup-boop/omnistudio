@@ -15,6 +15,8 @@ class CronSchedulerService:
         self.last_run_timestamp: Optional[str] = None
         self.last_run_executed_count = 0
         self.total_executed_since_start = 0
+        self.last_supabase_ping: Optional[datetime] = None
+        self.last_backup_timestamp: Optional[str] = None
 
     @property
     def is_running(self) -> bool:
@@ -43,6 +45,18 @@ class CronSchedulerService:
                 break
             except Exception as e:
                 logger.error("Error in cron worker loop: %s", e)
+
+            # Supabase Keep-Alive: Ping every 48 hours to prevent free-tier 7-day auto-sleep
+            try:
+                await self.check_supabase_keepalive()
+            except Exception as e:
+                logger.debug("Keepalive check error: %s", e)
+
+            # Daily Automated Backup snapshot
+            try:
+                await self.check_daily_backup()
+            except Exception as e:
+                logger.debug("Daily backup check error: %s", e)
             
             try:
                 await asyncio.sleep(self.check_interval)
@@ -100,6 +114,35 @@ class CronSchedulerService:
         self.total_executed_since_start += len(published_posts)
         return published_posts
 
+    async def check_supabase_keepalive(self):
+        """Pings Supabase REST API every 48 hours to prevent free-tier 7-day inactivity pausing"""
+        now = datetime.now(timezone.utc)
+        if self.last_supabase_ping is None or (now - self.last_supabase_ping).total_seconds() >= 172800:
+            try:
+                from database import is_supabase, supabase_rest_request
+                if is_supabase():
+                    res = await asyncio.to_thread(supabase_rest_request, "studio_settings?select=setting_key&limit=1")
+                    self.last_supabase_ping = now
+                    logger.info("Supabase Keep-Alive Heartbeat executed: %s", "Success" if res.get("success") else res.get("error"))
+            except Exception as e:
+                logger.warning("Supabase Keep-Alive ping failed: %s", e)
+
+    async def check_daily_backup(self):
+        """Creates an automated database snapshot once every 24 hours at 03:00 UTC"""
+        now = datetime.now(timezone.utc)
+        today_str = now.strftime("%Y-%m-%d")
+        if self.last_backup_timestamp != today_str and now.hour >= 3:
+            try:
+                from services.backup_service import create_system_backup
+                res = await asyncio.to_thread(create_system_backup)
+                self.last_backup_timestamp = today_str
+                if res.get("success"):
+                    logger.info("Automated daily backup created: %s (%s MB)", res.get("filename"), res.get("size_mb"))
+                else:
+                    logger.warning("Automated daily backup failed: %s", res.get("error"))
+            except Exception as e:
+                logger.warning("Automated backup error: %s", e)
+
     def get_status(self) -> Dict[str, Any]:
         with get_db_cursor() as cur:
             cur.execute("SELECT COUNT(*), MIN(scheduled_at) FROM publish_posts WHERE status = 'scheduled'")
@@ -114,7 +157,9 @@ class CronSchedulerService:
             "last_run_executed_count": self.last_run_executed_count,
             "total_executed_since_start": self.total_executed_since_start,
             "pending_scheduled_count": scheduled_count,
-            "next_scheduled_at": next_scheduled_at
+            "next_scheduled_at": next_scheduled_at,
+            "last_supabase_ping": self.last_supabase_ping.isoformat() if self.last_supabase_ping else None,
+            "last_backup_date": self.last_backup_timestamp
         }
 
 cron_scheduler = CronSchedulerService(check_interval_seconds=30)

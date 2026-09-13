@@ -100,7 +100,6 @@ async def require_admin_token(request: Request, authorization: str | None = Head
     if claims_sb:
         role = (
             claims_sb.get("app_metadata", {}).get("role")
-            or claims_sb.get("user_metadata", {}).get("role")
             or claims_sb.get("role")
         )
         if role in ("admin", "service_role", "supabase_admin"):

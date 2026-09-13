@@ -702,8 +702,8 @@ function PublishStudioContent() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#07080a] text-zinc-900 dark:text-zinc-100 flex flex-col overflow-x-hidden max-w-full w-full">
-      {/* Top Header Banner - Fixed / Sticky on Scroll with Unified Professional Icons */}
-      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#07080a]/95 backdrop-blur-xl sticky top-[56px] sm:top-[64px] z-30 px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 shadow-xs transition-all max-w-full overflow-hidden">
+      {/* Top Header Banner - Flush Sticky Top-0 Navigation */}
+      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#07080a]/95 backdrop-blur-xl sticky top-0 z-30 px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 shadow-xs transition-all max-w-full overflow-hidden">
         {/* Single-line Brand + Badge + Status */}
         <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2 shrink-0">
