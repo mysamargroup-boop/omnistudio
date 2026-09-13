@@ -56,19 +56,22 @@ import {
   Paperclip,
   AtSign,
   Tag,
+  Music,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { loadStudioDraft, saveStudioDraft } from "@/lib/draftStorage";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
 import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/video/CharacterStudioModal";
-import { getActiveCharacter, getStoredCharacters } from "@/lib/characters";
+import { getActiveCharacter, getStoredCharacters, setActiveCharacter as setStoredActiveCharacter, fetchActiveCharacterAsync } from "@/lib/characters";
 import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
 import BrandKitModal from "@/components/brand/BrandKitModal";
+import AudioMusicLibraryModal from "@/components/audio/AudioMusicLibraryModal";
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
@@ -91,18 +94,18 @@ export interface ReferenceAsset {
 
 const VIDEO_MODELS: VideoModelOption[] = [
   {
+    value: "google_veo",
+    label: "Google Veo 3.1 (DeepMind)",
+    description: "Cinema-grade 4K generative video by Google DeepMind",
+    badge: "ACTIVE",
+    category: "Featured Cloud",
+  },
+  {
     value: "ffmpeg_local",
-    label: "Local Ken Burns / Morph",
+    label: "Local Ken Burns / Morph (FFmpeg)",
     description: "Fast Local FFmpeg (100% Free)",
     badge: "FREE LOCAL",
     category: "Hardware Engine",
-  },
-  {
-    value: "google_veo",
-    label: "Google Omni / Veo 3.1 (DeepMind)",
-    description: "High-Definition 4K Video Generation (Google Cloud AI)",
-    badge: "ACTIVE",
-    category: "Featured Cloud",
   },
   {
     value: "kling_2.0",
@@ -335,6 +338,28 @@ function VideoStudioContent() {
   const [directorNotes, setDirectorNotes] = useState<any>(null);
   const [brandKitModalOpen, setBrandKitModalOpen] = useState(false);
   const [applyBrandKit, setApplyBrandKit] = useState(false);
+  const [audioLibraryOpen, setAudioLibraryOpen] = useState(false);
+  const [selectedBgmTrack, setSelectedBgmTrack] = useState<{
+    id: string;
+    title: string;
+    url: string;
+    category: "bgm" | "sfx";
+    volume: number;
+    loop: boolean;
+  } | null>(null);
+
+  // Video Settings (Camera motion defaults to "none")
+  const [model, setModel] = useState("google_veo");
+  const [motion, setMotion] = useState("none");
+  const [aspectRatio, setAspectRatio] = useState("16:9");
+  const [duration, setDuration] = useState(4);
+  const [fps, setFps] = useState(30);
+  const [resolution, setResolution] = useState("1080p");
+  const [quality, setQuality] = useState("balanced");
+  const [motionIntensity, setMotionIntensity] = useState(1.0);
+  const [loop, setLoop] = useState(false);
+  const [seed, setSeed] = useState("");
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
 
   // Auto-resize prompt textarea
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -346,22 +371,127 @@ function VideoStudioContent() {
     };
   }, []);
 
-  // Persistent Render Queue initialization
+  // Hydration ref for localStorage persistence
+  const hasHydrated = useRef(false);
+
+  // Restore draft from localStorage on mount (URL query params take precedence)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("omnistudio_video_render_queue");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const normalized = parsed.map((j: any) =>
-            j.status === "rendering" ? { ...j, status: "failed", error: "Session interrupted" } : j
-          );
-          setRenderJobs(normalized);
-          localStorage.setItem("omnistudio_video_render_queue", JSON.stringify(normalized.slice(0, 50)));
-        }
+    if (typeof window !== "undefined") {
+      const draft = loadStudioDraft("video_studio", {
+        mode: "first_frame" as VideoMode,
+        prompt: "",
+        negativePrompt: "",
+        model: "google_veo",
+        motion: "none",
+        aspectRatio: "16:9",
+        duration: 4,
+        fps: 30,
+        resolution: "1080p",
+        quality: "balanced",
+        motionIntensity: 1.0,
+        batchCount: 1,
+        characterLockActive: true,
+        lockFace: true,
+        lockDress: true,
+        lockJewelry: true,
+        lockBackground: true,
+        lockHair: true,
+        lockLighting: true,
+        lockStyle: true,
+        lockPhysique: true,
+        startImage: "",
+      });
+
+      const urlPrompt = searchParams?.get("prompt");
+      if (urlPrompt && urlPrompt.trim()) {
+        setPrompt(urlPrompt.trim());
+      } else if (draft.prompt) {
+        setPrompt(draft.prompt);
       }
-    } catch {}
-  }, []);
+
+      const urlImage = searchParams?.get("image");
+      if (urlImage && urlImage.trim()) {
+        setStartImage(urlImage.trim());
+      } else if (draft.startImage) {
+        setStartImage(draft.startImage);
+      }
+
+      if (draft.mode) setMode(draft.mode);
+      if (draft.negativePrompt) setNegativePrompt(draft.negativePrompt);
+      if (draft.model) setModel(draft.model);
+      if (draft.motion) setMotion(draft.motion);
+      if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
+      if (draft.duration) setDuration(draft.duration);
+      if (draft.fps) setFps(draft.fps);
+      if (draft.resolution) setResolution(draft.resolution);
+      if (draft.quality) setQuality(draft.quality);
+      if (typeof draft.motionIntensity === "number") setMotionIntensity(draft.motionIntensity);
+      if (typeof draft.batchCount === "number") setBatchCount(draft.batchCount);
+      if (typeof draft.characterLockActive === "boolean") setCharacterLockActive(draft.characterLockActive);
+      if (typeof draft.lockFace === "boolean") setLockFace(draft.lockFace);
+      if (typeof draft.lockDress === "boolean") setLockDress(draft.lockDress);
+      if (typeof draft.lockJewelry === "boolean") setLockJewelry(draft.lockJewelry);
+      if (typeof draft.lockBackground === "boolean") setLockBackground(draft.lockBackground);
+      if (typeof draft.lockHair === "boolean") setLockHair(draft.lockHair);
+      if (typeof draft.lockLighting === "boolean") setLockLighting(draft.lockLighting);
+      if (typeof draft.lockStyle === "boolean") setLockStyle(draft.lockStyle);
+      if (typeof draft.lockPhysique === "boolean") setLockPhysique(draft.lockPhysique);
+
+      hasHydrated.current = true;
+    }
+  }, [searchParams]);
+
+  // Persist draft to localStorage whenever settings or prompt change
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    saveStudioDraft("video_studio", {
+      mode,
+      prompt,
+      negativePrompt,
+      model,
+      motion,
+      aspectRatio,
+      duration,
+      fps,
+      resolution,
+      quality,
+      motionIntensity,
+      batchCount,
+      characterLockActive,
+      lockFace,
+      lockDress,
+      lockJewelry,
+      lockBackground,
+      lockHair,
+      lockLighting,
+      lockStyle,
+      lockPhysique,
+      startImage,
+    });
+  }, [
+    mode,
+    prompt,
+    negativePrompt,
+    model,
+    motion,
+    aspectRatio,
+    duration,
+    fps,
+    resolution,
+    quality,
+    motionIntensity,
+    batchCount,
+    characterLockActive,
+    lockFace,
+    lockDress,
+    lockJewelry,
+    lockBackground,
+    lockHair,
+    lockLighting,
+    lockStyle,
+    lockPhysique,
+    startImage,
+  ]);
 
   const persistJobs = (jobs: typeof renderJobs) => {
     setRenderJobs(jobs);
@@ -408,18 +538,6 @@ function VideoStudioContent() {
     }
   }, [prompt]);
 
-  // Video Settings (Camera motion defaults to "none")
-  const [model, setModel] = useState("google_veo");
-  const [motion, setMotion] = useState("none");
-  const [aspectRatio, setAspectRatio] = useState("16:9");
-  const [duration, setDuration] = useState(4);
-  const [fps, setFps] = useState(30);
-  const [resolution, setResolution] = useState("1080p");
-  const [quality, setQuality] = useState("balanced");
-  const [motionIntensity, setMotionIntensity] = useState(1.0);
-  const [loop, setLoop] = useState(false);
-  const [seed, setSeed] = useState("");
-  const [modelSearchQuery, setModelSearchQuery] = useState("");
 
   // Inline Bottom Dock Popover States
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
@@ -587,7 +705,7 @@ function VideoStudioContent() {
         }
       }
 
-      // Check active character in storage
+      // Check active character in storage and database
       const active = getActiveCharacter();
       if (active) {
         setActiveCharacter(active);
@@ -596,6 +714,15 @@ function VideoStudioContent() {
           setStartImage(active.imageUrl);
         }
       }
+      fetchActiveCharacterAsync().then((remoteActive) => {
+        if (remoteActive) {
+          setActiveCharacter(remoteActive);
+          setCharacterLockActive(true);
+          if (remoteActive.imageUrl && !startImage) {
+            setStartImage(remoteActive.imageUrl);
+          }
+        }
+      }).catch(() => {});
     } catch (e) {
       console.warn("Character sync error in video page:", e);
     }
@@ -927,6 +1054,7 @@ function VideoStudioContent() {
       label: `@${a.tag}`,
       sub: `${a.type === 'video' ? 'Video' : 'Image'} (${a.filename})`,
       url: a.url,
+      filename: a.filename || a.tag,
       type: a.type,
       badge: a.type === 'video' ? 'VIDEO REF' : 'IMG REF',
     })),
@@ -936,6 +1064,7 @@ function VideoStudioContent() {
       label: "@start_frame",
       sub: "Active Start Keyframe",
       url: startImage,
+      filename: "start_frame.png",
       type: "image" as const,
       badge: "FRAME 1",
     }] : []),
@@ -945,6 +1074,7 @@ function VideoStudioContent() {
       label: "@end_frame",
       sub: "Active End Keyframe",
       url: endImage,
+      filename: "end_frame.png",
       type: "image" as const,
       badge: "FRAME 2",
     }] : []),
@@ -954,6 +1084,7 @@ function VideoStudioContent() {
       label: `@char_${activeCharacter.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
       sub: `Character: ${activeCharacter.name}`,
       url: activeCharacter.imageUrl,
+      filename: `${activeCharacter.name}.png`,
       type: "image" as const,
       badge: "PERSONA",
     }] : []),
@@ -1193,6 +1324,7 @@ function VideoStudioContent() {
           const data = await api.generateVideo(curPayload);
           if (data && data.success) {
             setResult(data);
+            setVideoDockCollapsed(true);
             const doneJob = {
               ...currentJob,
               status: "completed" as const,
@@ -1303,6 +1435,7 @@ function VideoStudioContent() {
       const data = await api.generateVideo(payload);
       setResult(data);
       if (data && data.success) {
+        setVideoDockCollapsed(true);
         setProgress(100);
         setStageTitle("VIDEO RENDER COMPLETE");
         setStatusMessage("Video synthesized successfully!");
@@ -2572,6 +2705,34 @@ function VideoStudioContent() {
                     )}
                   >
                     Negative Prompt
+                  </button>
+
+                  {/* Audio & Music Library Selector */}
+                  <button
+                    type="button"
+                    onClick={() => setAudioLibraryOpen(true)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border shadow-xs active:scale-95 select-none",
+                      selectedBgmTrack
+                        ? "bg-violet-500/15 border-violet-500/30 text-violet-700 dark:text-violet-300 font-bold"
+                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    )}
+                    title="Attach background music or SFX from royalty-free library"
+                  >
+                    <Music className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                    <span>{selectedBgmTrack ? selectedBgmTrack.title : "Audio / BGM"}</span>
+                    {selectedBgmTrack && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBgmTrack(null);
+                        }}
+                        className="hover:text-rose-500 text-zinc-400 p-0.5 rounded-full"
+                        title="Remove audio track"
+                      >
+                        <X className="w-3 h-3" />
+                      </span>
+                    )}
                   </button>
                 </div>
 
@@ -4454,6 +4615,7 @@ function VideoStudioContent() {
         activeCharacter={activeCharacter}
         onSelectCharacter={(char) => {
           setActiveCharacter(char);
+          setStoredActiveCharacter(char);
           setLockFace(true);
           setLockDress(true);
           setLockJewelry(true);
@@ -4464,7 +4626,10 @@ function VideoStudioContent() {
           setLockPhysique(true);
           setCharacterLockActive(true);
         }}
-        onUnlockCharacter={() => setActiveCharacter(null)}
+        onUnlockCharacter={() => {
+          setActiveCharacter(null);
+          setStoredActiveCharacter(null);
+        }}
       />
 
       {/* Video Precision Editor Modal */}
@@ -4485,6 +4650,14 @@ function VideoStudioContent() {
       <BrandKitModal
         isOpen={brandKitModalOpen}
         onClose={() => setBrandKitModalOpen(false)}
+      />
+
+      {/* Audio & Music Production Library Modal */}
+      <AudioMusicLibraryModal
+        isOpen={audioLibraryOpen}
+        onClose={() => setAudioLibraryOpen(false)}
+        onSelectTrack={(t) => setSelectedBgmTrack(t)}
+        initialSelectedId={selectedBgmTrack?.id}
       />
     </div>
   );

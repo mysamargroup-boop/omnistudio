@@ -85,7 +85,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isStudioRoute = pathname === "/video" || pathname === "/studio";
+  const isStudioRoute = pathname === "/video" || pathname === "/studio" || pathname === "/publish";
 
   // Authenticated: Render full workspace with navigation
   return (

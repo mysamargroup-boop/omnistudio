@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { saveCharacter, setActiveCharacter } from "@/lib/characters";
 
 export interface CharacterData {
   id: string;
@@ -100,7 +101,7 @@ export default function CharacterStudioModal({
   const [characterImage, setCharacterImage] = useState<string>(
     activeCharacter?.imageUrl || ARCHETYPES[0].avatar
   );
-  const [selectedModel, setSelectedModel] = useState("Nano Banana 2");
+  const [selectedModel, setSelectedModel] = useState("Google Gemini 2.5 Flash");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [vaultImages, setVaultImages] = useState<any[]>([]);
@@ -147,7 +148,7 @@ export default function CharacterStudioModal({
   };
 
   const handleLockAndApply = () => {
-    onSelectCharacter({
+    const charData: CharacterData = {
       id: selectedArchetype || `custom_${Date.now()}`,
       name: characterName || "Custom Character",
       tagline: "Locked Character Identity",
@@ -155,7 +156,10 @@ export default function CharacterStudioModal({
       prompt: characterPrompt,
       imageUrl: characterImage,
       isLocked: true,
-    });
+    };
+    saveCharacter(charData);
+    setActiveCharacter(charData);
+    onSelectCharacter(charData);
     onClose();
   };
 
@@ -177,6 +181,7 @@ export default function CharacterStudioModal({
             <button
               type="button"
               onClick={() => {
+                setActiveCharacter(null);
                 onUnlockCharacter();
                 onClose();
               }}

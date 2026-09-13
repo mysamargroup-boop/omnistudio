@@ -5,8 +5,8 @@ import {
   Share2, Send, Calendar, Sparkles, Layers, Image as ImageIcon, Video, 
   Clock, CheckCircle2, AlertCircle, RefreshCw, BarChart3, TrendingUp, Plus, Trash2, Copy, Check, ExternalLink, Zap, Users,
   Globe, Flame, Smartphone,
-  Repeat, ShieldCheck, Download, Upload, FolderArchive, X, Play, Search, Key,
-  Heart, MessageCircle, Bookmark, ThumbsUp, ThumbsDown, Repeat2, MoreHorizontal, Music
+  Repeat, ShieldCheck, Download, Upload, FolderArchive, X, Play, Search, Key, ArrowRight,
+  Heart, MessageCircle, Bookmark, ThumbsUp, ThumbsDown, Repeat2, MoreHorizontal, Music, Database
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -2790,31 +2790,75 @@ function PublishStudioContent() {
         {/* =================================================================== */}
         {/* TAB 5: CONTENT REPURPOSER                                           */}
         {/* =================================================================== */}
+        {/* =================================================================== */}
+        {/* TAB 5: CONTENT REPURPOSER                                           */}
+        {/* =================================================================== */}
         {activeTab === "repurpose" && (
-          <div className="space-y-6 max-w-4xl mx-auto">
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500">
-                  <Repeat className="w-5 h-5" />
+          <div className="space-y-6 max-w-5xl mx-auto">
+            {/* Top Config Card */}
+            <div className="bg-zinc-50 dark:bg-zinc-900/60 p-5 sm:p-7 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/20">
+                    <Repeat className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-heading font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
+                      <span>Content Repurposing Engine</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold uppercase border border-cyan-500/20">
+                        1 → 5 FORMATS
+                      </span>
+                    </h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Convert 1 long video script, podcast transcript, or article into viral Shorts, Threads, Carousels, and Pins.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold">Content Repurposing Engine</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Convert 1 long video or article into 3 Viral Short Clips + 5-Part Twitter Thread + 5-Slide Carousel + Pinterest Pin
-                  </p>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase font-semibold">Presets:</span>
+                  {[
+                    { label: "Founder Story", text: "From a small basement workshop with only $200 and a 3D printer, we spent 3 years obsessing over millimeter-perfect titanium luxury jewelry. Today, top Hollywood cinematographers wear our custom crafted pieces on global red carpets." },
+                    { label: "Product Demo", text: "Introducing the OmniStudio AI Camera Director: A multi-angle cinematic keyframe engine designed for luxury fashion and commercial film production. Features 4K multi-shot consistency, lighting morphing, and zero-prompt latency." },
+                    { label: "AI Insights", text: "Why 95% of AI video creators fail: They treat prompting like a search engine instead of directing a film set. Real cinematic consistency requires character identity locking, precise optics focal length, and chiaroscuro rim lighting." }
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setRepurposeSource(preset.text)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-cyan-500/40 hover:text-cyan-600 dark:hover:text-cyan-400 transition cursor-pointer whitespace-nowrap"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                  Source Script, Transcript, or Article
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300">
+                    Source Transcript, Script, or Core Article
+                  </label>
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-400">
+                    <span>{repurposeSource.length} characters</span>
+                    {repurposeSource.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setRepurposeSource("")}
+                        className="text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <textarea
                   rows={4}
                   value={repurposeSource}
                   onChange={(e) => setRepurposeSource(e.target.value)}
-                  placeholder="Paste your video transcript, lecture notes, or product story here..."
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  placeholder="Paste your video transcript, lecture notes, podcast conversation, or product launch story here..."
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 leading-relaxed font-sans"
                 />
               </div>
 
@@ -2822,17 +2866,17 @@ function PublishStudioContent() {
                 type="button"
                 onClick={handleRepurpose}
                 disabled={isRepurposing || !repurposeSource.trim()}
-                className="w-full py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm whitespace-nowrap shrink-0"
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:opacity-95 text-white font-heading font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md whitespace-nowrap shrink-0 active:scale-98"
               >
                 {isRepurposing ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                    <span className="whitespace-nowrap">Extracting Hooks & Formatting Derivatives...</span>
+                    <span className="whitespace-nowrap">Analyzing Hooks, Tone & Formatting 5 Derivative Channels...</span>
                   </>
                 ) : (
                   <>
                     <Repeat className="w-4 h-4 shrink-0" />
-                    <span className="whitespace-nowrap">Repurpose into 5 Multi-Platform Formats</span>
+                    <span className="whitespace-nowrap">Synthesize 5 Multi-Platform Content Derivatives</span>
                   </>
                 )}
               </button>
@@ -2840,63 +2884,115 @@ function PublishStudioContent() {
 
             {/* Repurposing Breakdown Results */}
             {repurposeData && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-500" />
-                    Repurposed Derivatives Ready for Distribution
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const now = Date.now();
-                      let clipIdx = 1;
-                      // Schedule Short Clips
-                      for (const clip of repurposeData.short_clips) {
-                        const targetDate = new Date(now + clipIdx * 4 * 3600 * 1000).toISOString();
+              <div className="space-y-6 animate-in fade-in duration-300">
+                {/* Global Actions Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                    <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white">
+                      5 Derivative Formats Generated & Ready for Scheduling
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fullSummary = `3x REELS / SHORTS:\n${repurposeData.short_clips.map((c: any) => `[${c.timestamp}] ${c.title}\n${c.script}`).join('\n\n')}\n\n---\n\nTWITTER THREAD:\n${repurposeData.tweet_thread.join('\n\n')}`;
+                        navigator.clipboard.writeText(fullSummary);
+                        alert("All repurposed derivative scripts copied to clipboard!");
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-700 text-xs font-semibold cursor-pointer shadow-xs whitespace-nowrap shrink-0"
+                    >
+                      Copy All Scripts
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const now = Date.now();
+                        let clipIdx = 1;
+                        // Schedule Short Clips
+                        for (const clip of repurposeData.short_clips) {
+                          const targetDate = new Date(now + clipIdx * 4 * 3600 * 1000).toISOString();
+                          await api.createPublishPost({
+                            title: clip.title,
+                            content: clip.script,
+                            platforms: ["instagram", "tiktok", "youtube_shorts"],
+                            status: "scheduled",
+                            scheduled_at: targetDate,
+                            workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
+                          });
+                          clipIdx++;
+                        }
+                        // Schedule Thread
+                        const threadDate = new Date(now + (clipIdx + 1) * 4 * 3600 * 1000).toISOString();
                         await api.createPublishPost({
-                          title: clip.title,
-                          content: clip.script,
-                          platforms: ["instagram", "tiktok", "youtube_shorts"],
+                          title: "Repurposed Masterclass Thread",
+                          content: repurposeData.tweet_thread.join("\n\n---\n\n"),
+                          platforms: ["twitter", "threads"],
                           status: "scheduled",
-                          scheduled_at: targetDate,
+                          scheduled_at: threadDate,
                           workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
                         });
-                        clipIdx++;
-                      }
-                      // Schedule Thread
-                      const threadDate = new Date(now + (clipIdx + 1) * 4 * 3600 * 1000).toISOString();
-                      await api.createPublishPost({
-                        title: "Repurposed Masterclass Thread",
-                        content: repurposeData.tweet_thread.join("\n\n---\n\n"),
-                        platforms: ["twitter", "threads"],
-                        status: "scheduled",
-                        scheduled_at: threadDate,
-                        workspace_id: currentWorkspace !== "all" ? currentWorkspace : "default"
-                      });
-                      setPublishSuccessMessage("All 5 repurposed formats queued into Calendar with staggered distribution times!");
-                      fetchPosts();
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap shrink-0"
-                  >
-                    <Calendar className="w-3.5 h-3.5 shrink-0" />
-                    <span>Schedule All Repurposed Assets</span>
-                  </button>
+                        setPublishSuccessMessage("All 5 repurposed formats queued into Calendar with staggered distribution times!");
+                        fetchPosts();
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap shrink-0"
+                    >
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <span>Schedule All Repurposed Assets</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* 3 Short Clips */}
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
-                    3x Viral Short Clips (Reels / TikTok / Shorts)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {repurposeData.short_clips.map((clip: any) => (
-                      <div key={clip.id} className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
-                        <div className="text-[10px] font-bold text-cyan-500">{clip.timestamp}</div>
-                        <div className="text-xs font-bold">{clip.title}</div>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{clip.script}</p>
-                        <div className="px-2 py-1 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px] font-mono text-zinc-700 dark:text-zinc-300">
-                          {clip.overlay_text}
+                {/* 3 Short Clips Grid */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500" />
+                      <span>3x High-Retention Short Clips (Reels • TikTok • Shorts)</span>
+                    </h3>
+                    <span className="text-[10px] font-mono text-zinc-400">Vertical 9:16 Format</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    {repurposeData.short_clips.map((clip: any, idx: number) => (
+                      <div key={clip.id || idx} className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-3 flex flex-col justify-between shadow-xs hover:border-cyan-500/40 transition-all">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 text-[10px] font-mono font-bold">
+                              {clip.timestamp}
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400">Clip #{idx + 1}</span>
+                          </div>
+                          <h4 className="text-xs font-heading font-bold text-zinc-900 dark:text-white leading-snug">
+                            {clip.title}
+                          </h4>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-sans bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-black/[0.04] dark:border-white/[0.04]">
+                            {clip.script}
+                          </p>
+                          <div className="p-2 rounded-lg bg-zinc-200/70 dark:bg-zinc-800 text-[10px] font-mono text-zinc-700 dark:text-zinc-300 border border-black/[0.04] dark:border-white/[0.04]">
+                            <span className="font-bold text-cyan-600 dark:text-cyan-400">Overlay: </span>
+                            {clip.overlay_text}
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(clip.script);
+                              alert("Clip script copied!");
+                            }}
+                            className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                          >
+                            Copy Script
+                          </button>
+                          <a
+                            href={`/video?prompt=${encodeURIComponent(clip.title + ": " + clip.script)}`}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 text-[10px] font-heading font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Open in Video</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </a>
                         </div>
                       </div>
                     ))}
@@ -2904,15 +3000,45 @@ function PublishStudioContent() {
                 </div>
 
                 {/* 5-part Tweet Thread */}
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
-                    5-Part X / Twitter Thread
-                  </h3>
-                  <div className="space-y-2">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-sky-500" />
+                      <span>5-Part Algorithmic X / Twitter Thread</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(repurposeData.tweet_thread.join("\n\n---\n\n"));
+                        alert("Full Twitter thread copied!");
+                      }}
+                      className="text-[11px] font-mono text-sky-500 hover:underline cursor-pointer"
+                    >
+                      Copy Entire Thread
+                    </button>
+                  </div>
+                  <div className="space-y-2.5">
                     {repurposeData.tweet_thread.map((tweet: string, idx: number) => (
-                      <div key={idx} className="p-3 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800/80 text-xs flex items-start gap-2">
-                        <span className="text-[10px] font-bold text-sky-500 shrink-0">#{idx + 1}</span>
-                        <p className="whitespace-pre-line">{tweet}</p>
+                      <div key={idx} className="p-3.5 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 text-xs flex items-start gap-3 shadow-xs hover:border-sky-500/30 transition-all">
+                        <span className="w-6 h-6 rounded-full bg-sky-500/10 text-sky-500 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 border border-sky-500/20">
+                          {idx + 1}
+                        </span>
+                        <div className="flex-1 space-y-1">
+                          <p className="whitespace-pre-line text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans">{tweet}</p>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-1">
+                            <span>{tweet.length} / 280 chars</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(tweet);
+                                alert(`Tweet #${idx + 1} copied!`);
+                              }}
+                              className="hover:text-sky-500 cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2933,13 +3059,13 @@ function PublishStudioContent() {
             {/* Top Toolbar: Mode Switch & Platform Presets */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-violet-500/20">
                   <ImageIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
                     <span>Multi-Platform Thumbnail & Cover Studio</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-500 font-bold uppercase border border-rose-500/30">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold uppercase border border-violet-500/20">
                       BATCH SIZES
                     </span>
                   </h2>
@@ -2957,7 +3083,7 @@ function PublishStudioContent() {
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer",
                     thumbMode === "multi"
-                      ? "bg-rose-600 text-white shadow-xs"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                   )}
                 >
@@ -2969,7 +3095,7 @@ function PublishStudioContent() {
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer",
                     thumbMode === "single"
-                      ? "bg-rose-600 text-white shadow-xs"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-xs"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                   )}
                 >
@@ -2990,7 +3116,7 @@ function PublishStudioContent() {
                     value={thumbTitle}
                     onChange={(e) => setThumbTitle(e.target.value)}
                     placeholder="Enter punchy headline text..."
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                   />
                 </div>
 
@@ -3005,7 +3131,7 @@ function PublishStudioContent() {
                         <button
                           type="button"
                           onClick={() => setSelectedThumbFormats(THUMBNAIL_PLATFORMS.map(p => p.id))}
-                          className="text-rose-500 hover:underline cursor-pointer"
+                          className="text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
                         >
                           All (6)
                         </button>
@@ -3013,7 +3139,7 @@ function PublishStudioContent() {
                         <button
                           type="button"
                           onClick={() => setSelectedThumbFormats(["youtube_16_9", "tiktok_shorts_9_16", "instagram_square"])}
-                          className="text-zinc-500 hover:text-rose-500 hover:underline cursor-pointer"
+                          className="text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer"
                         >
                           Top 3
                         </button>
@@ -3039,7 +3165,7 @@ function PublishStudioContent() {
                             className={cn(
                               "p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer",
                               isSelected
-                                ? "border-rose-500/80 bg-rose-500/10 text-zinc-950 dark:text-white"
+                                ? "border-violet-500/80 bg-violet-500/10 text-zinc-950 dark:text-white ring-1 ring-violet-500/30"
                                 : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-700"
                             )}
                           >
@@ -3053,7 +3179,7 @@ function PublishStudioContent() {
                             </div>
                             <span className={cn(
                               "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold shrink-0",
-                              isSelected ? "bg-rose-500 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+                              isSelected ? "bg-violet-600 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
                             )}>
                               {plat.badge}
                             </span>
@@ -3118,7 +3244,7 @@ function PublishStudioContent() {
                   type="button"
                   onClick={handleGenerateThumbnail}
                   disabled={isGeneratingThumb || !thumbTitle.trim()}
-                  className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md whitespace-nowrap shrink-0 active:scale-98"
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md whitespace-nowrap shrink-0 active:scale-98"
                 >
                   {isGeneratingThumb ? (
                     <>
@@ -3160,7 +3286,7 @@ function PublishStudioContent() {
                       {batchThumbResults.map((item) => (
                         <div
                           key={item.format}
-                          className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 p-3 space-y-2.5 flex flex-col justify-between shadow-xs hover:border-rose-500/40 transition-all"
+                          className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 p-3 space-y-2.5 flex flex-col justify-between shadow-xs hover:border-violet-500/40 transition-all"
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white">
@@ -3186,7 +3312,7 @@ function PublishStudioContent() {
                                 setMediaUrl(item.thumbnail_url);
                                 setActiveTab("compose");
                               }}
-                              className="text-[10px] font-mono text-rose-500 hover:underline cursor-pointer"
+                              className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer font-bold"
                             >
                               Use in Compose →
                             </button>
@@ -3228,7 +3354,7 @@ function PublishStudioContent() {
                               setMediaUrl(generatedThumbUrl);
                               setActiveTab("compose");
                             }}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs cursor-pointer"
                           >
                             <span>Use in Compose Tab →</span>
                           </button>
@@ -3236,7 +3362,7 @@ function PublishStudioContent() {
                       </div>
                     ) : (
                       <div className="text-center text-zinc-400 space-y-2">
-                        <ImageIcon className="w-12 h-12 mx-auto opacity-40 text-rose-500" />
+                        <ImageIcon className="w-12 h-12 mx-auto opacity-40 text-violet-500" />
                         <div className="text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300">
                           {thumbMode === "multi"
                             ? "Ready to render Multi-Platform Cover Pack"
@@ -3259,37 +3385,153 @@ function PublishStudioContent() {
         {/* =================================================================== */}
         {activeTab === "analytics" && (
           <div className="space-y-8">
-            {/* KPI Cards */}
+            {/* Live Database Status Banner */}
+            <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">Live Workspace & Studio Database Telemetry</span>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      DB Synchronized
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    Real metrics aggregated directly from OmniStudio generations, vault assets, publishing queue, and social accounts.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fetchAnalytics}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition shrink-0 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Refresh Telemetry</span>
+              </button>
+            </div>
+
+            {/* Core Workspace Real Metrics Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Views</span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Media Assets Produced</span>
                 <div className="text-2xl font-black mt-1 text-zinc-900 dark:text-zinc-100">
-                  {analytics?.views ? analytics.views.toLocaleString() : "18,450"}
+                  {analytics?.workspace?.total_assets ?? 0}
                 </div>
-                <span className="text-[10px] text-emerald-500 font-medium">↑ +24% this week</span>
+                <span className="text-[10px] text-emerald-500 font-medium">
+                  {analytics?.workspace?.total_videos ?? 0} Videos • {analytics?.workspace?.total_images ?? 0} Images
+                </span>
               </div>
               <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Avg Engagement</span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">AI Studio Generations</span>
                 <div className="text-2xl font-black mt-1 text-emerald-500">
-                  {analytics?.engagement_rate ? `${analytics.engagement_rate}%` : "7.84%"}
+                  {analytics?.workspace?.total_generations ?? 0}
                 </div>
-                <span className="text-[10px] text-emerald-500 font-medium">↑ 2.2x industry avg</span>
+                <span className="text-[10px] text-zinc-400 font-medium">
+                  ${analytics?.workspace?.total_cost_usd ?? 0} USD compute
+                </span>
               </div>
               <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Followers Growth</span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Publish Pipeline Posts</span>
                 <div className="text-2xl font-black mt-1 text-zinc-900 dark:text-white">
-                  +{analytics?.followers_growth || 385}
+                  {analytics?.workspace?.total_posts ?? 0}
                 </div>
-                <span className="text-[10px] text-zinc-400">Across 15 channels</span>
+                <span className="text-[10px] text-zinc-400">
+                  {analytics?.workspace?.posts_published ?? 0} Published • {analytics?.workspace?.posts_scheduled ?? 0} Scheduled
+                </span>
               </div>
               <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Watch Time</span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Connected Channels</span>
                 <div className="text-2xl font-black mt-1 text-emerald-500">
-                  {analytics?.watch_time_sec ? `${Math.round(analytics.watch_time_sec / 60)}m` : "803m"}
+                  {analytics?.workspace?.connected_channels ?? 0} / 15
                 </div>
-                <span className="text-[10px] text-emerald-500 font-medium">↑ 88% retention</span>
+                <span className="text-[10px] text-emerald-500 font-medium">
+                  {analytics?.workspace?.connected_channels ? "Accounts ready" : "Awaiting account links"}
+                </span>
               </div>
             </div>
+
+            {/* Social Performance Section */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Tracked Social Performance</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Views Tracked</span>
+                  <div className="text-2xl font-black mt-1 text-zinc-900 dark:text-zinc-100">
+                    {analytics?.views ? analytics.views.toLocaleString() : "0"}
+                  </div>
+                  <span className="text-[10px] text-zinc-400">From published posts</span>
+                </div>
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Avg Engagement Rate</span>
+                  <div className="text-2xl font-black mt-1 text-emerald-500">
+                    {analytics?.engagement_rate ? `${analytics.engagement_rate}%` : "0.0%"}
+                  </div>
+                  <span className="text-[10px] text-zinc-400">Live audience response</span>
+                </div>
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Likes & Reactions</span>
+                  <div className="text-2xl font-black mt-1 text-zinc-900 dark:text-white">
+                    {analytics?.likes ? analytics.likes.toLocaleString() : "0"}
+                  </div>
+                  <span className="text-[10px] text-zinc-400">Verified engagements</span>
+                </div>
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Audience Reach</span>
+                  <div className="text-2xl font-black mt-1 text-emerald-500">
+                    {analytics?.reach ? analytics.reach.toLocaleString() : "0"}
+                  </div>
+                  <span className="text-[10px] text-zinc-400">Unique accounts reached</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Performance or Empty State */}
+            {analytics?.by_platform && analytics.by_platform.length > 0 ? (
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-emerald-500" />
+                  Platform Breakdown
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {analytics.by_platform.map((p: any, idx: number) => (
+                    <div key={idx} className="p-4 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs">{p.platform_name}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-bold">{p.avg_engagement}% eng</span>
+                      </div>
+                      <div className="text-lg font-black">{p.views.toLocaleString()} <span className="text-xs font-normal text-zinc-400">views</span></div>
+                      <div className="text-[11px] text-zinc-400 flex justify-between">
+                        <span>{p.likes.toLocaleString()} likes</span>
+                        <span>{p.shares.toLocaleString()} shares</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 bg-zinc-50 dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-200/50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Live Social Tracking Initialized</h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      As soon as you publish posts to your connected accounts, per-platform views, likes, and reach metrics will display in real time here.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab("compose")}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shrink-0 cursor-pointer shadow-sm"
+                >
+                  Compose First Post
+                </button>
+              </div>
+            )}
 
             {/* Smart Posting Heatmap & Viral Recommendations */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

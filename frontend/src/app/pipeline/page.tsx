@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { loadStudioDraft, saveStudioDraft } from "@/lib/draftStorage";
 import Dropdown from "@/components/ui/Dropdown";
 import StepCards from "@/components/StepCards";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
@@ -61,12 +62,14 @@ interface PipelineModelOption {
 }
 
 const PIPELINE_IMAGE_MODELS: PipelineModelOption[] = [
-  { id: "gemini_flash_image", name: "Gemini Flash 2.0", badge: "FAST", provider: "Google DeepMind", description: "Sub-second photo diffusion", active: false },
-  { id: "imagen_3", name: "Google Imagen 3", badge: "PRO", provider: "Google Cloud AI", description: "Photoreal lighting & textures", active: false },
-  { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "4K Composition precision", active: false },
-  { id: "dall-e-3", name: "OpenAI DALL-E 3", badge: "HD", provider: "OpenAI", description: "High prompt adherence", active: false },
-  { id: "flux-schnell", name: "FLUX.1 Schnell", badge: "FAST", provider: "Replicate", description: "Rapid latent diffusion", active: false },
-  { id: "flux_dev", name: "FLUX.1 Dev", badge: "DEV", provider: "Replicate", description: "Studio guidance coherence", active: false },
+  { id: "imagen_3", name: "Google Imagen 3", badge: "PRO", provider: "Google Cloud AI", description: "Google flagship photoreal lighting & textures", active: false },
+  { id: "gemini_flash_image", name: "Google Gemini 2.5 Flash", badge: "FAST", provider: "Google DeepMind", description: "Ultra-fast high fidelity image diffusion", active: false },
+  { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "4K Composition precision & skin textures", active: false },
+  { id: "gpt-image-1", name: "GPT Image 1 Pro", badge: "PRO", provider: "OpenAI", description: "Cinema-grade visual creation", active: false },
+  { id: "dall-e-3", name: "OpenAI DALL-E 3 HD", badge: "HD", provider: "OpenAI", description: "High composition precision & strict prompt adherence", active: false },
+  { id: "flux_pro", name: "Flux.1 Pro (BFL)", badge: "SOTA", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: false },
+  { id: "flux-schnell", name: "Flux.1 Schnell", badge: "FAST", provider: "Black Forest Labs", description: "Rapid latent diffusion", active: false },
+  { id: "flux_dev", name: "Flux.1 Dev", badge: "DEV", provider: "Black Forest Labs", description: "Studio guidance coherence", active: false },
 ];
 
 const STYLES = [
@@ -117,6 +120,61 @@ function PipelineContent() {
   const scrollToDesk = () => deskRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const scrollToStage = () => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const scrollToResult = () => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Hydration ref for localStorage persistence
+  const hasHydrated = useRef(false);
+
+  // Restore draft from localStorage on mount (URL search param takes precedence)
+  useEffect(() => {
+    const draft = loadStudioDraft("pipeline_studio", {
+      topic: "",
+      scenes: 2,
+      style: "cinematic",
+      aspectRatio: "16:9",
+      voiceProvider: "edge",
+      imageModel: "gemini_flash_image",
+      pipelineMode: "auto" as "auto" | "director",
+      imagePrompt: "",
+      motionPrompt: "Slow cinematic push-in zoom with gentle pan right",
+      voiceScript: "",
+    });
+
+    const urlTopic = searchParams?.get("topic");
+    if (urlTopic && urlTopic.trim()) {
+      setTopic(urlTopic.trim());
+    } else if (draft.topic) {
+      setTopic(draft.topic);
+    }
+
+    if (draft.scenes) setScenes(draft.scenes);
+    if (draft.style) setStyle(draft.style);
+    if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
+    if (draft.voiceProvider) setVoiceProvider(draft.voiceProvider);
+    if (draft.imageModel) setImageModel(draft.imageModel);
+    if (draft.pipelineMode) setPipelineMode(draft.pipelineMode);
+    if (draft.imagePrompt) setImagePrompt(draft.imagePrompt);
+    if (draft.motionPrompt) setMotionPrompt(draft.motionPrompt);
+    if (draft.voiceScript) setVoiceScript(draft.voiceScript);
+
+    hasHydrated.current = true;
+  }, [searchParams]);
+
+  // Persist draft to localStorage whenever user changes parameters
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    saveStudioDraft("pipeline_studio", {
+      topic,
+      scenes,
+      style,
+      aspectRatio,
+      voiceProvider,
+      imageModel,
+      pipelineMode,
+      imagePrompt,
+      motionPrompt,
+      voiceScript,
+    });
+  }, [topic, scenes, style, aspectRatio, voiceProvider, imageModel, pipelineMode, imagePrompt, motionPrompt, voiceScript]);
 
   // Fetch live active models based on user API keys
   useEffect(() => {

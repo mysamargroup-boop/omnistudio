@@ -32,6 +32,53 @@ type EmailAuthMode = "password" | "otp";
 // Whitelisted authorized studio accounts
 const AUTHORIZED_EMAILS = ["mysamargroup@gmail.com"];
 
+function playStudioUnlockSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    if (ctx.state === "suspended") {
+      ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+
+    // Rich cinematic synth chord progression (C4, G4, C5, E5, B5, C6) with 2.0s acoustic decay
+    const notes = [
+      { freq: 261.63, delay: 0.00, gain: 0.20, type: "sine" as OscillatorType },
+      { freq: 392.00, delay: 0.06, gain: 0.18, type: "sine" as OscillatorType },
+      { freq: 523.25, delay: 0.12, gain: 0.22, type: "triangle" as OscillatorType },
+      { freq: 659.25, delay: 0.18, gain: 0.20, type: "sine" as OscillatorType },
+      { freq: 987.77, delay: 0.24, gain: 0.14, type: "sine" as OscillatorType },
+      { freq: 1046.50, delay: 0.30, gain: 0.16, type: "sine" as OscillatorType },
+    ];
+
+    notes.forEach(({ freq, delay, gain, type }) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now + delay);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.004, now + delay + 1.2);
+
+      // Envelope: 40ms attack, gentle sustain, 2.0s exponential decay tail
+      gainNode.gain.setValueAtTime(0.0001, now + delay);
+      gainNode.gain.exponentialRampToValueAtTime(gain, now + delay + 0.04);
+      gainNode.gain.exponentialRampToValueAtTime(gain * 0.45, now + delay + 0.6);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + delay + 2.0);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.start(now + delay);
+      osc.stop(now + delay + 2.1);
+    });
+  } catch (e) {
+    console.warn("Studio unlock chime error:", e);
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const {
@@ -126,9 +173,10 @@ export default function LoginPage() {
       try {
         const res = await loginWithPin(fullCode);
         if (res.success) {
+          playStudioUnlockSound();
           setPinSuccess(true);
           setIsPinVerifying(false);
-          setTimeout(() => router.replace("/"), 600);
+          setTimeout(() => router.replace("/"), 1100);
         } else {
           setIsPinVerifying(false);
           setPinError(res.error || "Invalid passcode. Please verify.");

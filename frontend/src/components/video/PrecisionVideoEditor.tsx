@@ -60,6 +60,7 @@ import {
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import Dropdown from "@/components/ui/Dropdown";
+import AudioMusicLibraryModal, { CURATED_AUDIO_LIBRARY, AudioTrack } from "@/components/audio/AudioMusicLibraryModal";
 
 export interface PrecisionVideoEditorProps {
   videoUrl?: string;
@@ -182,9 +183,12 @@ export default function PrecisionVideoEditor({
   const [bgAudioVolume, setBgAudioVolume] = useState(0.8);
   const [audioFadeIn, setAudioFadeIn] = useState(0.0);
   const [audioFadeOut, setAudioFadeOut] = useState(0.0);
-  const [audioModeTab, setAudioModeTab] = useState<"track" | "ai_voice">("track");
+  const [audioModeTab, setAudioModeTab] = useState<"track" | "ai_voice" | "library">("track");
   const [audioPreviewPlaying, setAudioPreviewPlaying] = useState(false);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const [audioLibraryModalOpen, setAudioLibraryModalOpen] = useState(false);
+  const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
+  const libraryAudioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
   // AI Voiceover Generator State
   const [aiVoiceScript, setAiVoiceScript] = useState("");
@@ -1922,7 +1926,7 @@ export default function PrecisionVideoEditor({
             {/* 8. AUDIO CONTROLS, SOUNDTRACK & AI VOICEOVER SUITE */}
             {activeTab === "audio" && (
               <div className="space-y-4">
-                {/* Mode Selector: Audio Track Mix vs AI Voiceover Generator */}
+                {/* Mode Selector: Audio Track Mix vs Music & SFX Library vs AI Voiceover Generator */}
                 <div className="flex rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 text-xs font-mono">
                   <button
                     type="button"
@@ -1935,7 +1939,21 @@ export default function PrecisionVideoEditor({
                     )}
                   >
                     <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Audio Track & Mix</span>
+                    <span>Track Mix</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAudioModeTab("library")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer font-semibold",
+                      audioModeTab === "library"
+                        ? "bg-zinc-800 text-violet-400 border border-zinc-700/60 shadow-xs"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <Music className="w-3.5 h-3.5 text-violet-400" />
+                    <span>BGM & SFX</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] bg-violet-500/20 text-violet-300 font-bold">CC0</span>
                   </button>
                   <button
                     type="button"
@@ -1948,7 +1966,7 @@ export default function PrecisionVideoEditor({
                     )}
                   >
                     <Mic className="w-3.5 h-3.5 text-teal-400" />
-                    <span>AI Voiceover Generator</span>
+                    <span>AI Voice</span>
                     <span className="px-1.5 py-0.2 rounded text-[9px] bg-teal-500/20 text-teal-300 font-bold">AI</span>
                   </button>
                 </div>
@@ -2179,26 +2197,165 @@ export default function PrecisionVideoEditor({
                             <span className="text-[10px] text-zinc-500">Drag & drop or click to browse local files</span>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="grid grid-cols-3 gap-1.5">
                             <button
                               type="button"
                               onClick={() => openVaultPicker("audio")}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                              className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-mono text-zinc-300 hover:text-white transition-colors cursor-pointer"
                             >
-                              <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Select from Asset Vault</span>
+                              <FolderOpen className="w-3 h-3 text-amber-400" />
+                              <span>Vault</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAudioLibraryModalOpen(true)}
+                              className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-violet-950/30 hover:bg-violet-900/40 border border-violet-500/30 text-[11px] font-mono text-violet-300 hover:text-violet-200 transition-colors cursor-pointer"
+                            >
+                              <Music className="w-3 h-3 text-violet-400" />
+                              <span>BGM Suite</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => setAudioModeTab("ai_voice")}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-teal-950/30 hover:bg-teal-900/40 border border-teal-500/30 text-xs font-mono text-teal-300 hover:text-teal-200 transition-colors cursor-pointer"
+                              className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-teal-950/30 hover:bg-teal-900/40 border border-teal-500/30 text-[11px] font-mono text-teal-300 hover:text-teal-200 transition-colors cursor-pointer"
                             >
-                              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                              <span>Generate by AI</span>
+                              <Sparkles className="w-3 h-3 text-teal-400" />
+                              <span>AI Voice</span>
                             </button>
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: BUILT-IN MUSIC & SFX LIBRARY */}
+                {audioModeTab === "library" && (
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                          <Music className="w-3.5 h-3.5 text-violet-400" />
+                          Royalty-Free Audio Library
+                        </span>
+                        <p className="text-[10px] font-mono text-zinc-400 mt-0.5">
+                          Studio-grade cinematic scores, cyberpunk tracks & Foley sound effects
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAudioLibraryModalOpen(true)}
+                        className="px-2.5 py-1 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-mono font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Open Full Suite</span>
+                      </button>
+                    </div>
+
+                    {/* Quick-Pick Audio Tracks Stream */}
+                    <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar">
+                      {CURATED_AUDIO_LIBRARY.slice(0, 8).map((track) => {
+                        const isAttached = bgAudioUrl === track.url;
+                        const isPreviewing = previewingTrackId === track.id;
+
+                        return (
+                          <div
+                            key={track.id}
+                            className={cn(
+                              "p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2.5",
+                              isAttached
+                                ? "bg-violet-500/10 border-violet-500/40 ring-1 ring-violet-500/20"
+                                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (previewingTrackId === track.id) {
+                                    if (libraryAudioPreviewRef.current) libraryAudioPreviewRef.current.pause();
+                                    setPreviewingTrackId(null);
+                                  } else {
+                                    setPreviewingTrackId(track.id);
+                                    if (libraryAudioPreviewRef.current) {
+                                      libraryAudioPreviewRef.current.src = track.url;
+                                      libraryAudioPreviewRef.current.play().catch(() => {});
+                                    }
+                                  }
+                                }}
+                                className={cn(
+                                  "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0",
+                                  isPreviewing
+                                    ? "bg-violet-600 text-white animate-pulse"
+                                    : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                                )}
+                              >
+                                {isPreviewing ? (
+                                  <Pause className="w-3 h-3 fill-current" />
+                                ) : (
+                                  <Play className="w-3 h-3 fill-current ml-0.5" />
+                                )}
+                              </button>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-mono font-bold text-white truncate">
+                                  {track.title}
+                                </p>
+                                <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-400">
+                                  <span className="text-violet-400">{track.genre}</span>
+                                  <span>•</span>
+                                  <span>{track.duration}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBgAudioUrl(track.url);
+                                setBgAudioName(track.title);
+                                setBgAudioVolume(0.85);
+                                setAudioModeTab("track");
+                              }}
+                              className={cn(
+                                "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1",
+                                isAttached
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                  : "bg-zinc-800 hover:bg-violet-600 text-zinc-300 hover:text-white"
+                              )}
+                            >
+                              {isAttached ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  <span>Active</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3 h-3" />
+                                  <span>Use Track</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <audio
+                      ref={libraryAudioPreviewRef}
+                      onEnded={() => setPreviewingTrackId(null)}
+                      className="hidden"
+                    />
+
+                    <div className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-800 flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                      <span>Need more tracks or Foley SFX?</span>
+                      <button
+                        type="button"
+                        onClick={() => setAudioLibraryModalOpen(true)}
+                        className="text-violet-400 hover:text-violet-300 font-bold underline cursor-pointer"
+                      >
+                        Browse All 100+ Sounds →
+                      </button>
                     </div>
                   </div>
                 )}
@@ -3125,6 +3282,18 @@ export default function PrecisionVideoEditor({
           </div>
         </div>
       )}
+
+      {/* Audio & Music Production Library Modal */}
+      <AudioMusicLibraryModal
+        isOpen={audioLibraryModalOpen}
+        onClose={() => setAudioLibraryModalOpen(false)}
+        onSelectTrack={(t) => {
+          setBgAudioUrl(t.url);
+          setBgAudioName(t.title);
+          setBgAudioVolume(t.volume);
+          setAudioModeTab("track");
+        }}
+      />
     </div>
   );
 }

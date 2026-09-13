@@ -1132,6 +1132,7 @@ def db_record_initial_analytics(post_id: str, platforms: List[str]):
 
 def get_analytics_summary() -> Dict[str, Any]:
     with get_db_cursor() as cur:
+        # Social analytics table
         cur.execute("""
             SELECT 
                 COUNT(DISTINCT post_id),
@@ -1150,7 +1151,7 @@ def get_analytics_summary() -> Dict[str, Any]:
         
         # Breakdown by platform
         cur.execute("""
-            SELECT platform, SUM(views), SUM(likes), AVG(engagement_rate), SUM(shares)
+            SELECT platform, COALESCE(SUM(views), 0), COALESCE(SUM(likes), 0), COALESCE(AVG(engagement_rate), 0.0), COALESCE(SUM(shares), 0)
             FROM social_analytics
             GROUP BY platform
         """)
@@ -1162,23 +1163,59 @@ def get_analytics_summary() -> Dict[str, Any]:
                 "platform": pr[0],
                 "platform_name": plat_meta["name"] if plat_meta else pr[0],
                 "color": plat_meta["color"] if plat_meta else "#6366F1",
-                "views": pr[1],
-                "likes": pr[2],
-                "avg_engagement": round(pr[3], 2),
-                "shares": pr[4]
+                "views": pr[1] or 0,
+                "likes": pr[2] or 0,
+                "avg_engagement": round(pr[3] or 0.0, 2),
+                "shares": pr[4] or 0
             })
 
-    # If no data yet, provide baseline benchmark estimates
-    total_posts = row[0] if row and row[0] > 0 else 5
-    total_views = row[1] if row and row[1] > 0 else 18450
-    total_reach = row[2] if row and row[2] > 0 else 24800
-    avg_eng = round(row[3] if row and row[3] > 0 else 7.84, 2)
-    total_likes = row[4] if row and row[4] > 0 else 1420
-    total_comments = row[5] if row and row[5] > 0 else 312
-    total_shares = row[6] if row and row[6] > 0 else 428
-    total_saves = row[7] if row and row[7] > 0 else 512
-    total_watch = round(row[8] if row and row[8] > 0 else 48200.0, 1)
-    followers_growth = row[9] if row and row[9] > 0 else 385
+        # Real Workspace Telemetry from database
+        cur.execute("SELECT COUNT(*), COALESCE(SUM(cost_usd), 0.0), COALESCE(SUM(cost_inr), 0.0) FROM generations")
+        gen_row = cur.fetchone()
+        total_generations = gen_row[0] if gen_row else 0
+        total_cost_usd = round(gen_row[1] if gen_row else 0.0, 4)
+        total_cost_inr = round(gen_row[2] if gen_row else 0.0, 2)
+
+        cur.execute("""
+            SELECT 
+                COUNT(*), 
+                COALESCE(SUM(CASE WHEN asset_type IN ('image', 'images') THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN asset_type IN ('video', 'videos') THEN 1 ELSE 0 END), 0)
+            FROM assets
+        """)
+        ast_row = cur.fetchone()
+        total_assets = ast_row[0] if ast_row else 0
+        total_images = ast_row[1] if ast_row else 0
+        total_videos = ast_row[2] if ast_row else 0
+
+        cur.execute("""
+            SELECT 
+                COUNT(*),
+                COALESCE(SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0)
+            FROM publish_posts
+        """)
+        post_row = cur.fetchone()
+        total_posts_created = post_row[0] if post_row else 0
+        total_posts_published = post_row[1] if post_row else 0
+        total_posts_scheduled = post_row[2] if post_row else 0
+        total_posts_draft = post_row[3] if post_row else 0
+
+        cur.execute("SELECT COUNT(*) FROM social_accounts WHERE status = 'connected'")
+        acc_row = cur.fetchone()
+        connected_channels = acc_row[0] if acc_row else 0
+
+    total_posts = row[0] if row and row[0] is not None else 0
+    total_views = row[1] if row and row[1] is not None else 0
+    total_reach = row[2] if row and row[2] is not None else 0
+    avg_eng = round(row[3], 2) if row and row[3] is not None else 0.0
+    total_likes = row[4] if row and row[4] is not None else 0
+    total_comments = row[5] if row and row[5] is not None else 0
+    total_shares = row[6] if row and row[6] is not None else 0
+    total_saves = row[7] if row and row[7] is not None else 0
+    total_watch = round(row[8], 1) if row and row[8] is not None else 0.0
+    followers_growth = row[9] if row and row[9] is not None else 0
 
     return {
         "total_posts_tracked": total_posts,
@@ -1191,12 +1228,20 @@ def get_analytics_summary() -> Dict[str, Any]:
         "saves": total_saves,
         "watch_time_sec": total_watch,
         "followers_growth": followers_growth,
-        "by_platform": by_platform or [
-            {"platform": "instagram", "platform_name": "Instagram", "color": "#E1306C", "views": 7200, "likes": 580, "avg_engagement": 8.4, "shares": 190},
-            {"platform": "tiktok", "platform_name": "TikTok", "color": "#FE2C55", "views": 6100, "likes": 490, "avg_engagement": 9.1, "shares": 160},
-            {"platform": "youtube_shorts", "platform_name": "YouTube Shorts", "color": "#FF0000", "views": 3400, "likes": 240, "avg_engagement": 7.2, "shares": 50},
-            {"platform": "linkedin_personal", "platform_name": "LinkedIn", "color": "#0A66C2", "views": 1750, "likes": 110, "avg_engagement": 6.3, "shares": 28},
-        ]
+        "by_platform": by_platform,
+        "workspace": {
+            "total_assets": total_assets,
+            "total_images": total_images,
+            "total_videos": total_videos,
+            "total_generations": total_generations,
+            "total_cost_usd": total_cost_usd,
+            "total_cost_inr": total_cost_inr,
+            "total_posts": total_posts_created,
+            "posts_published": total_posts_published,
+            "posts_scheduled": total_posts_scheduled,
+            "posts_draft": total_posts_draft,
+            "connected_channels": connected_channels
+        }
     }
 
 def get_smart_recommendations() -> Dict[str, Any]:

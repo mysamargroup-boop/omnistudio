@@ -326,9 +326,9 @@ export default function Sidebar() {
                       "group flex items-center font-jakarta text-xs transition-all duration-150 relative cursor-pointer",
                       isDesktopCollapsed
                         ? cn(
-                            "w-9 h-9 mx-auto justify-center rounded-full p-0 transition-transform",
+                            "w-9 h-9 mx-auto justify-center rounded-xl p-0 transition-all",
                             isActive
-                              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30"
                               : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
                           )
                         : cn(
@@ -350,8 +350,8 @@ export default function Sidebar() {
                           isDesktopCollapsed ? "h-4 w-4" : "h-4 w-4",
                           isDesktopCollapsed
                             ? isActive
-                              ? "text-emerald-400 dark:text-emerald-600 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                              : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:scale-110"
+                              ? "text-emerald-600 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)] scale-110"
+                              : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:scale-105"
                             : isActive
                             ? "text-white dark:text-zinc-950"
                             : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"

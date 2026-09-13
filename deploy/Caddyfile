@@ -1,0 +1,37 @@
+﻿# ==============================================================================
+# OmniStudio AI — Production HTTPS via Free Hostname (sslip.io)
+# Zero-cost Let's Encrypt SSL/TLS termination with automatic renewal
+# ==============================================================================
+
+31.97.231.218.sslip.io, omnistudio.31.97.231.218.sslip.io {
+    encode gzip zstd
+
+    # Real-Time SSE Progress HUD Streaming (Zero Buffering)
+    @sse path /api/pipeline/run-stream*
+    handle @sse {
+        reverse_proxy localhost:8050 {
+            flush_interval -1
+        }
+    }
+
+    # FastAPI Backend API & Media Outputs
+    @backend path /api/* /outputs/* /docs* /redoc* /openapi.json*
+    handle @backend {
+        reverse_proxy localhost:8050 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Next.js Frontend Application
+    handle {
+        reverse_proxy localhost:3050 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}

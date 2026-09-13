@@ -27,10 +27,11 @@ const IMAGE_FEATURES = [
 ];
 
 const IMAGE_MODELS = [
-  { name: 'FLUX.1 Schnell', desc: 'Ultra-fast 12B diffusion engine', model: 'flux_schnell' },
-  { name: 'FLUX.1 Dev', desc: 'Photorealistic textures & accuracy', model: 'flux_dev' },
-  { name: 'Stable Diffusion XL', desc: 'Cinematic high-contrast master', model: 'sdxl' },
-  { name: 'SD 3.5 Large', desc: 'Complex prompt typography & layout', model: 'sd35' },
+  { name: 'Google Imagen 3', desc: 'Flagship hyper-realistic lighting & micro-textures', model: 'imagen_3' },
+  { name: 'Google Gemini 2.5 Flash', desc: 'Ultra-fast high-fidelity photo diffusion', model: 'gemini_flash_image' },
+  { name: 'GPT Image 2', desc: '4K precision text & skin textures', model: 'gpt-image-2' },
+  { name: 'FLUX.1 Schnell', desc: 'Ultra-fast 12B latent diffusion engine', model: 'flux-schnell' },
+  { name: 'FLUX.1 Dev', desc: 'Photorealistic textures & prompt accuracy', model: 'flux_dev' },
 ];
 
 const MORE_NAV_ITEMS = [
@@ -50,11 +51,11 @@ const VIDEO_FEATURES = [
 ];
 
 const VIDEO_MODELS = [
-  { name: 'Google Omni / Veo', desc: 'Google Cloud AI 4K video (Default)', model: 'google_veo' },
-  { name: 'FFmpeg Local', desc: 'Fast local renderer (100% Free)', model: 'ffmpeg_local' },
-  { name: 'Kling AI 2.0', desc: 'Photorealistic physics', model: 'kling_2.0' },
-  { name: 'Runway Gen-3', desc: 'Studio cinematic realism', model: 'runway_gen3' },
-  { name: 'Luma Dream Machine', desc: 'Fluid camera moves', model: 'luma_dream' },
+  { name: 'Google Veo 3.1', desc: 'Cinema-grade 4K video by Google DeepMind', model: 'google_veo' },
+  { name: 'Local Ken Burns (FFmpeg)', desc: 'Fast local renderer (100% Free)', model: 'ffmpeg_local' },
+  { name: 'Kling AI 2.0 Pro', desc: 'Photorealistic physics & dynamics', model: 'kling_2.0' },
+  { name: 'Runway Gen-3 Alpha', desc: 'Studio cinematic motion coherence', model: 'runway_gen3' },
+  { name: 'Luma Dream Machine 1.5', desc: 'Fluid camera moves & 3D parallax', model: 'luma_dream' },
 ];
 
 const AUDIO_FEATURES = [
@@ -64,9 +65,8 @@ const AUDIO_FEATURES = [
 ];
 
 const AUDIO_MODELS = [
-  { name: 'Edge Neural', desc: 'Free high-fidelity voice', model: 'edge' },
-  { name: 'ElevenLabs v3', desc: 'Studio voice cloning', model: 'elevenlabs' },
-  { name: 'OpenAI TTS HD', desc: 'Standard studio narration', model: 'openai' },
+  { name: 'Microsoft Edge Neural', desc: 'Free high-fidelity neural voices (100% Free)', model: 'edge' },
+  { name: 'ElevenLabs Multilingual v2', desc: 'Studio voice cloning & cadence', model: 'elevenlabs' },
 ];
 
 export default function Header() {

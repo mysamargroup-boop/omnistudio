@@ -36,6 +36,16 @@ async def get_rate_cards_endpoint():
         "rates": get_rate_cards()
     }
 
+@router.get("/social")
+async def get_social_analytics_endpoint():
+    """Returns aggregated live social media performance, engagement rate, views, and platform breakdown."""
+    try:
+        from services.publish_service import get_analytics_summary as get_social_analytics
+        data = get_social_analytics()
+        return {"success": True, **data}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @router.post("/clear", dependencies=[Depends(require_admin_token)])
 async def clear_history_endpoint():
     """Clears generation telemetry audit logs. Requires ADMIN_API_TOKEN bearer token."""

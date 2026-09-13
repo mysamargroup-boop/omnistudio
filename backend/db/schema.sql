@@ -76,6 +76,21 @@ CREATE TABLE IF NOT EXISTS api_keys (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 7. Characters Table
+CREATE TABLE IF NOT EXISTS characters (
+    id VARCHAR(64) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    tagline VARCHAR(255) DEFAULT '',
+    description TEXT DEFAULT '',
+    prompt TEXT NOT NULL,
+    image_url TEXT,
+    is_locked INT DEFAULT 0,
+    category VARCHAR(64) DEFAULT 'custom',
+    tags JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(asset_type);
 CREATE INDEX IF NOT EXISTS idx_assets_created ON assets(created_at DESC);
@@ -85,3 +100,4 @@ CREATE INDEX IF NOT EXISTS idx_generations_created ON generations(created_at DES
 CREATE INDEX IF NOT EXISTS idx_generations_provider ON generations(provider);
 CREATE INDEX IF NOT EXISTS idx_projects_created ON projects(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_director_logs_created ON director_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_characters_created ON characters(created_at DESC);

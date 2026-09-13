@@ -115,7 +115,7 @@ async def list_voice_models(request: Request):
         "providers": [
             {
                 "value": "edge",
-                "label": "Edge Neural (Free)",
+                "label": "Microsoft Edge Neural (Free)",
                 "description": "100% Free high-speed neural voiceover with zero API key required",
                 "active": True,
                 "is_free": True,
@@ -123,7 +123,7 @@ async def list_voice_models(request: Request):
             },
             {
                 "value": "elevenlabs",
-                "label": "ElevenLabs Studio (Pro)",
+                "label": "ElevenLabs Multilingual v2 (Studio)",
                 "description": "Ultra-realistic expressive emotional voices (Requires ElevenLabs Key)",
                 "active": has_elevenlabs,
                 "is_free": False,
@@ -131,7 +131,7 @@ async def list_voice_models(request: Request):
             },
             {
                 "value": "openai",
-                "label": "OpenAI TTS (Standard)",
+                "label": "OpenAI TTS HD (Standard)",
                 "description": "Natural sounding voice synthesis (Requires OpenAI Key)",
                 "active": has_openai,
                 "is_free": False,

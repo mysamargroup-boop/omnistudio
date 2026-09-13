@@ -508,5 +508,52 @@ export const api = {
     fetchApi<any>("/api/publish/social-keys/status"),
   testSocialPlatformApi: (platform: string) =>
     fetchApi<any>(`/api/publish/social-keys/test/${platform}`, { method: "POST" }),
+
+  // Character Consistency & Studio DB Endpoints
+  getCharacters: () =>
+    fetchApi<{ success: boolean; characters: any[] }>("/api/characters"),
+  saveCharacter: (data: any) =>
+    fetchApi<{ success: boolean; character: any }>("/api/characters", { method: "POST", body: JSON.stringify(data) }),
+  deleteCharacter: (id: string) =>
+    fetchApi<{ success: boolean; deleted_id: string }>(`/api/characters/${id}`, { method: "DELETE" }),
+  getActiveCharacter: () =>
+    fetchApi<{ success: boolean; character: any }>("/api/characters/active"),
+  setActiveCharacter: (character: any) =>
+    fetchApi<{ success: boolean; character: any }>("/api/characters/active", { method: "POST", body: JSON.stringify({ character }) }),
+
+  // Apify Scraper & AI Screenplay Studio Endpoints
+  getApifyActors: () =>
+    fetchApi<{ success: boolean; token_configured: boolean; actors: any[] }>("/api/apify/actors"),
+  runApifyActor: (actorId: string, input?: Record<string, any>) =>
+    fetchApi<{
+      success: boolean;
+      run_id: string;
+      actor_id: string;
+      status: string;
+      default_dataset_id: string;
+      started_at: string;
+      mode: string;
+      message?: string;
+    }>("/api/apify/run", {
+      method: "POST",
+      body: JSON.stringify({ actor_id: actorId, input: input || {} }),
+    }),
+  getApifyRunStatus: (runId: string) =>
+    fetchApi<{ success: boolean; run_id: string; status: string; default_dataset_id?: string }>(`/api/apify/runs/${runId}`),
+  getApifyDatasetItems: (datasetId: string, limit: number = 25) =>
+    fetchApi<{ success: boolean; dataset_id: string; count: number; items: any[] }>(
+      `/api/apify/datasets/${datasetId}?limit=${limit}`
+    ),
+  analyzeApifyDataWithAI: (data: { scraped_text: string; target_style?: string }) =>
+    fetchApi<{ success: boolean; screenplay: any }>("/api/apify/ai-analyze", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  apifyWebFetch: (url: string) =>
+    fetchApi<{ success: boolean; url: string; title?: string; content: string }>("/api/apify/web-fetch", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
 };
+
 

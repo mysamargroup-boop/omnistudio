@@ -241,6 +241,34 @@ def init_database():
                     approval_required INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
+                CREATE TABLE IF NOT EXISTS characters (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    tagline TEXT DEFAULT '',
+                    description TEXT DEFAULT '',
+                    prompt TEXT NOT NULL,
+                    image_url TEXT,
+                    is_locked INTEGER DEFAULT 0,
+                    category TEXT DEFAULT 'custom',
+                    tags TEXT DEFAULT '[]',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE IF NOT EXISTS saved_prompts (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    prompt TEXT NOT NULL,
+                    negative_prompt TEXT DEFAULT '',
+                    category TEXT DEFAULT 'cinematic',
+                    tags TEXT DEFAULT '[]',
+                    studio_type TEXT DEFAULT 'all',
+                    is_favorite INTEGER DEFAULT 0,
+                    metadata TEXT DEFAULT '{}',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_saved_prompts_category ON saved_prompts(category);
+                CREATE INDEX IF NOT EXISTS idx_saved_prompts_favorite ON saved_prompts(is_favorite);
                 """)
 
                 # Migration check: Ensure generations table has service_type column if existing SQLite was created with old schema

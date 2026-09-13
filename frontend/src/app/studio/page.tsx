@@ -19,8 +19,9 @@ import { cn } from "@/lib/utils";
 import VideoStudio from "@/app/video/page";
 import ImageStudioPage from "@/app/image/page";
 import VoiceStudioPage from "@/app/voice/page";
+import ApifyIntelligenceSuite from "@/components/studio/ApifyIntelligenceSuite";
 
-type StudioTab = "video" | "image" | "voice";
+type StudioTab = "video" | "image" | "voice" | "apify";
 
 interface TabConfig {
   id: StudioTab;
@@ -59,6 +60,15 @@ const STUDIO_TABS: TabConfig[] = [
     description: "Hyper-realistic actor speech, accent cloning & soundscapes",
     color: "text-sky-500",
     activeColor: "bg-sky-500 text-white shadow-sky-500/20",
+  },
+  {
+    id: "apify",
+    label: "Apify Intelligence",
+    icon: Sparkles,
+    badge: "MCP + AI",
+    description: "Competitor scraper & built-in AI cinematic screenplay studio (No Claude/ChatGPT needed)",
+    color: "text-amber-500",
+    activeColor: "bg-amber-500 text-zinc-950 shadow-amber-500/20",
   },
 ];
 

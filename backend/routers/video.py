@@ -265,8 +265,9 @@ async def list_video_models(request: Request):
             },
             {
                 "value": "google_veo",
-                "label": "Google Veo 3.1 / 2 (DeepMind)",
-                "description": "High-Definition 4K Video Generation (Google Cloud AI)",
+                "name": "Google Veo 3.1",
+                "label": "Google Veo 3.1 (DeepMind)",
+                "description": "Cinema-grade 4K generative video by Google DeepMind",
                 "badge": "ACTIVE" if has_gemini else "KEY REQ",
                 "category": "Featured Cloud",
                 "active": has_gemini,

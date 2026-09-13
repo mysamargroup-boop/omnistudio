@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api, getMediaUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { loadStudioDraft, saveStudioDraft } from '@/lib/draftStorage';
 import Dropdown, { DropdownOption } from '@/components/ui/Dropdown';
 import { 
   Mic, Loader2, Download, Volume2, VolumeX, Play, Pause, FileText, 
@@ -38,9 +39,9 @@ const LANGUAGES: DropdownOption[] = [
 ];
 
 const PROVIDERS: DropdownOption[] = [
-  { value: 'edge', label: 'Edge Neural (Free)', active: true },
-  { value: 'elevenlabs', label: 'ElevenLabs (Pro)', active: false },
-  { value: 'openai', label: 'OpenAI TTS (Standard)', active: false }
+  { value: 'edge', label: 'Microsoft Edge Neural (Free)', active: true },
+  { value: 'elevenlabs', label: 'ElevenLabs Multilingual v2 (Studio)', active: false },
+  { value: 'openai', label: 'OpenAI TTS HD (Standard)', active: false }
 ];
 
 const MODELS: DropdownOption[] = [
@@ -135,6 +136,60 @@ export default function VoiceStudioPage() {
     };
     fetchVoiceModels();
   }, []);
+
+  // Hydration ref for localStorage persistence
+  const hasHydrated = useRef(false);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const draft = loadStudioDraft('voice_studio', {
+        activeTab: 'tts' as Mode,
+        text: '',
+        ttsProvider: 'edge',
+        ttsModel: 'seed_audio',
+        ttsVoice: 'en-US-AriaNeural',
+        pacing: '1.0',
+        transText: '',
+        sourceLang: 'en',
+        targetLang: 'hi',
+        transTtsProvider: 'edge',
+        transVoice: 'en-US-AriaNeural',
+      });
+
+      if (draft.activeTab) setActiveTab(draft.activeTab);
+      if (draft.text) setText(draft.text);
+      if (draft.ttsProvider) setTtsProvider(draft.ttsProvider);
+      if (draft.ttsModel) setTtsModel(draft.ttsModel);
+      if (draft.ttsVoice) setTtsVoice(draft.ttsVoice);
+      if (draft.pacing) setPacing(draft.pacing);
+      if (draft.transText) setTransText(draft.transText);
+      if (draft.sourceLang) setSourceLang(draft.sourceLang);
+      if (draft.targetLang) setTargetLang(draft.targetLang);
+      if (draft.transTtsProvider) setTransTtsProvider(draft.transTtsProvider);
+      if (draft.transVoice) setTransVoice(draft.transVoice);
+
+      hasHydrated.current = true;
+    }
+  }, []);
+
+  // Persist draft to localStorage whenever settings or text change
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    saveStudioDraft('voice_studio', {
+      activeTab,
+      text,
+      ttsProvider,
+      ttsModel,
+      ttsVoice,
+      pacing,
+      transText,
+      sourceLang,
+      targetLang,
+      transTtsProvider,
+      transVoice,
+    });
+  }, [activeTab, text, ttsProvider, ttsModel, ttsVoice, pacing, transText, sourceLang, targetLang, transTtsProvider, transVoice]);
 
   // Unmount cleanup for progress timers and audio element
   useEffect(() => {

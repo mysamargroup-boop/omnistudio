@@ -32,7 +32,8 @@ import {
   saveCharacter,
   deleteCharacter,
   getActiveCharacter,
-  setActiveCharacter
+  setActiveCharacter,
+  fetchActiveCharacterAsync
 } from '@/lib/characters';
 import { ARCHETYPES } from '@/components/video/CharacterStudioModal';
 
@@ -58,6 +59,9 @@ export default function CharacterStudioPage() {
   const loadData = () => {
     setCharacters(getStoredCharacters());
     setActiveCharState(getActiveCharacter());
+    fetchActiveCharacterAsync().then((char) => {
+      if (char) setActiveCharState(char);
+    }).catch(() => {});
   };
 
   useEffect(() => {

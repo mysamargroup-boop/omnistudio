@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { loadStudioDraft, saveStudioDraft } from "@/lib/draftStorage";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
@@ -66,19 +67,19 @@ interface ModelOption {
   value: string;
   label: string;
   description: string;
-  badge?: string;
+  badge: string;
   category?: string;
   iconType?: "openai" | "google" | "flux" | "midjourney" | "bytedance" | "custom";
   active?: boolean;
 }
 
 const DIFFUSION_MODELS: ModelOption[] = [
+  { value: "imagen_3", label: "Google Imagen 3", description: "Google flagship hyper-realistic lighting & micro-textures", badge: "PRO", category: "Featured models", iconType: "google" },
+  { value: "gemini_flash_image", label: "Google Gemini 2.5 Flash", description: "Ultra-fast high fidelity image diffusion", badge: "FAST", category: "Google AI", iconType: "google" },
   { value: "gpt-image-2", label: "GPT Image 2", description: "4K Images with near-perfect text rendering & skin textures", badge: "PREMIUM", category: "Featured models", iconType: "openai" },
   { value: "gpt-image-1", label: "GPT Image 1 Pro", description: "Cinema-grade visual creation & dynamic range", badge: "PRO", category: "Featured models", iconType: "openai" },
   { value: "gpt-image-1-mini", label: "GPT Image 1 Mini", description: "Stunning everyday images, ultra-fast generation", badge: "FAST", category: "Featured models", iconType: "openai" },
-  { value: "imagen_3", label: "Nano Banana Pro (Imagen 3)", description: "Google's flagship hyper-realistic lighting & micro-textures", badge: "ACTIVE", category: "Featured models", iconType: "google" },
-  { value: "gemini_flash_image", label: "Nano Banana 2 (Gemini Flash)", description: "Pro quality generation at flash speed", badge: "PREMIUM", category: "Google AI", iconType: "google" },
-  { value: "dall-e-3", label: "DALL-E 3 HD", description: "Auto-routes to OpenAI 8K precision pipeline", badge: "PRO", category: "OpenAI", iconType: "openai" },
+  { value: "dall-e-3", label: "OpenAI DALL-E 3 HD", description: "High composition precision & strict prompt adherence", badge: "HD", category: "OpenAI", iconType: "openai" },
   { value: "flux_pro", label: "Flux.1 Pro (BFL)", description: "Next generation ultra-realistic studio typography & lighting", badge: "SOTA", category: "Black Forest Labs", iconType: "flux" },
   { value: "flux-schnell", label: "Flux.1 Schnell", description: "Speed latent diffusion and rapid concept ideation", badge: "FAST", category: "Black Forest Labs", iconType: "flux" },
   { value: "midjourney_v6", label: "Midjourney v6.1", description: "Artistic contrast, cinematic mood & editorial aesthetics", badge: "PRO", category: "Midjourney", iconType: "midjourney" },
@@ -368,6 +369,7 @@ export default function ImageStudioPage() {
   const [processingFaceRestore, setProcessingFaceRestore] = useState<boolean>(false);
   const [processingOutpaint, setProcessingOutpaint] = useState<boolean>(false);
   const [relightPreset, setRelightPreset] = useState<string>("golden_hour");
+  const [relightIntensity, setRelightIntensity] = useState<number>(0.8);
   const [outpaintAspect, setOutpaintAspect] = useState<string>("16:9");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -457,22 +459,117 @@ export default function ImageStudioPage() {
     };
   }, []);
 
-  // Pre-fill prompt and input_image from URL query params (e.g. when 'Edit in Image Studio' or 'Reuse Prompt' is clicked)
+  // Hydration ref for localStorage persistence
+  const hasHydrated = useRef(false);
+
+  // Restore draft from localStorage on mount (URL query params take precedence)
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const draft = loadStudioDraft("image_studio", {
+        prompt: "",
+        model: "gpt-image-2",
+        quality: "hd",
+        aspectRatio: "16:9",
+        resolution: "2k",
+        lens: "35mm Prime",
+        aperture: "f/1.2",
+        lighting: "Golden Hour Sunlight",
+        filmStock: "Kodak Portra 400",
+        cfgScale: 7.5,
+        samplingSteps: 30,
+        imageCount: 1,
+        negativePrompt: "",
+        studioMode: "text_to_image" as "text_to_image" | "image_variations" | "image_editor",
+        lockFace: true,
+        lockDress: true,
+        lockJewelry: true,
+        lockBackground: false,
+        applyBrandKit: false,
+      });
+
       const params = new URLSearchParams(window.location.search);
       const urlPrompt = params.get("prompt");
       if (urlPrompt && urlPrompt.trim()) {
         setPrompt(urlPrompt.trim());
+      } else if (draft.prompt) {
+        setPrompt(draft.prompt);
       }
+
+      if (draft.model) setModel(draft.model);
+      if (draft.quality) setQuality(draft.quality);
+      if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
+      if (draft.resolution) setResolution(draft.resolution);
+      if (draft.lens) setLens(draft.lens);
+      if (draft.aperture) setAperture(draft.aperture);
+      if (draft.lighting) setLighting(draft.lighting);
+      if (draft.filmStock) setFilmStock(draft.filmStock);
+      if (draft.cfgScale) setCfgScale(draft.cfgScale);
+      if (draft.samplingSteps) setSamplingSteps(draft.samplingSteps);
+      if (draft.imageCount) setImageCount(draft.imageCount);
+      if (draft.negativePrompt) setNegativePrompt(draft.negativePrompt);
+      if (draft.studioMode) setStudioMode(draft.studioMode);
+      if (typeof draft.lockFace === "boolean") setLockFace(draft.lockFace);
+      if (typeof draft.lockDress === "boolean") setLockDress(draft.lockDress);
+      if (typeof draft.lockJewelry === "boolean") setLockJewelry(draft.lockJewelry);
+      if (typeof draft.lockBackground === "boolean") setLockBackground(draft.lockBackground);
+      if (typeof draft.applyBrandKit === "boolean") setApplyBrandKit(draft.applyBrandKit);
+
       const urlImage = params.get("input_image") || params.get("image");
       if (urlImage && urlImage.trim()) {
         const cleanUrl = urlImage.trim();
         setRefImageUrl(cleanUrl);
         setResult({ success: true, url: cleanUrl, local_path: cleanUrl });
       }
+
+      hasHydrated.current = true;
     }
   }, []);
+
+  // Persist draft to localStorage whenever settings or prompt change
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    saveStudioDraft("image_studio", {
+      prompt,
+      model,
+      quality,
+      aspectRatio,
+      resolution,
+      lens,
+      aperture,
+      lighting,
+      filmStock,
+      cfgScale,
+      samplingSteps,
+      imageCount,
+      negativePrompt,
+      studioMode,
+      lockFace,
+      lockDress,
+      lockJewelry,
+      lockBackground,
+      applyBrandKit,
+    });
+  }, [
+    prompt,
+    model,
+    quality,
+    aspectRatio,
+    resolution,
+    lens,
+    aperture,
+    lighting,
+    filmStock,
+    cfgScale,
+    samplingSteps,
+    imageCount,
+    negativePrompt,
+    studioMode,
+    lockFace,
+    lockDress,
+    lockJewelry,
+    lockBackground,
+    applyBrandKit,
+  ]);
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -888,6 +985,7 @@ export default function ImageStudioPage() {
       });
       if (res && res.success) {
         setResult(res);
+        setPromptDockCollapsed(true);
         setLastExportedResult(res);
         if (res.url) {
           if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
@@ -1279,9 +1377,9 @@ export default function ImageStudioPage() {
               <span>Studio Guide</span>
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
-              <span>ACTIVE: {activeModel.label}</span>
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 whitespace-nowrap shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse shrink-0" />
+              <span className="whitespace-nowrap">ACTIVE: {activeModel.label}</span>
             </div>
           </div>
         </div>
