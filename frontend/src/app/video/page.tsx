@@ -3328,7 +3328,12 @@ function VideoStudioContent() {
 
         {/* Right Settings Sidebar (Collapsible with Stacked Close Accordions & Independent Scroll) */}
         {sidebarOpen && !precisionEditorOpen && (
-          <aside className="w-80 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-lg z-10">
+          <>
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <aside className="fixed inset-y-0 right-0 z-40 w-80 sm:w-96 lg:static lg:z-10 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-2xl lg:shadow-lg">
             {/* Sidebar Header with Stacked Close Toggle All */}
             {/* Sidebar Header with Segmented Switch: Settings vs Render Queue */}
             <div className="flex-shrink-0 p-2.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70">
@@ -4432,7 +4437,8 @@ function VideoStudioContent() {
           </div>
         )}
 
-          </aside>
+            </aside>
+          </>
         )}
         </>
       )}

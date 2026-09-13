@@ -120,7 +120,7 @@ export default function GenerationConfirmModal({
       />
 
       <div
-        className="relative w-full max-w-4xl rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 cursor-default animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 cursor-default animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Accent Rim */}
@@ -168,7 +168,7 @@ export default function GenerationConfirmModal({
         </div>
 
         {/* Landscape Body: 2 Columns */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch overflow-y-auto flex-1 custom-scrollbar">
           {/* Left Column (5 Cols): Compute Spend & Security Info */}
           <div className="md:col-span-5 flex flex-col justify-between space-y-4">
             {/* Spend Tile */}
@@ -346,7 +346,7 @@ export default function GenerationConfirmModal({
         </div>
 
         {/* Modal Landscape Footer */}
-        <div className="px-6 py-4 bg-zinc-50 dark:bg-white/[0.02] border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between flex-wrap gap-3">
+        <div className="px-6 py-4 bg-zinc-50 dark:bg-white/[0.02] border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between flex-wrap gap-3 shrink-0">
           <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
             <kbd className="px-1.5 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-800 border border-black/10 dark:border-white/10 text-zinc-600 dark:text-zinc-400 font-semibold">Esc</kbd>
             <span>Cancel</span>

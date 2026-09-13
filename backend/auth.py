@@ -94,11 +94,19 @@ async def require_admin_token(request: Request, authorization: str | None = Head
     if settings.STUDIO_PASSCODE and hmac.compare_digest(token, settings.STUDIO_PASSCODE):
         return
     claims = _verify_studio_jwt(token)
-    if claims:
+    if claims and claims.get("auth_type") == "studio_pin":
         return
     claims_sb = _verify_supabase_jwt(token)
     if claims_sb:
-        return
+        role = (
+            claims_sb.get("app_metadata", {}).get("role")
+            or claims_sb.get("user_metadata", {}).get("role")
+            or claims_sb.get("role")
+        )
+        if role in ("admin", "service_role", "supabase_admin"):
+            return
+        audit_log("admin.denied", ip=request.client.host if request.client else "unknown", reason="insufficient_role")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator role required")
 
     audit_log("admin.denied", ip=request.client.host if request.client else "unknown", reason="invalid_admin_token")
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator authorization required")

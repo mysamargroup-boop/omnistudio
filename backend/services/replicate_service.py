@@ -5,7 +5,7 @@ import logging
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from config import settings
-from services.ffmpeg_service import image_to_video_motion
+from services.ffmpeg_service import image_to_video_motion, FFMPEG_SEMAPHORE
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 logger = logging.getLogger("omnistudio.replicate")
@@ -42,20 +42,21 @@ async def generate_video_from_image(
     filename = f"vid_{uuid.uuid4().hex[:8]}.mp4"
     output_path = settings.VIDEOS_PATH / filename
     
-    # High-Performance Local FFmpeg Engine (Non-blocking worker thread)
-    await asyncio.to_thread(
-        image_to_video_motion,
-        image_path=image_path,
-        output_path=output_path,
-        duration=duration,
-        motion_type=motion_type,
-        fps=fps,
-        width=width,
-        height=height,
-        quality=quality,
-        motion_intensity=motion_intensity,
-        loop=loop
-    )
+    # High-Performance Local FFmpeg Engine (Non-blocking worker thread, concurrency throttled)
+    async with FFMPEG_SEMAPHORE:
+        await asyncio.to_thread(
+            image_to_video_motion,
+            image_path=image_path,
+            output_path=output_path,
+            duration=duration,
+            motion_type=motion_type,
+            fps=fps,
+            width=width,
+            height=height,
+            quality=quality,
+            motion_intensity=motion_intensity,
+            loop=loop
+        )
     
     return {
         "success": True,

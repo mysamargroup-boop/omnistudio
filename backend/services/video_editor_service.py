@@ -72,6 +72,8 @@ async def edit_video(
     if not src_file or not src_file.exists():
         return {"success": False, "error": f"Source video not found: {video_path}"}
 
+    temp_textfile: Optional[Path] = None
+
     total_duration = await asyncio.to_thread(get_media_duration, src_file)
     actual_end = min(end_time, total_duration) if end_time and end_time > start_time else total_duration
     trimmed_duration = max(0.5, actual_end - start_time)
@@ -169,9 +171,11 @@ async def edit_video(
         filter_complex.append(f"[v_cbg][v_fgck]overlay=shortest=1[v_ck]")
         v_curr = "v_ck"
 
-    # 5. Text Overlay
+    # 5. Text Overlay (Safe textfile pattern prevents FFmpeg filter injection)
     if text_overlay and text_overlay.strip():
-        clean_text = text_overlay.strip().replace(":", "\\:").replace("'", "\\'").replace('"', '\\"')
+        temp_textfile = settings.OUTPUTS_PATH / f"txt_ov_{uuid.uuid4().hex[:8]}.txt"
+        temp_textfile.write_text(text_overlay.strip(), encoding="utf-8")
+        safe_tf_path = temp_textfile.as_posix().replace(":", "\\:")
         y_pos = "h-th-40" if text_position == "bottom" else ("40" if text_position == "top" else "(h-th)/2")
         font_arg = ""
         for font_candidate in [
@@ -185,7 +189,7 @@ async def edit_video(
                 font_arg = f"fontfile='{font_candidate}':"
                 break
         drawtext_filter = (
-            f"drawtext={font_arg}text='{clean_text}':x=(w-tw)/2:y={y_pos}:"
+            f"drawtext={font_arg}textfile='{safe_tf_path}':x=(w-tw)/2:y={y_pos}:"
             f"fontsize=36:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=10"
         )
         filter_complex.append(f"[{v_curr}]{drawtext_filter}[v_txt]")
@@ -368,3 +372,9 @@ async def edit_video(
     except Exception as e:
         logger.exception("Unexpected video edit error")
         return {"success": False, "error": str(e)}
+    finally:
+        if temp_textfile and temp_textfile.exists():
+            try:
+                temp_textfile.unlink()
+            except Exception:
+                pass

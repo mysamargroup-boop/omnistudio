@@ -136,19 +136,15 @@ async def get_keys(request: Request):
             masked[k] = ""
 
         keys_detail[k] = {
-            "value": val,
             "masked": masked[k],
             "source": source,
             "configured": bool(val)
         }
 
-    raw_keys = {k: getattr(settings, k, "") or db_keys.get(k, "") for k in KEY_NAMES}
-
     return {
         "keys": get_key_status(),
         "masked_keys": masked,
         "keys_detail": keys_detail,
-        "raw_keys": raw_keys,
         "source": "Supabase Cloud Database" if is_supabase() else "Local SQLite & VPS .env"
     }
 

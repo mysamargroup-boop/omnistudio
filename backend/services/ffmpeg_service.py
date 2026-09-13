@@ -3,10 +3,21 @@ import json
 import shutil
 import uuid
 import logging
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger("omnistudio.ffmpeg")
+
+# Concurrency throttle: limit concurrent CPU-heavy FFmpeg encodings to 2 simultaneous processes.
+# This prevents out-of-memory (OOM) killer terminations and CPU starvation on VPS instances.
+FFMPEG_SEMAPHORE = asyncio.Semaphore(2)
+
+@asynccontextmanager
+async def ffmpeg_concurrency_guard():
+    async with FFMPEG_SEMAPHORE:
+        yield
 
 SAFE_MOTION_TYPES = {"none", "zoom_in", "zoom_out", "pan_left", "pan_right", "tilt_up", "tilt_down", "orbit", "subtle"}
 SAFE_MOTIONS = SAFE_MOTION_TYPES

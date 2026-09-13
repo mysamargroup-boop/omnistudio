@@ -65,10 +65,14 @@ async def update_brand_kit(payload: BrandKitPayload, request: Request):
 @limiter.limit("15/minute")
 async def upload_brand_logo(file: UploadFile = File(...), request: Request = None):
     """Upload brand logo file and return its URL."""
-    allowed_exts = {".png", ".jpg", ".jpeg", ".svg", ".webp"}
-    ext = Path(file.filename).suffix.lower()
+    allowed_exts = {".png", ".jpg", ".jpeg", ".webp"}
+    ext = Path(file.filename or "logo.png").suffix.lower()
     if ext not in allowed_exts:
-        raise HTTPException(status_code=400, detail="Only PNG, JPG, SVG, or WEBP logos supported")
+        raise HTTPException(status_code=400, detail="Only PNG, JPG, or WEBP logos supported")
+
+    content = await file.read()
+    from services.security_service import validate_uploaded_media
+    validate_uploaded_media(content, file.filename or "logo.png", "image")
 
     filename = f"logo_{uuid.uuid4().hex[:8]}{ext}"
     brand_dir = settings.OUTPUTS_PATH / "brand_kit"
@@ -76,8 +80,7 @@ async def upload_brand_logo(file: UploadFile = File(...), request: Request = Non
     target_path = brand_dir / filename
 
     try:
-        with open(target_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        target_path.write_bytes(content)
 
         # Also mirror into images dir so standard media serving works everywhere
         img_mirror = settings.IMAGES_PATH / filename

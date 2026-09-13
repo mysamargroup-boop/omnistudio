@@ -10,7 +10,10 @@ import logging
 from config import settings
 from services.replicate_service import generate_video_from_image, generate_flux_image
 from services.openai_service import generate_openai_image
-from services.ffmpeg_service import image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion, get_media_duration, concatenate_videos
+from services.ffmpeg_service import (
+    image_to_video_motion, keyframe_interpolate_motion, multi_keyframe_interpolate_motion,
+    get_media_duration, concatenate_videos, FFMPEG_SEMAPHORE
+)
 from services.director_agent import direct_video_prompt
 from services.video_editor_service import edit_video
 from services.security_service import sanitize_filename
@@ -516,7 +519,8 @@ async def generate_video(req: VideoRequest, request: Request):
                 "-pix_fmt", "yuv420p",
                 str(output_path)
             ]
-            result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, timeout=180)
+            async with FFMPEG_SEMAPHORE:
+                result = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, timeout=180)
             
             if result.returncode != 0:
                 return record_failure(f"Motion transfer FFmpeg error: {result.stderr[:300]}")
@@ -616,16 +620,17 @@ async def generate_video(req: VideoRequest, request: Request):
         filename = f"seq_{uuid.uuid4().hex[:8]}.mp4"
         output_path = settings.VIDEOS_PATH / filename
 
-        await asyncio.to_thread(
-            multi_keyframe_interpolate_motion,
-            image_paths=resolved_imgs,
-            output_path=str(output_path),
-            duration=clip_duration,
-            transition_type=req.transition_type,
-            fps=fps_int,
-            width=w,
-            height=h
-        )
+        async with FFMPEG_SEMAPHORE:
+            await asyncio.to_thread(
+                multi_keyframe_interpolate_motion,
+                image_paths=resolved_imgs,
+                output_path=str(output_path),
+                duration=clip_duration,
+                transition_type=req.transition_type,
+                fps=fps_int,
+                width=w,
+                height=h
+            )
 
         try:
             from services.usage_tracker import log_generation
@@ -669,17 +674,18 @@ async def generate_video(req: VideoRequest, request: Request):
         filename = f"morph_{uuid.uuid4().hex[:8]}.mp4"
         output_path = settings.VIDEOS_PATH / filename
             
-        await asyncio.to_thread(
-            keyframe_interpolate_motion,
-            start_image_path=str(start_resolved),
-            end_image_path=str(end_resolved),
-            output_path=str(output_path),
-            duration=clip_duration,
-            transition_type=req.transition_type,
-            fps=fps_int,
-            width=w,
-            height=h
-        )
+        async with FFMPEG_SEMAPHORE:
+            await asyncio.to_thread(
+                keyframe_interpolate_motion,
+                start_image_path=str(start_resolved),
+                end_image_path=str(end_resolved),
+                output_path=str(output_path),
+                duration=clip_duration,
+                transition_type=req.transition_type,
+                fps=fps_int,
+                width=w,
+                height=h
+            )
 
         try:
             from services.usage_tracker import log_generation

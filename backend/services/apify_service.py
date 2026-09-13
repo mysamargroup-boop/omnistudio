@@ -246,20 +246,32 @@ Return ONLY valid JSON.
     gemini_key = os.environ.get("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
     if gemini_key:
         try:
-            from services.gemini_service import call_gemini_text
-            res = await call_gemini_text(prompt)
-            clean = res.strip().replace("```json", "").replace("```", "").strip()
-            return json.loads(clean)
+            from services.gemini_service import generate_gemini_text
+            gem_res = await generate_gemini_text(prompt, model="gemini-2.5-flash")
+            if gem_res.get("success"):
+                raw_text = gem_res.get("text", "")
+                import re
+                match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+                if match:
+                    return json.loads(match.group(0))
         except Exception as e:
             logger.warning(f"Gemini AI synthesis fallback ({e})")
 
     openai_key = os.environ.get("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "")
     if openai_key:
         try:
-            from services.openai_service import generate_chat_completion
-            res = await generate_chat_completion([{"role": "user", "content": prompt}])
-            clean = res.strip().replace("```json", "").replace("```", "").strip()
-            return json.loads(clean)
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=openai_key)
+            completion = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7
+            )
+            raw_text = completion.choices[0].message.content or ""
+            import re
+            match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+            if match:
+                return json.loads(match.group(0))
         except Exception as e:
             logger.warning(f"OpenAI AI synthesis fallback ({e})")
 
@@ -325,8 +337,40 @@ async def get_run_status(run_id: str) -> Dict[str, Any]:
         "finished_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")
     }
 
+def _is_safe_web_url(url: str) -> bool:
+    """Strict SSRF protection: forbids private, loopback, link-local, and reserved IP ranges."""
+    import ipaddress
+    import socket
+    import urllib.parse
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname
+        if not host:
+            return False
+        if host.lower() in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+            return False
+        # Check resolved IPs
+        addr_info = socket.getaddrinfo(host, None)
+        for entry in addr_info:
+            ip = ipaddress.ip_address(entry[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                return False
+        return True
+    except Exception:
+        return False
+
 async def fetch_web_content(url: str) -> Dict[str, Any]:
-    """Fetches clean text/markdown from a web URL for creative synthesis."""
+    """Fetches clean text/markdown from a web URL for creative synthesis with SSRF safeguards."""
+    if not _is_safe_web_url(url):
+        return {
+            "success": False,
+            "url": url,
+            "title": "Blocked URL",
+            "content": "Security Notice: Access to internal, private or loopback addresses is forbidden."
+        }
+
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -336,7 +380,6 @@ async def fetch_web_content(url: str) -> Dict[str, Any]:
             if resp.status_code == 200:
                 html_text = resp.text
                 import re
-                # Simple HTML tag stripper and clean text extractor
                 clean = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', html_text, flags=re.IGNORECASE)
                 clean = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', clean, flags=re.IGNORECASE)
                 clean = re.sub(r'<[^>]+>', ' ', clean)

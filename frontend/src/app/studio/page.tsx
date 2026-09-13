@@ -15,11 +15,35 @@ import {
   HelpCircle,
   Gem,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-import VideoStudio from "@/app/video/page";
-import ImageStudioPage from "@/app/image/page";
-import VoiceStudioPage from "@/app/voice/page";
-import ApifyIntelligenceSuite from "@/components/studio/ApifyIntelligenceSuite";
+
+const TabLoadingSkeleton = () => (
+  <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4 text-zinc-400">
+    <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    <span className="text-xs font-mono tracking-wider">INITIALIZING NEURAL STUDIO WORKSPACE...</span>
+  </div>
+);
+
+const VideoStudio = dynamic(() => import("@/app/video/page"), {
+  loading: () => <TabLoadingSkeleton />,
+  ssr: false,
+});
+
+const ImageStudioPage = dynamic(() => import("@/app/image/page"), {
+  loading: () => <TabLoadingSkeleton />,
+  ssr: false,
+});
+
+const VoiceStudioPage = dynamic(() => import("@/app/voice/page"), {
+  loading: () => <TabLoadingSkeleton />,
+  ssr: false,
+});
+
+const ApifyIntelligenceSuite = dynamic(() => import("@/components/studio/ApifyIntelligenceSuite"), {
+  loading: () => <TabLoadingSkeleton />,
+  ssr: false,
+});
 
 type StudioTab = "video" | "image" | "voice" | "apify";
 
