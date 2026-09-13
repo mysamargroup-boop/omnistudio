@@ -758,10 +758,9 @@ function VideoStudioContent() {
     }
   };
 
-  // 1-Click Prompt Enhancer with 6 Styles
-  const handleApplyPromptModifier = async (stylePreset: string) => {
-    setEnhancingPrompt(true);
-    const styleFallbacks: Record<string, string> = {
+  // 1-Click Instant Style Preset Modifiers (Zero AI latency, never triggers Improve Enhancing)
+  const handleApplyPromptModifier = (stylePreset: string) => {
+    const styleModifiers: Record<string, string> = {
       more_realistic: "8K cinema camera, Hasselblad optical precision, natural lighting, raw micro-textures, hyper-realistic motion physics",
       more_cinematic: "shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, volumetric haze, Hollywood cinematic color grade",
       more_luxury: "ultra-luxury commercial production, opulent materials, gold caustics, architectural studio lighting, Vogue luxury aesthetic",
@@ -770,30 +769,35 @@ function VideoStudioContent() {
       more_viral: "high-energy dynamic camera track, dramatic speed ramp, punchy saturated colors, viral TikTok & Reels visual hook"
     };
 
-    const currentPrompt = prompt.trim();
-    if (!currentPrompt) {
-      setPrompt(styleFallbacks[stylePreset] || "Cinematic sequence, dramatic atmospheric lighting, photorealistic 8k, slow motion");
-      setEnhancingPrompt(false);
+    const mod = styleModifiers[stylePreset] || "cinematic lighting, photorealistic 8k";
+    const current = prompt.trim();
+    if (!current) {
+      setPrompt(mod);
       return;
     }
+    // Prevent duplicate appending
+    if (current.toLowerCase().includes(mod.slice(0, 20).toLowerCase())) {
+      return;
+    }
+    setPrompt(`${current}, ${mod}`);
+  };
 
+  // Dedicated AI Prompt Copilot (Triggered ONLY by 'Improve Prompt' button)
+  const handleEnhancePrompt = async () => {
+    const current = prompt.trim();
+    if (!current || enhancingPrompt) return;
+    setEnhancingPrompt(true);
     try {
-      const res = await api.enhancePrompt({ prompt: currentPrompt, enhance_style: stylePreset, style: stylePreset });
+      const res = await api.enhancePrompt({ prompt: current, enhance_style: "cinematic", style: "cinematic" });
       if (res?.enhanced) {
         setPrompt(res.enhanced);
-      } else {
-        const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
-        setPrompt(`${currentPrompt}, ${mod}`);
       }
     } catch (err) {
-      const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
-      setPrompt(`${currentPrompt}, ${mod}`);
+      console.error("AI Enhance error:", err);
     } finally {
       setEnhancingPrompt(false);
     }
   };
-
-  const handleEnhancePrompt = () => handleApplyPromptModifier("more_cinematic");
 
   // OpenAI Director Agent
   const runDirectorAgent = async () => {

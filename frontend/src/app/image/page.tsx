@@ -562,9 +562,9 @@ export default function ImageStudioPage() {
 
   // AI Prompt Enhancer Copilot
   const [enhancingPrompt, setEnhancingPrompt] = useState(false);
-  const handleApplyPromptModifier = async (stylePreset: string) => {
-    setEnhancingPrompt(true);
-    const styleFallbacks: Record<string, string> = {
+  // 1-Click Instant Style Preset Modifiers (Zero AI latency, never triggers Improve Enhancing)
+  const handleApplyPromptModifier = (stylePreset: string) => {
+    const styleModifiers: Record<string, string> = {
       more_realistic: "8K photography, Hasselblad H6D-100c, 85mm f/1.4 lens, natural daylight, raw authentic textures, micro-details, hyper-realistic documentary quality",
       more_cinematic: "shot on 35mm Arri Alexa LF, anamorphic lens flare, shallow depth of field, dramatic atmospheric haze, cinematic rim light, Hollywood color grade",
       more_luxury: "ultra-luxury high-end commercial aesthetic, opulent materials, gold caustics, architectural luxury lighting, pristine reflections, Vogue editorial",
@@ -573,31 +573,36 @@ export default function ImageStudioPage() {
       more_viral: "high-energy dynamic composition, dramatic perspective, punchy saturated colors, eye-catching visual hook, trending TikTok & Instagram viral aesthetic"
     };
 
-    const currentPrompt = prompt.trim();
-    if (!currentPrompt) {
-      setPrompt(styleFallbacks[stylePreset] || "Cinematic 8k masterpiece portrait, dramatic studio lighting");
-      setEnhancingPrompt(false);
+    const mod = styleModifiers[stylePreset] || "cinematic lighting, photorealistic 8k";
+    const current = prompt.trim();
+    if (!current) {
+      setPrompt(mod);
       return;
     }
+    // Prevent duplicate appending
+    if (current.toLowerCase().includes(mod.slice(0, 20).toLowerCase())) {
+      return;
+    }
+    setPrompt(`${current}, ${mod}`);
+  };
 
+  // Dedicated AI Prompt Copilot (Triggered ONLY by 'Improve Prompt' wand button)
+  const enhancePromptText = async () => {
+    const current = prompt.trim();
+    if (!current || enhancingPrompt) return;
+    setEnhancingPrompt(true);
     try {
-      const data = await api.enhancePrompt({ prompt: currentPrompt, enhance_style: stylePreset, style: stylePreset });
+      const data = await api.enhancePrompt({ prompt: current, enhance_style: "more_cinematic", style: "more_cinematic" });
       const enhancedText = data?.enhanced || data?.enhanced_prompt;
       if (enhancedText) {
         setPrompt(enhancedText);
-      } else {
-        const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
-        setPrompt(`${currentPrompt}, ${mod}`);
       }
-    } catch (_) {
-      const mod = styleFallbacks[stylePreset] || "cinematic lighting, photorealistic 8k";
-      setPrompt(`${currentPrompt}, ${mod}`);
+    } catch (err) {
+      console.error("AI Enhance error:", err);
     } finally {
       setEnhancingPrompt(false);
     }
   };
-
-  const enhancePromptText = () => handleApplyPromptModifier("more_cinematic");
 
   // Single or Multi-Variation Generation
   const generate = async () => {
