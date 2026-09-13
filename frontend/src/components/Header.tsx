@@ -9,6 +9,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useAuth } from '@/context/AuthContext';
 import HowItWorksModal from '@/components/ui/HowItWorksModal';
 import BrandKitModal from '@/components/brand/BrandKitModal';
+import OmniLogo from '@/components/ui/OmniLogo';
 
 const PRIMARY_NAV_TABS = [
   { id: 'image', label: 'Image', path: '/image', hasDropdown: true },
@@ -130,13 +131,11 @@ export default function Header() {
           <Menu className="w-5 h-5" />
         </button>
 
-        <Link href="/" className="flex items-center gap-2.5 cursor-pointer group whitespace-nowrap shrink-0">
-          <div className="w-6 h-6 rounded-md bg-zinc-950 dark:bg-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
-            <Zap className="w-3.5 h-3.5 text-white dark:text-zinc-950" />
-          </div>
+        <Link href="/" className="flex items-center gap-2 cursor-pointer group whitespace-nowrap shrink-0">
+          <OmniLogo size={24} />
           <div className="flex items-baseline gap-1.5">
-            <span className="font-heading font-bold text-sm tracking-tight text-zinc-900 dark:text-white">
-              OmniStudio
+            <span className="font-heading font-extrabold text-sm tracking-tight text-zinc-900 dark:text-white">
+              Omni<span className="text-emerald-500">Studio</span>
             </span>
             <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
               PRO

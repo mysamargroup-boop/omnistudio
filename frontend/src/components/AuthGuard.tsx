@@ -85,7 +85,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isStudioRoute = pathname === "/video" || pathname === "/studio" || pathname === "/publish";
+  const isStudioRoute = pathname === "/video" || pathname === "/image" || pathname === "/studio" || pathname === "/publish";
 
   // Authenticated: Render full workspace with navigation
   return (
@@ -98,7 +98,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         isSidebarCollapsed ? "lg:ml-16 ml-0" : "lg:ml-64 ml-0",
         "flex flex-col bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 transition-all duration-300 max-w-full overflow-x-clip min-h-screen"
       )}>
-        <div className="sticky top-0 z-40 w-full py-2 px-3 sm:px-6 bg-[var(--bg-primary)]/85 backdrop-blur-xl border-b border-transparent transition-all flex-shrink-0">
+        <div className={cn(
+          "sticky top-0 z-40 w-full px-3 sm:px-6 bg-[var(--bg-primary)]/85 backdrop-blur-xl border-b border-transparent transition-all flex-shrink-0",
+          isStudioRoute ? "py-1" : "py-2"
+        )}>
           <Header />
         </div>
         <main className={cn(

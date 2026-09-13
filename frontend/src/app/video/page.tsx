@@ -370,6 +370,14 @@ function VideoStudioContent() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.style.height = "auto";
+      const scrollH = promptTextareaRef.current.scrollHeight;
+      promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 85), 240)}px`;
+    }
+  }, [prompt]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -2449,7 +2457,7 @@ function VideoStudioContent() {
               <div
                 className={cn(
                   "w-full p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3 transition-all duration-300",
-                  sidebarOpen ? "max-w-3xl xl:max-w-4xl" : "max-w-5xl xl:max-w-6xl",
+                  sidebarOpen ? "max-w-2xl xl:max-w-3xl" : "max-w-4xl xl:max-w-5xl",
                   loading && "lightning-border-active ring-2 ring-emerald-500/40"
                 )}
               >
@@ -2890,8 +2898,8 @@ function VideoStudioContent() {
                       ? "Describe your scene in cinematic detail (e.g., drone shot through misty cyberpunk alley, type @ to tag images)..."
                       : "Describe the desired motion synthesis (type @ to tag images)..."
                   }
-                  rows={2}
-                  className="w-full bg-transparent border-0 p-1 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-0 resize-none font-sans leading-relaxed"
+                  rows={3}
+                  className="w-full bg-transparent border-0 p-1.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-0 resize-none font-sans min-h-[85px] max-h-56 leading-relaxed overflow-y-auto custom-scrollbar"
                 />
               </div>
 
@@ -3234,7 +3242,7 @@ function VideoStudioContent() {
                           : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300"
                       )}
                     >
-                      <span>🎞 {quality.toUpperCase()} • {fps}fps</span>
+                      <span>{quality.toUpperCase()} • {fps}fps</span>
                       <ChevronUp className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", qualityPopoverOpen && "rotate-180")} />
                     </button>
 

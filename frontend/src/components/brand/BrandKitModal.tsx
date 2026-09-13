@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { 
   X, Sparkles, Palette, Type, Upload, Check, Loader2, 
   ShieldCheck, Sliders, Wand2, Image as ImageIcon, Trash2, Save,
-  Copy, Download, FileJson, CheckCheck, Eye, Volume2
+  Copy, Download, FileJson, CheckCheck, Eye, Volume2, Plus, Sun, Moon, Info
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -12,9 +12,16 @@ import Dropdown from "@/components/ui/Dropdown";
 import Spinner from "@/components/ui/Spinner";
 
 export interface BrandKitData {
+  id?: string;
+  name?: string;
   brand_name: string;
   tagline: string;
   logo_url: string;
+  logos?: {
+    primary?: string;
+    dark?: string;
+    icon?: string;
+  };
   colors: {
     primary: string;
     secondary: string;
@@ -85,8 +92,18 @@ export interface BrandKitPanelProps {
 export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandKitPanelProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const [allBrands, setAllBrands] = useState<any[]>([]);
+  const [activeBrandId, setActiveBrandId] = useState<string>("default");
+  const [logos, setLogos] = useState<{ primary: string; dark: string; icon: string }>({
+    primary: "",
+    dark: "",
+    icon: ""
+  });
+  const [isCreatingBrand, setIsCreatingBrand] = useState(false);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [uploadingLogoType, setUploadingLogoType] = useState<"primary" | "dark" | "icon" | null>(null);
 
   const [brandName, setBrandName] = useState("OmniStudio");
   const [tagline, setTagline] = useState("Next-Gen AI Cinematic Production");
@@ -105,10 +122,39 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
   const [watermarkOpacity, setWatermarkOpacity] = useState(80);
   const [copiedDirectives, setCopiedDirectives] = useState(false);
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
+  const [showMultiLogoInfo, setShowMultiLogoInfo] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
   const toValidHex = (val: string, fallback: string = "#10b981") =>
     /^#[0-9A-Fa-f]{6}$/.test(val) ? val : fallback;
+
+  const loadFromKitObject = (k: any) => {
+    setBrandName(k.name || k.brand_name || "OmniStudio");
+    setTagline(k.tagline || "");
+    const primaryLogo = k.logos?.primary || k.logo_url || "";
+    setLogoUrl(primaryLogo);
+    setLogos({
+      primary: primaryLogo,
+      dark: k.logos?.dark || "",
+      icon: k.logos?.icon || ""
+    });
+    if (k.colors) {
+      setPrimaryColor(k.colors.primary || "#10b981");
+      setSecondaryColor(k.colors.secondary || "#71717a");
+      setAccentColor(k.colors.accent || "#06b6d4");
+      setBackgroundColor(k.colors.background || "#09090b");
+    }
+    if (k.typography) {
+      setPrimaryFont(k.typography.primary_font || "Inter");
+      setHeadingStyle(k.typography.heading_style || "Modern Sans");
+    }
+    setStyleGuidelines(k.style_guidelines || "");
+    setNegativeGuidelines(k.negative_guidelines || "");
+    setBrandVoice(k.brand_voice || "Cinematic & Epic");
+    setWatermarkPosition(k.watermark_position || "bottom-right");
+    setWatermarkOpacity(k.watermark_opacity ?? 80);
+    setApplyToGeneration(k.apply_to_generation ?? true);
+  };
 
   useEffect(() => {
     async function fetchKit() {
@@ -116,26 +162,9 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
       try {
         const res = await api.getBrandKit();
         if (res && res.brand_kit) {
-          const k = res.brand_kit;
-          setBrandName(k.brand_name || "OmniStudio");
-          setTagline(k.tagline || "");
-          setLogoUrl(k.logo_url || "");
-          if (k.colors) {
-            setPrimaryColor(k.colors.primary || "#10b981");
-            setSecondaryColor(k.colors.secondary || "#71717a");
-            setAccentColor(k.colors.accent || "#06b6d4");
-            setBackgroundColor(k.colors.background || "#09090b");
-          }
-          if (k.typography) {
-            setPrimaryFont(k.typography.primary_font || "Inter");
-            setHeadingStyle(k.typography.heading_style || "Modern Sans");
-          }
-          setStyleGuidelines(k.style_guidelines || "");
-          setNegativeGuidelines(k.negative_guidelines || "");
-          setBrandVoice(k.brand_voice || "Cinematic & Epic");
-          setWatermarkPosition(k.watermark_position || "bottom-right");
-          setWatermarkOpacity(k.watermark_opacity ?? 80);
-          setApplyToGeneration(k.apply_to_generation ?? true);
+          if (res.all_brands) setAllBrands(res.all_brands);
+          if (res.active_brand_id) setActiveBrandId(res.active_brand_id);
+          loadFromKitObject(res.brand_kit);
         }
       } catch (e) {
         console.error("Failed to load Brand Kit:", e);
@@ -146,19 +175,74 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
     fetchKit();
   }, []);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSwitchBrand = async (brandId: string) => {
+    try {
+      setLoading(true);
+      const res = await api.switchBrandKit(brandId);
+      if (res && res.brand_kit) {
+        setActiveBrandId(res.active_brand_id);
+        if (res.all_brands) setAllBrands(res.all_brands);
+        loadFromKitObject(res.brand_kit);
+      }
+    } catch (e) {
+      console.error("Failed to switch brand:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateBrand = async () => {
+    if (!newBrandName.trim()) return;
+    try {
+      setLoading(true);
+      const res = await api.createBrandProfile({ name: newBrandName.trim() });
+      if (res && res.brand) {
+        if (res.all_brands) setAllBrands(res.all_brands);
+        if (res.active_brand_id) setActiveBrandId(res.active_brand_id);
+        loadFromKitObject(res.brand);
+        setIsCreatingBrand(false);
+        setNewBrandName("");
+      }
+    } catch (e: any) {
+      alert("Failed to create brand: " + (e.message || e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBrand = async (brandId: string) => {
+    if (!confirm("Are you sure you want to delete this brand profile?")) return;
+    try {
+      setLoading(true);
+      const res = await api.deleteBrandProfile(brandId);
+      if (res) {
+        if (res.all_brands) setAllBrands(res.all_brands);
+        if (res.active_brand_id) setActiveBrandId(res.active_brand_id);
+        if (res.brand_kit) loadFromKitObject(res.brand_kit);
+      }
+    } catch (e: any) {
+      alert("Failed to delete brand: " + (e.message || e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "primary" | "dark" | "icon" = "primary") => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingLogo(true);
+    setUploadingLogoType(type);
     try {
-      const res = await api.uploadBrandLogo(file);
+      const res = await api.uploadBrandLogo(file, type, activeBrandId);
       if (res.success && res.logo_url) {
-        setLogoUrl(res.logo_url);
+        setLogos(prev => ({ ...prev, [type]: res.logo_url }));
+        if (type === "primary") {
+          setLogoUrl(res.logo_url);
+        }
       }
     } catch (err: any) {
-      alert("Failed to upload logo: " + (err.message || err));
+      alert(`Failed to upload ${type} logo: ` + (err.message || err));
     } finally {
-      setUploadingLogo(false);
+      setUploadingLogoType(null);
     }
   };
 
@@ -268,9 +352,16 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
     setSaveSuccess(false);
     try {
       const payload: BrandKitData = {
+        id: activeBrandId,
+        name: brandName,
         brand_name: brandName,
         tagline,
-        logo_url: logoUrl,
+        logo_url: logos.primary || logoUrl,
+        logos: {
+          primary: logos.primary || logoUrl,
+          dark: logos.dark || "",
+          icon: logos.icon || ""
+        },
         colors: {
           primary: primaryColor,
           secondary: secondaryColor,
@@ -288,7 +379,8 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         watermark_opacity: watermarkOpacity,
         apply_to_generation: applyToGeneration
       };
-      await api.updateBrandKit(payload);
+      const res = await api.updateBrandKit(payload);
+      if (res && res.all_brands) setAllBrands(res.all_brands);
       setSaveSuccess(true);
       if (onSaved) onSaved(payload);
       setTimeout(() => {
@@ -352,6 +444,95 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         </div>
       )}
 
+      {/* Multi-Brand Switcher & Management Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+            <Palette className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-zinc-900 dark:text-white">Active Brand Profile:</span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                DB PERSISTED
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              Manage multiple brand identities, corporate logos, and aesthetic directives.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isCreatingBrand ? (
+            <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+              <input
+                type="text"
+                value={newBrandName}
+                onChange={(e) => setNewBrandName(e.target.value)}
+                placeholder="New Brand Name..."
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium focus:ring-1 focus:ring-emerald-500"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateBrand();
+                  if (e.key === 'Escape') setIsCreatingBrand(false);
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleCreateBrand}
+                disabled={!newBrandName.trim()}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+              >
+                Create
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreatingBrand(false)}
+                className="px-2 py-1.5 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs font-semibold hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <>
+              <Dropdown
+                size="sm"
+                value={activeBrandId}
+                onChange={(val) => handleSwitchBrand(val)}
+                options={
+                  allBrands.length > 0
+                    ? allBrands.map((b) => ({
+                        value: b.id,
+                        label: `${b.name}${b.is_default ? " (Master)" : ""}`,
+                      }))
+                    : [{ value: "default", label: `${brandName} (Master)` }]
+                }
+                triggerClassName="min-w-[170px] max-w-xs font-bold text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setIsCreatingBrand(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold transition cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Brand</span>
+              </button>
+              {activeBrandId !== "default" && allBrands.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteBrand(activeBrandId)}
+                  className="p-2 rounded-xl bg-zinc-100 hover:bg-rose-500/10 dark:bg-zinc-800 dark:hover:bg-rose-500/20 text-zinc-500 hover:text-rose-500 border border-zinc-200 dark:border-zinc-700 transition cursor-pointer"
+                  title="Delete this brand profile"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Sync & Utility Toolbar (Directives, Export, Import) */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-white/[0.02]">
         <div className="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 font-medium">
@@ -408,17 +589,15 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            {/* Brand Watermark / Logo Preview */}
+            {/* Brand Watermark / Logo Preview — No BG, logo fills entire icon */}
             <div 
-              className="w-14 h-14 rounded-2xl flex items-center justify-center p-2 border border-white/10 shadow-lg backdrop-blur-md shrink-0"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden border border-white/10 shadow-lg shrink-0"
               style={{
-                backgroundColor: `${primaryColor}20`,
-                borderColor: `${primaryColor}40`,
                 opacity: (watermarkOpacity || 80) / 100
               }}
             >
               {logoUrl ? (
-                <img src={getMediaUrl(logoUrl)} alt="Brand Preview" className="max-w-full max-h-full object-contain" />
+                <img src={getMediaUrl(logoUrl)} alt="Brand Preview" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xl font-bold font-heading" style={{ color: primaryColor }}>
                   {brandName ? brandName.charAt(0).toUpperCase() : "O"}
@@ -442,7 +621,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
                   {brandVoice || "Cinematic & Epic"}
                 </span>
               </div>
-              <p className="text-xs text-white/70 mt-1" style={{ fontFamily: primaryFont }}>
+              <p className="text-xs text-white/70 mt-1 font-sans">
                 {tagline || "Next-Gen AI Cinematic Production"}
               </p>
             </div>
@@ -532,92 +711,238 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
         </div>
       </div>
 
-      {/* Logo Upload & Preview */}
+      {/* Multi-Logo Architecture (3 Slots: Primary, Dark Mode, App Icon) */}
       <div className="space-y-3">
-        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">
-          Brand Logo / Watermark Asset
-        </label>
-        <div className="p-4 rounded-xl border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-zinc-50 dark:bg-white/[0.02] space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            {logoUrl ? (
-              <div className="relative w-16 h-16 rounded-xl bg-zinc-900 border border-black/10 dark:border-white/10 flex items-center justify-center p-2 overflow-hidden shrink-0 shadow-xs">
-                <img src={getMediaUrl(logoUrl)} alt="Brand Logo" className="max-w-full max-h-full object-contain" />
-                <button
-                  type="button"
-                  onClick={() => setLogoUrl("")}
-                  className="absolute top-1 right-1 p-1 rounded-md bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer"
-                  title="Remove Logo"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">
+              Brand Logos & Visual Assets (Multi-Logo Architecture)
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowMultiLogoInfo(true)}
+              className="p-1 rounded-full text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+              title="Learn about Multi-Logo Architecture"
+            >
+              <Info className="w-3.5 h-3.5 text-emerald-500" />
+            </button>
+          </div>
+          <span className="text-[10px] font-mono text-zinc-500">
+            3 Variants Supported
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* 1. Primary Logo (Master / Light Backdrops) */}
+          <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 space-y-3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  Primary Logo
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-500 font-bold">
+                  MASTER
+                </span>
               </div>
-            ) : (
-              <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-center text-zinc-400 shrink-0">
-                <ImageIcon className="w-6 h-6" />
+              <div className="relative aspect-square max-h-36 sm:max-h-40 w-full max-w-[150px] mx-auto rounded-xl bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center overflow-hidden shadow-xs">
+                {logos.primary || logoUrl ? (
+                  <>
+                    <img src={getMediaUrl(logos.primary || logoUrl)} alt="Primary Logo" className="w-full h-full object-contain p-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogos(prev => ({ ...prev, primary: "" }));
+                        setLogoUrl("");
+                      }}
+                      className="absolute top-1 right-1 p-1 rounded-md bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                      title="Remove Logo"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-zinc-400">
+                    <ImageIcon className="w-5 h-5" />
+                    <span className="text-[10px]">No Primary Logo</span>
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                {logoUrl ? "Active Brand Logo Configured" : "Upload Brand Watermark or Logo"}
-              </p>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-sans leading-relaxed">
-                Supports PNG, SVG, WebP with transparency. Used for automatic overlays and brand watermark branding.
-              </p>
-              <label className="inline-flex items-center gap-2 mt-2.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-white/10 dark:hover:bg-white/15 text-zinc-900 dark:text-white border border-black/[0.08] dark:border-white/[0.08] transition-all cursor-pointer shadow-xs active:scale-98">
-                {uploadingLogo ? (
+            </div>
+            <label className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-200/80 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 transition cursor-pointer">
+              {uploadingLogoType === "primary" ? (
+                <>
+                  <Spinner size="xs" variant="current" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Upload Primary</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                onChange={(e) => handleLogoUpload(e, "primary")}
+                disabled={uploadingLogoType !== null}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* 2. Dark Mode Logo (Inverted / Luminescence) */}
+          <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 space-y-3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                  Dark Mode Logo
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-500 font-bold">
+                  INVERTED
+                </span>
+              </div>
+              <div className="relative aspect-square max-h-36 sm:max-h-40 w-full max-w-[150px] mx-auto rounded-xl bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgiIGhlaWdodD0iOCIgZmlsbD0iI2U0ZTRlNyIvPjxyZWN0IHg9IjgiIHk9IjgiIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIGZpbGw9IiNlNGU0ZTciLz48L3N2Zz4=')] border border-black/10 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-xs">
+                {logos.dark ? (
+                  <>
+                    <img src={getMediaUrl(logos.dark)} alt="Dark Mode Logo" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setLogos(prev => ({ ...prev, dark: "" }))}
+                      className="absolute top-1 right-1 p-1 rounded-md bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                      title="Remove Logo"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-zinc-500">
+                    <ImageIcon className="w-5 h-5" />
+                    <span className="text-[10px]">No Dark Variant</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <label className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-200/80 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 transition cursor-pointer">
+              {uploadingLogoType === "dark" ? (
+                <>
+                  <Spinner size="xs" variant="current" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Upload Dark Mode</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                onChange={(e) => handleLogoUpload(e, "dark")}
+                disabled={uploadingLogoType !== null}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* 3. App Icon / Watermark (1:1 Favicon) */}
+          <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 space-y-3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  App Icon / Watermark
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-500 font-bold">
+                  1:1 ICON
+                </span>
+              </div>
+              <div className="relative aspect-square max-h-36 sm:max-h-40 w-full max-w-[150px] mx-auto rounded-xl bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center overflow-hidden shadow-xs">
+                {logos.icon ? (
+                  <>
+                    <img src={getMediaUrl(logos.icon)} alt="App Icon" className="w-full h-full object-contain p-1" />
+                    <button
+                      type="button"
+                      onClick={() => setLogos(prev => ({ ...prev, icon: "" }))}
+                      className="absolute top-1 right-1 p-1 rounded-md bg-black/70 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                      title="Remove Icon"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-zinc-500">
+                    <img src="/icon.svg" alt="Default Icon" className="w-8 h-8 opacity-60" />
+                    <span className="text-[10px]">Using OmniSpark Icon</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-200/80 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 transition cursor-pointer">
+                {uploadingLogoType === "icon" ? (
                   <>
                     <Spinner size="xs" variant="current" />
                     <span>Uploading...</span>
                   </>
                 ) : (
                   <>
-                    <Upload className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Choose Logo File</span>
+                    <Upload className="w-3 h-3 text-cyan-400" />
+                    <span>Upload Icon</span>
                   </>
                 )}
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                  onChange={handleLogoUpload}
-                  disabled={uploadingLogo}
+                  onChange={(e) => handleLogoUpload(e, "icon")}
+                  disabled={uploadingLogoType !== null}
                   className="hidden"
                 />
               </label>
+              <button
+                type="button"
+                onClick={() => setLogos(prev => ({ ...prev, icon: "/icon.svg" }))}
+                className="px-2 py-1.5 rounded-xl bg-zinc-200/50 dark:bg-zinc-800/80 hover:bg-emerald-500/10 hover:text-emerald-500 text-[10px] font-bold text-zinc-500 transition cursor-pointer"
+                title="Use new OmniSpark Vector Favicon"
+              >
+                Spark
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* Watermark Placement & Opacity Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">Watermark Placement</span>
-              <Dropdown
-                size="sm"
-                value={watermarkPosition}
-                onChange={(val) => setWatermarkPosition(val)}
-                options={[
-                  { value: "bottom-right", label: "Bottom Right Corner" },
-                  { value: "bottom-left", label: "Bottom Left Corner" },
-                  { value: "top-right", label: "Top Right Corner" },
-                  { value: "top-left", label: "Top Left Corner" },
-                  { value: "center", label: "Center Watermark" },
-                ]}
-              />
+        {/* Watermark Placement & Opacity Controls */}
+        <div className="p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block">Watermark Placement</span>
+            <Dropdown
+              size="sm"
+              value={watermarkPosition}
+              onChange={(val) => setWatermarkPosition(val)}
+              options={[
+                { value: "bottom-right", label: "Bottom Right Corner" },
+                { value: "bottom-left", label: "Bottom Left Corner" },
+                { value: "top-right", label: "Top Right Corner" },
+                { value: "top-left", label: "Top Left Corner" },
+                { value: "center", label: "Center Watermark" },
+              ]}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Watermark Opacity</span>
+              <span className="text-xs font-mono text-emerald-500 font-bold">{watermarkOpacity}%</span>
             </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Watermark Opacity</span>
-                <span className="text-xs font-mono text-emerald-500 font-bold">{watermarkOpacity}%</span>
-              </div>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={watermarkOpacity}
-                onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
-                className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
-              />
-            </div>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={watermarkOpacity}
+              onChange={(e) => setWatermarkOpacity(Number(e.target.value))}
+              className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 mt-2"
+            />
           </div>
         </div>
       </div>
@@ -861,6 +1186,94 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
           </button>
         </div>
       </div>
+
+      {/* Multi-Logo Architecture Vertical Info Popup */}
+      {showMultiLogoInfo && (
+        <div 
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200 cursor-pointer"
+          onClick={() => setShowMultiLogoInfo(false)}
+        >
+          <div 
+            className="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-[#0e0f17] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-left cursor-default animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                  <Sparkles className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold font-heading text-zinc-950 dark:text-white">
+                    Multi-Logo Architecture
+                  </h3>
+                  <p className="text-[11px] font-mono text-emerald-500">
+                    OmniStudio Intelligent Asset Dispatch
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMultiLogoInfo(false)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content list with vertical width */}
+            <div className="space-y-3 text-xs text-zinc-600 dark:text-zinc-300">
+              <p className="leading-relaxed text-[11px] text-zinc-500 dark:text-zinc-400">
+                A single logo cannot adapt to every AI background. OmniStudio's 3-variant architecture ensures your brand looks pristine on both high-key light studio shots and dark cinematic scenes:
+              </p>
+
+              {/* Variant 1 */}
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white font-heading">
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span>1. Primary Logo (Master Asset)</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Used for light backgrounds, high-key daylight shots, export headers, and corporate presentations. Preserves official brand colorways without color distortion.
+                </p>
+              </div>
+
+              {/* Variant 2 */}
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white font-heading">
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>2. Dark Mode / Inverted Logo</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Dispatched on dark, cyberpunk, nocturnal, or moody cinematic scenes. Features clean white or luminescent contours so your brand never blends into shadows.
+                </p>
+              </div>
+
+              {/* Variant 3 */}
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white font-heading">
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>3. App Icon / 1:1 Watermark Bug</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Square aspect ratio optimized for vertical 9:16 mobile formats (Instagram Reels, TikTok, YouTube Shorts). Sits neatly as a corner bug without interfering with platform UI overlays.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer Button */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowMultiLogoInfo(false)}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold text-xs transition cursor-pointer shadow-sm active:scale-98"
+              >
+                Got it, Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

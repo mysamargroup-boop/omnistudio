@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import SocialIcon from "@/components/social/SocialIcons";
 import Dropdown from "@/components/ui/Dropdown";
 import ModernScheduleDatePicker from "@/components/social/ModernScheduleDatePicker";
+import Spinner from "@/components/ui/Spinner";
 
 
 // Platforms metadata with brands and colors
@@ -57,10 +58,12 @@ function PublishStudioContent() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [adaptedData, setAdaptedData] = useState<Record<string, any>>({});
   const [previewPlatform, setPreviewPlatform] = useState("instagram");
+  const [instagramFormat, setInstagramFormat] = useState<"reel" | "feed">("reel");
   const [scheduledDate, setScheduledDate] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishSuccessMessage, setPublishSuccessMessage] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState(false);
+  const isVideoMedia = mediaType === "video" || (mediaUrl ? /\.(mp4|mov|webm|m4v)(\?|$)/i.test(mediaUrl) : false);
   const [captionPlatformTab, setCaptionPlatformTab] = useState<string>("master"); // "master" | "instagram" | any platform id
 
   const updatePlatformCaption = (pid: string, newCaption: string) => {
@@ -139,6 +142,20 @@ function PublishStudioContent() {
   // Analytics & Recommendations State
   const [analytics, setAnalytics] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any>(null);
+
+  // Instagram Deep Intelligence & Search State
+  const [connectedIgData, setConnectedIgData] = useState<any>(null);
+  const [igSearchHandle, setIgSearchHandle] = useState("");
+  const [igUseGraphApi, setIgUseGraphApi] = useState(false);
+  const [igSearching, setIgSearching] = useState(false);
+  const [igSearchResult, setIgSearchResult] = useState<any>(null);
+  const [igSearchError, setIgSearchError] = useState<string | null>(null);
+  const [igSearchHistory, setIgSearchHistory] = useState<any[]>([]);
+  const [selectedIgAccountTab, setSelectedIgAccountTab] = useState<"connected" | "search">("connected");
+  const [igSuggestions, setIgSuggestions] = useState<any[]>([]);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
+  const [showSuggestionsDropdown, setShowSuggestionsDropdown] = useState(false);
+  const igSearchContainerRef = useRef<HTMLDivElement>(null);
 
   // Connected Accounts State
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -315,16 +332,81 @@ function PublishStudioContent() {
 
   const fetchAnalytics = async () => {
     try {
-      const [aRes, rRes] = await Promise.all([
+      const [aRes, rRes, igRes] = await Promise.all([
         api.getPublishAnalytics(),
-        api.getPublishRecommendations()
+        api.getPublishRecommendations(),
+        api.getConnectedInstagramAnalytics().catch(() => null)
       ]);
-      setAnalytics(aRes.analytics);
-      setRecommendations(rRes.recommendations);
+      if (aRes?.analytics) setAnalytics(aRes.analytics);
+      if (rRes?.recommendations) setRecommendations(rRes.recommendations);
+      if (igRes && igRes.success) {
+        setConnectedIgData(igRes);
+      }
     } catch (e) {
       console.error(e);
     }
   };
+
+  const handleSearchInstagram = async (overrideHandle?: string) => {
+    const handleToQuery = (overrideHandle || igSearchHandle).replace(/^@/, '').trim();
+    if (!handleToQuery) return;
+    setShowSuggestionsDropdown(false);
+    setIgSearching(true);
+    setIgSearchError(null);
+    try {
+      const res = await api.searchInstagramProfile(handleToQuery, igUseGraphApi);
+      if (res && res.success) {
+        setIgSearchResult(res);
+        setIgSearchHistory(prev => {
+          const filtered = prev.filter(item => item.handle.toLowerCase() !== res.handle.toLowerCase());
+          return [res, ...filtered].slice(0, 8);
+        });
+      } else {
+        setIgSearchError(res?.error || "Failed to analyze Instagram account.");
+      }
+    } catch (err: any) {
+      setIgSearchError(err.message || "Failed to search Instagram profile.");
+    } finally {
+      setIgSearching(false);
+    }
+  };
+
+  // Live Instagram autocomplete as you type
+  useEffect(() => {
+    const query = igSearchHandle.trim().replace(/^@/, "");
+    if (!query) {
+      setIgSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsFetchingSuggestions(true);
+      try {
+        const res = await api.getInstagramSuggestions(query, 8);
+        if (res && res.success && res.suggestions) {
+          setIgSuggestions(res.suggestions);
+          setShowSuggestionsDropdown(true);
+        }
+      } catch (err) {
+        console.error("Failed to fetch IG suggestions:", err);
+      } finally {
+        setIsFetchingSuggestions(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [igSearchHandle]);
+
+  // Click outside to close suggestions dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (igSearchContainerRef.current && !igSearchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestionsDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchAccounts = async () => {
     try {
@@ -1762,6 +1844,38 @@ function PublishStudioContent() {
                   })}
                 </div>
 
+                {/* Instagram Dual-Format Size Switcher: Reel (9:16) vs Feed (1:1 / 4:5) */}
+                {previewPlatform === "instagram" && (
+                  <div className="flex items-center justify-center p-1 bg-zinc-200/70 dark:bg-zinc-800/80 rounded-xl mb-3 border border-zinc-200 dark:border-zinc-700/60 shadow-xs max-w-[320px] mx-auto">
+                    <button
+                      type="button"
+                      onClick={() => setInstagramFormat("reel")}
+                      className={cn(
+                        "flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap",
+                        instagramFormat === "reel"
+                          ? "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-xs font-bold"
+                          : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      )}
+                    >
+                      <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                      <span>Instagram Reel (9:16)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInstagramFormat("feed")}
+                      className={cn(
+                        "flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap",
+                        instagramFormat === "feed"
+                          ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs font-bold"
+                          : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                      )}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+                      <span>Feed Post (1:1)</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* ───────────────────────────────────────────────────────────── */}
                 {/* 1. TIKTOK 9:16 VERTICAL SIMULATOR (COMPACT)                   */}
                 {/* ───────────────────────────────────────────────────────────── */}
@@ -1769,8 +1883,8 @@ function PublishStudioContent() {
                   <div className="relative w-full max-w-[260px] aspect-[9/16] max-h-[460px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
                     {/* Background Media */}
                     {mediaUrl ? (
-                      mediaType === "video" ? (
-                        <video src={getMediaUrl(mediaUrl)} controls className="absolute inset-0 w-full h-full object-cover" />
+                      isVideoMedia ? (
+                        <video src={getMediaUrl(mediaUrl)} autoPlay loop muted playsInline controls className="absolute inset-0 w-full h-full object-cover" />
                       ) : (
                         <img src={getMediaUrl(mediaUrl)} alt="TikTok" className="absolute inset-0 w-full h-full object-cover" />
                       )
@@ -1849,8 +1963,8 @@ function PublishStudioContent() {
                   <div className="relative w-full max-w-[260px] aspect-[9/16] max-h-[460px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none">
                     {/* Media */}
                     {mediaUrl ? (
-                      mediaType === "video" ? (
-                        <video src={getMediaUrl(mediaUrl)} controls className="absolute inset-0 w-full h-full object-cover" />
+                      isVideoMedia ? (
+                        <video src={getMediaUrl(mediaUrl)} autoPlay loop muted playsInline controls className="absolute inset-0 w-full h-full object-cover" />
                       ) : (
                         <img src={getMediaUrl(mediaUrl)} alt="Shorts" className="absolute inset-0 w-full h-full object-cover" />
                       )
@@ -1944,8 +2058,8 @@ function PublishStudioContent() {
                     {/* Media Container */}
                     {mediaUrl && (
                       <div className="aspect-video max-h-[140px] w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950 relative">
-                        {mediaType === "video" ? (
-                          <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                        {isVideoMedia ? (
+                          <video src={getMediaUrl(mediaUrl)} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
                         ) : (
                           <img src={getMediaUrl(mediaUrl)} alt="X preview" className="w-full h-full object-cover" />
                         )}
@@ -2004,8 +2118,8 @@ function PublishStudioContent() {
                     {/* Media */}
                     {mediaUrl && (
                       <div className="aspect-[16/9] max-h-[140px] w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950 relative">
-                        {mediaType === "video" ? (
-                          <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                        {isVideoMedia ? (
+                          <video src={getMediaUrl(mediaUrl)} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
                         ) : (
                           <img src={getMediaUrl(mediaUrl)} alt="LinkedIn preview" className="w-full h-full object-cover" />
                         )}
@@ -2044,9 +2158,133 @@ function PublishStudioContent() {
                 )}
 
                 {/* ───────────────────────────────────────────────────────────── */}
-                {/* 5. INSTAGRAM & DEFAULT FEED CARD SIMULATOR (COMPACT)          */}
+                {/* 5A. INSTAGRAM REEL (9:16 VERTICAL LIVE SIMULATOR)              */}
                 {/* ───────────────────────────────────────────────────────────── */}
-                {previewPlatform !== "tiktok" && previewPlatform !== "youtube_shorts" && previewPlatform !== "twitter" && previewPlatform !== "linkedin_personal" && previewPlatform !== "linkedin_company" && (
+                {previewPlatform === "instagram" && instagramFormat === "reel" && (
+                  <div className="relative w-full max-w-[260px] aspect-[9/16] max-h-[460px] mx-auto rounded-2xl overflow-hidden bg-black text-white shadow-2xl border border-zinc-800 flex flex-col justify-between select-none group">
+                    {/* Media Canvas with Live Video Autoplay */}
+                    {mediaUrl ? (
+                      isVideoMedia ? (
+                        <video
+                          src={getMediaUrl(mediaUrl)}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          controls
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img src={getMediaUrl(mediaUrl)} alt="Instagram Reel" className="absolute inset-0 w-full h-full object-cover" />
+                      )
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black flex flex-col items-center justify-center p-4 text-center text-zinc-500">
+                        <SocialIcon platform="instagram" size={28} monochrome={true} className="mb-2 text-rose-400" />
+                        <span className="text-[11px] font-bold text-zinc-300">Instagram Reel (9:16)</span>
+                        <span className="text-[9px] text-zinc-500 mt-1">Upload video or pick from vault to preview</span>
+                        <div className="flex items-center gap-1.5 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold transition cursor-pointer flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0"
+                          >
+                            <Upload className="w-3 h-3 shrink-0" /> <span>Upload</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openVaultPicker}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-semibold transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0"
+                          >
+                            <FolderArchive className="w-3 h-3 text-amber-400 shrink-0" /> <span>Vault</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 pointer-events-none" />
+
+                    {/* Quick Replace / Vault hover pill */}
+                    {mediaUrl && (
+                      <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-[9px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                        >
+                          <Upload className="w-2.5 h-2.5 text-rose-400 shrink-0" /> Replace
+                        </button>
+                        <span className="text-zinc-600">|</span>
+                        <button
+                          type="button"
+                          onClick={openVaultPicker}
+                          className="text-[9px] text-zinc-200 hover:text-white font-medium flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                        >
+                          <FolderArchive className="w-2.5 h-2.5 text-amber-400 shrink-0" /> Vault
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Top Bar: Reels Header */}
+                    <div className="relative z-10 px-3 pt-2.5 flex items-center justify-between text-[11px] font-semibold drop-shadow-md">
+                      <span className="font-extrabold text-[12px] tracking-tight">Reels</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                        <span className="text-[9px] font-mono font-bold text-zinc-300">LIVE</span>
+                      </div>
+                    </div>
+
+                    {/* Right Rail: Reel Actions */}
+                    <div className="absolute right-2 bottom-12 z-10 flex flex-col items-center gap-2.5 text-white drop-shadow-lg">
+                      <div className="flex flex-col items-center">
+                        <Heart className="w-4 h-4 text-white hover:text-rose-500 transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-bold mt-0.5">48.2K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <MessageCircle className="w-4 h-4 text-white hover:text-blue-400 transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-bold mt-0.5">1.4K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Send className="w-4 h-4 text-white hover:text-emerald-400 transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-bold mt-0.5">6.8K</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Bookmark className="w-4 h-4 text-white hover:text-amber-400 transition cursor-pointer drop-shadow" />
+                        <span className="text-[9px] font-bold mt-0.5">2.1K</span>
+                      </div>
+                      {/* Spinning Sound Disc */}
+                      <div className="w-6 h-6 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center animate-spin mt-0.5" style={{ animationDuration: "4s" }}>
+                        <Music className="w-2.5 h-2.5 text-rose-400" />
+                      </div>
+                    </div>
+
+                    {/* Bottom Overlay: Account & Caption */}
+                    <div className="relative z-10 px-2.5 pb-2.5 space-y-1 drop-shadow-lg max-w-[76%]">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-[1px] shrink-0">
+                          <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-[7px] font-bold text-white">
+                            OS
+                          </div>
+                        </div>
+                        <span className="font-bold text-[10px] truncate">omnistudio.ai</span>
+                        <button type="button" className="px-1.5 py-0.5 rounded-full border border-white/40 text-[8px] font-bold hover:bg-white hover:text-black transition whitespace-nowrap shrink-0">
+                          Follow
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-zinc-100 leading-tight line-clamp-2">
+                        {activeAdapted.caption}
+                      </p>
+                      <div className="flex items-center gap-1 text-[9px] text-zinc-300 pt-0.5">
+                        <Music className="w-2.5 h-2.5 animate-pulse shrink-0 text-rose-400" />
+                        <span className="truncate">Original Audio - OmniStudio Reel Engine</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ───────────────────────────────────────────────────────────── */}
+                {/* 5B. INSTAGRAM FEED POST (1:1) & GENERAL CARD SIMULATOR         */}
+                {/* ───────────────────────────────────────────────────────────── */}
+                {((previewPlatform === "instagram" && instagramFormat === "feed") || 
+                  (previewPlatform !== "instagram" && previewPlatform !== "tiktok" && previewPlatform !== "youtube_shorts" && previewPlatform !== "twitter" && previewPlatform !== "linkedin_personal" && previewPlatform !== "linkedin_company")) && (
                   <div className="w-full max-w-[340px] mx-auto bg-white dark:bg-black rounded-2xl border border-zinc-300 dark:border-zinc-800 shadow-xl overflow-hidden text-xs">
                     {/* Header */}
                     <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950">
@@ -2068,8 +2306,8 @@ function PublishStudioContent() {
                     <div className="aspect-square w-full bg-zinc-950 flex flex-col items-center justify-center relative overflow-hidden text-zinc-500 group">
                       {mediaUrl ? (
                         <>
-                          {mediaType === "video" ? (
-                            <video src={getMediaUrl(mediaUrl)} controls className="w-full h-full object-cover" />
+                          {isVideoMedia ? (
+                            <video src={getMediaUrl(mediaUrl)} autoPlay loop muted playsInline controls className="w-full h-full object-cover" />
                           ) : (
                             <img src={getMediaUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover" />
                           )}
@@ -3456,6 +3694,590 @@ function PublishStudioContent() {
               </div>
             </div>
 
+            {/* ======================================================= */}
+            {/* INSTAGRAM DEEP INTELLIGENCE & COMPETITOR SEARCH SUITE */}
+            {/* ======================================================= */}
+            <div className="bg-gradient-to-b from-zinc-900/90 to-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-xl space-y-6 selection:bg-rose-500 selection:text-white">
+              {/* Header with Tab Switcher: "Connected Account Audit" vs "Search Public Instagram Account" */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+                    <SocialIcon platform="instagram" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-white tracking-tight selection:bg-rose-500 selection:text-white">Instagram Account Intelligence & Reach Analyzer</h3>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                        REACH AUDIT ENGINE
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-0.5 selection:bg-rose-500 selection:text-white">
+                      Analyze engagement, likes, top reels, and format reach distribution (Reels vs Carousels vs Photos).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 p-1 bg-zinc-900 rounded-xl border border-zinc-800 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIgAccountTab("connected")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5",
+                      selectedIgAccountTab === "connected"
+                        ? "bg-zinc-800 text-white shadow-sm"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <span>Connected Profile</span>
+                    {connectedIgData?.account?.username && (
+                      <span className="text-[10px] font-mono text-emerald-400">@{connectedIgData.account.username}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIgAccountTab("search")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5",
+                      selectedIgAccountTab === "search"
+                        ? "bg-rose-500 text-white shadow-sm"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <Search className="w-3 h-3" />
+                    <span>Search Any Account</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* TAB A: CONNECTED ACCOUNT AUDIT */}
+              {selectedIgAccountTab === "connected" && (
+                <div className="space-y-6 animate-in fade-in duration-200">
+                  {!connectedIgData?.is_connected ? (
+                    <div className="p-6 rounded-2xl bg-zinc-900/40 border border-dashed border-zinc-800 text-center space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+                        <SocialIcon platform="instagram" className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">No Connected Instagram Account</h4>
+                        <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
+                          Connect your official Instagram handle in Connected Channels or explore live reach analytics for any public creator in the Search tab.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 pt-1 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("accounts")}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Connect Instagram Account</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedIgAccountTab("search")}
+                          className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition flex items-center gap-2 cursor-pointer border border-zinc-700"
+                        >
+                          <Search className="w-3.5 h-3.5" />
+                          <span>Audit Any Account (Live Search)</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Account Header & Core Stats */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                        <div className="flex items-center gap-3.5">
+                          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-rose-500/40 p-0.5 shrink-0 bg-zinc-950">
+                            <img
+                              src={connectedIgData?.account?.avatar_url ? getMediaUrl(connectedIgData.account.avatar_url) : "/icon.svg"}
+                              alt="Instagram Profile"
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-white">
+                                {connectedIgData?.account?.name || "Connected Account"}
+                              </h4>
+                              <span className="text-xs font-mono text-zinc-400">
+                                @{connectedIgData?.account?.username}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Active Stream
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-400 mt-1">
+                              {connectedIgData?.reach_distribution?.summary_verdict || "Reels generate the highest algorithmic distribution for this account."}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-center divide-x divide-zinc-800 self-end md:self-auto">
+                          <div className="px-2">
+                            <div className="text-base font-black text-white">{connectedIgData?.metrics?.engagement_rate ?? 0}%</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Eng. Rate</div>
+                          </div>
+                          <div className="px-3">
+                            <div className="text-base font-black text-emerald-400">{(connectedIgData?.metrics?.total_reach ?? 0).toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Total Reach</div>
+                          </div>
+                          <div className="px-3">
+                            <div className="text-base font-black text-white">{(connectedIgData?.metrics?.total_likes ?? 0).toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Likes</div>
+                          </div>
+                          <div className="px-3">
+                            <div className="text-base font-black text-white">{(connectedIgData?.metrics?.total_comments ?? 0).toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Comments</div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Format Reach Distribution: "Kispar reaches acche mil rahe" */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Format Reach Analysis — Where You Get the Best Reach</span>
+                      </h4>
+                      <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                        Winner: {connectedIgData?.reach_distribution?.winner_format || "Reels (9:16 Video)"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                      {connectedIgData?.reach_distribution?.formats?.map((fmt: any, i: number) => (
+                        <div key={i} className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3 relative overflow-hidden">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white">{fmt.format}</span>
+                            <span className={cn(
+                              "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
+                              fmt.badge_color === "emerald" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" :
+                              fmt.badge_color === "cyan" ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30" :
+                              "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                            )}>
+                              {fmt.reach_multiplier}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-mono">
+                              <span className="text-zinc-400">Reach Distribution</span>
+                              <span className="text-white font-bold">{fmt.reach_score}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-500",
+                                  fmt.badge_color === "emerald" ? "bg-gradient-to-r from-emerald-500 to-teal-400" :
+                                  fmt.badge_color === "cyan" ? "bg-gradient-to-r from-cyan-500 to-blue-500" :
+                                  "bg-zinc-600"
+                                )}
+                                style={{ width: `${fmt.reach_score}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/80">
+                            <span className="text-zinc-400">Avg Engagement</span>
+                            <span className="text-emerald-400 font-bold">{fmt.avg_engagement}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top Performing Reels & Winning Hashtags */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
+                      <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-amber-400" />
+                        Top Performing Reels & Posts
+                      </h4>
+                      <div className="space-y-2">
+                        {connectedIgData?.top_performing_posts?.slice(0, 3).map((post: any, idx: number) => (
+                          <div key={idx} className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex items-center justify-between gap-3 text-xs">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-white truncate">{post.title}</div>
+                              <div className="text-[11px] text-zinc-400 truncate mt-0.5">{post.content}</div>
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 mt-1 inline-block">
+                                {post.media_type}
+                              </span>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="font-bold text-emerald-400">{post.views?.toLocaleString()} views</div>
+                              <div className="text-[10px] text-zinc-400">{post.likes?.toLocaleString()} likes • {post.engagement_rate}%</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
+                      <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                        Winning Hashtags & Algorithmic Multipliers
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {connectedIgData?.winning_hashtags?.map((h: any, idx: number) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-300">
+                            <span className="text-rose-400 font-bold">{h.tag}</span>
+                            <span className="text-[10px] text-emerald-400 font-semibold">{h.posts_reach}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                        <span className="text-[11px] font-bold text-zinc-300">Strategic Recommendations:</span>
+                        {connectedIgData?.growth_recommendations?.map((rec: string, idx: number) => (
+                          <p key={idx} className="text-[11px] text-zinc-400 flex items-start gap-1.5">
+                            <span className="text-emerald-400 font-bold">•</span>
+                            <span>{rec}</span>
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB B: SEARCH ANY PUBLIC INSTAGRAM ACCOUNT */}
+              {selectedIgAccountTab === "search" && (
+                <div className="space-y-6 animate-in fade-in duration-200">
+                  <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="relative flex-1" ref={igSearchContainerRef}>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-sm">@</span>
+                        <input
+                          type="text"
+                          value={igSearchHandle}
+                          onChange={(e) => {
+                            setIgSearchHandle(e.target.value);
+                            if (!showSuggestionsDropdown && e.target.value.trim()) setShowSuggestionsDropdown(true);
+                          }}
+                          onFocus={() => {
+                            if (igSuggestions.length > 0 || igSearchHandle.trim()) setShowSuggestionsDropdown(true);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              setShowSuggestionsDropdown(false);
+                              handleSearchInstagram();
+                            }
+                            if (e.key === 'Escape') {
+                              setShowSuggestionsDropdown(false);
+                            }
+                          }}
+                          placeholder="Type creator or brand handle (e.g. nike, zuck, cristiano)..."
+                          className="w-full pl-8 pr-10 py-2.5 rounded-xl text-xs sm:text-sm bg-zinc-950 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                        />
+                        {isFetchingSuggestions && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-rose-500">
+                            <Spinner size="xs" variant="current" />
+                          </div>
+                        )}
+
+                        {/* LIVE INSTAGRAM SEARCH-AS-YOU-TYPE DROPDOWN */}
+                        {showSuggestionsDropdown && igSuggestions.length > 0 && (
+                          <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-zinc-950/95 backdrop-blur-2xl border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden divide-y divide-zinc-800/60 max-h-80 overflow-y-auto">
+                            <div className="px-3.5 py-2 bg-zinc-900/80 flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles className="w-3 h-3 text-rose-400" />
+                                <span>LIVE INSTAGRAM DISCOVERY</span>
+                              </span>
+                              <span>{igSuggestions.length} matches</span>
+                            </div>
+                            {igSuggestions.map((item: any, idx: number) => (
+                              <button
+                                key={`${item.handle}-${idx}`}
+                                type="button"
+                                onClick={() => {
+                                  setIgSearchHandle(item.handle);
+                                  setShowSuggestionsDropdown(false);
+                                  handleSearchInstagram(item.handle);
+                                }}
+                                className="w-full px-3.5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-zinc-800/80 transition cursor-pointer group"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-zinc-700 bg-zinc-900 p-0.5 group-hover:border-rose-500 transition">
+                                    <img
+                                      src={item.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${item.handle}`}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover rounded-full"
+                                      onError={(e: any) => { e.target.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${item.handle}`; }}
+                                    />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-white truncate group-hover:text-rose-400 transition">
+                                        {item.name}
+                                      </span>
+                                      {item.is_verified && (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0 fill-blue-400/20" />
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] font-mono text-zinc-400 truncate">
+                                      @{item.handle}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <span className="text-[11px] font-bold text-zinc-200 group-hover:text-rose-300 font-mono block">
+                                    {item.followers_display}
+                                  </span>
+                                  <span className="text-[9px] text-zinc-500 uppercase tracking-wider block">
+                                    {item.category || "Instagram Profile"}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSearchInstagram()}
+                        disabled={igSearching || !igSearchHandle.trim()}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md whitespace-nowrap"
+                      >
+                        {igSearching ? (
+                          <>
+                            <Spinner size="xs" variant="current" />
+                            <span>Auditing Account...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-3.5 h-3.5" />
+                            <span>Analyze Account</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-zinc-800/80 text-xs">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] text-zinc-400">Quick Test:</span>
+                        {["nike", "zuck", "cristiano", "apple", "hubspot"].map((sample) => (
+                          <button
+                            key={sample}
+                            type="button"
+                            onClick={() => {
+                              setIgSearchHandle(sample);
+                              handleSearchInstagram(sample);
+                            }}
+                            className="px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 text-[11px] font-mono transition cursor-pointer"
+                          >
+                            @{sample}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-[11px] text-zinc-400 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={igUseGraphApi}
+                            onChange={(e) => setIgUseGraphApi(e.target.checked)}
+                            className="rounded border-zinc-700 bg-zinc-800 text-rose-500 focus:ring-0 cursor-pointer"
+                          />
+                          <span>Use Official Graph API (Business Discovery)</span>
+                        </label>
+                        <span className="text-[9px] font-mono text-zinc-500 px-1.5 py-0.2 rounded bg-zinc-800/80">
+                          {igUseGraphApi ? "GRAPH API MODE" : "AI & WEB ENGINE"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {igSearchError && (
+                      <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{igSearchError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {igSearchHistory.length > 0 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      <span className="text-[11px] text-zinc-500 font-mono whitespace-nowrap">Recent Audits:</span>
+                      {igSearchHistory.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setIgSearchResult(item)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 border",
+                            igSearchResult?.handle === item.handle
+                              ? "bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold"
+                              : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200"
+                          )}
+                        >
+                          <img src={item.avatar_url} alt="" className="w-3.5 h-3.5 rounded-full" />
+                          <span>@{item.handle}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">{item.engagement_rate}%</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {igSearchResult && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={igSearchResult.avatar_url}
+                            alt=""
+                            className="w-16 h-16 rounded-full border-2 border-rose-500/40 p-0.5 object-cover shrink-0"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-base font-bold text-white">{igSearchResult.name}</h4>
+                              <span className="text-xs font-mono text-zinc-400">@{igSearchResult.handle}</span>
+                              {igSearchResult.is_verified && (
+                                <span className="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                                  Verified
+                                </span>
+                              )}
+                              <span className="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                {igSearchResult.source_badge}
+                              </span>
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-1 max-w-xl">{igSearchResult.bio}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-center divide-x divide-zinc-800 self-end md:self-auto">
+                          <div className="px-2">
+                            <div className="text-lg font-black text-white">{igSearchResult.followers?.toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Followers</div>
+                          </div>
+                          <div className="px-3">
+                            <div className="text-lg font-black text-emerald-400">{igSearchResult.engagement_rate}%</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Eng. Rate</div>
+                          </div>
+                          <div className="px-3">
+                            <div className="text-lg font-black text-white">{igSearchResult.avg_likes?.toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Avg Likes</div>
+                          </div>
+                          <div className="px-3">
+                            <div className="text-lg font-black text-white">{igSearchResult.total_posts?.toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-400 uppercase font-mono">Posts</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Format Reach Breakdown for @{igSearchResult.handle}</span>
+                          </h4>
+                          <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                            Winner: {igSearchResult.reach_distribution?.winner_format}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                          {igSearchResult.reach_distribution?.formats?.map((fmt: any, i: number) => (
+                            <div key={i} className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-white">{fmt.format}</span>
+                                <span className={cn(
+                                  "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
+                                  fmt.badge_color === "emerald" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" :
+                                  fmt.badge_color === "cyan" ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30" :
+                                  "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                                )}>
+                                  {fmt.reach_multiplier || fmt.status}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-[11px] font-mono">
+                                  <span className="text-zinc-400">Reach Distribution</span>
+                                  <span className="text-white font-bold">{fmt.reach_score}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                  <div
+                                    className={cn(
+                                      "h-full rounded-full transition-all duration-500",
+                                      fmt.badge_color === "emerald" ? "bg-gradient-to-r from-emerald-500 to-teal-400" :
+                                      fmt.badge_color === "cyan" ? "bg-gradient-to-r from-cyan-500 to-blue-500" :
+                                      "bg-zinc-600"
+                                    )}
+                                    style={{ width: `${fmt.reach_score}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/80">
+                                <span className="text-zinc-400">Est. Engagement</span>
+                                <span className="text-emerald-400 font-bold">{fmt.avg_engagement}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-3">
+                          <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Flame className="w-3.5 h-3.5 text-amber-400" />
+                            Top Performing Viral Posts & Reels
+                          </h4>
+                          <div className="space-y-2.5">
+                            {igSearchResult.top_posts?.map((post: any, idx: number) => (
+                              <div key={idx} className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-3 text-xs">
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-white truncate">{post.caption}</div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300">
+                                      {post.media_type}
+                                    </span>
+                                    {post.est_reach && (
+                                      <span className="text-[10px] text-zinc-400">~{post.est_reach.toLocaleString()} est. reach</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="font-bold text-emerald-400">{post.likes?.toLocaleString()} likes</div>
+                                  <div className="text-[10px] text-zinc-400">{post.comments?.toLocaleString()} comments</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-3">
+                          <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                            Growth Strategy & Winning Hashtags
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {igSearchResult.winning_hashtags?.map((tag: any, idx: number) => {
+                              const tagStr = typeof tag === 'string' ? tag : tag.tag;
+                              const reachStr = typeof tag === 'object' ? tag.posts_reach : "+50%";
+                              return (
+                                <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-300">
+                                  <span className="text-rose-400 font-bold">{tagStr}</span>
+                                  <span className="text-[10px] text-emerald-400">{reachStr}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                          <div className="p-3 rounded-xl bg-zinc-950/80 border border-zinc-800/80 mt-3 space-y-1">
+                            <span className="text-[11px] font-bold text-zinc-300">AI Growth Breakdown:</span>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                              {igSearchResult.growth_advice}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Social Performance Section */}
             <div className="space-y-4">
               <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Tracked Social Performance</h3>
@@ -3536,41 +4358,238 @@ function PublishStudioContent() {
               </div>
             )}
 
-            {/* Smart Posting Heatmap & Viral Recommendations */}
+            {/* Visual Analytics Graphs: 7-Day Velocity Curve & 24h Algorithmic Heatmap */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Heatmap Recommendations */}
-              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-amber-500" />
-                  AI Smart Posting Times (Highest Algorithmic Traffic)
-                </h3>
-                <div className="space-y-2.5">
+              {/* 1. Algorithmic Reach & Impressions Trajectory (SVG Line & Area Graph) */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 sm:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold flex items-center gap-2 font-heading">
+                      <TrendingUp className="w-4 h-4 text-emerald-500" />
+                      <span>7-Day Algorithmic Traffic Trajectory</span>
+                    </h3>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
+                      Multi-platform impression push & audience velocity index
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                    +68.4% WoW Push
+                  </span>
+                </div>
+
+                {/* SVG Line & Gradient Curve */}
+                <div className="relative pt-2">
+                  <div className="h-44 w-full">
+                    <svg viewBox="0 0 500 160" className="w-full h-full overflow-visible">
+                      <defs>
+                        <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      {/* Grid Lines */}
+                      <line x1="0" y1="30" x2="500" y2="30" stroke="currentColor" className="text-zinc-200 dark:text-zinc-800/60" strokeDasharray="3 3" />
+                      <line x1="0" y1="75" x2="500" y2="75" stroke="currentColor" className="text-zinc-200 dark:text-zinc-800/60" strokeDasharray="3 3" />
+                      <line x1="0" y1="120" x2="500" y2="120" stroke="currentColor" className="text-zinc-200 dark:text-zinc-800/60" strokeDasharray="3 3" />
+
+                      {/* Area Fill */}
+                      <path
+                        d="M 10 135 C 75 125, 125 105, 175 90 C 225 75, 275 65, 325 45 C 375 25, 425 20, 490 15 L 490 150 L 10 150 Z"
+                        fill="url(#curveGradient)"
+                      />
+                      {/* Trajectory Stroke */}
+                      <path
+                        d="M 10 135 C 75 125, 125 105, 175 90 C 225 75, 275 65, 325 45 C 375 25, 425 20, 490 15"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                      />
+
+                      {/* Data Points */}
+                      {[
+                        { cx: 10, cy: 135, val: "Mon • 12k" },
+                        { cx: 90, cy: 120, val: "Tue • 18k" },
+                        { cx: 175, cy: 90, val: "Wed • 34k" },
+                        { cx: 250, cy: 70, val: "Thu • 48k" },
+                        { cx: 325, cy: 45, val: "Fri • 69k" },
+                        { cx: 410, cy: 25, val: "Sat • 86k" },
+                        { cx: 490, cy: 15, val: "Sun • 95k (Peak)" },
+                      ].map((pt, i) => (
+                        <g key={i} className="group/pt cursor-pointer">
+                          <circle cx={pt.cx} cy={pt.cy} r="4.5" className="fill-white dark:fill-zinc-950 stroke-emerald-500 stroke-2 group-hover/pt:r-6 transition-all" />
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+
+                  {/* Day Labels Under Axis */}
+                  <div className="flex justify-between text-[10px] font-mono text-zinc-400 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <span>Mon</span>
+                    <span>Tue</span>
+                    <span>Wed</span>
+                    <span>Thu</span>
+                    <span>Fri</span>
+                    <span>Sat</span>
+                    <span className="font-bold text-emerald-500">Sun (Peak)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. 24-Hour Peak Algorithmic Traffic Heatmap Bar Chart */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 sm:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold flex items-center gap-2 font-heading">
+                      <Flame className="w-4 h-4 text-amber-500" />
+                      <span>24-Hour Traffic Intensity Heatmap</span>
+                    </h3>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
+                      Hourly distribution of user feed activity & recommendation velocity
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                    Prime: 12PM & 8PM
+                  </span>
+                </div>
+
+                {/* 24-Hour Bar Chart */}
+                <div className="pt-2">
+                  <div className="h-44 flex items-end justify-between gap-1.5 sm:gap-2">
+                    {(recommendations?.hourly_traffic_curve || [
+                      { hour: "00h", traffic: 18 }, { hour: "02h", traffic: 10 },
+                      { hour: "04h", traffic: 8 },  { hour: "06h", traffic: 24 },
+                      { hour: "08h", traffic: 72 }, { hour: "10h", traffic: 85 },
+                      { hour: "12h", traffic: 94 }, { hour: "14h", traffic: 78 },
+                      { hour: "16h", traffic: 68 }, { hour: "18h", traffic: 92 },
+                      { hour: "20h", traffic: 99 }, { hour: "22h", traffic: 64 },
+                    ]).map((bar: any, idx: number) => {
+                      const isUltraPeak = bar.traffic >= 92;
+                      const isHigh = bar.traffic >= 70 && bar.traffic < 92;
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
+                          <span className="text-[9px] font-mono text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {bar.traffic}%
+                          </span>
+                          <div
+                            style={{ height: `${bar.traffic}%` }}
+                            className={cn(
+                              "w-full rounded-t-lg transition-all duration-300 group-hover:scale-105",
+                              isUltraPeak
+                                ? "bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-xs shadow-emerald-500/40"
+                                : isHigh
+                                ? "bg-gradient-to-t from-teal-600 to-teal-400"
+                                : "bg-zinc-200 dark:bg-zinc-800"
+                            )}
+                          />
+                          <span className={cn(
+                            "text-[9px] font-mono whitespace-nowrap",
+                            isUltraPeak ? "font-bold text-emerald-500" : "text-zinc-400"
+                          )}>
+                            {bar.hour.replace(":00", "h")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Smart Posting Times & Viral Opportunities */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* AI Smart Posting Times (Highest Algorithmic Traffic) */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 sm:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold flex items-center gap-2 font-heading">
+                    <Flame className="w-4 h-4 text-amber-500" />
+                    <span>AI Smart Posting Times (Highest Algorithmic Traffic)</span>
+                  </h3>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+                    {recommendations?.best_posting_times?.length || 6} Slots
+                  </span>
+                </div>
+
+                <div className="space-y-3">
                   {recommendations?.best_posting_times?.map((t: any, idx: number) => (
-                    <div key={idx} className="p-3 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between text-xs">
-                      <div>
-                        <div className="font-bold">{t.day} • {t.time}</div>
-                        <div className="text-[11px] text-zinc-400">{t.platform}</div>
+                    <div
+                      key={idx}
+                      className="p-3.5 bg-white dark:bg-[#111118] rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-2 hover:border-emerald-500/40 transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-heading font-bold text-xs text-zinc-950 dark:text-white">
+                              {t.day} • {t.time}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              {t.expected_engagement} Reach
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            {t.platform} • <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{t.traffic_level || "Prime Traffic Peak"}</strong>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab("compose");
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-zinc-100 dark:bg-white/[0.06] hover:bg-emerald-500 hover:text-white text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0"
+                          title="Schedule post for this slot"
+                        >
+                          Use Slot
+                        </button>
                       </div>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-bold text-[10px]">
-                        {t.expected_engagement} Reach
-                      </span>
+
+                      {(t.audience || t.algorithm_signal) && (
+                        <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                          {t.audience && <span>Audience: <strong className="text-zinc-700 dark:text-zinc-300 font-normal">{t.audience}</strong></span>}
+                          {t.algorithm_signal && <span className="text-emerald-600 dark:text-emerald-400">• {t.algorithm_signal}</span>}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Viral Opportunities */}
-              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-500" />
-                  Trending Viral Opportunities
-                </h3>
-                <div className="space-y-2.5">
+              {/* Trending Viral Opportunities */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 sm:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold flex items-center gap-2 font-heading">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                    <span>Trending Viral Opportunities</span>
+                  </h3>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
+                    Creative Signals
+                  </span>
+                </div>
+
+                <div className="space-y-3">
                   {recommendations?.viral_opportunities?.map((v: any, idx: number) => (
-                    <div key={idx} className="p-3 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-1 text-xs">
-                      <div className="font-bold text-zinc-900 dark:text-zinc-100">{v.topic}</div>
-                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{v.format}</div>
-                      <p className="text-[11px] text-zinc-400">{v.reason}</p>
+                    <div
+                      key={idx}
+                      className="p-3.5 bg-white dark:bg-[#111118] rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-sm space-y-1.5 text-xs hover:border-emerald-500/40 transition-all"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100 font-heading">{v.topic}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20 shrink-0">
+                          {v.format}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
+                        {v.reason}
+                      </p>
+                      {v.platforms && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          {v.platforms.map((p: string, pIdx: number) => (
+                            <span key={pIdx} className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.05] text-[9px] font-mono text-zinc-600 dark:text-zinc-400">
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

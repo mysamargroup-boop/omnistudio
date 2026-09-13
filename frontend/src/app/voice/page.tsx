@@ -614,7 +614,7 @@ export default function VoiceStudioPage() {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Enter the text you want to synthesize into speech..."
-                    className="w-full h-24 sm:h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs sm:text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 resize-none transition-all leading-relaxed"
+                    className="w-full min-h-[120px] h-32 sm:h-36 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs sm:text-sm font-jakarta focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 resize-none transition-all leading-relaxed"
                   />
                   <div className="flex gap-1.5 mt-0.5 overflow-x-auto pb-1 scrollbar-hide custom-scrollbar">
                     {SAMPLE_SCRIPTS.map((script, idx) => (
@@ -774,7 +774,7 @@ export default function VoiceStudioPage() {
                     value={transText}
                     onChange={(e) => setTransText(e.target.value)}
                     placeholder="Enter text to translate and dub..."
-                    className="w-full h-20 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all leading-relaxed"
+                    className="w-full min-h-[100px] h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all leading-relaxed"
                   />
                 </div>
 

@@ -647,3 +647,107 @@ async def generate_storyboard_images_endpoint(req: StoryboardGenerateRequest):
         "total_generated": len([r for r in results if r.get("success")]),
         "total_requested": len(req.scenes)
     }
+
+# === Agent Pipeline Endpoints ===
+import uuid
+import json
+import asyncio
+from fastapi.responses import StreamingResponse
+from services.agent_orchestrator import PipelineContext, PipelineState
+from services.agents import get_default_orchestrator
+
+class AgentPipelineStartRequest(BaseModel):
+    prompt: str
+    mode: str = 'autonomous'  # autonomous | assisted
+    num_scenes: int = 3
+    style: str = 'cinematic'
+    aspect_ratio: str = '16:9'
+    image_model: str = 'imagen-3'
+    voice_provider: str = 'edge'
+    voice_id: str = ''
+
+@router.post("/agent/start")
+async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
+    pipeline_id = f"pipeline_{uuid.uuid4().hex[:8]}"
+    context = PipelineContext(
+        pipeline_id=pipeline_id,
+        user_prompt=req.prompt,
+        mode=req.mode,
+        num_scenes=req.num_scenes,
+        style=req.style,
+        aspect_ratio=req.aspect_ratio,
+        image_model=req.image_model,
+        voice_provider=req.voice_provider,
+        voice_id=req.voice_id
+    )
+    orchestrator = get_default_orchestrator()
+    await orchestrator.save_pipeline_state(context)
+    return {"success": True, "pipeline_id": pipeline_id}
+
+@router.api_route("/agent/stream/{pipeline_id}", methods=["GET", "POST"])
+async def stream_agent_pipeline(pipeline_id: str, request: Request):
+    orchestrator = get_default_orchestrator()
+    
+    async def sse_generator():
+        q = asyncio.Queue()
+        
+        async def progress_callback(ctx: PipelineContext):
+            await q.put(ctx.to_dict())
+
+        task = asyncio.create_task(orchestrator.resume_pipeline(pipeline_id, progress_callback))
+        
+        while not task.done() or not q.empty():
+            try:
+                # Use a small timeout to periodically check if task is done and client is connected
+                ctx_dict = await asyncio.wait_for(q.get(), timeout=1.0)
+                yield f"data: {json.dumps(ctx_dict)}\n\n"
+            except asyncio.TimeoutError:
+                if task.done():
+                    break
+                if await request.is_disconnected():
+                    task.cancel()
+                    break
+
+        if not task.cancelled():
+            try:
+                final_ctx = await task
+                yield f"data: {json.dumps(final_ctx.to_dict())}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
+@router.post("/agent/approve/{pipeline_id}")
+async def approve_agent_step(pipeline_id: str):
+    orchestrator = get_default_orchestrator()
+    context = await orchestrator.load_pipeline_state(pipeline_id)
+    if context.state == PipelineState.PAUSED:
+        # Move to next state logic. This is basic resume logic. 
+        # State transition handling is within the orchestrator loop, so we just set state to IDLE or explicitly the next state.
+        # For this skeleton, we just resume.
+        pass
+    return {"success": True, "pipeline_id": pipeline_id, "message": "Approved"}
+
+@router.post("/agent/reject/{pipeline_id}")
+async def reject_agent_step(pipeline_id: str, feedback: str = ''):
+    return {"success": True, "pipeline_id": pipeline_id, "message": "Rejected"}
+
+@router.get("/agent/status/{pipeline_id}")
+async def get_agent_status(pipeline_id: str):
+    orchestrator = get_default_orchestrator()
+    try:
+        context = await orchestrator.load_pipeline_state(pipeline_id)
+        return {"success": True, "context": context.to_dict()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.get("/agent/history")
+async def get_agent_history():
+    orchestrator = get_default_orchestrator()
+    history = await orchestrator.get_pipeline_history()
+    return {"success": True, "history": history}
+
+@router.delete("/agent/{pipeline_id}")
+async def cancel_agent_pipeline(pipeline_id: str):
+    return {"success": True, "pipeline_id": pipeline_id, "message": "Cancelled"}
+

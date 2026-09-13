@@ -667,7 +667,6 @@ export default function DashboardPage() {
               <Terminal className="w-4 h-4 text-emerald-500" />
               <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <span>Positive Prompt Matrix</span>
-                <span className="text-[10px] font-normal text-zinc-400 dark:text-zinc-500 hidden sm:inline">// CINEMA DIRECTOR DECK</span>
               </h2>
             </div>
 
@@ -793,8 +792,8 @@ export default function DashboardPage() {
                 }
               }}
               placeholder="Describe any cinematic sequence, actor choreography, camera optics, or visual diffusion prompt... (e.g. 35mm anamorphic, neon reflections, rain drenched asphalt, cyberpunk operative)"
-              rows={3}
-              className="w-full bg-transparent text-sm sm:text-base text-zinc-900 dark:text-[#F7F7F6] placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
+              rows={4}
+              className="w-full min-h-[96px] bg-transparent text-sm sm:text-base text-zinc-900 dark:text-[#F7F7F6] placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none resize-none font-sans leading-relaxed"
             />
 
             {/* Token Chips Row with Category Highlights */}

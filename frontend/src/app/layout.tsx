@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${montserrat.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="antialiased bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 selection:bg-violet-500/20 selection:text-violet-900 dark:selection:bg-violet-500/20 dark:selection:text-white overflow-x-clip w-full">
+      <body className="antialiased bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 selection:bg-rose-500 selection:text-white dark:selection:bg-rose-500 dark:selection:text-white overflow-x-clip w-full">
         <ThemeProvider>
           <AuthProvider>
             <SmoothScroll>

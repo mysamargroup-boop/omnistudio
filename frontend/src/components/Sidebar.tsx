@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import Spinner from "@/components/ui/Spinner";
+import OmniLogo from "@/components/ui/OmniLogo";
 
 interface NavItem {
   href: string;
@@ -209,7 +210,7 @@ export default function Sidebar() {
         {/* Brand Header */}
         <div className={cn(
           "flex items-center h-14 border-b border-black/[0.06] dark:border-white/[0.06] shrink-0 transition-all",
-          isDesktopCollapsed ? "justify-center px-2" : "justify-between px-5"
+          isDesktopCollapsed ? "justify-center px-2" : "justify-between pl-4 pr-2"
         )}>
           {isDesktopCollapsed ? (
             <button
@@ -219,26 +220,24 @@ export default function Sidebar() {
                 window.dispatchEvent(new CustomEvent("omnistudio:expand-sidebar"));
               }}
               title="Expand Sidebar"
-              className="h-8 w-8 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center font-bold text-xs shadow-sm border border-black/10 dark:border-white/20 hover:scale-105 transition-transform cursor-pointer"
+              className="hover:scale-105 transition-transform cursor-pointer"
             >
-              <span className="font-heading tracking-tighter text-[11px] font-bold">OS</span>
+              <OmniLogo size={28} />
             </button>
           ) : (
             <>
-              <Link href="/" className="flex items-center gap-3">
-                <div className="h-7 w-7 rounded-lg bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center font-bold text-xs shadow-sm border border-black/10 dark:border-white/20">
-                  <span className="font-heading tracking-tighter text-[11px] font-bold">OS</span>
-                </div>
+              <Link href="/" className="flex items-center gap-2.5">
+                <OmniLogo size={28} />
                 <div>
-                  <span className="text-sm font-bold text-zinc-950 dark:text-white tracking-tight font-heading block leading-none">
-                    OMNISTUDIO
+                  <span className="text-sm font-extrabold text-zinc-950 dark:text-white tracking-tight font-heading block leading-none">
+                    OMNI<span className="text-emerald-500">STUDIO</span>
                   </span>
                   <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500 font-mono block mt-0.5">
                     AI CREATIVE SUITE
                   </span>
                 </div>
               </Link>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.08]">
                   v4.5
                 </span>
@@ -249,7 +248,7 @@ export default function Sidebar() {
                     window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
                   }}
                   title="Collapse Sidebar"
-                  className="hidden lg:flex p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className="hidden lg:flex p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer translate-x-1"
                 >
                   <PanelLeftClose className="w-3.5 h-3.5" />
                 </button>

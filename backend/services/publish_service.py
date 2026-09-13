@@ -1245,30 +1245,100 @@ def get_analytics_summary() -> Dict[str, Any]:
     }
 
 def get_smart_recommendations() -> Dict[str, Any]:
-    """Generates AI Smart Posting recommendations and viral opportunity signals."""
+    """Generates AI Smart Posting recommendations, algorithmic peak traffic windows, and 24h heatmap curves."""
     return {
         "best_posting_times": [
-            {"day": "Tuesday", "time": "11:30 AM", "platform": "LinkedIn", "expected_engagement": "+38%"},
-            {"day": "Wednesday", "time": "07:15 PM", "platform": "Instagram & TikTok", "expected_engagement": "+45%"},
-            {"day": "Thursday", "time": "02:00 PM", "platform": "YouTube Shorts", "expected_engagement": "+32%"},
-            {"day": "Sunday", "time": "08:30 PM", "platform": "Threads & X", "expected_engagement": "+52%"}
+            {
+                "day": "Mon, Wed, Fri",
+                "time": "06:30 PM – 09:15 PM",
+                "platform": "Instagram Reels",
+                "expected_engagement": "+78%",
+                "traffic_level": "Prime Virality Peak",
+                "heat_index": 98,
+                "audience": "Evening Commute & Prime Leisure Discovery",
+                "algorithm_signal": "High Completion Rate Window on Explore Feed"
+            },
+            {
+                "day": "Daily (Mon–Sun)",
+                "time": "12:00 PM – 02:00 PM",
+                "platform": "YouTube Shorts",
+                "expected_engagement": "+84%",
+                "traffic_level": "Highest Algorithmic Push",
+                "heat_index": 96,
+                "audience": "Mobile Lunch Break Feed Scrolling",
+                "algorithm_signal": "Suggested Shelf Retention Velocity Maxima"
+            },
+            {
+                "day": "Tue, Wed, Thu",
+                "time": "08:30 AM – 10:30 AM",
+                "platform": "LinkedIn Thought Leader",
+                "expected_engagement": "+68%",
+                "traffic_level": "High Executive Reach",
+                "heat_index": 92,
+                "audience": "B2B Decision Makers & Founders",
+                "algorithm_signal": "First-Hour Comment Velocity Multiplier"
+            },
+            {
+                "day": "Tue, Thu, Sat",
+                "time": "07:30 PM – 10:30 PM",
+                "platform": "TikTok Viral Feed",
+                "expected_engagement": "+91%",
+                "traffic_level": "Ultra High FYP Velocity",
+                "heat_index": 99,
+                "audience": "Gen-Z & Millennial Night Engagement",
+                "algorithm_signal": "For You Page (FYP) 8-Second Loop Surge"
+            },
+            {
+                "day": "Mon–Fri",
+                "time": "08:00 AM – 09:30 AM & 06:00 PM",
+                "platform": "X (Twitter) Trending",
+                "expected_engagement": "+62%",
+                "traffic_level": "Real-Time News Surge",
+                "heat_index": 88,
+                "audience": "Tech, Media & Political Influencers",
+                "algorithm_signal": "High Repost & Quote-Tweet Momentum"
+            },
+            {
+                "day": "Sunday",
+                "time": "08:00 PM – 10:00 PM",
+                "platform": "Threads & Multi-Social",
+                "expected_engagement": "+58%",
+                "traffic_level": "Sunday Downtime Catchup",
+                "heat_index": 85,
+                "audience": "Conversational Community Readers",
+                "algorithm_signal": "Long-form Read-Through Retention"
+            }
         ],
         "viral_opportunities": [
             {
-                "topic": "Behind-The-Scenes AI Outpainting",
-                "format": "Split Before/After Reel (9:16)",
+                "topic": "Before/After AI Outpaint & Relight Transformation",
+                "format": "Split Screen 9:16 Video Reel",
                 "platforms": ["Instagram", "TikTok", "YouTube Shorts"],
-                "reason": "Engagement with split-view workflow videos is up 64% this week across creative niches."
+                "reason": "Split-canvas transformation reels maintain a 74% watch-through completion rate."
             },
             {
-                "topic": "Multi-Channel Distribution Blueprint",
-                "format": "Document Carousel (5 Slides)",
+                "topic": "Full Production Autonomous Pipeline Case Study",
+                "format": "5-Slide High-Contrast PDF / Visual Carousel",
                 "platforms": ["LinkedIn Personal", "Twitter Thread"],
-                "reason": "B2B audience demand for agency automation frameworks peaked on Tuesday morning."
+                "reason": "Breakdown threads documenting workflow automation convert 3.2x higher into inbound inquiries."
+            },
+            {
+                "topic": "Jewellery Micro-Facet & Luxury Product Reveal",
+                "format": "Macro 4K Slow-Dolly Loop (8 Seconds)",
+                "platforms": ["Instagram", "Pinterest", "YouTube Shorts"],
+                "reason": "Luxury jewelry close-up video posts have seen a 58% increase in organic saves and shares."
             }
         ],
-        "top_performing_format": "9:16 High-Contrast Vertical Video with Auto-Captions",
-        "recommended_repost_frequency": "Every 14 days with fresh alternative hooks"
+        "top_performing_format": "9:16 High-Contrast Vertical Video with Auto-Captions & Sound Hook",
+        "recommended_repost_frequency": "Every 12–14 days with fresh hook variations",
+        "hourly_traffic_curve": [
+            {"hour": "00:00", "traffic": 18}, {"hour": "02:00", "traffic": 10},
+            {"hour": "04:00", "traffic": 8},  {"hour": "06:00", "traffic": 24},
+            {"hour": "08:00", "traffic": 72}, {"hour": "10:00", "traffic": 85},
+            {"hour": "12:00", "traffic": 94}, {"hour": "14:00", "traffic": 78},
+            {"hour": "16:00", "traffic": 68}, {"hour": "18:00", "traffic": 92},
+            {"hour": "20:00", "traffic": 99}, {"hour": "22:00", "traffic": 64}
+        ]
     }
 
 

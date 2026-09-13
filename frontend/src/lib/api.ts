@@ -349,6 +349,88 @@ export const api = {
   generateStoryboard: (data: { scenes: any[]; reference_image_url?: string; aspect_ratio?: string; model?: string }) =>
     fetchApi<any>("/api/pipeline/storyboard-generate", { method: "POST", body: JSON.stringify(data) }),
 
+  // Agent Pipeline (Agentic AI Creative Operating System)
+  startAgentPipeline: (data: {
+    prompt: string;
+    mode?: string;
+    num_scenes?: number;
+    style?: string;
+    aspect_ratio?: string;
+    image_model?: string;
+    voice_provider?: string;
+    voice_id?: string;
+  }) => fetchApi<any>("/api/pipeline/agent/start", { method: "POST", body: JSON.stringify(data) }),
+
+  streamAgentPipeline: async (
+    pipelineId: string,
+    onEvent: (event: any) => void,
+    signal?: AbortSignal
+  ): Promise<any> => {
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/pipeline/agent/stream/${pipelineId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      signal,
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const errJson = await res.json();
+        msg = errJson.detail || errJson.error || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error("Stream reader not supported");
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResult = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const chunks = buffer.split("\n\n");
+      buffer = chunks.pop() || "";
+      for (const chunk of chunks) {
+        const trimmed = chunk.trim();
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const parsed = JSON.parse(trimmed.slice(6));
+            onEvent(parsed);
+            if (parsed.state === "complete" || (parsed.stage === "complete" && parsed.result) || parsed.master_video_path) {
+              finalResult = parsed.result || parsed;
+            }
+          } catch (e) {
+            console.error("Agent SSE parse error", e);
+          }
+        }
+      }
+    }
+    return finalResult;
+  },
+
+  approveAgentStep: (pipelineId: string) =>
+    fetchApi<any>(`/api/pipeline/agent/approve/${pipelineId}`, { method: "POST" }),
+
+  rejectAgentStep: (pipelineId: string, feedback: string = "") =>
+    fetchApi<any>(`/api/pipeline/agent/reject/${pipelineId}`, {
+      method: "POST",
+      body: JSON.stringify({ feedback }),
+    }),
+
+  resumeAgentPipeline: (pipelineId: string) =>
+    fetchApi<any>(`/api/pipeline/agent/resume/${pipelineId}`, { method: "POST" }),
+
+  getAgentPipelineStatus: (pipelineId: string) =>
+    fetchApi<any>(`/api/pipeline/agent/status/${pipelineId}`),
+
+  getAgentPipelineHistory: () =>
+    fetchApi<any>("/api/pipeline/agent/history"),
+
+  cancelAgentPipeline: (pipelineId: string) =>
+    fetchApi<any>(`/api/pipeline/agent/${pipelineId}`, { method: "DELETE" }),
+
   // Assets
   getAllAssets: () => fetchApi<any>("/api/assets/all"),
   getVaultImages: () => fetchApi<any>("/api/assets/images"),

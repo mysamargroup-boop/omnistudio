@@ -48,6 +48,10 @@ scratch/
 backend/outputs/*.db
 backend/outputs/*.sqlite
 backend/outputs/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
+backend/*.db
 !backend/outputs/**/.gitkeep
 
 # Operating System Files

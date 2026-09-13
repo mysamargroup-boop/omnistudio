@@ -267,6 +267,39 @@ def init_database():
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
+                CREATE TABLE IF NOT EXISTS agent_pipelines (
+                    id TEXT PRIMARY KEY,
+                    user_prompt TEXT NOT NULL,
+                    mode TEXT DEFAULT 'autonomous',
+                    state TEXT DEFAULT 'idle',
+                    project_brief TEXT DEFAULT '{}',
+                    scenes_data TEXT DEFAULT '[]',
+                    agent_logs TEXT DEFAULT '[]',
+                    total_cost_usd REAL DEFAULT 0.0,
+                    total_cost_inr REAL DEFAULT 0.0,
+                    style TEXT DEFAULT 'cinematic',
+                    aspect_ratio TEXT DEFAULT '16:9',
+                    image_model TEXT DEFAULT 'imagen-3',
+                    voice_provider TEXT DEFAULT 'edge',
+                    voice_id TEXT DEFAULT '',
+                    num_scenes INTEGER DEFAULT 3,
+                    master_video_path TEXT,
+                    error_message TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    completed_at DATETIME
+                );
+                CREATE TABLE IF NOT EXISTS agent_pipeline_assets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pipeline_id TEXT NOT NULL,
+                    scene_index INTEGER,
+                    asset_type TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    metadata TEXT DEFAULT '{}',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_agent_pipelines_state ON agent_pipelines(state);
+                CREATE INDEX IF NOT EXISTS idx_agent_pipeline_assets_pipeline ON agent_pipeline_assets(pipeline_id);
                 CREATE INDEX IF NOT EXISTS idx_saved_prompts_category ON saved_prompts(category);
                 CREATE INDEX IF NOT EXISTS idx_saved_prompts_favorite ON saved_prompts(is_favorite);
                 """)
@@ -922,8 +955,9 @@ def load_settings_into_runtime():
             db_val = db_settings.get(k)
             env_val = os.environ.get(k) or getattr(settings, k, "")
             
-            # Primary: Supabase DB if non-empty
-            if db_val and isinstance(db_val, str) and db_val.strip():
+            # Primary: Supabase DB if non-empty and not a placeholder/dummy key
+            is_dummy = isinstance(db_val, str) and (db_val.strip().startswith("sk-test-") or "test-key" in db_val.lower() or "test-openai" in db_val.lower())
+            if db_val and isinstance(db_val, str) and db_val.strip() and not is_dummy:
                 final_val = db_val.strip()
             # Resilient Fallback: Local VPS .env / os.environ
             elif env_val and isinstance(env_val, str) and env_val.strip():

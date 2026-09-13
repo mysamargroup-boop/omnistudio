@@ -19,12 +19,7 @@ export default function BrandKitPage() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-mono tracking-widest uppercase text-emerald-600 dark:text-emerald-400 font-semibold">
-                STUDIO IDENTITY // VISUAL ARCHITECTURE
-              </p>
-            </div>
+
             <h1 className="text-2xl sm:text-3xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white flex items-center gap-3">
               Brand Kit Studio
             </h1>

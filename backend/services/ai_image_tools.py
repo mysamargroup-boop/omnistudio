@@ -20,11 +20,35 @@ from config import settings
 
 logger = logging.getLogger("omnistudio.ai_image_tools")
 
+_REMBG_SESSIONS: Dict[str, Any] = {}
 
-def remove_background(image_path: Path) -> Dict[str, Any]:
+
+def _get_rembg_session(model_name: str = "birefnet-general"):
+    """Lazily initializes and caches neural rembg ONNX sessions per model for high-speed subsequent inferences."""
+    global _REMBG_SESSIONS
+    if model_name not in _REMBG_SESSIONS:
+        try:
+            from rembg import new_session
+            logger.info("Initializing neural rembg session for model: %s", model_name)
+            _REMBG_SESSIONS[model_name] = new_session(model_name)
+        except Exception as e:
+            logger.warning("Failed to initialize rembg session for %s: %s", model_name, e)
+            # Safe fallback to standard u2net if high-detail model is not yet ready
+            if model_name != "u2net":
+                try:
+                    logger.info("Falling back to u2net session")
+                    return _get_rembg_session("u2net")
+                except Exception:
+                    pass
+            return None
+    return _REMBG_SESSIONS.get(model_name)
+
+
+def remove_background(image_path: Path, model_name: str = "birefnet-general") -> Dict[str, Any]:
     """
     Remove background from an image, producing a transparent PNG asset.
-    Uses C-accelerated PIL differential thresholding with feathered alpha mask.
+    Supports SOTA high-detail BiRefNet (1024x1024) for jewelry/luxury and U2-Net for ultra-fast edits.
+    Uses C-accelerated PIL differential thresholding with feathered alpha mask as fallback.
     """
     if not image_path.exists():
         return {"success": False, "error": f"Image not found: {image_path}"}
@@ -37,8 +61,12 @@ def remove_background(image_path: Path) -> Dict[str, Any]:
         import importlib.util
         if importlib.util.find_spec("rembg"):
             from rembg import remove
+            session = _get_rembg_session(model_name)
             with open(image_path, "rb") as inp_f:
                 inp_bytes = inp_f.read()
+            if session:
+                out_bytes = remove(inp_bytes, session=session)
+            else:
                 out_bytes = remove(inp_bytes)
             with open(out_path, "wb") as out_f:
                 out_f.write(out_bytes)
@@ -46,7 +74,7 @@ def remove_background(image_path: Path) -> Dict[str, Any]:
                 "success": True,
                 "filename": out_filename,
                 "url": f"/outputs/images/{out_filename}",
-                "method": "rembg_neural"
+                "method": f"rembg_{model_name}"
             }
     except Exception as e:
         logger.debug("rembg unavailable, using accelerated PIL threshold: %s", e)

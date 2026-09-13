@@ -2490,9 +2490,7 @@ export default function SettingsPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-black/[0.06] dark:border-white/[0.06]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 uppercase">
-                    TEMPORAL TIMELINE // VERSION CONTROL
-                  </span>
+
                   {checkpoints[historyPointer] && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

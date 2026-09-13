@@ -135,6 +135,52 @@ export default function MentionReferencePopover({
     setSelectedIndex(0);
   }, [query]);
 
+  const [placement, setPlacement] = useState<"bottom" | "top">("bottom");
+
+  // Dynamic smart placement: open downward if space permits, upward if cramped at bottom
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const checkPlacement = () => {
+      if (popoverRef.current?.parentElement) {
+        const rect = popoverRef.current.parentElement.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        if (spaceBelow < 240 && spaceAbove > spaceBelow) {
+          setPlacement("top");
+        } else {
+          setPlacement("bottom");
+        }
+      }
+    };
+
+    checkPlacement();
+    window.addEventListener("resize", checkPlacement);
+    window.addEventListener("scroll", checkPlacement, true);
+    return () => {
+      window.removeEventListener("resize", checkPlacement);
+      window.removeEventListener("scroll", checkPlacement, true);
+    };
+  }, [isOpen]);
+
+  // Close when clicking anywhere outside the popover
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   // Keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
@@ -167,7 +213,12 @@ export default function MentionReferencePopover({
     <div
       ref={popoverRef}
       data-popover-content="true"
-      className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 max-h-[380px] rounded-2xl bg-white/95 dark:bg-[#12121c]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.12] shadow-2xl p-2.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 flex flex-col gap-2"
+      className={cn(
+        "absolute left-0 w-80 sm:w-96 max-h-[340px] rounded-2xl bg-white/95 dark:bg-[#12121c]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.12] shadow-2xl p-2.5 z-50 flex flex-col gap-2 duration-150",
+        placement === "bottom"
+          ? "top-full mt-2 animate-in fade-in slide-in-from-top-2"
+          : "bottom-full mb-2 animate-in fade-in slide-in-from-bottom-2"
+      )}
     >
       {/* Header bar */}
       <div className="flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">

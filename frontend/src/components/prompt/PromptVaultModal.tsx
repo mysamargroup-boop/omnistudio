@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -247,7 +247,7 @@ export default function PromptVaultModal({
 
         {/* Body Content */}
         {activeTab === 'browse' ? (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+          <div className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar overscroll-contain p-4 sm:p-5 space-y-4">
             {/* Search and Filters Bar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               <div className="relative flex-1">
@@ -279,7 +279,7 @@ export default function PromptVaultModal({
             </div>
 
             {/* Category Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-1">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat}
