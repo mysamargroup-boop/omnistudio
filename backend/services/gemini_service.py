@@ -25,7 +25,7 @@ def _safe_gemini_post(url: str, json_payload: dict, timeout: int):
 def get_gemini_key() -> str:
     return settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
 
-async def generate_gemini_text(prompt: str, model: str = "gemini-3.6-flash") -> Dict[str, Any]:
+async def generate_gemini_text(prompt: str, model: str = "gemini-2.5-flash") -> Dict[str, Any]:
     key = get_gemini_key()
     if not key:
         return {"success": False, "error": "GEMINI_API_KEY not configured"}
@@ -36,11 +36,53 @@ async def generate_gemini_text(prompt: str, model: str = "gemini-3.6-flash") -> 
     }
 
     try:
-        r = _safe_gemini_post(url, payload, timeout=20)
+        r = _safe_gemini_post(url, payload, timeout=25)
         if r.status_code == 200:
             data = r.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]
             return {"success": True, "text": text, "model": model}
+        else:
+            return {"success": False, "status_code": r.status_code, "error": r.text}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def generate_gemini_vision_text(prompt: str, image_path: Optional[str] = None, model: str = "gemini-2.5-flash") -> Dict[str, Any]:
+    """Generate text/analysis using Gemini Vision with optional image input"""
+    key = get_gemini_key()
+    if not key:
+        return {"success": False, "error": "GEMINI_API_KEY not configured"}
+
+    parts = []
+    if image_path and Path(image_path).exists():
+        try:
+            with open(image_path, "rb") as f:
+                img_data = base64.b64encode(f.read()).decode("utf-8")
+            ext = Path(image_path).suffix.lower()
+            mime = "image/png" if "png" in ext else ("image/webp" if "webp" in ext else "image/jpeg")
+            parts.append({
+                "inlineData": {
+                    "mimeType": mime,
+                    "data": img_data
+                }
+            })
+        except Exception as ie:
+            logger.warning("Failed to read image for Gemini Vision: %s", ie)
+
+    parts.append({"text": prompt})
+    url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
+    payload = {
+        "contents": [{"parts": parts}]
+    }
+
+    try:
+        r = _safe_gemini_post(url, payload, timeout=30)
+        if r.status_code == 200:
+            data = r.json()
+            candidates = data.get("candidates", [])
+            if candidates and candidates[0].get("content", {}).get("parts"):
+                text = candidates[0]["content"]["parts"][0].get("text", "")
+                return {"success": True, "text": text, "model": model}
+            return {"success": False, "error": "No text content in Gemini response"}
         else:
             return {"success": False, "status_code": r.status_code, "error": r.text}
     except Exception as e:
@@ -220,8 +262,13 @@ async def generate_veo_video(
         logger.error("Veo video generation exception: %s", e, exc_info=True)
         return {"success": False, "error": f"Google Veo error: {str(e)}"}
 
-async def generate_gemini_image(prompt: str, model: str = "gemini-2.5-flash-image", filename_hint: Optional[str] = None) -> Dict[str, Any]:
-    """Generate image via Google Gemini multimodal generation with active billing key"""
+async def generate_gemini_image(
+    prompt: str,
+    model: str = "gemini-2.5-flash-image",
+    filename_hint: Optional[str] = None,
+    reference_image_path: Optional[str] = None
+) -> Dict[str, Any]:
+    """Generate image via Google Gemini multimodal generation with active billing key, supporting reference images"""
     import base64
     import uuid
     from pathlib import Path
@@ -231,9 +278,26 @@ async def generate_gemini_image(prompt: str, model: str = "gemini-2.5-flash-imag
     if not key:
         return {"success": False, "error": "GEMINI_API_KEY not configured"}
 
+    parts = []
+    if reference_image_path and Path(reference_image_path).exists():
+        try:
+            with open(reference_image_path, "rb") as f:
+                img_data = base64.b64encode(f.read()).decode("utf-8")
+            ext = Path(reference_image_path).suffix.lower()
+            mime = "image/png" if "png" in ext else ("image/webp" if "webp" in ext else "image/jpeg")
+            parts.append({
+                "inlineData": {
+                    "mimeType": mime,
+                    "data": img_data
+                }
+            })
+        except Exception as ie:
+            logger.warning("Failed to encode reference image for Gemini Image generation: %s", ie)
+
+    parts.append({"text": prompt})
     url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "contents": [{"parts": parts}],
         "generationConfig": {"responseModalities": ["IMAGE"]}
     }
 

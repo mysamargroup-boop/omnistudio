@@ -427,3 +427,223 @@ async def run_pipeline_stream(req: PipelineRequest, request: Request):
             "X-Accel-Buffering": "no"
         }
     )
+
+
+# -----------------------------------------------------------------------------
+# Storyboard Scene Generator from Image / Concept
+# -----------------------------------------------------------------------------
+class StoryboardPromptsRequest(BaseModel):
+    image_url: Optional[str] = ""
+    story_hint: Optional[str] = ""
+    style: Optional[str] = "cinematic"
+    num_scenes: Optional[int] = 4
+
+class StoryboardSceneItem(BaseModel):
+    scene_number: int
+    title: str
+    prompt: str
+    camera_motion: Optional[str] = "zoom_in"
+
+class StoryboardGenerateRequest(BaseModel):
+    scenes: list[StoryboardSceneItem]
+    reference_image_url: Optional[str] = ""
+    aspect_ratio: Optional[str] = "16:9"
+    model: Optional[str] = "gemini_flash_image"
+    quality: Optional[str] = "hd"
+
+@router.post("/storyboard-prompts")
+async def generate_storyboard_prompts_endpoint(req: StoryboardPromptsRequest):
+    """
+    Analyzes an uploaded image and user narrative directives to craft 4 sequential, character-consistent scene prompts.
+    """
+    num_scenes = max(1, min(6, req.num_scenes or 4))
+    style = req.style or "cinematic"
+    hint = (req.story_hint or "").strip()
+    image_name = Path(req.image_url).stem if req.image_url else ""
+    
+    prompt_text = f"""You are a master Hollywood cinematographer and storyboard director.
+Based on the character/subject in the visual reference '{image_name or hint or 'cinematic subject'}' and the story hint '{hint or 'cinematic visual journey'}', generate exactly {num_scenes} sequential storyboard scenes that maintain consistent character appearance, clothing, and cinematic atmosphere in {style} style.
+
+Return ONLY a JSON array with exactly {num_scenes} objects, each having:
+- scene_number (integer, starting from 1)
+- title (short 3-5 word scene title, e.g. 'Scene 1: Establishing Shot')
+- prompt (detailed 25-45 word prompt for text-to-image diffusion, describing character, action, camera lens, lighting, maintaining strict visual continuity)
+- camera_motion (one of: zoom_in, pan_right, tilt_up, slow_push, orbit_left)
+
+Example format:
+[
+  {{"scene_number": 1, "title": "Establishing Horizon", "prompt": "Wide cinematic 35mm shot of the subject standing on a rain-slicked city balcony, neon reflections, volumetric fog, dramatic rim lighting", "camera_motion": "zoom_in"}}
+]
+"""
+    scenes = []
+    # 1. Try Gemini with Multimodal Vision
+    try:
+        from services.gemini_service import get_gemini_key, generate_gemini_vision_text, generate_gemini_text
+        from path_utils import safe_resolve_output_path
+        
+        resolved_img = None
+        if req.image_url:
+            try:
+                resolved_img = safe_resolve_output_path(req.image_url, "images", must_exist=True)
+            except Exception:
+                try:
+                    resolved_img = safe_resolve_output_path(req.image_url, "final", must_exist=True)
+                except Exception:
+                    resolved_img = None
+
+        if get_gemini_key():
+            if resolved_img and resolved_img.exists():
+                res = await generate_gemini_vision_text(prompt_text, image_path=str(resolved_img))
+            else:
+                res = await generate_gemini_text(prompt_text)
+
+            if res.get("success") and res.get("text"):
+                raw = res["text"].strip()
+                import re
+                match = re.search(r'\[.*\]', raw, re.DOTALL)
+                if match:
+                    parsed = json.loads(match.group(0))
+                    if isinstance(parsed, list) and len(parsed) > 0:
+                        scenes = parsed
+    except Exception as e:
+        logger.warning("Gemini storyboard prompts generation failed: %s", e)
+
+    # 2. Try OpenAI if Gemini didn't return valid scenes
+    if not scenes and settings.OPENAI_API_KEY:
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            res = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt_text}],
+                temperature=0.7
+            )
+            raw = res.choices[0].message.content.strip()
+            import re
+            match = re.search(r'\[.*\]', raw, re.DOTALL)
+            if match:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    scenes = parsed
+        except Exception as e:
+            logger.warning("OpenAI storyboard prompts generation failed: %s", e)
+
+    # 3. Fallback algorithmic scenes if LLM is unavailable
+    if not scenes:
+        base_subject = hint if hint else (image_name.replace("_", " ").title() if image_name else "cinematic subject")
+        scenes = [
+            {
+                "scene_number": 1,
+                "title": "Scene 1: Establishing Shot",
+                "prompt": f"Wide angle cinematic 35mm establishing shot of {base_subject}, ambient atmospheric lighting, shallow depth of field, 8k resolution, master color grade",
+                "camera_motion": "zoom_in"
+            },
+            {
+                "scene_number": 2,
+                "title": "Scene 2: Narrative Action",
+                "prompt": f"Medium shot tracking {base_subject} in motion, dynamic camera perspective, volumetric rim lighting, micro-textures, cinematic realism",
+                "camera_motion": "pan_right"
+            },
+            {
+                "scene_number": 3,
+                "title": "Scene 3: Dramatic Climax",
+                "prompt": f"Intense close-up portrait of {base_subject}, dramatic chiaroscuro lighting, emotional facial expression, 85mm prime lens, ultra-sharp focus",
+                "camera_motion": "slow_push"
+            },
+            {
+                "scene_number": 4,
+                "title": "Scene 4: Cinematic Resolution",
+                "prompt": f"Wide panoramic hero shot of {base_subject} in epic twilight setting, golden hour rays, cinematic lens flare, master composition, 8k raw detail",
+                "camera_motion": "zoom_out"
+            }
+        ]
+
+    return {
+        "success": True,
+        "scenes": scenes,
+        "reference_image": req.image_url,
+        "total": len(scenes)
+    }
+
+
+@router.post("/storyboard-generate")
+async def generate_storyboard_images_endpoint(req: StoryboardGenerateRequest):
+    """
+    Generates high-resolution images for each approved storyboard scene using the selected image model,
+    preserving character consistency when a reference image is supplied.
+    """
+    from services.gemini_service import get_gemini_key, generate_gemini_image
+    from path_utils import safe_resolve_output_path
+
+    resolved_ref = None
+    if req.reference_image_url:
+        try:
+            resolved_ref = safe_resolve_output_path(req.reference_image_url, "images", must_exist=True)
+        except Exception:
+            try:
+                resolved_ref = safe_resolve_output_path(req.reference_image_url, "final", must_exist=True)
+            except Exception:
+                resolved_ref = None
+
+    ref_path_str = str(resolved_ref) if (resolved_ref and resolved_ref.exists()) else None
+
+    results = []
+    model_to_use = req.model or "gemini_flash_image"
+    aspect = req.aspect_ratio or "16:9"
+
+    for scene in req.scenes:
+        clean_prompt = scene.prompt.strip()
+        img_res = None
+
+        # Check model preference
+        if model_to_use in ["gemini_flash_image", "imagen_3", "google_gemini"] and get_gemini_key():
+            img_res = await generate_gemini_image(
+                clean_prompt,
+                filename_hint=f"storyboard_scene_{scene.scene_number}",
+                reference_image_path=ref_path_str
+            )
+        elif settings.OPENAI_API_KEY:
+            size_map = {"16:9": "1792x1024", "9:16": "1024x1792", "1:1": "1024x1024"}
+            chosen_size = size_map.get(aspect, "1792x1024")
+            img_res = await generate_openai_image(
+                prompt=clean_prompt,
+                model="gpt-image-2" if "gpt" in model_to_use else "dall-e-3",
+                size=chosen_size,
+                quality="hd",
+                filename_hint=f"storyboard_scene_{scene.scene_number}"
+            )
+        elif get_gemini_key():
+            img_res = await generate_gemini_image(
+                clean_prompt,
+                filename_hint=f"storyboard_scene_{scene.scene_number}",
+                reference_image_path=ref_path_str
+            )
+        else:
+            img_res = {"success": False, "error": "No image diffusion API key configured (Gemini or OpenAI)."}
+
+        if img_res and img_res.get("success"):
+            results.append({
+                "scene_number": scene.scene_number,
+                "title": scene.title,
+                "prompt": scene.prompt,
+                "camera_motion": scene.camera_motion,
+                "image_url": img_res.get("url"),
+                "filename": img_res.get("filename"),
+                "model": img_res.get("model", model_to_use),
+                "success": True
+            })
+        else:
+            results.append({
+                "scene_number": scene.scene_number,
+                "title": scene.title,
+                "prompt": scene.prompt,
+                "error": img_res.get("error") if img_res else "Generation failed",
+                "success": False
+            })
+
+    return {
+        "success": True,
+        "scenes": results,
+        "total_generated": len([r for r in results if r.get("success")]),
+        "total_requested": len(req.scenes)
+    }

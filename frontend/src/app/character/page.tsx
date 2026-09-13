@@ -257,6 +257,18 @@ export default function CharacterStudioPage() {
             </button>
             <button
               type="button"
+              onClick={() => {
+                const urlParam = activeChar.imageUrl ? `&ref_image=${encodeURIComponent(activeChar.imageUrl)}` : '';
+                router.push(`/image?character_id=${encodeURIComponent(activeChar.id)}&character_name=${encodeURIComponent(activeChar.name)}${urlParam}`);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm shadow-violet-600/20"
+              title="Generate 10 Consistent Poses with this Character in Image Studio"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Generate 10 Poses</span>
+            </button>
+            <button
+              type="button"
               onClick={() => router.push('/video')}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 text-xs font-heading font-bold hover:opacity-90 transition-all cursor-pointer shadow-sm"
             >
@@ -406,8 +418,8 @@ export default function CharacterStudioPage() {
                   value={visualDescription}
                   onChange={(e) => setVisualDescription(e.target.value)}
                   placeholder="Optional: Describe specific hair style, eye color, signature costume, jewelry, or aesthetic traits..."
-                  rows={3}
-                  className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none font-sans leading-relaxed"
+                  rows={4}
+                  className="w-full min-h-[85px] bg-zinc-50 dark:bg-white/[0.04] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none font-sans leading-relaxed"
                 />
               </div>
 
@@ -620,6 +632,21 @@ export default function CharacterStudioPage() {
                   )}
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCharacter(char);
+                    const params = new URLSearchParams();
+                    params.set("character_id", char.id);
+                    params.set("character_name", char.name);
+                    if (char.imageUrl) params.set("ref_image", char.imageUrl);
+                    router.push(`/image?${params.toString()}`);
+                  }}
+                  className="p-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors cursor-pointer"
+                  title="Generate 10 Consistent Poses in Image Studio"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => {

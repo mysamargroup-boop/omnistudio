@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Image as ImageIcon,
   Sparkles,
@@ -65,6 +65,7 @@ import JewelleryPromptSuite from "@/components/studio/JewelleryPromptSuite";
 import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
 import PromptVaultModal from "@/components/prompt/PromptVaultModal";
 import LazyImage from "@/components/ui/LazyImage";
+import { getActiveCharacter, CharacterData, setActiveCharacter } from "@/lib/characters";
 
 interface ModelOption {
   value: string;
@@ -172,6 +173,17 @@ const INSPIRATION_PROMPTS = [
 
 export default function ImageStudioPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Character Locking & Active Persona Sync
+  const [activeCharacter, setActiveCharacterState] = useState<CharacterData | null>(null);
+
+  // Agentic Multi-Pose States
+  const [agenticPlan, setAgenticPlan] = useState<any | null>(null);
+  const [isPlanningAgentic, setIsPlanningAgentic] = useState(false);
+  const [isGeneratingAgentic, setIsGeneratingAgentic] = useState(false);
+  const [agenticResults, setAgenticResults] = useState<any | null>(null);
+  const [showAgenticDrawer, setShowAgenticDrawer] = useState(false);
 
   // Studio Mode: 'text_to_image' | 'image_variations' | 'image_editor'
   const [studioMode, setStudioMode] = useState<"text_to_image" | "image_variations" | "image_editor">("text_to_image");
@@ -213,6 +225,7 @@ export default function ImageStudioPage() {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [animateMenuOpen, setAnimateMenuOpen] = useState(false);
 
   // Image-to-Image / Variations State
   const [refImageFile, setRefImageFile] = useState<File | null>(null);
@@ -369,6 +382,7 @@ export default function ImageStudioPage() {
   const [originalEditorImageUrl, setOriginalEditorImageUrl] = useState<string>("");
   const [showBeforeAfter, setShowBeforeAfter] = useState<boolean>(false);
   const [processingBgRemoval, setProcessingBgRemoval] = useState<boolean>(false);
+  const [bgRemovalModel, setBgRemovalModel] = useState<"birefnet-general" | "u2net">("birefnet-general");
   const [processingRelight, setProcessingRelight] = useState<boolean>(false);
   const [processingFaceRestore, setProcessingFaceRestore] = useState<boolean>(false);
   const [processingOutpaint, setProcessingOutpaint] = useState<boolean>(false);
@@ -587,6 +601,50 @@ export default function ImageStudioPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Sync active locked character and URL query params
+  useEffect(() => {
+    const char = getActiveCharacter();
+    if (char) {
+      setActiveCharacterState(char);
+      if (char.imageUrl && !refImageUrl) {
+        setRefImageUrl(char.imageUrl);
+      }
+    }
+
+    const handleCharSync = () => {
+      const updated = getActiveCharacter();
+      setActiveCharacterState(updated);
+    };
+    window.addEventListener("omnistudio:active_character_updated", handleCharSync);
+
+    const charName = searchParams?.get("character_name");
+    const refImg = searchParams?.get("ref_image");
+    if (refImg) {
+      setRefImageUrl(refImg);
+    }
+    if (charName) {
+      setPrompt(`is image ka use karo or isi ka use karke exactly same face sab kuch same, or 10 multiple different pose image generate karo character: ${charName}`);
+    }
+
+    return () => {
+      window.removeEventListener("omnistudio:active_character_updated", handleCharSync);
+    };
+  }, [searchParams]);
+
+  const isAgenticPrompt = Boolean(
+    (prompt && (
+      prompt.toLowerCase().includes("pose") ||
+      prompt.toLowerCase().includes("poses") ||
+      prompt.toLowerCase().includes("different") ||
+      prompt.toLowerCase().includes("multiple") ||
+      prompt.toLowerCase().includes("same face") ||
+      prompt.toLowerCase().includes("alag alag") ||
+      prompt.toLowerCase().includes("10") ||
+      prompt.toLowerCase().includes("consistent") ||
+      prompt.toLowerCase().includes("consistency")
+    )) || activeCharacter
+  );
+
   const closeAllPopovers = () => {
     setModelPopoverOpen(false);
     setRatioPopoverOpen(false);
@@ -599,11 +657,15 @@ export default function ImageStudioPage() {
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (promptTextareaRef.current) {
-      promptTextareaRef.current.style.height = "auto";
-      const scrollH = promptTextareaRef.current.scrollHeight;
-      promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 46), 140)}px`;
+      if (!isShiftedLeft) {
+        promptTextareaRef.current.style.height = "auto";
+        const scrollH = promptTextareaRef.current.scrollHeight;
+        promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, 110), 260)}px`;
+      } else {
+        promptTextareaRef.current.style.height = "100%";
+      }
     }
-  }, [prompt]);
+  }, [prompt, isShiftedLeft]);
 
   // Model details
   const activeModel = DIFFUSION_MODELS.find((m) => m.value === model) || DIFFUSION_MODELS[0];
@@ -911,6 +973,76 @@ export default function ImageStudioPage() {
     }
   };
 
+  // Agentic Multi-Pose Planning
+  const handlePlanAgenticPoses = async (customPrompt?: string) => {
+    const p = (customPrompt || prompt).trim() || "Generate 10 diverse cinematic poses for this character with 100% consistent face identity";
+    setIsPlanningAgentic(true);
+    setProgress(20);
+    setStageTitle("AGENTIC INTENT DECOMPOSITION");
+    setStatusMessage("Creative Director Agent analyzing prompt & character likeness...");
+    try {
+      const res = await api.planAgenticPoses({
+        prompt: p,
+        reference_image_path: refImageUrl || (activeCharacter?.imageUrl || undefined),
+      });
+      if (res?.success && res?.plan) {
+        setAgenticPlan(res.plan);
+        setShowAgenticDrawer(true);
+      } else {
+        alert(res?.error || "Failed to formulate Agentic Multi-Pose Plan");
+      }
+    } catch (e: any) {
+      alert(`Agent planning failed: ${e.message}`);
+    } finally {
+      setIsPlanningAgentic(false);
+    }
+  };
+
+  // Agentic Multi-Pose Batch Execution
+  const handleExecuteAgenticPoses = async () => {
+    if (!agenticPlan) return;
+    setIsGeneratingAgentic(true);
+    setAgenticResults(null);
+    setProgress(10);
+    setStageTitle("AGENTIC MULTI-POSE EXECUTION");
+    setStatusMessage(`Generating ${agenticPlan.poses?.length || 10} consistent character poses...`);
+    setElapsedSeconds(0);
+    const startTimestamp = Date.now();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+      setElapsedSeconds(elapsed);
+      setProgress((prev) => Math.min(prev + 3, 95));
+    }, 1000);
+
+    try {
+      const res = await api.generateAgenticPoses({
+        plan: agenticPlan,
+        reference_image_path: refImageUrl || (activeCharacter?.imageUrl || undefined),
+        model: model,
+        aspect_ratio: aspectRatio,
+      });
+      if (res?.success) {
+        setAgenticResults(res);
+        setProgress(100);
+        setStageTitle("AGENTIC POSES DELIVERED");
+        setStatusMessage(`Successfully created ${res.total_generated} character poses!`);
+        setShowAgenticDrawer(false);
+        setPromptDockCollapsed(true);
+      } else {
+        alert(res?.error || "Failed to generate poses");
+      }
+    } catch (e: any) {
+      alert(`Pose generation error: ${e.message}`);
+    } finally {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      setIsGeneratingAgentic(false);
+    }
+  };
+
   // Upload reference image
   const handleRefFileUpload = async (file: File) => {
     setUploadingRef(true);
@@ -1016,7 +1148,7 @@ export default function ImageStudioPage() {
     try {
       const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
       if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
-      const res = await api.aiRemoveBackground(cleanPath);
+      const res = await api.aiRemoveBackground(cleanPath, bgRemovalModel);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
         setShowBeforeAfter(true);
@@ -1270,20 +1402,15 @@ export default function ImageStudioPage() {
     return parts.join(" ");
   };
 
-  const isShiftedLeft = showJewellerySuite || studioMode === "image_variations";
+  const isShiftedLeft = showJewellerySuite || studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0;
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex flex-col justify-between pb-72 font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
-      {/* Top Bar: Studio Mode Tabs & Guide Trigger (Sticky in Image Editor) */}
-      <div className={cn(
-        "transition-all",
-        studioMode === "image_editor"
-          ? "sticky top-14 sm:top-16 z-30 bg-[#fafafa]/95 dark:bg-[#06060a]/95 backdrop-blur-md shadow-xs border-b border-black/[0.08] dark:border-white/[0.08]"
-          : "border-b border-black/[0.06] dark:border-white/[0.06]"
-      )}>
+      {/* Top Bar: Studio Mode Tabs & Guide Trigger (Always Sticky across all studio modes) */}
+      <div className="sticky top-14 sm:top-16 z-30 bg-[#fafafa]/95 dark:bg-[#06060a]/95 backdrop-blur-md shadow-xs border-b border-black/[0.08] dark:border-white/[0.08] transition-all">
         {/* Row 1: Studio Mode Tabs & Action Buttons */}
-        <div className="flex items-center justify-between gap-4 py-3 px-4 w-full">
-          <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
+        <div className="flex items-center justify-between gap-3 sm:gap-4 py-2.5 sm:py-3 px-3 sm:px-4 w-full overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#0d0d14] p-1 rounded-xl border border-black/[0.08] dark:border-white/[0.08] shrink-0">
             <button
               type="button"
               onClick={() => setStudioMode("text_to_image")}
@@ -1570,6 +1697,68 @@ export default function ImageStudioPage() {
                     <span>Edit Image</span>
                   </button>
 
+                  {/* ✨ Animate Action: Video Studio & All-In-One Studio Routing */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setAnimateMenuOpen((p) => !p)}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-heading font-bold shadow-md shadow-violet-500/25 cursor-pointer transition-all hover:scale-105 whitespace-nowrap shrink-0"
+                      title="Animate Image: Video Studio or All-In-One Pipeline"
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      <span>✨ Animate</span>
+                      <ChevronUp className={cn("w-3 h-3 transition-transform", animateMenuOpen && "rotate-180")} />
+                    </button>
+
+                    {animateMenuOpen && (
+                      <div className="absolute bottom-full right-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.1] dark:border-white/[0.1] shadow-2xl p-2 z-50 space-y-1 animate-slide-up">
+                        <div className="text-[10px] font-mono text-zinc-400 px-2 py-1 uppercase tracking-wider font-bold">
+                          Motion Synthesis & Pipeline
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnimateMenuOpen(false);
+                            router.push(`/video?first_frame=${encodeURIComponent(currentDisplayImage.url)}&motion=zoom_in`);
+                          }}
+                          className="w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors cursor-pointer group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <Film className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold font-heading text-zinc-900 dark:text-white block group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                              Animate in Video Studio
+                            </span>
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight block">
+                              Synthesize camera dolly, orbit & cinematic audio
+                            </span>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnimateMenuOpen(false);
+                            router.push(`/pipeline?input_image=${encodeURIComponent(currentDisplayImage.url)}`);
+                          }}
+                          className="w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <Sparkles className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold font-heading text-zinc-900 dark:text-white block group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                              All-In-One Studio Pipeline
+                            </span>
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight block">
+                              Generate multi-scene storyboard & full video
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1671,14 +1860,154 @@ export default function ImageStudioPage() {
                   <img src={getMediaUrl(v.url)} alt={v.description} className="w-full aspect-square object-cover" />
                   <div className="p-2.5 border-t border-black/[0.06] dark:border-white/[0.06]">
                     <p className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 line-clamp-1">{v.description}</p>
-                    <a
-                      href={getMediaUrl(v.url)}
-                      download
-                      className="mt-2 w-full flex items-center justify-center gap-1 py-1 rounded bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300 text-[10px] font-mono font-bold hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>Download</span>
-                    </a>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <a
+                        href={getMediaUrl(v.url)}
+                        download
+                        className="flex-1 flex items-center justify-center gap-1 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-zinc-700 dark:text-zinc-300 text-[10px] font-mono font-bold transition-colors"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Save</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/video?first_frame=${encodeURIComponent(v.url)}&motion=zoom_in`)}
+                        className="flex-1 flex items-center justify-center gap-1 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                        title="Animate this variation in Video Studio"
+                      >
+                        <Film className="w-3 h-3" />
+                        <span>Animate</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* State D: Agentic Multi-Pose Gallery */}
+        {!loading && !loadingVariations && !isGeneratingAgentic && agenticResults && agenticResults.success && (
+          <div className="w-full space-y-6 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono tracking-widest text-violet-500 uppercase font-bold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    AGENTIC CHARACTER CONSISTENCY GALLERY
+                  </span>
+                  <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                    {agenticResults.total_generated} POSES SYNTHESIZED
+                  </span>
+                </div>
+                <h2 className="text-xl font-heading font-extrabold text-zinc-950 dark:text-white">
+                  {agenticResults.character_name || "Locked Persona Identity"}
+                </h2>
+                {agenticResults.persona_anchor && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-2xl line-clamp-1 mt-0.5">
+                    Anchor: {agenticResults.persona_anchor}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (agenticResults.results?.[0]?.url) {
+                      setActiveCharacter({
+                        id: `agentic_${Date.now()}`,
+                        name: agenticResults.character_name || "Consistent Character",
+                        tagline: "Agentic Multi-Pose Locked Character",
+                        description: agenticResults.persona_anchor || "Character created via Agentic Multi-Pose",
+                        prompt: agenticResults.persona_anchor || "Character consistency lock",
+                        imageUrl: agenticResults.results[0].url,
+                        isLocked: true,
+                        category: "custom",
+                        createdAt: new Date().toISOString()
+                      });
+                      alert("Character successfully locked studio-wide!");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold transition-all shadow-xs cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Lock Character Studio-Wide</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAgenticResults(null)}
+                  className="p-2 rounded-xl text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                  title="Dismiss Gallery"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {agenticResults.results?.map((pose: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0e0e16] shadow-sm overflow-hidden flex flex-col justify-between hover:border-violet-500/40 transition-all group"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                    <img
+                      src={getMediaUrl(pose.url)}
+                      alt={pose.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 text-white text-[10px] font-mono font-bold backdrop-blur-xs">
+                      Shot {pose.pose_id || idx + 1}
+                    </div>
+                    {pose.framing && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-violet-600/80 text-white text-[10px] font-mono font-bold backdrop-blur-xs">
+                        {pose.framing}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 space-y-2 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div>
+                      <h4 className="text-xs font-heading font-bold text-zinc-900 dark:text-white truncate">
+                        {pose.title}
+                      </h4>
+                      {pose.action && (
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
+                          {pose.action}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 pt-1">
+                      <a
+                        href={getMediaUrl(pose.url)}
+                        download
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-zinc-700 dark:text-zinc-300 text-[10px] font-mono font-bold transition-colors"
+                        title="Save to computer"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Save</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/video?first_frame=${encodeURIComponent(pose.url)}&motion=zoom_in`)}
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                        title="Animate this pose in Video Studio"
+                      >
+                        <Film className="w-3 h-3" />
+                        <span>Video</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/pipeline?input_image=${encodeURIComponent(pose.url)}`)}
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                        title="Build full video story in Auto Pipeline"
+                      >
+                        <Layers className="w-3 h-3" />
+                        <span>Story</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1984,6 +2313,35 @@ export default function ImageStudioPage() {
                             FREE
                           </span>
                         </div>
+
+                        {/* Model Selector: BiRefNet SOTA (Jewelry) vs U2-Net (Fast) */}
+                        <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-100 dark:bg-white/5 rounded-lg text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => setBgRemovalModel("birefnet-general")}
+                            className={cn(
+                              "py-1 px-2 rounded-md font-medium transition-all text-center cursor-pointer",
+                              bgRemovalModel === "birefnet-general"
+                                ? "bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
+                                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                            )}
+                          >
+                            BiRefNet (Jewelry/SOTA)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBgRemovalModel("u2net")}
+                            className={cn(
+                              "py-1 px-2 rounded-md font-medium transition-all text-center cursor-pointer",
+                              bgRemovalModel === "u2net"
+                                ? "bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
+                                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                            )}
+                          >
+                            U2-Net (Fast 1.3s)
+                          </button>
+                        </div>
+
                         <button
                           type="button"
                           onClick={handleAiRemoveBackground}
@@ -2832,9 +3190,12 @@ export default function ImageStudioPage() {
           </div>
         )}
 
-        {/* State D1: Multi-Reference Images & Character Consistency Suite (Horizontal 2-Column Layout) */}
+        {/* State D1: Multi-Reference Images & Character Consistency Suite (2-Column Studio Workspace) */}
         {!loading && !loadingVariations && !result && !variationsResult && (studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0) && (
-          <div className="w-full max-w-5xl mx-auto py-4 animate-in fade-in duration-300">
+          <div className={cn(
+            "w-full py-4 animate-in fade-in duration-300",
+            isShiftedLeft ? "lg:ml-[395px] xl:ml-[425px] lg:w-[calc(100%-410px)] xl:w-[calc(100%-440px)] pr-2 sm:pr-4 pb-96 lg:pb-8" : "max-w-5xl mx-auto"
+          )}>
             <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl p-5 sm:p-7 shadow-xl space-y-5 text-left">
               {/* Header Bar */}
               <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3.5">
@@ -2872,7 +3233,10 @@ export default function ImageStudioPage() {
               </div>
 
               {/* 2-Column Horizontal Layout Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+              <div className={cn(
+                "grid gap-5 items-start",
+                isShiftedLeft ? "grid-cols-1 2xl:grid-cols-2" : "grid-cols-1 lg:grid-cols-2"
+              )}>
                 {/* ── LEFT COLUMN: Reference Images & Character Consistency Locks ── */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-4">
                   <div className="flex items-center justify-between">
@@ -3367,15 +3731,15 @@ export default function ImageStudioPage() {
         <div className="fixed inset-0 z-30 bg-black/10 dark:bg-black/25 backdrop-blur-[0.5px]" onClick={closeAllPopovers} />
       )}
 
-      {/* Floating Bottom Studio Dock: shifts left when Jewellery Prompt Suite or Image Variations mode is active */}
+      {/* Floating Bottom Studio Dock: shifts left in vertical studio card style when Variations or Reference Suite is active */}
       {promptDockCollapsed ? (
           <div
             onClick={() => setPromptDockCollapsed(false)}
             className={cn(
               "fixed bottom-6 z-40 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
               isShiftedLeft
-                ? cn("right-auto mx-0 w-[94%] sm:w-[88%] md:w-[65%] lg:w-[50%] xl:w-[45%] max-w-2xl", isSidebarCollapsed ? "left-3 lg:left-20" : "left-3 lg:left-72")
-                : cn("right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
+                ? cn("right-auto mx-0 left-3 sm:left-6", isSidebarCollapsed ? "lg:left-20" : "lg:left-72", "w-auto max-w-xs sm:max-w-sm")
+                : cn("right-0 mx-auto w-[96%] max-w-4xl xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -3406,10 +3770,10 @@ export default function ImageStudioPage() {
             ref={dockRef}
             data-lenis-prevent="true"
             className={cn(
-              "fixed bottom-6 z-40 bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 space-y-2.5 transition-all duration-300 pointer-events-auto glass-dock",
+              "fixed bottom-6 z-40 bg-white/90 dark:bg-[#111118]/90 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 sm:p-3.5 space-y-2.5 transition-all duration-300 pointer-events-auto glass-dock",
               isShiftedLeft
-                ? cn("right-auto mx-0 w-[94%] sm:w-[88%] md:w-[65%] lg:w-[50%] xl:w-[45%] max-w-2xl", isSidebarCollapsed ? "left-3 lg:left-20" : "left-3 lg:left-72")
-                : cn("right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"),
+                ? cn("right-auto mx-0 left-3 sm:left-6", isSidebarCollapsed ? "lg:left-20" : "lg:left-72", "w-[94%] sm:w-[86%] md:w-[380px] lg:w-[350px] xl:w-[380px] max-w-[380px]")
+                : cn("right-0 mx-auto w-[96%] max-w-4xl xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"),
               (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
             )}
           >
@@ -3428,6 +3792,46 @@ export default function ImageStudioPage() {
               <ChevronDown className="w-3 h-3" />
             </button>
           </div>
+
+          {/* Agentic Character & Multi-Pose Smart Intent Banner */}
+          {(isAgenticPrompt || activeCharacter || refImageUrl) && (
+            <div className="p-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-violet-600/15 via-emerald-500/10 to-transparent border border-violet-500/30 flex items-center justify-between gap-3 text-xs mb-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <Sparkles className="w-4 h-4 text-violet-500 shrink-0 animate-pulse" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-heading font-extrabold text-zinc-950 dark:text-white truncate">
+                      Agentic Multi-Pose & Character Consistency
+                    </span>
+                    {activeCharacter && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0 font-bold">
+                        Locked: {activeCharacter.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                    {agenticPlan ? `Choreographed ${agenticPlan.target_count || 10} consistent camera angles & poses` : "Natural intent detected: Decompose into 10 distinct character poses"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (agenticPlan) {
+                    setShowAgenticDrawer(true);
+                  } else {
+                    handlePlanAgenticPoses();
+                  }
+                }}
+                disabled={isPlanningAgentic}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold shadow-xs cursor-pointer disabled:opacity-50 shrink-0 shadow-violet-600/20 transition-all"
+              >
+                {isPlanningAgentic ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
+                <span>{agenticPlan ? "Review Plan (10 Poses)" : "Plan 10 Poses"}</span>
+              </button>
+            </div>
+          )}
+
           {/* Prompt Engineer 6 Quick-Modifier Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
             <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-1 shrink-0 font-bold">
@@ -3599,7 +4003,7 @@ export default function ImageStudioPage() {
                     ? "Describe what you want to create (type @ to tag from Vault or upload)..."
                     : "Describe modifications or style directives (type @ to tag from Vault or upload)..."
                 }
-                className="w-full bg-transparent border-none px-1 py-1 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-16 min-h-[44px] max-h-36 leading-relaxed overflow-y-auto"
+                className="w-full bg-transparent border-none px-1.5 py-2 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none pr-24 min-h-[110px] max-h-64 leading-relaxed overflow-y-auto custom-scrollbar"
               />
 
           {/* Prompt Bar Actions */}
@@ -4126,12 +4530,44 @@ export default function ImageStudioPage() {
             </div>
           </div>
 
+          {/* Agentic Multi-Pose Action Button */}
+          {(isAgenticPrompt || refImageUrl || activeCharacter) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (agenticPlan) {
+                  setShowAgenticDrawer(true);
+                } else {
+                  handlePlanAgenticPoses();
+                }
+              }}
+              disabled={isPlanningAgentic || isGeneratingAgentic || loading}
+              className="flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-heading font-extrabold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0 shadow-violet-600/20"
+              title="Decompose prompt into 10 consistent character poses"
+            >
+              {isPlanningAgentic || isGeneratingAgentic ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{isPlanningAgentic ? "Planning 10 Poses..." : "Rendering..."}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{agenticPlan ? `Review Plan (${agenticPlan.target_count || 10} Poses)` : "🤖 Plan 10 Poses"}</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* Right Generate CTA Action Button */}
           <button
             type="button"
             onClick={requestImageConfirm}
             disabled={loading || loadingVariations || (!prompt.trim() && studioMode === "text_to_image")}
-            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0"
+            className={cn(
+              "flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap shrink-0",
+              isShiftedLeft && "w-full mt-1 sm:mt-0 sm:w-auto"
+            )}
           >
             {loading || loadingVariations ? (
               <>
@@ -4166,6 +4602,110 @@ export default function ImageStudioPage() {
         details={confirmDetails}
         loading={loading || loadingVariations}
       />
+
+      {/* Agentic Multi-Pose Plan Review Modal */}
+      {showAgenticDrawer && agenticPlan && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setShowAgenticDrawer(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 sm:p-5 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-violet-500" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-sm sm:text-base text-zinc-950 dark:text-white">
+                    Agentic Multi-Pose Plan ({agenticPlan.target_count || 10} Distinct Shots)
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Character: {agenticPlan.character_name || "Locked Persona Identity"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAgenticDrawer(false)}
+                className="p-2 rounded-xl text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {agenticPlan.persona_anchor && (
+              <div className="px-5 py-3 bg-violet-500/5 border-b border-violet-500/10">
+                <span className="text-[10px] font-mono tracking-wider text-violet-500 uppercase font-bold block mb-1">
+                  IMMUTABLE PERSONA ANCHOR (FACE & IDENTITY LOCK)
+                </span>
+                <p className="text-xs text-zinc-700 dark:text-zinc-300 font-sans leading-relaxed">
+                  {agenticPlan.persona_anchor}
+                </p>
+              </div>
+            )}
+
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar space-y-3">
+              {agenticPlan.poses?.map((pose: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.02] flex items-start gap-3"
+                >
+                  <div className="w-7 h-7 rounded-xl bg-violet-600/10 text-violet-600 dark:text-violet-400 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                    {pose.pose_id || idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-heading font-bold text-zinc-950 dark:text-white truncate">
+                        {pose.title}
+                      </h4>
+                      {pose.framing && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-white/10 text-zinc-700 dark:text-zinc-300 font-semibold shrink-0">
+                          {pose.framing}
+                        </span>
+                      )}
+                    </div>
+                    {pose.action && (
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans">
+                        {pose.action}
+                      </p>
+                    )}
+                    {pose.lighting && (
+                      <p className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">
+                        Lighting: {pose.lighting}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 sm:p-5 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+              <button
+                type="button"
+                onClick={() => setShowAgenticDrawer(false)}
+                className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+              >
+                Close Plan
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAgenticDrawer(false);
+                  handleExecuteAgenticPoses();
+                }}
+                disabled={isGeneratingAgentic}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-extrabold shadow-md shadow-violet-600/20 transition-all cursor-pointer active:scale-95"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Execute Batch Generation ({agenticPlan.target_count || 10} Poses)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Vault Picker Modal */}
       {vaultOpen && (

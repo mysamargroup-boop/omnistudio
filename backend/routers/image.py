@@ -273,6 +273,59 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
         "variations": variations
     }
 
+class AgenticPlanRequest(BaseModel):
+    prompt: str
+    reference_image_path: Optional[str] = None
+    count: Optional[int] = None
+
+class AgenticGenerateRequest(BaseModel):
+    plan: dict
+    reference_image_path: Optional[str] = None
+    model: str = "gemini_flash_image"
+    aspect_ratio: str = "16:9"
+
+@router.post("/agentic-plan")
+@limiter.limit("20/minute")
+async def plan_agentic_image_poses(req: AgenticPlanRequest, request: Request):
+    """
+    Analyzes user natural prompt and optional reference image to plan
+    an Agentic Multi-Pose batch with consistent character identity.
+    """
+    from services.agentic_image_service import analyze_and_decompose_intent
+    resolved_ref = None
+    if req.reference_image_path:
+        resolved_ref = resolve_image_path(req.reference_image_path)
+        if resolved_ref and not resolved_ref.exists():
+            resolved_ref = None
+
+    plan = await analyze_and_decompose_intent(
+        prompt=req.prompt,
+        image_path=str(resolved_ref) if resolved_ref else None,
+        requested_count=req.count
+    )
+    return {"success": True, "plan": plan}
+
+@router.post("/agentic-generate")
+@limiter.limit("10/minute")
+async def generate_agentic_image_poses(req: AgenticGenerateRequest, request: Request):
+    """
+    Executes the batch generation of all poses planned by the Creative Director Agent.
+    """
+    from services.agentic_image_service import generate_agentic_poses
+    resolved_ref = None
+    if req.reference_image_path:
+        resolved_ref = resolve_image_path(req.reference_image_path)
+        if resolved_ref and not resolved_ref.exists():
+            resolved_ref = None
+
+    result = await generate_agentic_poses(
+        plan=req.plan,
+        reference_image_path=str(resolved_ref) if resolved_ref else None,
+        model=req.model,
+        aspect_ratio=req.aspect_ratio
+    )
+    return result
+
 async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_offset: int = 0):
     openai_quality = "hd" if req.quality in ["hd", "ultra"] else "standard"
 
@@ -1004,6 +1057,7 @@ class ImageToolRequest(BaseModel):
     preset: Optional[str] = "golden_hour"
     intensity: Optional[float] = 1.0
     target_aspect: Optional[str] = "16:9"
+    model_name: Optional[str] = "birefnet-general"  # birefnet-general (SOTA Jewelry), u2net (Fast), isnet-general-use
 
 
 def _save_ai_tool_asset(res: dict, src_name: str, tool_name: str):
@@ -1054,14 +1108,15 @@ def _resolve_tool_image_path(raw_path: str) -> Path:
 @router.post("/remove-background")
 @limiter.limit("20/minute")
 async def api_remove_background(req: ImageToolRequest, request: Request):
-    """Remove background from image and export transparent PNG"""
+    """Remove background from image and export transparent PNG with choice of SOTA model"""
     from services.ai_image_tools import remove_background
     try:
         src = _resolve_tool_image_path(req.image_path)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
-    res = await asyncio.to_thread(remove_background, src)
-    _save_ai_tool_asset(res, src.name, "remove_background")
+    chosen_model = req.model_name or "birefnet-general"
+    res = await asyncio.to_thread(remove_background, src, model_name=chosen_model)
+    _save_ai_tool_asset(res, src.name, f"remove_background_{chosen_model}")
     return res
 
 

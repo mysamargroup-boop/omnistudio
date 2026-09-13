@@ -197,10 +197,14 @@ export const api = {
     return fetchApiFormData<any>("/api/image/upload-reference", formData);
   },
   generateVariations: (data: any) => fetchApi<any>("/api/image/variations", { method: "POST", body: JSON.stringify(data) }),
-  aiRemoveBackground: (image_path: string) =>
+  planAgenticPoses: (data: { prompt: string; reference_image_path?: string; count?: number }) =>
+    fetchApi<any>("/api/image/agentic-plan", { method: "POST", body: JSON.stringify(data) }),
+  generateAgenticPoses: (data: { plan: any; reference_image_path?: string; model?: string; aspect_ratio?: string }) =>
+    fetchApi<any>("/api/image/agentic-generate", { method: "POST", body: JSON.stringify(data) }),
+  aiRemoveBackground: (image_path: string, model_name: string = "birefnet-general") =>
     fetchApi<any>("/api/image/remove-background", {
       method: "POST",
-      body: JSON.stringify({ image_path }),
+      body: JSON.stringify({ image_path, model_name }),
     }),
   aiRelight: (image_path: string, preset: string = "golden_hour", intensity: number = 1.0) =>
     fetchApi<any>("/api/image/relight", {
@@ -225,10 +229,26 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  uploadBrandLogo: (file: File) => {
+  switchBrandKit: (brand_id: string) =>
+    fetchApi<any>("/api/brand-kit/switch", {
+      method: "POST",
+      body: JSON.stringify({ brand_id }),
+    }),
+  createBrandProfile: (data: { name: string; tagline?: string; template?: string }) =>
+    fetchApi<any>("/api/brand-kit/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteBrandProfile: (brand_id: string) =>
+    fetchApi<any>(`/api/brand-kit/${brand_id}`, {
+      method: "DELETE",
+    }),
+  uploadBrandLogo: (file: File, logo_type: "primary" | "dark" | "icon" = "primary", brand_id?: string) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetchApiFormData<any>("/api/brand-kit/upload-logo", formData);
+    const qs = new URLSearchParams({ logo_type });
+    if (brand_id) qs.append("brand_id", brand_id);
+    return fetchApiFormData<any>(`/api/brand-kit/upload-logo?${qs.toString()}`, formData);
   },
 
   // Video
@@ -324,6 +344,10 @@ export const api = {
     }
     return finalResult;
   },
+  getStoryboardPrompts: (data: { image_url?: string; story_hint?: string; style?: string; num_scenes?: number }) =>
+    fetchApi<any>("/api/pipeline/storyboard-prompts", { method: "POST", body: JSON.stringify(data) }),
+  generateStoryboard: (data: { scenes: any[]; reference_image_url?: string; aspect_ratio?: string; model?: string }) =>
+    fetchApi<any>("/api/pipeline/storyboard-generate", { method: "POST", body: JSON.stringify(data) }),
 
   // Assets
   getAllAssets: () => fetchApi<any>("/api/assets/all"),
@@ -441,6 +465,22 @@ export const api = {
   },
   getRateCards: () => fetchApi<any>("/api/analytics/rates"),
   clearUsageHistory: () => fetchApi<any>("/api/analytics/clear", { method: "POST" }),
+  searchInstagramProfile: (handle: string, useGraphApi: boolean = false) => {
+    const cleanHandle = handle.replace(/^@/, "").trim();
+    const q = new URLSearchParams({ handle: cleanHandle });
+    if (useGraphApi) q.append("use_graph_api", "true");
+    return fetchApi<any>(`/api/analytics/instagram/search?${q.toString()}`);
+  },
+  getConnectedInstagramAnalytics: (accountId?: string) => {
+    const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
+    return fetchApi<any>(`/api/analytics/instagram/connected${q}`);
+  },
+  getInstagramSuggestions: (query: string, limit: number = 8) => {
+    const q = new URLSearchParams();
+    if (query) q.append("q", query);
+    q.append("limit", String(limit));
+    return fetchApi<{ success: boolean; query: string; suggestions: any[] }>(`/api/analytics/instagram/suggest?${q.toString()}`);
+  },
 
   // Publish Studio & Multi-Platform Distribution
   getPublishPlatforms: () => fetchApi<any>("/api/publish/platforms"),
