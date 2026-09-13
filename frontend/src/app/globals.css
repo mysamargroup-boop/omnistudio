@@ -710,3 +710,39 @@ code, pre, kbd, .font-mono {
   text-shadow: none !important;
 }
 
+/* ── Subtle Auto-Hiding Scrollbar (Only visible when hovered or scrolling) ── */
+.scroll-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.25s ease;
+}
+.scroll-subtle:hover,
+.scroll-subtle:focus-within {
+  scrollbar-color: rgba(140, 140, 140, 0.4) transparent;
+}
+.dark .scroll-subtle:hover,
+.dark .scroll-subtle:focus-within {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.scroll-subtle::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.scroll-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-subtle::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background-color 0.25s ease;
+}
+.scroll-subtle:hover::-webkit-scrollbar-thumb,
+.scroll-subtle:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 140, 0.4);
+}
+.dark .scroll-subtle:hover::-webkit-scrollbar-thumb,
+.dark .scroll-subtle:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+

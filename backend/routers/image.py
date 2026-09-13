@@ -1057,7 +1057,7 @@ class ImageToolRequest(BaseModel):
     preset: Optional[str] = "golden_hour"
     intensity: Optional[float] = 1.0
     target_aspect: Optional[str] = "16:9"
-    model_name: Optional[str] = "birefnet-general"  # birefnet-general (SOTA Jewelry), u2net (Fast), isnet-general-use
+    model_name: Optional[str] = "u2net"  # u2net (Fast local cached), birefnet-general (SOTA Jewelry), isnet-general-use
 
 
 def _save_ai_tool_asset(res: dict, src_name: str, tool_name: str):
@@ -1083,12 +1083,15 @@ def _save_ai_tool_asset(res: dict, src_name: str, tool_name: str):
 
 
 def _resolve_tool_image_path(raw_path: str) -> Path:
+    from urllib.parse import urlparse
     from services.security_service import safe_resolve_output_path, sanitize_filename
     clean = str(raw_path or "").strip()
     if "?" in clean:
         clean = clean.split("?", 1)[0]
     if "#" in clean:
         clean = clean.split("#", 1)[0]
+    if clean.startswith("http://") or clean.startswith("https://"):
+        clean = urlparse(clean).path
     try:
         return safe_resolve_output_path(clean, must_exist=True)
     except Exception:
@@ -1114,7 +1117,7 @@ async def api_remove_background(req: ImageToolRequest, request: Request):
         src = _resolve_tool_image_path(req.image_path)
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
-    chosen_model = req.model_name or "birefnet-general"
+    chosen_model = req.model_name or "u2net"
     res = await asyncio.to_thread(remove_background, src, model_name=chosen_model)
     _save_ai_tool_asset(res, src.name, f"remove_background_{chosen_model}")
     return res

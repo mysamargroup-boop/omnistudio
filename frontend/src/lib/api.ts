@@ -201,7 +201,7 @@ export const api = {
     fetchApi<any>("/api/image/agentic-plan", { method: "POST", body: JSON.stringify(data) }),
   generateAgenticPoses: (data: { plan: any; reference_image_path?: string; model?: string; aspect_ratio?: string }) =>
     fetchApi<any>("/api/image/agentic-generate", { method: "POST", body: JSON.stringify(data) }),
-  aiRemoveBackground: (image_path: string, model_name: string = "birefnet-general") =>
+  aiRemoveBackground: (image_path: string, model_name: string = "u2net") =>
     fetchApi<any>("/api/image/remove-background", {
       method: "POST",
       body: JSON.stringify({ image_path, model_name }),

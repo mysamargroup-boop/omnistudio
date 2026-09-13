@@ -23,7 +23,7 @@ logger = logging.getLogger("omnistudio.ai_image_tools")
 _REMBG_SESSIONS: Dict[str, Any] = {}
 
 
-def _get_rembg_session(model_name: str = "birefnet-general"):
+def _get_rembg_session(model_name: str = "u2net"):
     """Lazily initializes and caches neural rembg ONNX sessions per model for high-speed subsequent inferences."""
     global _REMBG_SESSIONS
     if model_name not in _REMBG_SESSIONS:
@@ -44,10 +44,10 @@ def _get_rembg_session(model_name: str = "birefnet-general"):
     return _REMBG_SESSIONS.get(model_name)
 
 
-def remove_background(image_path: Path, model_name: str = "birefnet-general") -> Dict[str, Any]:
+def remove_background(image_path: Path, model_name: str = "u2net") -> Dict[str, Any]:
     """
     Remove background from an image, producing a transparent PNG asset.
-    Supports SOTA high-detail BiRefNet (1024x1024) for jewelry/luxury and U2-Net for ultra-fast edits.
+    Defaults to U2-Net for ultra-fast (sub-second) local cached execution.
     Uses C-accelerated PIL differential thresholding with feathered alpha mask as fallback.
     """
     if not image_path.exists():

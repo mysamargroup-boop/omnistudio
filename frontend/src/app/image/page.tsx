@@ -410,7 +410,8 @@ export default function ImageStudioPage() {
   const [originalEditorImageUrl, setOriginalEditorImageUrl] = useState<string>("");
   const [showBeforeAfter, setShowBeforeAfter] = useState<boolean>(false);
   const [processingBgRemoval, setProcessingBgRemoval] = useState<boolean>(false);
-  const [bgRemovalModel, setBgRemovalModel] = useState<"birefnet-general" | "u2net">("birefnet-general");
+  const [bgRemovalProgress, setBgRemovalProgress] = useState<number>(0);
+  const [bgRemovalModel, setBgRemovalModel] = useState<"birefnet-general" | "u2net">("u2net");
   const [processingRelight, setProcessingRelight] = useState<boolean>(false);
   const [processingFaceRestore, setProcessingFaceRestore] = useState<boolean>(false);
   const [processingOutpaint, setProcessingOutpaint] = useState<boolean>(false);
@@ -1166,7 +1167,6 @@ export default function ImageStudioPage() {
         if (res.url) {
           if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
           setEditorImageUrl(res.url);
-          setShowBeforeAfter(true);
         }
       } else {
         alert(res?.detail || res?.error || "Image edit failed");
@@ -1182,20 +1182,30 @@ export default function ImageStudioPage() {
   const handleAiRemoveBackground = async () => {
     if (!editorImageUrl) return;
     setProcessingBgRemoval(true);
+    setBgRemovalProgress(12);
+
+    let currentProgress = 12;
+    const progressInterval = setInterval(() => {
+      currentProgress = Math.min(currentProgress + Math.floor(Math.random() * 12 + 6), 92);
+      setBgRemovalProgress(currentProgress);
+    }, 280);
+
     try {
       const cleanPath = editorImageUrl.split("?")[0].split("#")[0];
       if (!originalEditorImageUrl) setOriginalEditorImageUrl(editorImageUrl);
       const res = await api.aiRemoveBackground(cleanPath, bgRemovalModel);
       if (res && res.success && res.url) {
+        setBgRemovalProgress(100);
         setEditorImageUrl(res.url);
-        setShowBeforeAfter(true);
       } else {
         alert(res?.error || "Background removal failed");
       }
     } catch (e: any) {
       alert("Background removal failed: " + (e.message || e));
     } finally {
+      clearInterval(progressInterval);
       setProcessingBgRemoval(false);
+      setTimeout(() => setBgRemovalProgress(0), 1000);
     }
   };
 
@@ -1209,7 +1219,6 @@ export default function ImageStudioPage() {
       const res = await api.aiRelight(cleanPath, relightPreset, relightIntensity);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
-        setShowBeforeAfter(true);
       } else {
         alert(res?.error || "Relighting failed");
       }
@@ -1230,7 +1239,6 @@ export default function ImageStudioPage() {
       const res = await api.aiFaceRestore(cleanPath);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
-        setShowBeforeAfter(true);
       } else {
         alert(res?.error || "Face restoration failed");
       }
@@ -1251,7 +1259,6 @@ export default function ImageStudioPage() {
       const res = await api.aiOutpaint(cleanPath, outpaintAspect);
       if (res && res.success && res.url) {
         setEditorImageUrl(res.url);
-        setShowBeforeAfter(true);
       } else {
         alert(res?.error || "Outpaint expansion failed");
       }
@@ -1490,13 +1497,18 @@ export default function ImageStudioPage() {
                 className={cn(
                   "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
                   studioMode === "image_editor"
-                    ? "bg-emerald-500 text-white font-bold shadow-sm border border-emerald-600"
+                    ? "bg-emerald-500 text-white font-bold shadow-sm border border-emerald-600 ring-2 ring-emerald-500/25"
                     : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
                 )}
               >
-                <Sliders className="w-3.5 h-3.5" />
+                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Image Editor</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                <span className={cn(
+                  "text-[9px] px-1.5 py-0.5 rounded-md font-bold tracking-wider uppercase transition-all",
+                  studioMode === "image_editor"
+                    ? "bg-white text-emerald-700 font-extrabold shadow-2xs border border-white/40"
+                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                )}>
                   STUDIO
                 </span>
               </button>
@@ -1508,28 +1520,30 @@ export default function ImageStudioPage() {
               <span className="font-bold">{activeModel.label}</span>
             </div>
 
-            {/* Prominent Always-Visible Agentic Top-Bar Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (agenticPlan) {
-                  setShowAgenticDrawer(true);
-                } else {
-                  handlePlanAgenticPoses();
-                }
-              }}
-              disabled={isPlanningAgentic || isGeneratingAgentic}
-              className="flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-sm"
-              title="Agentic Workflow"
-            >
-              <span>
-                {isPlanningAgentic
-                  ? "Planning..."
-                  : isGeneratingAgentic
-                  ? "Rendering..."
-                  : "Agentic"}
-              </span>
-            </button>
+            {/* Prominent Always-Visible Agentic Top-Bar Button (Hidden in Image Editor mode) */}
+            {studioMode !== "image_editor" && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (agenticPlan) {
+                    setShowAgenticDrawer(true);
+                  } else {
+                    handlePlanAgenticPoses();
+                  }
+                }}
+                disabled={isPlanningAgentic || isGeneratingAgentic}
+                className="flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-sm"
+                title="Agentic Workflow"
+              >
+                <span>
+                  {isPlanningAgentic
+                    ? "Planning..."
+                    : isGeneratingAgentic
+                    ? "Rendering..."
+                    : "Agentic"}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -2122,24 +2136,13 @@ export default function ImageStudioPage() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* Image Live Viewport & Canvas */}
                 <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-                  {/* Canvas Controls Toolbar: Before/After toggle + Social Repurpose */}
+                  {/* Canvas Controls Toolbar: Status / File info + Social Repurpose */}
                   <div className="flex items-center justify-between px-1">
                     <div className="flex items-center gap-2">
-                      {originalEditorImageUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setShowBeforeAfter((prev) => !prev)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all flex items-center gap-1.5 cursor-pointer border",
-                            showBeforeAfter
-                              ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
-                              : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10 hover:bg-zinc-200"
-                          )}
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                          <span>{showBeforeAfter ? "Exit Split View" : "Before / After Compare"}</span>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="font-semibold">Active Canvas</span>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -2155,68 +2158,57 @@ export default function ImageStudioPage() {
                     </button>
                   </div>
 
-                  {/* Aspect Ratio Canvas Container (Tightly fits the image's actual size) */}
-                  <div className="flex justify-center items-center w-full min-h-[300px]">
+                  {/* Stable Fixed-Size Viewport Canvas Box (Box never jumps/resizes when aspect ratio changes) */}
+                  <div className="flex justify-center items-center w-full h-[56vh] sm:h-[62vh] max-h-[600px] rounded-2xl bg-zinc-950/90 dark:bg-[#07070b] border border-black/[0.12] dark:border-white/[0.1] relative p-3 sm:p-4 overflow-hidden shadow-2xl">
+                    {/* Inner Aspect-Ratio Matched Framing Wrapper */}
                     <div
                       className={cn(
-                        "relative rounded-2xl overflow-hidden border border-black/[0.12] dark:border-white/[0.14] bg-zinc-950 shadow-2xl transition-all duration-300 flex items-center justify-center",
+                        "relative flex items-center justify-center max-w-full max-h-full transition-all duration-300 rounded-xl overflow-hidden shadow-lg border border-white/10 bg-black/40",
                         editorCropRatio === "original"
-                          ? "w-fit max-w-full"
-                          : cn("w-full max-w-2xl", getAspectRatioClass(editorCropRatio))
+                          ? "h-full w-auto"
+                          : cn("h-full", getAspectRatioClass(editorCropRatio))
                       )}
                     >
-                      {showBeforeAfter && originalEditorImageUrl ? (
-                        <BeforeAfterSlider
-                          beforeSrc={getMediaUrl(originalEditorImageUrl)}
-                          afterSrc={getMediaUrl(editorImageUrl)}
-                          beforeLabel="Original"
-                          afterLabel="AI Edited"
-                          className="max-h-[58vh] sm:max-h-[66vh] max-w-full w-auto"
-                        />
-                      ) : (
-                        <div className="relative inline-flex items-center justify-center max-w-full">
-                          <img
-                            src={getMediaUrl(editorImageUrl)}
-                            alt="Editor Preview"
-                            style={{
-                              filter: computeLiveFilterStyle(),
-                            }}
-                            className={cn(
-                              "block transition-all duration-150 select-none",
-                              editorCropRatio !== "original"
-                                ? "w-full h-full object-cover"
-                                : "max-h-[58vh] sm:max-h-[66vh] max-w-full w-auto h-auto object-contain"
-                            )}
-                          />
+                      <img
+                        src={getMediaUrl(editorImageUrl)}
+                        alt="Editor Preview"
+                        style={{
+                          filter: computeLiveFilterStyle(),
+                        }}
+                        className={cn(
+                          "block transition-all duration-150 select-none",
+                          editorCropRatio !== "original"
+                            ? "w-full h-full object-cover"
+                            : "max-h-full max-w-full w-auto h-auto object-contain"
+                        )}
+                      />
 
-                          {/* Live Text Overlay on Canvas */}
-                          {editorTextOverlay.trim() && (
-                            <div
-                              className={cn(
-                                "absolute left-0 right-0 px-4 text-center font-bold tracking-wide pointer-events-none select-none",
-                                editorTextPosition === "top" && "top-4",
-                                editorTextPosition === "center" && "top-1/2 -translate-y-1/2",
-                                editorTextPosition === "bottom" && "bottom-4"
-                              )}
-                              style={{
-                                color: editorTextColor,
-                                fontSize: `${Math.max(12, Math.min(48, editorTextSize))}px`,
-                                textShadow: "0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8)",
-                              }}
-                            >
-                              {editorTextOverlay}
-                            </div>
+                      {/* Live Text Overlay on Canvas */}
+                      {editorTextOverlay.trim() && (
+                        <div
+                          className={cn(
+                            "absolute left-0 right-0 px-4 text-center font-bold tracking-wide pointer-events-none select-none",
+                            editorTextPosition === "top" && "top-4",
+                            editorTextPosition === "center" && "top-1/2 -translate-y-1/2",
+                            editorTextPosition === "bottom" && "bottom-4"
                           )}
-
-                          {/* Live Status Overlay Badge */}
-                          <div className="absolute top-2.5 left-2.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/75 text-white backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm pointer-events-none">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            <span>{getAspectRatioLabel(editorCropRatio)}</span>
-                            {editorFilter !== "none" && <span className="opacity-75">• {editorFilter.toUpperCase()}</span>}
-                            {editorCurvePreset !== "linear" && <span className="opacity-75">• {editorCurvePreset.toUpperCase()}</span>}
-                          </div>
+                          style={{
+                            color: editorTextColor,
+                            fontSize: `${Math.max(12, Math.min(48, editorTextSize))}px`,
+                            textShadow: "0 2px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8)",
+                          }}
+                        >
+                          {editorTextOverlay}
                         </div>
                       )}
+
+                      {/* Live Status Overlay Badge */}
+                      <div className="absolute top-2.5 left-2.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/75 text-white backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm pointer-events-none">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>{getAspectRatioLabel(editorCropRatio)}</span>
+                        {editorFilter !== "none" && <span className="opacity-75">• {editorFilter.toUpperCase()}</span>}
+                        {editorCurvePreset !== "linear" && <span className="opacity-75">• {editorCurvePreset.toUpperCase()}</span>}
+                      </div>
                     </div>
                   </div>
 
@@ -2293,10 +2285,10 @@ export default function ImageStudioPage() {
                   </div>
                 </div>
 
-                {/* Editor Adjustments Sidebar (Multi-Tab Suite) */}
-                <div className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm font-jakarta max-h-[82vh] overflow-y-auto custom-scrollbar">
+                {/* Editor Adjustments Sidebar (Multi-Tab Suite - Sticky with subtle scrollbar) */}
+                <div className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm font-jakarta lg:sticky lg:top-20 h-auto max-h-[calc(100vh-6rem)] overflow-y-auto scroll-subtle">
                   {/* Category Tabs */}
-                  <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-x-auto custom-scrollbar">
+                  <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-x-auto scroll-subtle">
                     {[
                       { id: "ai_tools", label: "AI Tools" },
                       { id: "filters", label: "Filters" },
@@ -2333,12 +2325,12 @@ export default function ImageStudioPage() {
                           </p>
                         </div>
                         <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
-                          Automated local AI transforms with split comparison slider
+                          Automated zero-cost local neural transforms & precision enhancements
                         </p>
                       </div>
 
                       {/* Tool 1: Background Removal */}
-                      <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2">
+                      <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Layers className="w-4 h-4 text-emerald-500" />
@@ -2352,20 +2344,8 @@ export default function ImageStudioPage() {
                           </span>
                         </div>
 
-                        {/* Model Selector: BiRefNet SOTA (Jewelry) vs U2-Net (Fast) */}
+                        {/* Model Selector: U2-Net (Fast Local) vs BiRefNet SOTA */}
                         <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-100 dark:bg-white/5 rounded-lg text-[11px]">
-                          <button
-                            type="button"
-                            onClick={() => setBgRemovalModel("birefnet-general")}
-                            className={cn(
-                              "py-1 px-2 rounded-md font-medium transition-all text-center cursor-pointer",
-                              bgRemovalModel === "birefnet-general"
-                                ? "bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
-                                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                            )}
-                          >
-                            BiRefNet (Jewelry/SOTA)
-                          </button>
                           <button
                             type="button"
                             onClick={() => setBgRemovalModel("u2net")}
@@ -2378,7 +2358,38 @@ export default function ImageStudioPage() {
                           >
                             U2-Net (Fast 1.3s)
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setBgRemovalModel("birefnet-general")}
+                            className={cn(
+                              "py-1 px-2 rounded-md font-medium transition-all text-center cursor-pointer",
+                              bgRemovalModel === "birefnet-general"
+                                ? "bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
+                                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                            )}
+                          >
+                            BiRefNet (Jewelry/SOTA)
+                          </button>
                         </div>
+
+                        {/* Animated Percentage Progress Bar during extraction */}
+                        {processingBgRemoval && (
+                          <div className="space-y-1.5 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="flex items-center justify-between text-[11px] font-mono">
+                              <span className="text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span>Segmenting Alpha Mask...</span>
+                              </span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">{bgRemovalProgress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-emerald-950/20 dark:bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-200"
+                                style={{ width: `${bgRemovalProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
 
                         <button
                           type="button"
@@ -2389,7 +2400,7 @@ export default function ImageStudioPage() {
                           {processingBgRemoval ? (
                             <>
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Extracting Alpha Mask...</span>
+                              <span>Extracting Alpha Mask ({bgRemovalProgress}%)...</span>
                             </>
                           ) : (
                             <>
@@ -2398,6 +2409,12 @@ export default function ImageStudioPage() {
                             </>
                           )}
                         </button>
+
+                        {/* Warning notice */}
+                        <div className="text-[10.5px] leading-snug text-amber-600 dark:text-amber-400/90 flex items-start gap-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <span className="shrink-0 text-xs">⚠️</span>
+                          <span><strong>Note:</strong> Ensure subject is distinct from background for optimal edge extraction. Transparent PNG will be preserved.</span>
+                        </div>
                       </div>
 
                       {/* Tool 2: Studio Relighting */}
@@ -4087,25 +4104,26 @@ export default function ImageStudioPage() {
       </div>
 
       {/* Outside-click backdrop to dismiss any open dock popover */}
-      {(modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) && (
+      {studioMode !== "image_editor" && (modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) && (
         <div className="fixed inset-0 z-[99980] bg-black/10 dark:bg-black/25 backdrop-blur-[0.5px]" onClick={closeAllPopovers} />
       )}
 
-      {/* Floating Bottom Studio Dock: shifts left in vertical studio card style when Variations or Reference Suite is active */}
-      {promptDockCollapsed ? (
+      {/* Floating Bottom Studio Dock: shifts left in vertical studio card style when Variations or Reference Suite is active; Completely hidden in Image Editor */}
+      {studioMode !== "image_editor" && (
+        promptDockCollapsed ? (
           <div
             onClick={() => setPromptDockCollapsed(false)}
             className={cn(
               "fixed z-[99990] bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
               isShiftedLeft
                 ? cn("bottom-4 sm:bottom-5 right-auto mx-0 left-3 sm:left-4", isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]", "w-auto max-w-xs sm:max-w-sm")
-                : cn("bottom-6 right-0 mx-auto w-[96%] max-w-4xl xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
+                : cn("bottom-6 right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl 2xl:max-w-7xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
-                {studioMode === "image_editor" ? "Precision Image Studio Canvas Active" : "Prompt Dock Minimized"}
+                Prompt Dock Minimized
               </span>
               {prompt.trim() && (
                 <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
@@ -4142,10 +4160,10 @@ export default function ImageStudioPage() {
                 : cn(
                     "bottom-6 right-0 mx-auto space-y-2",
                     dockWidthMode === "compact"
-                      ? "w-[94%] max-w-2xl xl:max-w-3xl"
+                      ? "w-[94%] max-w-3xl xl:max-w-4xl"
                       : dockWidthMode === "full"
                       ? "w-[98%] max-w-[1680px]"
-                      : "w-[96%] max-w-4xl xl:max-w-5xl",
+                      : "w-[96%] max-w-5xl xl:max-w-6xl 2xl:max-w-7xl",
                     isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
                   ),
               (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
@@ -4154,7 +4172,7 @@ export default function ImageStudioPage() {
           <div className="shrink-0 flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
             <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
               {(loading || loadingVariations) && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
-              <span>{loading || loadingVariations ? "Active Diffusion Synthesis in Progress..." : studioMode === "image_editor" ? "Precision Image Studio Canvas" : studioMode === "image_variations" ? "Image Variations Studio" : "Diffusion Prompt & Model Dock"}</span>
+              <span>{loading || loadingVariations ? "Active Diffusion Synthesis in Progress..." : studioMode === "image_variations" ? "Image Variations Studio" : "Diffusion Prompt & Model Dock"}</span>
             </span>
 
             <div className="flex items-center gap-1.5">
@@ -4984,7 +5002,8 @@ export default function ImageStudioPage() {
           </div>
         </div>
       </div>
-    )}
+    )
+  )}
 
       {/* Spend Safeguard Confirmation Modal */}
       <GenerationConfirmModal
