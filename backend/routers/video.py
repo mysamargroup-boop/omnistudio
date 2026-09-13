@@ -589,23 +589,83 @@ async def generate_video(req: VideoRequest, request: Request):
             logger.debug(f"Brand kit video injection skipped: {bke}")
 
     # ─── Mode: Text-to-Video ───
-    if req.mode == "text_to_video" or (not start_img and base_p):
-        if settings.REPLICATE_API_TOKEN:
-            img_res = await generate_flux_image(effective_prompt, aspect_ratio=req.aspect_ratio)
-        elif settings.OPENAI_API_KEY:
-            img_res = await generate_openai_image(effective_prompt, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024")
+    is_text_to_video = (req.mode == "text_to_video") or (not start_img and base_p)
+    if is_text_to_video:
+        # Check if direct generative video model like Google Veo is selected
+        if "veo" in req.model.lower() or "google" in req.model.lower():
+            from services.gemini_service import get_gemini_key, generate_veo_video
+            if not get_gemini_key():
+                return record_failure("Google Gemini API key not configured. Please add GEMINI_API_KEY in Settings to use Google Veo.")
+            
+            veo_res = await generate_veo_video(
+                prompt=effective_prompt,
+                aspect_ratio=req.aspect_ratio,
+                duration_seconds=int(clip_duration)
+            )
+            if not veo_res.get("success") or not veo_res.get("local_path"):
+                err = veo_res.get("error") or "Google Veo failed to generate video."
+                return record_failure(f"Google Veo Error: {err}")
+            
+            result = veo_res
+            result["mode"] = "text_to_video"
+            result["resolution"] = f"{w}x{h}"
+            result["quality"] = req.quality
+            result["motion_intensity"] = motion_intensity
+            result["loop"] = req.loop
+            result["seed"] = req.seed
+
+            # Sync asset to Cloudflare R2 and Supabase Cloud
+            if result.get("local_path"):
+                try:
+                    from services.storage_service import sync_and_save_asset
+                    synced = await sync_and_save_asset(
+                        local_path=result["local_path"],
+                        asset_type="video",
+                        metadata={"mode": req.mode, "model": req.model, "prompt": effective_prompt}
+                    )
+                    if synced.get("url"):
+                        result["url"] = synced["url"]
+                    result["asset_id"] = synced.get("asset_id")
+                except Exception as e:
+                    logger.warning("Failed to sync video asset to cloud storage: %s", e)
+
+            try:
+                from services.usage_tracker import log_generation
+                log_generation(
+                    service_type="video",
+                    provider="google",
+                    model=result.get("engine", req.model),
+                    prompt=effective_prompt,
+                    status="success",
+                    specs={"duration": clip_duration, "resolution": f"{w}x{h}", "fps": req.fps},
+                    output_url=result.get("url", "")
+                )
+            except Exception as e:
+                logger.warning("Failed to record video generation usage log: %s", e)
+
+            return result
+
+        elif req.model == "ffmpeg_local" or "ffmpeg" in req.model.lower() or "local" in req.model.lower():
+            if settings.REPLICATE_API_TOKEN:
+                img_res = await generate_flux_image(effective_prompt, aspect_ratio=req.aspect_ratio)
+            elif settings.OPENAI_API_KEY:
+                img_res = await generate_openai_image(effective_prompt, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024")
+            else:
+                return record_failure(
+                    "Local FFmpeg in Text-to-Video mode requires an initial keyframe generated via OpenAI or Replicate, OR an uploaded starting image. For direct 100% text-to-video generation, choose Google Veo 3.1."
+                )
+                
+            if not img_res or not img_res.get("success", True) or img_res.get("error"):
+                err_msg = img_res.get("error") if isinstance(img_res, dict) else "Failed to generate initial keyframe"
+                return record_failure(f"Initial keyframe generation failed: {err_msg}")
+
+            start_img = img_res.get("local_path") or img_res.get("url")
+            if not start_img:
+                return record_failure("Failed to obtain valid initial frame for text-to-video synthesis.")
         else:
             return record_failure(
-                "Text-to-Video from scratch requires an OpenAI or Replicate API key in Settings. Alternatively, select an image from your Vault or upload a keyframe to render with 100% free Local FFmpeg acceleration."
+                f"Direct Text-to-Video generation for model '{req.model}' is not available or requires external credentials. Please use 'Google Veo 3.1' for direct cloud synthesis or 'Local Ken Burns (FFmpeg)' with a keyframe."
             )
-            
-        if not img_res or not img_res.get("success", True) or img_res.get("error"):
-            err_msg = img_res.get("error") if isinstance(img_res, dict) else "Failed to generate initial keyframe"
-            return record_failure(f"Initial keyframe generation failed: {err_msg}")
-
-        start_img = img_res.get("local_path") or img_res.get("url")
-        if not start_img:
-            return record_failure("Failed to obtain valid initial frame for text-to-video synthesis.")
 
     # ─── Mode: Multi-Frame Keyframe Sequence ───
     if (req.mode == "multi_frame" or (req.image_paths and len(req.image_paths) > 1)) and req.image_paths:
@@ -723,56 +783,26 @@ async def generate_video(req: VideoRequest, request: Request):
         return record_failure(f"Keyframe image not found: {start_img}")
 
     # Veo Dispatcher
-    if "veo" in req.model.lower():
+    if "veo" in req.model.lower() or "google" in req.model.lower():
         from services.gemini_service import get_gemini_key, generate_veo_video
-        if get_gemini_key():
-            try:
-                veo_res = await generate_veo_video(prompt=req.prompt or f"Motion vector on {Path(start_img).name}", aspect_ratio=req.aspect_ratio)
-                if veo_res.get("success") and veo_res.get("local_path"):
-                    result = veo_res
-                else:
-                    # Graceful local motion fallback with cloud note
-                    result = await generate_video_from_image(
-                        image_path=str(start_resolved),
-                        motion_type=req.motion_type,
-                        duration=clip_duration,
-                        fps=fps_int,
-                        width=w,
-                        height=h,
-                        quality=req.quality,
-                        motion_intensity=motion_intensity,
-                        loop=req.loop,
-                        model=req.model
-                    )
-                    result["engine"] = f"{req.model} (Local Motion Engine)"
-            except Exception as e:
-                logger.warning("VEO generation failed, falling back to local motion engine: %s", e)
-                result = await generate_video_from_image(
-                    image_path=str(start_resolved),
-                    motion_type=req.motion_type,
-                    duration=clip_duration,
-                    fps=fps_int,
-                    width=w,
-                    height=h,
-                    quality=req.quality,
-                    motion_intensity=motion_intensity,
-                    loop=req.loop,
-                    model=req.model
-                )
-        else:
-            result = await generate_video_from_image(
+        if not get_gemini_key():
+            return record_failure("Google Gemini API key not configured. Please add GEMINI_API_KEY in Settings to use Google Veo.")
+        try:
+            veo_res = await generate_veo_video(
+                prompt=effective_prompt or f"Cinematic motion on {Path(start_img).name}",
+                aspect_ratio=req.aspect_ratio,
                 image_path=str(start_resolved),
-                motion_type=req.motion_type,
-                duration=clip_duration,
-                fps=fps_int,
-                width=w,
-                height=h,
-                quality=req.quality,
-                motion_intensity=motion_intensity,
-                loop=req.loop,
-                model=req.model
+                duration_seconds=int(clip_duration)
             )
-    else:
+            if veo_res.get("success") and veo_res.get("local_path"):
+                result = veo_res
+            else:
+                err = veo_res.get("error") or "Google Veo failed to generate video."
+                return record_failure(f"Google Veo Error: {err}")
+        except Exception as e:
+            logger.error("VEO generation failed: %s", e)
+            return record_failure(f"Google Veo Error: {str(e)}")
+    elif req.model == "ffmpeg_local" or "ffmpeg" in req.model.lower() or "local" in req.model.lower():
         result = await generate_video_from_image(
             image_path=str(start_resolved),
             motion_type=req.motion_type if req.motion_type != "orbit" else "orbit",
@@ -784,6 +814,10 @@ async def generate_video(req: VideoRequest, request: Request):
             motion_intensity=motion_intensity,
             loop=req.loop,
             model=req.model
+        )
+    else:
+        return record_failure(
+            f"Keyframe video motion for model '{req.model}' is not available or requires external credentials. Please choose 'Google Veo 3.1' or 'Local Ken Burns (FFmpeg)'."
         )
 
     result["mode"] = "first_frame"
