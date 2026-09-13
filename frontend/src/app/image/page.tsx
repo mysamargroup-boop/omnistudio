@@ -3250,12 +3250,12 @@ export default function ImageStudioPage() {
           <div className={cn(
             "w-full py-1 animate-in fade-in duration-300",
             isShiftedLeft && !promptDockCollapsed
-              ? "lg:ml-[330px] xl:ml-[340px] lg:w-[calc(100%-330px)] xl:w-[calc(100%-340px)] pr-2 sm:pr-4 pb-12 sm:pb-16"
-              : "w-full max-w-7xl mx-auto px-2 sm:px-4 pb-12 sm:pb-16"
+              ? "lg:ml-[420px] xl:ml-[450px] lg:w-[calc(100%-420px)] xl:w-[calc(100%-450px)] pr-2 sm:pr-4 pb-4 sm:pb-6"
+              : "w-full max-w-7xl mx-auto px-2 sm:px-4 pb-6 sm:pb-8"
           )}>
-            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 sm:p-4 shadow-xl space-y-3 text-left mb-6">
+            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xl space-y-4 sm:space-y-5 text-left mb-3">
               {/* Header Bar */}
-              <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-2.5">
+              <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3 sm:pb-3.5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20 shrink-0">
                     <ImagePlus className="w-4 h-4" />
@@ -3314,10 +3314,10 @@ export default function ImageStudioPage() {
               </div>
 
               {/* 2-Column Horizontal Layout Grid: side-by-side on desktop */}
-              <div className="grid gap-3 sm:gap-3.5 items-stretch grid-cols-1 lg:grid-cols-2">
+              <div className="grid gap-4 sm:gap-5 items-stretch grid-cols-1 lg:grid-cols-2">
                 {/* ── LEFT COLUMN: Reference Images & Character Consistency Locks ── */}
-                <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 flex flex-col justify-between">
-                  <div className="space-y-2.5">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3.5 flex flex-col justify-between">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5 text-violet-500" />
@@ -3357,7 +3357,7 @@ export default function ImageStudioPage() {
                         }
                       }}
                       onClick={() => multiRefFileInputRef.current?.click()}
-                      className="rounded-xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] py-2.5 px-3 text-center cursor-pointer transition-all flex items-center justify-center gap-2.5 group"
+                      className="rounded-xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] py-3.5 px-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3 group"
                     >
                       <input
                         ref={multiRefFileInputRef}
@@ -3375,15 +3375,15 @@ export default function ImageStudioPage() {
                       {uploadingMultiRef ? (
                         <Loader2 className="w-4 h-4 text-violet-600 animate-spin shrink-0" />
                       ) : (
-                        <div className="w-6 h-6 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform shrink-0">
-                          <Upload className="w-3 h-3" />
+                        <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform shrink-0">
+                          <Upload className="w-3.5 h-3.5" />
                         </div>
                       )}
                       <div className="text-left leading-tight">
-                        <p className="text-[11px] font-bold text-violet-700 dark:text-violet-300 font-heading">
+                        <p className="text-xs font-bold text-violet-700 dark:text-violet-300 font-heading">
                           {uploadingMultiRef ? `Uploading... ${multiRefUploadProgress}%` : "Drop References or Tap to Upload"}
                         </p>
-                        <p className="text-[9.5px] text-zinc-400 font-mono">
+                        <p className="text-[10px] text-zinc-400 font-mono">
                           JPG, PNG, WEBP • Up to 25MB
                         </p>
                       </div>
@@ -3418,7 +3418,7 @@ export default function ImageStudioPage() {
                     )}
 
                     {/* Character Consistency Locks (Compact 1-row grid on desktop) */}
-                    <div className="p-2 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.08] space-y-1.5 shadow-xs">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.08] space-y-2 shadow-xs">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -3446,7 +3446,7 @@ export default function ImageStudioPage() {
                           <span>{(lockFace || lockDress || lockJewelry || lockBackground) ? "ALL ON" : "ALL OFF"}</span>
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-mono">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
                         <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
                           <input
                             type="checkbox"
@@ -3454,7 +3454,7 @@ export default function ImageStudioPage() {
                             onChange={(e) => setLockFace(e.target.checked)}
                             className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3 w-3 cursor-pointer"
                           />
-                          <span className="text-[10px]">Face</span>
+                          <span className="text-[10.5px]">Face</span>
                         </label>
                         <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
                           <input
@@ -3463,7 +3463,7 @@ export default function ImageStudioPage() {
                             onChange={(e) => setLockDress(e.target.checked)}
                             className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3 w-3 cursor-pointer"
                           />
-                          <span className="text-[10px]">Dress</span>
+                          <span className="text-[10.5px]">Dress</span>
                         </label>
                         <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
                           <input
@@ -3472,7 +3472,7 @@ export default function ImageStudioPage() {
                             onChange={(e) => setLockJewelry(e.target.checked)}
                             className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3 w-3 cursor-pointer"
                           />
-                          <span className="text-[10px]">Jewelry</span>
+                          <span className="text-[10.5px]">Jewelry</span>
                         </label>
                         <label className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 cursor-pointer">
                           <input
@@ -3481,30 +3481,30 @@ export default function ImageStudioPage() {
                             onChange={(e) => setLockBackground(e.target.checked)}
                             className="rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 h-3 w-3 cursor-pointer"
                           />
-                          <span className="text-[10px]">Background</span>
+                          <span className="text-[10.5px]">Background</span>
                         </label>
                       </div>
                     </div>
                   </div>
 
                   {/* Jewellery Reference Suite Launcher */}
-                  <div className="mt-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 shadow-xs">
+                  <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 shadow-xs">
                       <div className="min-w-0">
-                        <span className="text-[11px] font-heading font-bold text-zinc-900 dark:text-white block leading-tight truncate">
+                        <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white block leading-tight truncate">
                           Jewellery Reference Suite
                         </span>
-                        <span className="text-[9.5px] font-mono text-zinc-500 dark:text-zinc-400 truncate block">
+                        <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 truncate block">
                           3-Column Pro Presets & Macro Prompts
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setShowJewellerySuite(true)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-[10.5px] font-heading font-bold shadow-xs transition-all cursor-pointer shrink-0 select-none border border-amber-400/40"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-[11px] font-heading font-bold shadow-xs transition-all cursor-pointer shrink-0 select-none border border-amber-400/40"
                         title="Open 3-Column Jewellery Styling Suite"
                       >
-                        <Gem className="w-3 h-3" />
+                        <Gem className="w-3.5 h-3.5" />
                         <span>Open Suite</span>
                       </button>
                     </div>
@@ -3512,8 +3512,8 @@ export default function ImageStudioPage() {
                 </div>
 
                 {/* ── RIGHT COLUMN: Negative Prompt ── */}
-                <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 flex flex-col justify-between">
-                  <div className="space-y-2">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3.5 flex flex-col justify-between">
+                  <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                         <Sliders className="w-3.5 h-3.5 text-zinc-500" />
@@ -3533,11 +3533,11 @@ export default function ImageStudioPage() {
                       value={negativePrompt}
                       onChange={(e) => setNegativePrompt(e.target.value)}
                       placeholder="e.g. blurry, low quality, extra fingers, deformed face, bad anatomy, distorted textures, overexposed..."
-                      className="w-full h-24 sm:h-28 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-2.5 text-[11px] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 font-mono resize-none leading-relaxed shadow-xs"
+                      className="w-full h-32 sm:h-36 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 font-mono resize-none leading-relaxed shadow-xs"
                     />
                     {/* Quick Exclude Chips */}
-                    <div className="space-y-1">
-                      <span className="text-[9.5px] font-mono text-zinc-400 uppercase tracking-wider block">
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block font-semibold">
                         Quick Exclude Presets:
                       </span>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -3550,7 +3550,7 @@ export default function ImageStudioPage() {
                                 setNegativePrompt((prev) => (prev ? `${prev}, ${tag}` : tag));
                               }
                             }}
-                            className="px-2 py-0.5 rounded-md text-[9.5px] font-mono bg-white dark:bg-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-white/[0.08] hover:text-zinc-900 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.06] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer shadow-2xs"
+                            className="px-2.5 py-1 rounded-md text-[10px] font-mono bg-white dark:bg-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-white/[0.08] hover:text-zinc-900 dark:hover:text-white border border-black/[0.06] dark:border-white/[0.06] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer shadow-2xs"
                           >
                             +{tag}
                           </button>
@@ -3562,7 +3562,7 @@ export default function ImageStudioPage() {
               </div>
 
               {/* ── FULL WIDTH: Advanced Synthesis & Latent Engine ── */}
-              <div className="mt-3 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-[#0c0c14]/90 backdrop-blur-md p-3 space-y-2.5 shadow-md relative overflow-hidden transition-all">
+              <div className="mt-3.5 sm:mt-4 rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-[#0c0c14]/90 backdrop-blur-md p-3.5 sm:p-4 space-y-3 shadow-md relative overflow-hidden transition-all">
                 {/* Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
                   <div className="flex items-center gap-2">
@@ -3960,7 +3960,7 @@ export default function ImageStudioPage() {
               </div>
 
               {/* Primary Action Footer: Agentic + Generate Variations */}
-              <div className="mt-3 pt-3 border-t border-black/[0.08] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-2.5 bg-zinc-50/90 dark:bg-white/[0.02] p-2.5 sm:p-3 rounded-xl border border-black/[0.04] dark:border-white/[0.04]">
+              <div className="mt-3.5 pt-3.5 border-t border-black/[0.08] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-3 bg-zinc-50/90 dark:bg-white/[0.02] p-3 sm:p-3.5 rounded-xl border border-black/[0.04] dark:border-white/[0.04]">
                 {/* Left Meta Information / Status */}
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-mono font-semibold">
@@ -4116,7 +4116,7 @@ export default function ImageStudioPage() {
             className={cn(
               "fixed z-[99990] bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
               isShiftedLeft
-                ? cn("bottom-4 sm:bottom-5 right-auto mx-0 left-3 sm:left-4", isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]", "w-auto max-w-xs sm:max-w-sm")
+                ? cn("bottom-4 sm:bottom-5 right-auto mx-0 left-3 sm:left-4", isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]", "w-auto max-w-sm sm:max-w-md")
                 : cn("bottom-6 right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl 2xl:max-w-7xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
             )}
           >
@@ -4155,7 +4155,7 @@ export default function ImageStudioPage() {
                     (modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) ? "overflow-visible" : "overflow-y-auto",
                     "right-auto mx-0 left-3 sm:left-4",
                     isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]",
-                    "w-[94%] sm:w-[88%] md:w-[310px] lg:w-[320px] xl:w-[325px] max-w-[325px]"
+                    "w-[94%] sm:w-[90%] md:w-[380px] lg:w-[410px] xl:w-[440px] max-w-[440px]"
                   )
                 : cn(
                     "bottom-6 right-0 mx-auto space-y-2",
