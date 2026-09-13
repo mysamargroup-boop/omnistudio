@@ -11,7 +11,7 @@ start "OmniStudio Backend (FastAPI)" cmd /k "cd /d %~dp0backend && python -m uvi
 timeout /t 3 /nobreak >nul
 
 echo [2/2] Starting Next.js Frontend on http://localhost:3000 ...
-start "OmniStudio Frontend (Next.js)" cmd /k "cd /d %~dp0frontend && npm run start -- -p 3000"
+start "OmniStudio Frontend (Next.js)" cmd /k "cd /d %~dp0frontend && npm run dev -- -p 3000"
 
 timeout /t 2 /nobreak >nul
 
