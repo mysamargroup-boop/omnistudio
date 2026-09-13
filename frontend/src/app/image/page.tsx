@@ -399,6 +399,7 @@ export default function ImageStudioPage() {
   const [editorOutputFormat, setEditorOutputFormat] = useState<string>("png"); // png, jpeg, webp
   const [editorActiveTab, setEditorActiveTab] = useState<"ai_tools" | "filters" | "hsl" | "curves" | "text" | "resize" | "export">("ai_tools");
   const [promptDockCollapsed, setPromptDockCollapsed] = useState<boolean>(false);
+  const [dockWidthMode, setDockWidthMode] = useState<"compact" | "standard" | "full">("standard");
   const [downloadingMaster, setDownloadingMaster] = useState(false);
   const [lastExportedResult, setLastExportedResult] = useState<any>(null);
 
@@ -688,8 +689,8 @@ export default function ImageStudioPage() {
     if (promptTextareaRef.current) {
       promptTextareaRef.current.style.height = "auto";
       const scrollH = promptTextareaRef.current.scrollHeight;
-      const minH = isShiftedLeft ? 200 : 160;
-      const maxH = isShiftedLeft ? 360 : 320;
+      const minH = isShiftedLeft ? 80 : 64;
+      const maxH = isShiftedLeft ? 260 : 180;
       promptTextareaRef.current.style.height = `${Math.min(Math.max(scrollH, minH), maxH)}px`;
     }
   }, [prompt, isShiftedLeft]);
@@ -1500,7 +1501,7 @@ export default function ImageStudioPage() {
             </button>
           </div>
 
-          {/* Prominent Always-Visible Agentic 10 Poses Top-Bar Button */}
+          {/* Prominent Always-Visible Agentic Top-Bar Button */}
           <button
             type="button"
             onClick={() => {
@@ -1511,18 +1512,15 @@ export default function ImageStudioPage() {
               }
             }}
             disabled={isPlanningAgentic || isGeneratingAgentic}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-heading font-extrabold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-sm"
-            title="Formulate a 10-pose character consistency plan"
+            className="flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-sm"
+            title="Agentic Workflow"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
             <span>
               {isPlanningAgentic
                 ? "Planning..."
                 : isGeneratingAgentic
                 ? "Rendering..."
-                : agenticPlan
-                ? `Review Plan (${agenticPlan.target_count || 10})`
-                : "Agentic (10 Poses)"}
+                : "Agentic"}
             </span>
           </button>
 
@@ -3232,19 +3230,19 @@ export default function ImageStudioPage() {
           <div className={cn(
             "w-full py-1 animate-in fade-in duration-300",
             isShiftedLeft && !promptDockCollapsed
-              ? "lg:ml-[330px] xl:ml-[340px] lg:w-[calc(100%-330px)] xl:w-[calc(100%-340px)] pr-2 sm:pr-4 pb-28 sm:pb-36"
-              : "w-full max-w-7xl mx-auto px-2 sm:px-4 pb-28 sm:pb-36"
+              ? "lg:ml-[330px] xl:ml-[340px] lg:w-[calc(100%-330px)] xl:w-[calc(100%-340px)] pr-2 sm:pr-4 pb-12 sm:pb-16"
+              : "w-full max-w-7xl mx-auto px-2 sm:px-4 pb-12 sm:pb-16"
           )}>
-            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl sm:rounded-3xl p-4 sm:p-5 lg:p-6 shadow-2xl space-y-4 sm:space-y-5 text-left min-h-[calc(100vh-160px)] flex flex-col justify-between overflow-y-auto custom-scrollbar mb-10">
+            <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 sm:p-4 shadow-xl space-y-3 text-left mb-6">
               {/* Header Bar */}
-              <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20 shrink-0">
+              <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20 shrink-0">
                     <ImagePlus className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-heading font-extrabold text-zinc-950 dark:text-white">
+                      <h3 className="text-base font-heading font-extrabold text-zinc-950 dark:text-white">
                         Image Variations & Style Directives
                       </h3>
                       {refImages.length > 0 && (
@@ -3270,18 +3268,15 @@ export default function ImageStudioPage() {
                       }
                     }}
                     disabled={isPlanningAgentic || isGeneratingAgentic}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 shadow-sm"
-                    title="Formulate a 10-pose character consistency plan"
+                    className="flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 shadow-sm"
+                    title="Agentic Workflow"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
                     <span>
                       {isPlanningAgentic
                         ? "Planning..."
                         : isGeneratingAgentic
                         ? "Rendering..."
-                        : agenticPlan
-                        ? `Review Plan (${agenticPlan.target_count || 10})`
-                        : "Agentic 10 Poses"}
+                        : "Agentic"}
                     </span>
                   </button>
 
@@ -3289,7 +3284,7 @@ export default function ImageStudioPage() {
                     <button
                       type="button"
                       onClick={() => setReferenceDrawerOpen(false)}
-                      className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                       title="Close Reference Panel"
                     >
                       <X className="w-4 h-4" />
@@ -3299,9 +3294,9 @@ export default function ImageStudioPage() {
               </div>
 
               {/* 2-Column Horizontal Layout Grid: side-by-side on desktop */}
-              <div className="grid gap-3 sm:gap-4 items-stretch flex-1 grid-cols-1 lg:grid-cols-2">
+              <div className="grid gap-3 sm:gap-3.5 items-start grid-cols-1 lg:grid-cols-2">
                 {/* ── LEFT COLUMN: Reference Images & Character Consistency Locks ── */}
-                <div className="p-3 sm:p-3.5 rounded-2xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3 sm:space-y-3.5 flex flex-col justify-between h-full">
+                <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 flex flex-col">
                   <div className="flex items-center justify-between">
                     <span className="text-xs sm:text-sm font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                       <Upload className="w-4 h-4 text-violet-500" />
@@ -3311,7 +3306,7 @@ export default function ImageStudioPage() {
                       <button
                         type="button"
                         onClick={() => openVaultPicker("reference")}
-                        className="text-[11px] font-mono text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1 cursor-pointer transition-colors px-2.5 py-1 rounded-lg border border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/20"
+                        className="text-[11px] font-mono text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1 cursor-pointer transition-colors px-2.5 py-1 rounded-lg border border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/20 font-medium"
                         title="Pick reference from Vault"
                       >
                         <FolderArchive className="w-3.5 h-3.5" />
@@ -3321,7 +3316,7 @@ export default function ImageStudioPage() {
                         <button
                           type="button"
                           onClick={clearAllRefImages}
-                          className="text-[11px] font-mono text-rose-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer transition-colors px-2.5 py-1 rounded-lg hover:bg-rose-500/10"
+                          className="text-[11px] font-mono text-rose-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer transition-colors px-2.5 py-1 rounded-lg hover:bg-rose-500/10 font-medium"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Clear</span>
@@ -3341,7 +3336,7 @@ export default function ImageStudioPage() {
                       }
                     }}
                     onClick={() => multiRefFileInputRef.current?.click()}
-                    className="rounded-2xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] p-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3.5 group"
+                    className="rounded-xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] py-2.5 px-3.5 text-center cursor-pointer transition-all flex items-center justify-center gap-3 group"
                   >
                     <input
                       ref={multiRefFileInputRef}
@@ -3357,17 +3352,17 @@ export default function ImageStudioPage() {
                       }}
                     />
                     {uploadingMultiRef ? (
-                      <Loader2 className="w-6 h-6 text-violet-600 animate-spin shrink-0" />
+                      <Loader2 className="w-5 h-5 text-violet-600 animate-spin shrink-0" />
                     ) : (
-                      <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform shrink-0">
-                        <Upload className="w-4 h-4" />
+                      <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
                       </div>
                     )}
                     <div className="text-left leading-tight">
-                      <p className="text-sm font-bold text-violet-700 dark:text-violet-300 font-heading">
+                      <p className="text-xs font-bold text-violet-700 dark:text-violet-300 font-heading">
                         {uploadingMultiRef ? `Uploading... ${multiRefUploadProgress}%` : "Drop References or Tap to Upload"}
                       </p>
-                      <p className="text-[11px] text-zinc-400 font-mono">
+                      <p className="text-[10.5px] text-zinc-400 font-mono">
                         JPG, PNG, WEBP • Up to 25MB
                       </p>
                     </div>
@@ -3382,7 +3377,7 @@ export default function ImageStudioPage() {
                             <img
                               src={getMediaUrl(img.url)}
                               alt={img.name}
-                              className="w-12 h-12 rounded-lg object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs"
+                              className="w-11 h-11 rounded-lg object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs"
                             />
                             <button
                               type="button"
@@ -3402,7 +3397,7 @@ export default function ImageStudioPage() {
                   )}
 
                   {/* Character Consistency Locks (Compact 1-row grid on desktop) */}
-                  <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.08] space-y-2 shadow-xs">
+                  <div className="p-2 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.08] space-y-1.5 shadow-xs">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -3421,7 +3416,7 @@ export default function ImageStudioPage() {
                           setLockBackground(nextVal);
                         }}
                         className={cn(
-                          "flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
+                          "flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-mono font-bold transition-all cursor-pointer border shadow-xs select-none",
                           (lockFace || lockDress || lockJewelry || lockBackground)
                             ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
                             : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700"
@@ -3470,9 +3465,9 @@ export default function ImageStudioPage() {
                     </div>
                   </div>
 
-                  {/* Jewellery Reference Suite Launcher (Shifted down) */}
-                  <div className="mt-5 sm:mt-6 pt-3.5 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 shadow-xs">
+                  {/* Jewellery Reference Suite Launcher */}
+                  <div className="mt-2.5 pt-2.5 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 shadow-xs">
                       <div className="min-w-0">
                         <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white block leading-tight truncate">
                           Jewellery Reference Suite
@@ -3484,7 +3479,7 @@ export default function ImageStudioPage() {
                       <button
                         type="button"
                         onClick={() => setShowJewellerySuite(true)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-heading font-extrabold shadow-xs transition-all cursor-pointer shrink-0 select-none border border-amber-400/40"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-heading font-bold shadow-xs transition-all cursor-pointer shrink-0 select-none border border-amber-400/40"
                         title="Open 3-Column Jewellery Styling Suite"
                       >
                         <Gem className="w-3.5 h-3.5" />
@@ -3495,11 +3490,11 @@ export default function ImageStudioPage() {
                 </div>
 
                 {/* ── RIGHT COLUMN: Negative Prompt & Advanced Settings ── */}
-                <div className="p-3 sm:p-3.5 rounded-2xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-3 sm:space-y-3.5 flex flex-col justify-between h-full">
+                <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2.5 flex flex-col">
                   {/* Negative Prompt */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <span className="text-xs font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                         <Sliders className="w-3.5 h-3.5 text-violet-500" />
                         <span>Negative Prompt (Exclude)</span>
                       </span>
@@ -3517,8 +3512,8 @@ export default function ImageStudioPage() {
                       value={negativePrompt}
                       onChange={(e) => setNegativePrompt(e.target.value)}
                       placeholder="e.g. blurry, low quality, extra fingers, deformed face, bad anatomy..."
-                      rows={3}
-                      className="w-full h-20 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500/40 font-mono resize-none leading-relaxed shadow-xs"
+                      rows={2}
+                      className="w-full h-14 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-2.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500/40 font-mono resize-none leading-relaxed shadow-xs"
                     />
                     {/* Quick Exclude Chips */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -3531,7 +3526,7 @@ export default function ImageStudioPage() {
                               setNegativePrompt((prev) => (prev ? `${prev}, ${tag}` : tag));
                             }
                           }}
-                          className="px-2.5 py-1 rounded-lg text-[10.5px] font-mono bg-white dark:bg-zinc-800/80 hover:bg-violet-500/10 hover:text-violet-600 border border-black/[0.06] dark:border-white/[0.06] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer shadow-2xs"
+                          className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-white dark:bg-zinc-800/80 hover:bg-violet-500/10 hover:text-violet-600 border border-black/[0.06] dark:border-white/[0.06] text-zinc-500 dark:text-zinc-400 transition-colors cursor-pointer shadow-2xs"
                         >
                           +{tag}
                         </button>
@@ -3540,24 +3535,24 @@ export default function ImageStudioPage() {
                   </div>
 
                   {/* Advanced Settings Suite */}
-                  <div className="rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-[#0c0c14]/90 backdrop-blur-md p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-lg relative overflow-hidden transition-all">
+                  <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/80 dark:bg-[#0c0c14]/90 backdrop-blur-md p-3 space-y-2.5 shadow-md relative overflow-hidden transition-all">
                     {/* Header */}
-                    <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
-                          <Sliders className="w-4 h-4" />
+                    <div className="flex items-center justify-between pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-sm">
+                          <Sliders className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs sm:text-sm font-heading font-extrabold uppercase tracking-wide text-zinc-900 dark:text-white block">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-heading font-extrabold uppercase tracking-wide text-zinc-900 dark:text-white block">
                               Advanced Synthesis & Latent Engine
                             </span>
-                            <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                              STUDIO V2
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                              V2
                             </span>
                           </div>
-                          <span className="text-[10.5px] text-zinc-500 dark:text-zinc-400 font-jakarta">
-                            CFG adherence • Multi-step denoising • Latent variation drift • Deterministic seeding
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-jakarta">
+                            CFG adherence • Sampling steps • Variation drift • Deterministic seeding
                           </span>
                         </div>
                       </div>
@@ -3565,48 +3560,48 @@ export default function ImageStudioPage() {
                         type="button"
                         onClick={() => setShowAdvancedInfo((p) => !p)}
                         className={cn(
-                          "px-3 py-1.5 rounded-xl text-[10.5px] font-mono transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                          "px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all flex items-center gap-1 cursor-pointer select-none",
                           showAdvancedInfo
                             ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30"
                             : "bg-white dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 border border-black/[0.08] dark:border-white/[0.08] shadow-2xs"
                         )}
                         title="Model compatibility details"
                       >
-                        <Info className="w-3.5 h-3.5 text-emerald-500" />
+                        <Info className="w-3 h-3 text-emerald-500" />
                         <span>Model Support</span>
                       </button>
                     </div>
 
                     {showAdvancedInfo && (
-                      <div className="rounded-2xl bg-emerald-500/[0.08] dark:bg-emerald-500/[0.05] border border-emerald-500/25 p-3.5 text-xs space-y-1.5 transition-all animate-in fade-in duration-200">
-                        <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-300 text-[11px] font-mono">
-                          <Info className="w-3.5 h-3.5 shrink-0" />
+                      <div className="rounded-xl bg-emerald-500/[0.08] dark:bg-emerald-500/[0.05] border border-emerald-500/25 p-2.5 text-xs space-y-1 transition-all animate-in fade-in duration-200">
+                        <div className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300 text-[10.5px] font-mono">
+                          <Info className="w-3 h-3 shrink-0" />
                           <span>Supported Generative Engines & Hardware Calibration:</span>
                         </div>
-                        <p className="text-[10.5px] leading-relaxed text-zinc-600 dark:text-zinc-400 font-jakarta">
-                          • <strong>Direct Hardware Guidance:</strong> Flux.1 (Schnell/Dev), SD 3.5, and SDXL directly calibrate against these CFG and Step values.<br />
+                        <p className="text-[10px] leading-relaxed text-zinc-600 dark:text-zinc-400 font-jakarta">
+                          • <strong>Direct Hardware Guidance:</strong> Flux.1 (Schnell/Dev), SD 3.5, and SDXL directly calibrate against CFG and Step values.<br />
                           • <strong>Cloud Multimodal:</strong> Google Gemini 2.5 and OpenAI automatically calibrate guidance and drift weights.
                         </p>
                       </div>
                     )}
 
                     {/* Controls Grid (4 Primary Cards) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {/* 1. CFG Scale Card */}
-                      <div className="p-4 rounded-2xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-500/30 dark:hover:border-violet-500/30 transition-all space-y-3 shadow-sm">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-500/30 dark:hover:border-violet-500/30 transition-all space-y-1.5 shadow-xs">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-500 flex items-center justify-center">
-                              <Gauge className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-md bg-violet-500/10 text-violet-500 flex items-center justify-center">
+                              <Gauge className="w-3 h-3" />
                             </div>
                             <div>
-                              <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 block">CFG Guidance Scale</span>
-                              <span className="text-[10px] text-zinc-400 font-mono">
+                              <span className="text-[11px] font-mono font-bold text-zinc-800 dark:text-zinc-200 block">CFG Guidance Scale</span>
+                              <span className="text-[9.5px] text-zinc-400 font-mono">
                                 {cfgScale < 6 ? "Creative Freedom" : cfgScale <= 9 ? "Balanced Realism" : "Strict Prompt Match"}
                               </span>
                             </div>
                           </div>
-                          <span className="px-2.5 py-1 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400 font-mono font-bold text-xs border border-violet-500/20 shadow-2xs">
+                          <span className="px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-600 dark:text-violet-400 font-mono font-bold text-[11px] border border-violet-500/20 shadow-2xs">
                             {cfgScale.toFixed(1)}
                           </span>
                         </div>
@@ -3617,21 +3612,21 @@ export default function ImageStudioPage() {
                           step="0.5"
                           value={cfgScale}
                           onChange={(e) => setCfgScale(Number(e.target.value))}
-                          className="w-full accent-violet-500 cursor-pointer h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg transition-all"
+                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg transition-all"
                         />
-                        <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                        <div className="flex items-center justify-between gap-1 pt-0.5">
                           {[
-                            { label: "5.0 Creative", val: 5.0 },
-                            { label: "7.5 Optimal", val: 7.5 },
-                            { label: "10.0 Detailed", val: 10.0 },
-                            { label: "14.0 Strict", val: 14.0 },
+                            { label: "5.0", val: 5.0 },
+                            { label: "7.5", val: 7.5 },
+                            { label: "10.0", val: 10.0 },
+                            { label: "14.0", val: 14.0 },
                           ].map((item) => (
                             <button
                               key={item.label}
                               type="button"
                               onClick={() => setCfgScale(item.val)}
                               className={cn(
-                                "flex-1 py-1.5 rounded-lg text-[10px] font-mono transition-all cursor-pointer border text-center font-semibold",
+                                "flex-1 py-1 rounded-md text-[9.5px] font-mono transition-all cursor-pointer border text-center font-semibold",
                                 cfgScale === item.val
                                   ? "bg-violet-500/20 border-violet-500/40 text-violet-600 dark:text-violet-300 font-bold shadow-2xs"
                                   : "bg-zinc-50 dark:bg-white/[0.03] border-black/[0.05] dark:border-white/[0.05] text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100"
@@ -3644,20 +3639,20 @@ export default function ImageStudioPage() {
                       </div>
 
                       {/* 2. Sampling Steps Card */}
-                      <div className="p-4 rounded-2xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:border-emerald-500/30 transition-all space-y-3 shadow-sm">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 dark:hover:border-emerald-500/30 transition-all space-y-1.5 shadow-xs">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                              <Layers className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                              <Layers className="w-3 h-3" />
                             </div>
                             <div>
-                              <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 block">Sampling Iterations</span>
-                              <span className="text-[10px] text-zinc-400 font-mono">
-                                {samplingSteps <= 20 ? "Fast Turbo (~2s)" : samplingSteps <= 35 ? "Studio Quality (~4s)" : "Ultra Masterpiece (~7s)"}
+                              <span className="text-[11px] font-mono font-bold text-zinc-800 dark:text-zinc-200 block">Sampling Iterations</span>
+                              <span className="text-[9.5px] text-zinc-400 font-mono">
+                                {samplingSteps <= 20 ? "Fast Turbo" : samplingSteps <= 35 ? "Studio Quality" : "Ultra Masterpiece"}
                               </span>
                             </div>
                           </div>
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs border border-emerald-500/20 shadow-2xs">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[11px] border border-emerald-500/20 shadow-2xs">
                             {samplingSteps} steps
                           </span>
                         </div>
@@ -3668,13 +3663,13 @@ export default function ImageStudioPage() {
                           step="1"
                           value={samplingSteps}
                           onChange={(e) => setSamplingSteps(Number(e.target.value))}
-                          className="w-full accent-emerald-500 cursor-pointer h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg transition-all"
+                          className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg transition-all"
                         />
-                        <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                        <div className="flex items-center justify-between gap-1 pt-0.5">
                           {[
                             { label: "15 Fast", val: 15 },
-                            { label: "25 Balanced", val: 25 },
-                            { label: "35 Studio", val: 35 },
+                            { label: "25 Bal", val: 25 },
+                            { label: "35 Std", val: 35 },
                             { label: "50 Max", val: 50 },
                           ].map((item) => (
                             <button
@@ -3682,7 +3677,7 @@ export default function ImageStudioPage() {
                               type="button"
                               onClick={() => setSamplingSteps(item.val)}
                               className={cn(
-                                "flex-1 py-1.5 rounded-lg text-[10px] font-mono transition-all cursor-pointer border text-center font-semibold",
+                                "flex-1 py-1 rounded-md text-[9.5px] font-mono transition-all cursor-pointer border text-center font-semibold",
                                 samplingSteps === item.val
                                   ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-600 dark:text-emerald-300 font-bold shadow-2xs"
                                   : "bg-zinc-50 dark:bg-white/[0.03] border-black/[0.05] dark:border-white/[0.05] text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100"
@@ -3695,20 +3690,20 @@ export default function ImageStudioPage() {
                       </div>
 
                       {/* 3. Variation Drift & Resemblance Card (Denoising Strength) */}
-                      <div className="p-4 rounded-2xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-amber-500/30 dark:hover:border-amber-500/30 transition-all space-y-3 shadow-sm">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-amber-500/30 dark:hover:border-amber-500/30 transition-all space-y-1.5 shadow-xs">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                              <RefreshCw className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-md bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                              <RefreshCw className="w-3 h-3" />
                             </div>
                             <div>
-                              <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 block">Variation Drift / Likeness</span>
-                              <span className="text-[10px] text-zinc-400 font-mono">
-                                {Math.round((1 - variationStrength) * 100)}% Resemblance to Reference
+                              <span className="text-[11px] font-mono font-bold text-zinc-800 dark:text-zinc-200 block">Variation Drift</span>
+                              <span className="text-[9.5px] text-zinc-400 font-mono">
+                                {Math.round((1 - variationStrength) * 100)}% Resemblance
                               </span>
                             </div>
                           </div>
-                          <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-bold text-xs border border-amber-500/20 shadow-2xs">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-bold text-[11px] border border-amber-500/20 shadow-2xs">
                             {variationStrength.toFixed(2)}
                           </span>
                         </div>
@@ -3719,9 +3714,9 @@ export default function ImageStudioPage() {
                           step="0.05"
                           value={variationStrength}
                           onChange={(e) => setVariationStrength(Number(e.target.value))}
-                          className="w-full accent-amber-500 cursor-pointer h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg transition-all"
+                          className="w-full accent-amber-500 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg transition-all"
                         />
-                        <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                        <div className="flex items-center justify-between gap-1 pt-0.5">
                           {[
                             { label: "Subtle (0.35)", val: 0.35 },
                             { label: "Balanced (0.65)", val: 0.65 },
@@ -3732,7 +3727,7 @@ export default function ImageStudioPage() {
                               type="button"
                               onClick={() => setVariationStrength(item.val)}
                               className={cn(
-                                "flex-1 py-1.5 rounded-lg text-[10px] font-mono transition-all cursor-pointer border text-center font-semibold",
+                                "flex-1 py-1 rounded-md text-[9.5px] font-mono transition-all cursor-pointer border text-center font-semibold",
                                 Math.abs(variationStrength - item.val) < 0.03
                                   ? "bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-300 font-bold shadow-2xs"
                                   : "bg-zinc-50 dark:bg-white/[0.03] border-black/[0.05] dark:border-white/[0.05] text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100"
@@ -3745,105 +3740,105 @@ export default function ImageStudioPage() {
                       </div>
 
                       {/* 4. Style & Perspective Exploration Toggle */}
-                      <div className="p-4 rounded-2xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-sky-500/30 dark:hover:border-sky-500/30 transition-all flex flex-col justify-between space-y-3 shadow-sm">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] hover:border-sky-500/30 dark:hover:border-sky-500/30 transition-all flex flex-col justify-between space-y-1.5 shadow-xs">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                              <Camera className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-md bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                              <Camera className="w-3 h-3" />
                             </div>
                             <div>
-                              <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 block">Perspective & Orbit Exploration</span>
-                              <span className="text-[10px] text-zinc-400 font-mono">Dynamic multi-angle camera shifts</span>
+                              <span className="text-[11px] font-mono font-bold text-zinc-800 dark:text-zinc-200 block">Perspective Exploration</span>
+                              <span className="text-[9.5px] text-zinc-400 font-mono">Dynamic multi-angle camera</span>
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => setStyleExploration((p) => !p)}
                             className={cn(
-                              "px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer border shadow-2xs flex items-center gap-1.5",
+                              "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer border shadow-2xs flex items-center gap-1",
                               styleExploration
                                 ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                                 : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border-zinc-300 dark:border-zinc-700"
                             )}
                           >
-                            <span className={cn("w-2 h-2 rounded-full", styleExploration ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
+                            <span className={cn("w-1.5 h-1.5 rounded-full", styleExploration ? "bg-emerald-500 animate-pulse" : "bg-zinc-400")} />
                             <span>{styleExploration ? "Active" : "Locked"}</span>
                           </button>
                         </div>
-                        <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-jakarta leading-relaxed">
                           {styleExploration
-                            ? "Generative engine samples multiple camera perspectives and studio lighting angles while holding facial likeness constant."
-                            : "Camera perspective is strictly locked to match the reference angle and framing."}
+                            ? "Samples diverse camera angles while holding facial identity constant."
+                            : "Camera perspective is strictly locked to match reference."}
                         </p>
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <span className="text-[9.5px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.04] text-zinc-500">Frontal Studio</span>
-                          <span className="text-[9.5px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.04] text-zinc-500">45° Portrait</span>
-                          <span className="text-[9.5px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.04] text-zinc-500">Rim Light Orbit</span>
+                        <div className="flex items-center gap-1 pt-0.5">
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-white/[0.04] text-zinc-500">Frontal</span>
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-white/[0.04] text-zinc-500">45° Portrait</span>
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-white/[0.04] text-zinc-500">Rim Orbit</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Row: Seed Randomizer & Save Preset */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.06]">
                       {/* Seed Control */}
-                      <div className="p-3.5 rounded-2xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] space-y-2 shadow-sm">
-                        <div className="flex items-center justify-between text-[11px] font-mono font-bold">
-                          <span className="text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 uppercase">
-                            <Dices className="w-3.5 h-3.5 text-indigo-500" />
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5 shadow-xs">
+                        <div className="flex items-center justify-between text-[10.5px] font-mono font-bold">
+                          <span className="text-zinc-700 dark:text-zinc-300 flex items-center gap-1 uppercase">
+                            <Dices className="w-3 h-3 text-indigo-500" />
                             <span>Deterministic Seed</span>
                           </span>
-                          <span className={cn("text-[10px] font-mono px-2 py-0.5 rounded-md", seed ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-400")}>
-                            {seed ? `Locked: #${seed}` : "Auto-Random"}
+                          <span className={cn("text-[9.5px] font-mono px-1.5 py-0.2 rounded-md", seed ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-400")}>
+                            {seed ? `#${seed}` : "Auto"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <input
                             type="text"
                             value={seed}
                             onChange={(e) => setSeed(e.target.value)}
-                            placeholder="Enter seed or click Roll..."
-                            className="flex-1 min-w-0 bg-zinc-50 dark:bg-[#1a1a28] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
+                            placeholder="Enter seed or roll..."
+                            className="flex-1 min-w-0 bg-zinc-50 dark:bg-[#1a1a28] border border-black/[0.08] dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                           />
                           <button
                             type="button"
                             onClick={() => setSeed(String(Math.floor(Math.random() * 899999999) + 100000000))}
-                            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-xs font-mono font-bold transition-all cursor-pointer shadow-md shadow-indigo-500/20 active:scale-95 shrink-0 flex items-center gap-1.5"
+                            className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-xs font-mono font-bold transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 flex items-center gap-1"
                             title="Generate Random Seed"
                           >
-                            <Dices className="w-3.5 h-3.5 animate-spin-once" />
-                            <span>Roll Dice</span>
+                            <Dices className="w-3 h-3 animate-spin-once" />
+                            <span>Roll</span>
                           </button>
                           {seed && (
                             <button
                               type="button"
                               onClick={() => setSeed("")}
-                              className="p-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] text-zinc-400 hover:text-zinc-700 dark:hover:text-white cursor-pointer transition-colors"
+                              className="p-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] text-zinc-400 hover:text-zinc-700 dark:hover:text-white cursor-pointer transition-colors"
                               title="Clear Seed"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-3 h-3" />
                             </button>
                           )}
                         </div>
                       </div>
 
                       {/* Save Preset */}
-                      <div className="p-3.5 rounded-2xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] space-y-2 shadow-sm">
-                        <div className="flex items-center justify-between text-[11px] font-mono font-bold">
-                          <span className="text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 uppercase">
-                            <Bookmark className="w-3.5 h-3.5 text-pink-500" />
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-[#13131e] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5 shadow-xs">
+                        <div className="flex items-center justify-between text-[10.5px] font-mono font-bold">
+                          <span className="text-zinc-700 dark:text-zinc-300 flex items-center gap-1 uppercase">
+                            <Bookmark className="w-3 h-3 text-pink-500" />
                             <span>Preset Profiles</span>
                           </span>
-                          <span className="text-[10px] text-zinc-400 font-mono">
+                          <span className="text-[9.5px] text-zinc-400 font-mono">
                             {savedPresetsList.length} saved
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <input
                             type="text"
                             value={presetName}
                             onChange={(e) => setPresetName(e.target.value)}
-                            placeholder="Save current setup (e.g. Master Portrait)..."
-                            className="flex-1 min-w-0 bg-zinc-50 dark:bg-[#1a1a28] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-2 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
+                            placeholder="Preset name..."
+                            className="flex-1 min-w-0 bg-zinc-50 dark:bg-[#1a1a28] border border-black/[0.08] dark:border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                           />
                           <button
                             type="button"
@@ -3882,25 +3877,25 @@ export default function ImageStudioPage() {
                                 alert("Failed to save preset to local workspace.");
                               }
                             }}
-                            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-mono text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-md active:scale-95 flex items-center gap-1.5"
+                            className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-mono text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-sm active:scale-95 flex items-center gap-1"
                           >
-                            <Bookmark className="w-3.5 h-3.5" />
+                            <Bookmark className="w-3 h-3" />
                             <span>Save</span>
                           </button>
                         </div>
 
                         {/* Quick-Load Presets List */}
                         {savedPresetsList.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <span className="text-[10px] font-mono text-zinc-400">Apply:</span>
+                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                            <span className="text-[9.5px] font-mono text-zinc-400">Apply:</span>
                             {savedPresetsList.map((p) => (
                               <div
                                 key={p.id}
                                 onClick={() => handleLoadPreset(p)}
-                                className="group flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-emerald-500/15 dark:bg-white/[0.04] dark:hover:bg-emerald-500/20 border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 text-zinc-700 hover:text-emerald-600 dark:text-zinc-300 dark:hover:text-emerald-300 text-[10.5px] font-mono cursor-pointer transition-all shadow-2xs"
+                                className="group flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-100 hover:bg-emerald-500/15 dark:bg-white/[0.04] dark:hover:bg-emerald-500/20 border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/30 text-zinc-700 hover:text-emerald-600 dark:text-zinc-300 dark:hover:text-emerald-300 text-[10px] font-mono cursor-pointer transition-all shadow-2xs"
                                 title={`Click to apply: CFG ${p.cfgScale}, Steps ${p.samplingSteps}, Drift ${p.variationStrength}`}
                               >
-                                <Bookmark className="w-3 h-3 text-emerald-500 shrink-0" />
+                                <Bookmark className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
                                 <span className="font-semibold">{p.name}</span>
                                 <button
                                   type="button"
@@ -3908,7 +3903,7 @@ export default function ImageStudioPage() {
                                   className="text-zinc-400 hover:text-rose-500 ml-0.5 p-0.5 cursor-pointer opacity-70 group-hover:opacity-100 transition-opacity"
                                   title="Delete Preset"
                                 >
-                                  <X className="w-2.5 h-2.5" />
+                                  <X className="w-2 h-2" />
                                 </button>
                               </div>
                             ))}
@@ -3920,15 +3915,15 @@ export default function ImageStudioPage() {
                 </div>
               </div>
 
-              {/* Primary Action Footer: Agentic 10 Poses + Generate Variations */}
-              <div className="mt-4 pt-4 border-t border-black/[0.08] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-3 bg-zinc-50/90 dark:bg-white/[0.02] p-3.5 sm:p-4 rounded-2xl border border-black/[0.04] dark:border-white/[0.04]">
+              {/* Primary Action Footer: Agentic + Generate Variations */}
+              <div className="mt-3 pt-3 border-t border-black/[0.08] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-2.5 bg-zinc-50/90 dark:bg-white/[0.02] p-2.5 sm:p-3 rounded-xl border border-black/[0.04] dark:border-white/[0.04]">
                 {/* Left Meta Information / Status */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-xs font-mono font-semibold">
-                    <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-xs font-mono font-semibold">
+                    <Sparkles className="w-3 h-3 text-violet-500 shrink-0" />
                     <span>Reference: {refImageUrl ? (refImageUrl.split("/").pop()?.slice(0, 16) || "Active Face") : (refImages.length > 0 ? `${refImages.length} Image(s)` : "None (Prompt Mode)")}</span>
                   </div>
-                  <div className="flex items-center gap-1 bg-white dark:bg-zinc-800/80 px-2.5 py-1 rounded-lg border border-black/[0.06] dark:border-white/[0.06] text-[11px] font-mono text-zinc-600 dark:text-zinc-300">
+                  <div className="flex items-center gap-1 bg-white dark:bg-zinc-800/80 px-2 py-0.5 rounded-md border border-black/[0.06] dark:border-white/[0.06] text-xs font-mono text-zinc-600 dark:text-zinc-300">
                     <span>Batch:</span>
                     {[1, 2, 4].map((cnt) => (
                       <button
@@ -3947,13 +3942,13 @@ export default function ImageStudioPage() {
                     ))}
                   </div>
                   <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400 font-semibold">
-                    Cost: ₹{currentTotalSpendInr.toFixed(2)} (${currentTotalSpendUsd.toFixed(3)})
+                    Cost: ₹{currentTotalSpendInr.toFixed(2)}
                   </span>
                 </div>
 
-                {/* Right Primary Action Buttons: Agentic (10 Poses) + Generate Variations */}
-                <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto w-full sm:w-auto justify-end">
-                  {/* Agentic Multi-Pose Action Button */}
+                {/* Right Primary Action Buttons: Agentic + Generate Variations */}
+                <div className="flex items-center gap-2 shrink-0 ml-auto w-full sm:w-auto justify-end">
+                  {/* Agentic Action Button */}
                   <button
                     type="button"
                     onClick={() => {
@@ -3964,18 +3959,15 @@ export default function ImageStudioPage() {
                       }
                     }}
                     disabled={isPlanningAgentic || isGeneratingAgentic || loading}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer active:scale-95 whitespace-nowrap agentic-moving-border shadow-lg shadow-violet-500/10 hover:shadow-violet-500/25"
-                    title="Creative Director Agent: automatically formulate a 10-pose character consistency plan"
+                    className="flex-1 sm:flex-initial flex items-center justify-center px-3.5 py-1.5 rounded-lg text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer active:scale-95 whitespace-nowrap agentic-moving-border shadow-sm"
+                    title="Agentic Workflow"
                   >
-                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
                     <span>
                       {isPlanningAgentic
-                        ? "Planning 10 Poses..."
+                        ? "Planning..."
                         : isGeneratingAgentic
-                        ? "Rendering Poses..."
-                        : agenticPlan
-                        ? `Review Plan (${agenticPlan.target_count || 10})`
-                        : "Agentic (10 Poses)"}
+                        ? "Rendering..."
+                        : "Agentic"}
                     </span>
                   </button>
 
@@ -3989,16 +3981,16 @@ export default function ImageStudioPage() {
                       generateBulkVariations();
                     }}
                     disabled={loading || loadingVariations || (!refImageUrl && refImages.length === 0 && !activeCharacter)}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/25 active:scale-95 whitespace-nowrap"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap"
                   >
                     {loadingVariations ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                         <span>Synthesizing...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 text-emerald-200" />
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
                         <span>Generate Variations ({batchSize}x)</span>
                       </>
                     )}
@@ -4119,7 +4111,15 @@ export default function ImageStudioPage() {
                     isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]",
                     "w-[94%] sm:w-[88%] md:w-[310px] lg:w-[320px] xl:w-[325px] max-w-[325px]"
                   )
-                : cn("bottom-6 right-0 mx-auto w-[96%] max-w-4xl xl:max-w-5xl space-y-2.5", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"),
+                : cn(
+                    "bottom-6 right-0 mx-auto space-y-2",
+                    dockWidthMode === "compact"
+                      ? "w-[94%] max-w-2xl xl:max-w-3xl"
+                      : dockWidthMode === "full"
+                      ? "w-[98%] max-w-[1680px]"
+                      : "w-[96%] max-w-4xl xl:max-w-5xl",
+                    isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
+                  ),
               (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
             )}
           >
@@ -4128,60 +4128,64 @@ export default function ImageStudioPage() {
               {(loading || loadingVariations) && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
               <span>{loading || loadingVariations ? "Active Diffusion Synthesis in Progress..." : studioMode === "image_editor" ? "Precision Image Studio Canvas" : studioMode === "image_variations" ? "Image Variations Studio" : "Diffusion Prompt & Model Dock"}</span>
             </span>
-            <button
-              type="button"
-              onClick={() => setPromptDockCollapsed(true)}
-              className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white cursor-pointer transition-colors px-2 py-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
-              title="Collapse Prompt Bar to view full canvas"
-            >
-              <span>Collapse Bar</span>
-              <ChevronDown className="w-3 h-3" />
-            </button>
-          </div>
 
-          {/* Agentic Character & Multi-Pose Smart Intent Banner */}
-          {(isAgenticPrompt || activeCharacter || refImageUrl || refImages.length > 0 || studioMode === "image_variations") && (
-            <div className="shrink-0 p-2.5 px-3.5 rounded-2xl bg-violet-500/[0.07] dark:bg-violet-500/10 border border-violet-500/20 flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <Sparkles className="w-4 h-4 text-violet-500 shrink-0 animate-pulse" />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-heading font-extrabold text-zinc-950 dark:text-white truncate">
-                      Agentic Multi-Pose & Character Consistency
-                    </span>
-                    {activeCharacter && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0 font-bold">
-                        Locked: {activeCharacter.name}
-                      </span>
+            <div className="flex items-center gap-1.5">
+              {!isShiftedLeft && (
+                <div className="flex items-center bg-black/5 dark:bg-white/5 rounded-lg p-0.5 border border-black/5 dark:border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setDockWidthMode("compact")}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[9.5px] font-mono transition-all cursor-pointer",
+                      dockWidthMode === "compact"
+                        ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold"
+                        : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
                     )}
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                    {agenticPlan ? `Choreographed ${agenticPlan.target_count || 10} consistent camera angles & poses` : "Creative Director Agent: Multi-pose breakdown from your prompt"}
-                  </p>
+                    title="Compact width"
+                  >
+                    Compact
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDockWidthMode("standard")}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[9.5px] font-mono transition-all cursor-pointer",
+                      dockWidthMode === "standard"
+                        ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold"
+                        : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
+                    )}
+                    title="Standard width"
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDockWidthMode("full")}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[9.5px] font-mono transition-all cursor-pointer flex items-center gap-1",
+                      dockWidthMode === "full"
+                        ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold"
+                        : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
+                    )}
+                    title="Full width (expand left & right)"
+                  >
+                    <span>Full Width</span>
+                    <Maximize2 className="w-2.5 h-2.5" />
+                  </button>
                 </div>
-              </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => {
-                  if (agenticPlan) {
-                    setShowAgenticDrawer(true);
-                  } else {
-                    handlePlanAgenticPoses();
-                  }
-                }}
-                disabled={isPlanningAgentic}
-                className="shrink-0 flex items-center justify-center px-4 py-1.5 rounded-xl text-white text-xs font-heading font-extrabold cursor-pointer disabled:opacity-50 transition-all active:scale-[0.98] agentic-moving-border"
+                onClick={() => setPromptDockCollapsed(true)}
+                className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-black dark:hover:text-white cursor-pointer transition-colors px-2 py-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                title="Collapse Prompt Bar to view full canvas"
               >
-                <span>
-                  {isPlanningAgentic
-                    ? "Planning..."
-                    : agenticPlan
-                    ? `Review Plan (${agenticPlan.target_count || 10})`
-                    : "Plan 10 Poses"}
-                </span>
+                <span>Collapse Bar</span>
+                <ChevronDown className="w-3 h-3" />
               </button>
             </div>
-          )}
+          </div>
 
           {/* Prompt Engineer 6 Quick-Modifier Bar */}
           <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
@@ -4248,7 +4252,7 @@ export default function ImageStudioPage() {
           {/* Row 1: Professional Studio Prompt Input Bar */}
           <div className={cn(
             "relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-2.5 space-y-2",
-            isShiftedLeft ? "flex-1 min-h-[220px] flex flex-col justify-between" : "shrink-0",
+            isShiftedLeft ? "flex-1 min-h-[120px] flex flex-col justify-between" : "shrink-0",
             enhancingPrompt
               ? "border-violet-500/60 ring-2 ring-violet-500/30 shadow-[0_0_22px_rgba(139,92,246,0.25)] dark:bg-violet-950/15"
               : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
@@ -4299,7 +4303,7 @@ export default function ImageStudioPage() {
               </div>
             )}
 
-            <div className={cn("relative w-full flex items-start", isShiftedLeft ? "flex-1 min-h-[180px]" : "min-h-[155px]")}>
+            <div className={cn("relative w-full flex items-start", isShiftedLeft ? "flex-1 min-h-[80px]" : "min-h-[56px]")}>
               {/* @ Mention Autocomplete Popover with Vault Assets & Direct Device Upload */}
               <MentionReferencePopover
                 isOpen={mentionMenuOpen}
@@ -4357,7 +4361,7 @@ export default function ImageStudioPage() {
                 }
                 className={cn(
                   "w-full bg-transparent border-none px-1.5 py-2 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none leading-relaxed overflow-y-auto custom-scrollbar",
-                  isShiftedLeft ? "flex-1 min-h-[170px]" : "min-h-[145px] max-h-72"
+                  isShiftedLeft ? "flex-1 min-h-[80px]" : "min-h-[56px] max-h-48"
                 )}
               />
             </div>
@@ -4894,12 +4898,12 @@ export default function ImageStudioPage() {
             </div>
           </div>
 
-          {/* Action CTAs Group: Agentic (10 Poses) + Generate side-by-side */}
+          {/* Action CTAs Group: Agentic + Generate side-by-side */}
           <div className={cn(
             "flex items-center gap-2",
             isShiftedLeft ? "w-full sticky bottom-0 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-md pt-2 pb-0.5 z-20" : "shrink-0 ml-auto"
           )}>
-            {/* Agentic Multi-Pose Action Button */}
+            {/* Agentic Action Button */}
             <button
               type="button"
               onClick={() => {
@@ -4911,20 +4915,17 @@ export default function ImageStudioPage() {
               }}
               disabled={isPlanningAgentic || isGeneratingAgentic || loading}
               className={cn(
-                "flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl text-white font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer active:scale-95 whitespace-nowrap agentic-moving-border shadow-sm",
+                "flex items-center justify-center px-3.5 py-1.5 rounded-lg text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer active:scale-95 whitespace-nowrap agentic-moving-border shadow-sm",
                 isShiftedLeft ? "flex-1 min-w-0" : "shrink-0"
               )}
-              title="Creative Director Agent: formulate a 10-pose character consistency plan"
+              title="Agentic Workflow"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
               <span className="truncate">
                 {isPlanningAgentic
                   ? "Planning..."
                   : isGeneratingAgentic
                   ? "Rendering..."
-                  : agenticPlan
-                  ? `Review (${agenticPlan.target_count || 10})`
-                  : "Agentic (10 Poses)"}
+                  : "Agentic"}
               </span>
             </button>
 
@@ -4934,20 +4935,20 @@ export default function ImageStudioPage() {
               onClick={requestImageConfirm}
               disabled={loading || loadingVariations || (!prompt.trim() && studioMode === "text_to_image")}
               className={cn(
-                "flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-extrabold text-xs sm:text-sm tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap",
+                "flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:bg-zinc-300 dark:disabled:bg-zinc-800 disabled:text-zinc-500 dark:disabled:text-zinc-500 font-heading font-bold text-xs tracking-tight transition-all cursor-pointer shadow-sm active:scale-95 whitespace-nowrap",
                 isShiftedLeft ? "flex-1 min-w-0" : "shrink-0"
               )}
             >
               {loading || loadingVariations ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                   <span className="truncate">Synthesizing...</span>
                 </>
               ) : (
                 <>
                   <span>Generate</span>
-                  <span className="font-mono text-xs font-semibold opacity-90 border-l border-white/20 pl-2 hidden sm:inline">
-                    ₹{currentTotalSpendInr.toFixed(2)} (${currentTotalSpendUsd.toFixed(3)})
+                  <span className="font-mono text-[11px] font-semibold opacity-90 border-l border-white/20 pl-1.5 hidden sm:inline">
+                    ₹{currentTotalSpendInr.toFixed(2)}
                   </span>
                 </>
               )}
@@ -4990,7 +4991,7 @@ export default function ImageStudioPage() {
                 </div>
                 <div>
                   <h3 className="font-heading font-bold text-sm sm:text-base text-zinc-950 dark:text-white">
-                    Agentic Multi-Pose Plan ({agenticPlan.target_count || 10} Distinct Shots)
+                    Agentic Workflow Plan
                   </h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     Character: {agenticPlan.character_name || "Locked Persona Identity"}
@@ -5070,7 +5071,7 @@ export default function ImageStudioPage() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-extrabold shadow-md shadow-violet-600/20 transition-all cursor-pointer active:scale-95"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Execute Batch Generation ({agenticPlan.target_count || 10} Poses)</span>
+                <span>Execute Agentic Generation</span>
               </button>
             </div>
           </div>
