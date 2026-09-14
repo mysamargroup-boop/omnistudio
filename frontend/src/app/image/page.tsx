@@ -4135,7 +4135,7 @@ export default function ImageStudioPage() {
               "fixed z-[99990] bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
               isShiftedLeft
                 ? cn("bottom-4 sm:bottom-5 right-auto mx-0 left-3 sm:left-4", isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]", "w-auto max-w-sm sm:max-w-md")
-                : cn("bottom-6 right-0 mx-auto w-[96%] max-w-5xl xl:max-w-6xl 2xl:max-w-7xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
+                : cn("bottom-6 right-0 mx-auto w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -4178,10 +4178,10 @@ export default function ImageStudioPage() {
                 : cn(
                     "bottom-6 right-0 mx-auto space-y-2",
                     dockWidthMode === "compact"
-                      ? "w-[94%] max-w-3xl xl:max-w-4xl"
+                      ? "w-[88%] max-w-2xl xl:max-w-3xl"
                       : dockWidthMode === "full"
-                      ? "w-[98%] max-w-[1680px]"
-                      : "w-[96%] max-w-5xl xl:max-w-6xl 2xl:max-w-7xl",
+                      ? "w-[96%] max-w-6xl 2xl:max-w-7xl"
+                      : "w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl",
                     isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
                   ),
               (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
