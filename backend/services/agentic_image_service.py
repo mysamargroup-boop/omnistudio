@@ -176,11 +176,11 @@ def _synthesize_local_pose_variation(
     pose: Dict[str, Any]
 ) -> bool:
     """
-    Synthesizes a distinct, photorealistic pose variation locally using PIL:
-    - Smart framing crops (close-up portrait 85mm, medium 50mm, wide action 35mm)
-    - Studio relighting (softbox, golden hour, neon cyberpunk, chiaroscuro, warm sunset, twilight)
-    - Micro-texture face sharpness restoration
-    - Cinematic tone curves
+    Ultra-fast C-accelerated local pose synthesis:
+    - Bilinear framing crops
+    - Colorized gradient blends and dynamic tonal shifts
+    - Micro-texture sharpness restoration
+    - Fast PNG encoding (compress_level=1)
     """
     try:
         from PIL import Image, ImageEnhance, ImageFilter, ImageOps
@@ -190,108 +190,80 @@ def _synthesize_local_pose_variation(
         # 1. Framing Crop based on pose template index
         framing = pose.get("framing", "").lower()
         if "close-up" in framing or "macro" in framing or pose_idx in [0, 4, 10]:
-            # Close-up 85mm / Tight Portrait: 86% crop centered vertically on face
             cw, ch = int(w * 0.86), int(h * 0.86)
             left = (w - cw) // 2
             top = int((h - ch) * 0.25)
-            frame = base.crop((left, top, left + cw, top + ch)).resize((w, h), Image.Resampling.LANCZOS)
+            frame = base.crop((left, top, left + cw, top + ch)).resize((w, h), Image.Resampling.BILINEAR)
         elif "low-angle" in framing or "hero" in framing or pose_idx in [3, 5]:
-            # Heroic / Low-angle: slight lower-third shift
             cw, ch = int(w * 0.92), int(h * 0.92)
             left = (w - cw) // 2
             top = int((h - ch) * 0.65)
-            frame = base.crop((left, top, left + cw, top + ch)).resize((w, h), Image.Resampling.LANCZOS)
+            frame = base.crop((left, top, left + cw, top + ch)).resize((w, h), Image.Resampling.BILINEAR)
         elif "medium" in framing or pose_idx in [1, 2, 6, 7]:
-            # Balanced medium shot: 94% crop
             cw, ch = int(w * 0.94), int(h * 0.94)
             left = (w - cw) // 2
             top = int((h - ch) * 0.4)
-            frame = base.crop((left, top, left + cw, top + ch)).resize((w, h), Image.Resampling.LANCZOS)
+            frame = base.crop((left, top, left + cw, top + ch)).resize((w, h), Image.Resampling.BILINEAR)
         else:
-            # Full frame
             frame = base.copy()
 
-        # 2. Lighting & Color Grading Presets
+        # 2. C-Accelerated Color & Lighting Shifts
         preset_idx = pose_idx % 10
+        gray = ImageOps.grayscale(frame)
+
         if preset_idx == 0:
             # Frontal Portrait: Softbox neutral high-key, micro-texture clarity
-            sharp = frame.filter(ImageFilter.UnsharpMask(radius=2.0, percent=175, threshold=3))
+            sharp = frame.filter(ImageFilter.UnsharpMask(radius=1.4, percent=140, threshold=2))
             bright = ImageEnhance.Brightness(sharp).enhance(1.06)
-            styled = ImageEnhance.Contrast(bright).enhance(1.12)
+            styled = ImageEnhance.Contrast(bright).enhance(1.1)
 
         elif preset_idx == 1:
-            # Candid Walking: Golden hour warm directional sun rays
-            gw, gh = 128, 128
-            sun_overlay = Image.new("RGB", (gw, gh), (0, 0, 0))
-            for y in range(gh):
-                for x in range(gw):
-                    dist = math.sqrt((x / gw) ** 2 + (y / gh) ** 2)
-                    factor = max(0.0, 1.0 - dist * 0.8) * 0.4
-                    sun_overlay.putpixel((x, y), (int(min(255, 255 * factor)), int(min(255, 185 * factor)), int(min(255, 65 * factor))))
-            overlay = sun_overlay.resize((w, h), Image.Resampling.BILINEAR)
-            enhanced = ImageEnhance.Color(frame).enhance(1.2)
-            styled = Image.blend(enhanced, overlay, 0.22)
+            # Candid Walking: Golden hour warm sunlight caustics
+            sun_tint = ImageOps.colorize(gray, "#1a0800", "#ffe0a0")
+            styled = Image.blend(ImageEnhance.Color(frame).enhance(1.15), sun_tint, 0.22)
 
         elif preset_idx == 2:
-            # Relaxed Seated: Warm sunset twilight tone
-            color = ImageEnhance.Color(frame).enhance(1.25)
-            tint = ImageOps.colorize(ImageOps.grayscale(frame), "#250800", "#ffaa50")
-            styled = Image.blend(color, tint, 0.22)
+            # Relaxed Seated: Warm sunset twilight warmth
+            sunset_tint = ImageOps.colorize(gray, "#280800", "#ffaa50")
+            styled = Image.blend(ImageEnhance.Color(frame).enhance(1.2), sunset_tint, 0.24)
 
         elif preset_idx == 3:
-            # Dynamic Hero: Dramatic chiaroscuro high-contrast rim contours
-            contrast = ImageEnhance.Contrast(frame).enhance(1.35)
-            styled = ImageEnhance.Brightness(contrast).enhance(0.92)
+            # Dynamic Hero: High-contrast chiaroscuro rim contours
+            contrast = ImageEnhance.Contrast(frame).enhance(1.3)
+            styled = ImageEnhance.Brightness(contrast).enhance(0.94)
 
         elif preset_idx == 4:
-            # Over-the-Shoulder: Cinematic teal & orange backlight
-            gw, gh = 128, 128
-            teal_overlay = Image.new("RGB", (gw, gh), (0, 0, 0))
-            for y in range(gh):
-                for x in range(gw):
-                    factor = max(0.0, 1.0 - (y / gh)) * 0.3
-                    teal_overlay.putpixel((x, y), (int(250 * factor), int(150 * factor), int(80 * factor)))
-            overlay = teal_overlay.resize((w, h), Image.Resampling.BILINEAR)
-            color = ImageEnhance.Color(frame).enhance(1.18)
-            styled = Image.blend(color, overlay, 0.2)
+            # Over-the-Shoulder: Cinematic teal & orange tones
+            teal_orange = ImageOps.colorize(gray, "#002028", "#ffba60")
+            styled = Image.blend(frame, teal_orange, 0.25)
 
         elif preset_idx == 5:
-            # Side Profile: 35mm Silver Halide monochrome noir with deep rich blacks
-            gray = ImageOps.grayscale(frame)
-            contrast_gray = ImageEnhance.Contrast(gray).enhance(1.4)
-            styled = ImageOps.colorize(contrast_gray, "#08080a", "#fcfcfe")
+            # Side Profile: 35mm Silver Halide monochrome noir
+            contrast_gray = ImageEnhance.Contrast(gray).enhance(1.35)
+            styled = ImageOps.colorize(contrast_gray, "#060608", "#f8f8fa")
 
         elif preset_idx == 6:
-            # Laughing / Emotive: Vibrant daylight diffusion, micro-detail clarity
-            sharp = frame.filter(ImageFilter.UnsharpMask(radius=1.8, percent=160, threshold=2))
-            styled = ImageEnhance.Color(sharp).enhance(1.22)
+            # Laughing / Emotive: Vibrant daylight clarity
+            sharp = frame.filter(ImageFilter.UnsharpMask(radius=1.4, percent=140, threshold=2))
+            styled = ImageEnhance.Color(sharp).enhance(1.2)
 
         elif preset_idx == 7:
             # Sitting at Work: Clean window daylight soft diffusion
             bright = ImageEnhance.Brightness(frame).enhance(1.08)
-            styled = ImageEnhance.Contrast(bright).enhance(1.06)
+            styled = ImageEnhance.Contrast(bright).enhance(1.05)
 
         elif preset_idx == 8:
             # Architectural Stance: Kodak Portra 400 analog tone
-            color = ImageEnhance.Color(frame).enhance(1.12)
-            tint = ImageOps.colorize(ImageOps.grayscale(frame), "#101018", "#fff4e6")
-            styled = Image.blend(color, tint, 0.18)
+            portra_tint = ImageOps.colorize(gray, "#121018", "#fff2e2")
+            styled = Image.blend(ImageEnhance.Color(frame).enhance(1.1), portra_tint, 0.2)
 
-        else: # 9: Cinematic Night Lights / Cyberpunk neon reflections
-            gw, gh = 128, 128
-            neon_overlay = Image.new("RGB", (gw, gh), (0, 0, 0))
-            for y in range(gh):
-                for x in range(gw):
-                    left_f = max(0.0, 1.0 - (x / gw)) * 0.28
-                    right_f = (x / gw) * 0.28
-                    neon_overlay.putpixel((x, y), (int(min(255, 255 * right_f)), int(min(255, 220 * left_f)), int(min(255, 255 * left_f + 180 * right_f))))
-            overlay = neon_overlay.resize((w, h), Image.Resampling.BILINEAR)
-            contrast = ImageEnhance.Contrast(frame).enhance(1.25)
-            styled = Image.blend(contrast, overlay, 0.24)
+        else: # 9: Neon Cyberpunk reflections
+            neon_tint = ImageOps.colorize(gray, "#180028", "#00e8ff")
+            styled = Image.blend(ImageEnhance.Contrast(frame).enhance(1.2), neon_tint, 0.22)
 
-        # 3. Final Texture Sharpening & Save
-        final = styled.filter(ImageFilter.UnsharpMask(radius=1.2, percent=120, threshold=2))
-        final.save(out_path, format="PNG")
+        # 3. Final Polish & Fast Save
+        final = styled.filter(ImageFilter.UnsharpMask(radius=1.1, percent=110, threshold=2))
+        final.save(out_path, format="PNG", compress_level=1)
         return True
     except Exception as e:
         logger.error("Local pose variation synthesis failed: %s", e)
@@ -411,11 +383,12 @@ async def generate_agentic_poses(
             # Save asset to DB
             try:
                 db_save_asset(
+                    asset_id=f"agentic_{uuid.uuid4().hex[:12]}",
                     asset_type="image",
                     filename=filename,
-                    prompt=prompt,
-                    model=model,
-                    local_path=str(out_path)
+                    url=img_url,
+                    local_path=str(out_path),
+                    metadata={"prompt": prompt, "model": model, "title": pose.get("title", "")}
                 )
             except Exception as dbe:
                 logger.warning("Failed to save pose asset to DB: %s", dbe)
