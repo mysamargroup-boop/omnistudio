@@ -1053,11 +1053,15 @@ async def edit_image(req: ImageEditRequest, request: Request):
 # ─── AI Image Tools Endpoints ───
 
 class ImageToolRequest(BaseModel):
-    image_path: str
+    image_path: Optional[str] = None
+    image_url: Optional[str] = None
     preset: Optional[str] = "golden_hour"
     intensity: Optional[float] = 1.0
     target_aspect: Optional[str] = "16:9"
     model_name: Optional[str] = "u2net"  # u2net (Fast local cached), birefnet-general (SOTA Jewelry), isnet-general-use
+
+    def get_effective_path(self) -> str:
+        return (self.image_path or self.image_url or "").strip()
 
 
 def _save_ai_tool_asset(res: dict, src_name: str, tool_name: str):
@@ -1114,7 +1118,7 @@ async def api_remove_background(req: ImageToolRequest, request: Request):
     """Remove background from image and export transparent PNG with choice of SOTA model"""
     from services.ai_image_tools import remove_background
     try:
-        src = _resolve_tool_image_path(req.image_path)
+        src = _resolve_tool_image_path(req.get_effective_path())
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     chosen_model = req.model_name or "u2net"
@@ -1129,7 +1133,7 @@ async def api_relight(req: ImageToolRequest, request: Request):
     """Apply studio relighting to an image"""
     from services.ai_image_tools import relight_image
     try:
-        src = _resolve_tool_image_path(req.image_path)
+        src = _resolve_tool_image_path(req.get_effective_path())
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(relight_image, src, preset=req.preset or "golden_hour", intensity=req.intensity or 1.0)
@@ -1143,7 +1147,7 @@ async def api_face_restore(req: ImageToolRequest, request: Request):
     """Restore facial micro-textures and sharpness"""
     from services.ai_image_tools import restore_face
     try:
-        src = _resolve_tool_image_path(req.image_path)
+        src = _resolve_tool_image_path(req.get_effective_path())
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(restore_face, src)
@@ -1157,7 +1161,7 @@ async def api_outpaint(req: ImageToolRequest, request: Request):
     """Expand canvas to wide or vertical aspect ratio"""
     from services.ai_image_tools import outpaint_expand
     try:
-        src = _resolve_tool_image_path(req.image_path)
+        src = _resolve_tool_image_path(req.get_effective_path())
     except Exception as e:
         return {"success": False, "error": f"Invalid image path: {e}"}
     res = await asyncio.to_thread(outpaint_expand, src, target_aspect=req.target_aspect or "16:9")
