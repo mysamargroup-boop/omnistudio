@@ -4689,7 +4689,7 @@ function PublishStudioContent() {
         {connectModalPlatform && (
           <div 
             onClick={() => setConnectModalPlatform(null)}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+            className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
           >
             <div 
               onClick={(e) => e.stopPropagation()}
@@ -4755,7 +4755,7 @@ function PublishStudioContent() {
         {showWorkspaceModal && (
           <div 
             onClick={() => setShowWorkspaceModal(false)}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+            className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
           >
             <div 
               onClick={(e) => e.stopPropagation()}
@@ -4831,7 +4831,7 @@ function PublishStudioContent() {
         {showTemplateModal && (
           <div 
             onClick={() => setShowTemplateModal(false)}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+            className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
           >
             <div 
               onClick={(e) => e.stopPropagation()}
@@ -4883,7 +4883,7 @@ function PublishStudioContent() {
         {isVaultModalOpen && (
           <div 
             onClick={() => setIsVaultModalOpen(false)}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 cursor-pointer"
+            className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 cursor-pointer"
           >
             <div 
               onClick={(e) => e.stopPropagation()}

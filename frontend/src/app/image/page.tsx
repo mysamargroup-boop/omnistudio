@@ -682,7 +682,8 @@ export default function ImageStudioPage() {
     setOpticsPopoverOpen(false);
   };
 
-  const isShiftedLeft = showJewellerySuite || studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0;
+  const isShiftedLeft = studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0;
+  const isAnyModalOpen = showJewellerySuite || promptVaultOpen || brandKitModalOpen || howItWorksOpen || socialModalOpen || vaultOpen || confirmModalOpen || lightboxOpen;
 
   // Auto-resize prompt textarea so the full prompt is visible without clipping
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -4132,10 +4133,11 @@ export default function ImageStudioPage() {
           <div
             onClick={() => setPromptDockCollapsed(false)}
             className={cn(
-              "fixed z-[99990] bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
+              "fixed z-40 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
               isShiftedLeft
                 ? cn("bottom-4 sm:bottom-5 right-auto mx-0 left-3 sm:left-4", isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]", "w-auto max-w-sm sm:max-w-md")
-                : cn("bottom-6 right-0 mx-auto w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64")
+                : cn("bottom-6 right-0 mx-auto w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"),
+              isAnyModalOpen && "opacity-0 pointer-events-none invisible"
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -4166,7 +4168,7 @@ export default function ImageStudioPage() {
             ref={dockRef}
             data-lenis-prevent="true"
             className={cn(
-              "fixed z-[99990] bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 sm:p-3.5 transition-all duration-300 pointer-events-auto glass-dock",
+              "fixed z-40 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 sm:p-3.5 transition-all duration-300 pointer-events-auto glass-dock",
               isShiftedLeft
                 ? cn(
                     "top-[118px] sm:top-[120px] bottom-2 sm:bottom-3 flex flex-col justify-start gap-2.5 custom-scrollbar",
@@ -4184,7 +4186,8 @@ export default function ImageStudioPage() {
                       : "w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl",
                     isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
                   ),
-              (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
+              (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40",
+              isAnyModalOpen && "opacity-0 pointer-events-none invisible"
             )}
           >
           <div className="shrink-0 flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">

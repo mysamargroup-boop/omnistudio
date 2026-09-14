@@ -330,7 +330,7 @@ export default function VideoEditorModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200 cursor-pointer"
       onClick={onClose}
     >
       <div
@@ -1413,7 +1413,7 @@ export default function VideoEditorModal({
 
       {/* Vault Audio Picker Modal */}
       {vaultAudioPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
           <div className="w-full max-w-2xl bg-[#0d0d16] border border-white/[0.08] rounded-2xl p-5 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] flex-shrink-0">
               <div className="flex items-center gap-2.5">

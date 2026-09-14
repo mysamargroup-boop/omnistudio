@@ -1424,7 +1424,7 @@ export default function UsagePage() {
       {/* Prompt View Modal */}
       {selectedPromptModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 cursor-pointer"
+          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-sm p-4 cursor-pointer"
           onClick={() => setSelectedPromptModal(null)}
         >
           <div

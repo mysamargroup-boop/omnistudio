@@ -430,7 +430,7 @@ export default function AudioMusicLibraryModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 font-jakarta"
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 font-jakarta"
       onClick={() => {
         stopCurrentAudio();
         onClose();

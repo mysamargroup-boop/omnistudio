@@ -4482,7 +4482,7 @@ function VideoStudioContent() {
       {/* Redesigned Asset Vault Keyframe Picker Modal */}
       {vaultOpen && (
         <div 
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[100000] bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
           onClick={() => setVaultOpen(false)}
         >
           <div 

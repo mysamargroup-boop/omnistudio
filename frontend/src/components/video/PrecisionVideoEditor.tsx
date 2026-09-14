@@ -3148,7 +3148,7 @@ export default function PrecisionVideoEditor({
 
       {/* Asset Vault Video Picker Modal */}
       {vaultPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
           <div className="w-full max-w-3xl bg-[#0d0d16] border border-zinc-800 rounded-2xl p-5 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800 flex-shrink-0">

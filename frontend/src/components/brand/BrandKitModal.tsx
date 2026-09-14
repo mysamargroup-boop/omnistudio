@@ -1190,7 +1190,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
       {/* Multi-Logo Architecture Vertical Info Popup */}
       {showMultiLogoInfo && (
         <div 
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200 cursor-pointer"
           onClick={() => setShowMultiLogoInfo(false)}
         >
           <div 
@@ -1305,7 +1305,7 @@ export default function BrandKitModal({ isOpen, onClose, onApplied }: BrandKitMo
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer overflow-y-auto"
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer overflow-y-auto"
       onClick={onClose}
     >
       <div 

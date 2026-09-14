@@ -1546,7 +1546,7 @@ function PipelineContent() {
 
       {/* ── DIRECTORIAL APPROVAL MODAL POPUP (WHEN PAUSED AT AN APPROVAL GATE) ── */}
       {approvalModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-[#111118] border border-black/[0.1] dark:border-white/[0.1] rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">

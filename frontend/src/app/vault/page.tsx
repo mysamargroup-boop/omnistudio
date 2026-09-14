@@ -1432,7 +1432,7 @@ export default function VaultPage() {
 
         return (
           <div
-            className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-2xl animate-in fade-in duration-200"
+            className="fixed inset-0 z-[100000] flex flex-col bg-black/95 backdrop-blur-2xl animate-in fade-in duration-200"
             onClick={() => setLightboxAsset(null)}
           >
             {/* Lightbox Top Control Bar */}
@@ -1830,7 +1830,7 @@ export default function VaultPage() {
 
       {/* Rename Asset Modal */}
       {renameModalAsset && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             onClick={(e) => e.stopPropagation()}
             className="max-w-md w-full rounded-2xl bg-white dark:bg-[#121218] border border-black/10 dark:border-white/10 p-6 shadow-2xl space-y-4 font-jakarta animate-in fade-in zoom-in-95 duration-200"

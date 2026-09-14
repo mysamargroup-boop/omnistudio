@@ -1701,7 +1701,7 @@ export default function DashboardPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col animate-in fade-in duration-150"
+          className="fixed inset-0 z-[100000] bg-black/90 backdrop-blur-xl flex flex-col animate-in fade-in duration-150"
           onClick={() => setActiveAsset(null)}
         >
           <div
@@ -1830,7 +1830,7 @@ export default function DashboardPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[100000] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={() => setIsMotionRigOpen(false)}
         >
           <div

@@ -184,7 +184,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
       onClick={onClose}
     >
       <div

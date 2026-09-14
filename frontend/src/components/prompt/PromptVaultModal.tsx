@@ -184,7 +184,7 @@ export default function PromptVaultModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
       <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-[#111118] border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.08] dark:border-white/[0.08] bg-zinc-50/70 dark:bg-white/[0.02]">

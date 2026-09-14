@@ -164,7 +164,7 @@ export default function CharacterStudioModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black text-white font-jakarta animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-[100000] flex flex-col bg-black text-white font-jakarta animate-in fade-in duration-200 overflow-y-auto">
       {/* Top Header matching reference image: Back Arrow + "New character" */}
       <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-black/80 backdrop-blur-md sticky top-0 z-20">
         <button
@@ -370,7 +370,7 @@ export default function CharacterStudioModal({
 
       {/* Vault Picker Modal */}
       {vaultOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-2xl bg-zinc-900 border border-white/[0.15] rounded-2xl p-6 space-y-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
               <div className="flex items-center gap-2">
