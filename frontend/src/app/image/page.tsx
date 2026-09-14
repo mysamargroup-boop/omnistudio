@@ -1011,7 +1011,7 @@ export default function ImageStudioPage() {
 
   // Agentic Multi-Pose Planning
   const handlePlanAgenticPoses = async (customPrompt?: string) => {
-    const effectiveRef = refImageUrl || (refImages.length > 0 ? refImages[0].url : "") || (activeCharacter?.imageUrl || undefined);
+    const effectiveRef = refImageUrl || (refImages.length > 0 ? refImages[0].url : "") || (activeCharacter?.imageUrl || undefined) || (result?.url || (result?.images?.[0]?.url || undefined));
     const p = (customPrompt || prompt).trim() || "Generate 10 diverse cinematic poses for this character with 100% consistent face identity";
     setIsPlanningAgentic(true);
     setProgress(20);
@@ -1038,7 +1038,7 @@ export default function ImageStudioPage() {
   // Agentic Multi-Pose Batch Execution
   const handleExecuteAgenticPoses = async () => {
     if (!agenticPlan) return;
-    const effectiveRef = refImageUrl || (refImages.length > 0 ? refImages[0].url : "") || (activeCharacter?.imageUrl || undefined);
+    const effectiveRef = refImageUrl || (refImages.length > 0 ? refImages[0].url : "") || (activeCharacter?.imageUrl || undefined) || (result?.url || (result?.images?.[0]?.url || undefined));
     setIsGeneratingAgentic(true);
     setAgenticResults(null);
     setProgress(10);
@@ -1525,15 +1525,21 @@ export default function ImageStudioPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!prompt.trim()) return;
                   if (agenticPlan) {
                     setShowAgenticDrawer(true);
                   } else {
                     handlePlanAgenticPoses();
                   }
                 }}
-                disabled={isPlanningAgentic || isGeneratingAgentic}
-                className="flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-sm"
-                title="Agentic Workflow"
+                disabled={!prompt.trim() || isPlanningAgentic || isGeneratingAgentic}
+                className={cn(
+                  "flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white transition-all whitespace-nowrap shrink-0 shadow-sm",
+                  !prompt.trim()
+                    ? "opacity-40 cursor-not-allowed bg-zinc-800 text-zinc-400 border border-white/10"
+                    : "agentic-moving-border cursor-pointer active:scale-95"
+                )}
+                title={!prompt.trim() ? "Enter a prompt first to use Agentic mode" : "Agentic Multi-Pose Studio"}
               >
                 <span>
                   {isPlanningAgentic
@@ -1850,7 +1856,7 @@ export default function ImageStudioPage() {
               {/* Lightbox Modal (Fullscreen 4K Inspector) */}
               {lightboxOpen && (
                 <div
-                  className="fixed inset-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
+                  className="fixed inset-0 z-[100000] bg-white/95 dark:bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
                   onClick={() => setLightboxOpen(false)}
                 >
                   <div className="relative max-w-7xl max-h-[95vh] flex flex-col items-center">
@@ -3281,15 +3287,21 @@ export default function ImageStudioPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!prompt.trim()) return;
                       if (agenticPlan) {
                         setShowAgenticDrawer(true);
                       } else {
                         handlePlanAgenticPoses();
                       }
                     }}
-                    disabled={isPlanningAgentic || isGeneratingAgentic}
-                    className="flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white agentic-moving-border cursor-pointer transition-all active:scale-95 shadow-sm"
-                    title="Agentic Workflow"
+                    disabled={!prompt.trim() || isPlanningAgentic || isGeneratingAgentic}
+                    className={cn(
+                      "flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-heading font-bold text-white transition-all whitespace-nowrap shrink-0 shadow-sm",
+                      !prompt.trim()
+                        ? "opacity-40 cursor-not-allowed bg-zinc-800 text-zinc-400 border border-white/10"
+                        : "agentic-moving-border cursor-pointer active:scale-95"
+                    )}
+                    title={!prompt.trim() ? "Enter a prompt first to use Agentic mode" : "Agentic Multi-Pose Studio"}
                   >
                     <span>
                       {isPlanningAgentic
@@ -3996,15 +4008,21 @@ export default function ImageStudioPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!prompt.trim()) return;
                       if (agenticPlan) {
                         setShowAgenticDrawer(true);
                       } else {
                         handlePlanAgenticPoses();
                       }
                     }}
-                    disabled={isPlanningAgentic || isGeneratingAgentic || loading}
-                    className="flex-1 sm:flex-initial flex items-center justify-center px-3.5 py-1.5 rounded-lg text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer active:scale-95 whitespace-nowrap agentic-moving-border shadow-sm"
-                    title="Agentic Workflow"
+                    disabled={!prompt.trim() || isPlanningAgentic || isGeneratingAgentic || loading}
+                    className={cn(
+                      "flex-1 sm:flex-initial flex items-center justify-center px-3.5 py-1.5 rounded-lg text-white font-heading font-bold text-xs tracking-tight transition-all whitespace-nowrap shadow-sm",
+                      !prompt.trim()
+                        ? "opacity-40 cursor-not-allowed bg-zinc-800 text-zinc-400 border border-white/10"
+                        : "agentic-moving-border cursor-pointer active:scale-95"
+                    )}
+                    title={!prompt.trim() ? "Enter a prompt first to use Agentic mode" : "Agentic Multi-Pose Studio"}
                   >
                     <span>
                       {isPlanningAgentic
@@ -4953,18 +4971,22 @@ export default function ImageStudioPage() {
             <button
               type="button"
               onClick={() => {
+                if (!prompt.trim()) return;
                 if (agenticPlan) {
                   setShowAgenticDrawer(true);
                 } else {
                   handlePlanAgenticPoses();
                 }
               }}
-              disabled={isPlanningAgentic || isGeneratingAgentic || loading}
+              disabled={!prompt.trim() || isPlanningAgentic || isGeneratingAgentic || loading}
               className={cn(
-                "flex items-center justify-center px-3.5 py-1.5 rounded-lg text-white font-heading font-bold text-xs tracking-tight transition-all cursor-pointer active:scale-95 whitespace-nowrap agentic-moving-border shadow-sm",
-                isShiftedLeft ? "flex-1 min-w-0" : "shrink-0"
+                "flex items-center justify-center px-3.5 py-1.5 rounded-lg text-white font-heading font-bold text-xs tracking-tight transition-all whitespace-nowrap shadow-sm",
+                isShiftedLeft ? "flex-1 min-w-0" : "shrink-0",
+                !prompt.trim()
+                  ? "opacity-40 cursor-not-allowed bg-zinc-800 text-zinc-400 border border-white/10"
+                  : "agentic-moving-border cursor-pointer active:scale-95"
               )}
-              title="Agentic Workflow"
+              title={!prompt.trim() ? "Enter a prompt first to use Agentic mode" : "Agentic Multi-Pose Studio"}
             >
               <span className="truncate">
                 {isPlanningAgentic
@@ -5024,7 +5046,7 @@ export default function ImageStudioPage() {
       {/* Agentic Multi-Pose Plan Review Modal */}
       {showAgenticDrawer && agenticPlan && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+          className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/70 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
           onClick={() => setShowAgenticDrawer(false)}
         >
           <div
@@ -5128,7 +5150,7 @@ export default function ImageStudioPage() {
       {/* Vault Picker Modal */}
       {vaultOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+          className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
           onClick={() => setVaultOpen(false)}
         >
           <div 
