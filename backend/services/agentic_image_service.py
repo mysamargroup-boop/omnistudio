@@ -354,8 +354,8 @@ async def generate_agentic_poses(
 
         img_generated = await asyncio.to_thread(_synth_worker)
 
-        # Mode B: Fallback to external AI generation if key is present and no local ref
-        elif has_external_key:
+        # Mode B: Fallback to external AI generation if local synthesis failed and key is present
+        if not img_generated and has_external_key:
             try:
                 if get_gemini_key():
                     res = await asyncio.wait_for(
