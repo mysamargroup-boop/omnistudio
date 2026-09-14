@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Cpu,
@@ -266,6 +266,134 @@ function PipelineContent() {
     }
   };
 
+  // ── Throttled SSE Event Handler (prevents scroll lag from high-frequency state updates) ──
+  const sseThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingEventRef = useRef<any>(null);
+
+  const flushPendingEvent = useCallback(() => {
+    const event = pendingEventRef.current;
+    if (!event) return;
+    pendingEventRef.current = null;
+
+    if (event.project_brief && Object.keys(event.project_brief).length > 0) {
+      setProjectBrief(event.project_brief);
+    }
+    if (event.scenes && Array.isArray(event.scenes)) {
+      setChoreographedScenes(event.scenes);
+    }
+    if (typeof event.total_cost_usd === "number") setTotalCostUsd(event.total_cost_usd);
+    if (typeof event.total_cost_inr === "number") setTotalCostInr(event.total_cost_inr);
+    if (event.master_video_path) {
+      setMasterVideo(event.master_video_path);
+    }
+
+    if (event.state === "complete" || event.master_video_path) {
+      setRetentionScore(92.4);
+      setSocialCopy({
+        title: `${event.project_brief?.title || "Cinematic Masterpiece"} | Official 4K AI Visuals`,
+        caption: `Produced autonomously using OmniStudio Agentic OS 5.0 with 22 specialized AI agents.\n\nCinematic Palette: ${style} | Audio: Neural Speech Dubbing`,
+        hashtags: ["#OmniStudio", "#AIFilmmaking", "#GenerativeAI", "#CinematicAI", "#CreativeOS"],
+      });
+      setAbHookVariants([
+        "Hook A: Atmospheric wide shot establishing tension and epic scale",
+        "Hook B: Kinetic close-up tracking shot with rhythmic bass drop",
+      ]);
+    }
+
+    if (event.agent_logs && Array.isArray(event.agent_logs)) {
+      setActivityLogs(
+        event.agent_logs.map((l: any) => ({
+          timestamp: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+          agent: l.agent?.toLowerCase().replace("agent", "") || "system",
+          message: l.message,
+          cost_usd: l.cost_usd,
+          cost_inr: l.cost_inr,
+          type: "info",
+        }))
+      );
+    }
+
+    const currentState = event.state as string;
+    if (currentState === "paused") {
+      setPausedState(currentState);
+      setApprovalModalOpen(true);
+    } else {
+      setApprovalModalOpen(false);
+    }
+
+    const currentAgentId = STATE_TO_AGENT_ID[currentState];
+    const currentIndex = currentAgentId ? AGENT_ORDER.indexOf(currentAgentId) : -1;
+
+    setAgentStatuses((prev) => {
+      const updated: Record<string, AgentNodeStatus> = { ...prev };
+      if (currentState === "complete") {
+        AGENT_ORDER.forEach((id) => {
+          updated[id] = { state: "complete", message: "Completed successfully" };
+        });
+      } else if (currentState === "paused") {
+        if (currentAgentId) {
+          updated[currentAgentId] = { state: "paused", message: "Awaiting your directorial approval popup" };
+        }
+      } else if (currentState === "failed") {
+        if (currentAgentId) {
+          updated[currentAgentId] = { state: "failed", message: event.error_message || "Agent execution failed" };
+        }
+      } else {
+        AGENT_ORDER.forEach((id, idx) => {
+          if (idx < currentIndex) {
+            updated[id] = { state: "complete", message: "Completed" };
+          } else if (idx === currentIndex) {
+            updated[id] = { state: "running", message: "Synthesizing and executing..." };
+          } else {
+            updated[id] = { state: "pending", message: "In production queue" };
+          }
+        });
+      }
+      return updated;
+    });
+  }, [style]);
+
+  const handleSSEEvent = useCallback((event: any) => {
+    // Errors are always processed immediately
+    if (event.error) {
+      setActivityLogs((prev) => [
+        ...prev,
+        {
+          timestamp: new Date().toLocaleTimeString(),
+          agent: "system",
+          message: `Pipeline Error: ${event.error}`,
+          type: "error",
+        },
+      ]);
+      return;
+    }
+
+    // Critical state changes (pause/complete) are flushed immediately
+    const state = event.state as string;
+    if (state === "paused" || state === "complete" || state === "failed") {
+      pendingEventRef.current = event;
+      if (sseThrottleRef.current) clearTimeout(sseThrottleRef.current);
+      flushPendingEvent();
+      return;
+    }
+
+    // All other events are throttled to 150ms batches to prevent scroll lag
+    pendingEventRef.current = event;
+    if (!sseThrottleRef.current) {
+      sseThrottleRef.current = setTimeout(() => {
+        sseThrottleRef.current = null;
+        flushPendingEvent();
+      }, 150);
+    }
+  }, [flushPendingEvent]);
+
+  // Cleanup throttle timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sseThrottleRef.current) clearTimeout(sseThrottleRef.current);
+    };
+  }, []);
+
   const handleLaunchAgency = async () => {
     if (!topic.trim()) return;
     setRunning(true);
@@ -311,119 +439,10 @@ function PipelineContent() {
       const pId = startRes.pipeline_id;
       setPipelineId(pId);
 
-      // 2. Stream real-time SSE progress
+      // 2. Stream real-time SSE progress (throttled to prevent scroll lag)
       await api.streamAgentPipeline(
         pId,
-        (event: any) => {
-          if (event.error) {
-            setActivityLogs((prev) => [
-              ...prev,
-              {
-                timestamp: new Date().toLocaleTimeString(),
-                agent: "system",
-                message: `Pipeline Error: ${event.error}`,
-                type: "error",
-              },
-            ]);
-            return;
-          }
-
-          // Update project brief if available
-          if (event.project_brief && Object.keys(event.project_brief).length > 0) {
-            setProjectBrief(event.project_brief);
-          }
-
-          // Update scenes
-          if (event.scenes && Array.isArray(event.scenes)) {
-            setChoreographedScenes(event.scenes);
-          }
-
-          // Update costs
-          if (typeof event.total_cost_usd === "number") setTotalCostUsd(event.total_cost_usd);
-          if (typeof event.total_cost_inr === "number") setTotalCostInr(event.total_cost_inr);
-
-          // Update master video path
-          if (event.master_video_path) {
-            setMasterVideo(event.master_video_path);
-          }
-
-          // Synthesize post-production artifacts for rich dashboard & publishing
-          if (event.state === "complete" || event.master_video_path) {
-            setRetentionScore(92.4);
-            setSocialCopy({
-              title: `${event.project_brief?.title || "Cinematic Masterpiece"} | Official 4K AI Visuals`,
-              caption: `Produced autonomously using OmniStudio Agentic OS 5.0 with 22 specialized AI agents.\n\nCinematic Palette: ${style} | Audio: Neural Speech Dubbing`,
-              hashtags: ["#OmniStudio", "#AIFilmmaking", "#GenerativeAI", "#CinematicAI", "#CreativeOS"],
-            });
-            setAbHookVariants([
-              "Hook A: Atmospheric wide shot establishing tension and epic scale",
-              "Hook B: Kinetic close-up tracking shot with rhythmic bass drop",
-            ]);
-          }
-
-          // Update agent logs
-          if (event.agent_logs && Array.isArray(event.agent_logs)) {
-            setActivityLogs(
-              event.agent_logs.map((l: any) => ({
-                timestamp: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
-                agent: l.agent?.toLowerCase().replace("agent", "") || "system",
-                message: l.message,
-                cost_usd: l.cost_usd,
-                cost_inr: l.cost_inr,
-                type: "info",
-              }))
-            );
-          }
-
-          // Check if paused at an approval gate
-          const currentState = event.state as string;
-          if (currentState === "paused") {
-            setPausedState(currentState);
-            setApprovalModalOpen(true);
-          } else {
-            setApprovalModalOpen(false);
-          }
-
-          // Update 22-agent visual statuses
-          const currentAgentId = STATE_TO_AGENT_ID[currentState];
-          const currentIndex = currentAgentId ? AGENT_ORDER.indexOf(currentAgentId) : -1;
-
-          setAgentStatuses((prev) => {
-            const updated: Record<string, AgentNodeStatus> = { ...prev };
-
-            if (currentState === "complete") {
-              AGENT_ORDER.forEach((id) => {
-                updated[id] = { state: "complete", message: "Completed successfully" };
-              });
-            } else if (currentState === "paused") {
-              if (currentAgentId) {
-                updated[currentAgentId] = {
-                  state: "paused",
-                  message: "Awaiting your directorial approval popup",
-                };
-              }
-            } else if (currentState === "failed") {
-              if (currentAgentId) {
-                updated[currentAgentId] = {
-                  state: "failed",
-                  message: event.error_message || "Agent execution failed",
-                };
-              }
-            } else {
-              AGENT_ORDER.forEach((id, idx) => {
-                if (idx < currentIndex) {
-                  updated[id] = { state: "complete", message: "Completed" };
-                } else if (idx === currentIndex) {
-                  updated[id] = { state: "running", message: "Synthesizing and executing..." };
-                } else {
-                  updated[id] = { state: "pending", message: "In production queue" };
-                }
-              });
-            }
-
-            return updated;
-          });
-        },
+        handleSSEEvent,
         abortRef.current.signal
       );
     } catch (err: any) {
@@ -901,8 +920,8 @@ function PipelineContent() {
             className={cn(
               "px-8 py-3.5 rounded-2xl font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50 text-white",
               mode === "autonomous"
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500"
-                : "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
+                ? "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400"
+                : "bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400"
             )}
           >
             {running ? (
@@ -911,15 +930,11 @@ function PipelineContent() {
                 <span>22 AGENTS EXECUTING PRODUCTION...</span>
               </>
             ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-white/80" />
-                <span>
-                  {mode === "autonomous"
-                    ? "Launch Autonomous 22-Agent Pipeline"
-                    : "Launch Directorial Review Pipeline"}
-                </span>
-                <ArrowRight className="w-4 h-4 text-white/80" />
-              </>
+              <span>
+                {mode === "autonomous"
+                  ? "Launch Autonomous 22-Agent Pipeline"
+                  : "Launch Directorial Review Pipeline"}
+              </span>
             )}
           </button>
         </div>

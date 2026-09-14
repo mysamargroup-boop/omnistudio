@@ -5,7 +5,7 @@ import asyncio
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from limiter import limiter
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from pathlib import Path
 from config import settings
@@ -17,8 +17,6 @@ from services.ffmpeg_service import merge_video_audio, concatenate_videos
 import logging
 
 logger = logging.getLogger("omnistudio.pipeline")
-
-from pydantic import BaseModel, field_validator
 
 router = APIRouter(prefix="/api/pipeline", tags=["Auto Pipeline"])
 
@@ -720,17 +718,31 @@ async def stream_agent_pipeline(pipeline_id: str, request: Request):
 @router.post("/agent/approve/{pipeline_id}")
 async def approve_agent_step(pipeline_id: str):
     orchestrator = get_default_orchestrator()
-    context = await orchestrator.load_pipeline_state(pipeline_id)
-    if context.state == PipelineState.PAUSED:
-        # Move to next state logic. This is basic resume logic. 
-        # State transition handling is within the orchestrator loop, so we just set state to IDLE or explicitly the next state.
-        # For this skeleton, we just resume.
-        pass
-    return {"success": True, "pipeline_id": pipeline_id, "message": "Approved"}
+    try:
+        context = await orchestrator.load_pipeline_state(pipeline_id)
+        if context.state == PipelineState.PAUSED:
+            # Set to IDLE so resume_pipeline will advance to the next agent
+            context.state = PipelineState.IDLE
+            context.add_log("System", "Directorial approval granted — resuming pipeline")
+            await orchestrator.save_pipeline_state(context)
+        return {"success": True, "pipeline_id": pipeline_id, "message": "Approved", "state": context.state.value}
+    except Exception as e:
+        logger.error(f"Error approving pipeline {pipeline_id}: {e}")
+        return {"success": False, "pipeline_id": pipeline_id, "error": str(e)}
 
 @router.post("/agent/reject/{pipeline_id}")
 async def reject_agent_step(pipeline_id: str, feedback: str = ''):
-    return {"success": True, "pipeline_id": pipeline_id, "message": "Rejected"}
+    orchestrator = get_default_orchestrator()
+    try:
+        context = await orchestrator.load_pipeline_state(pipeline_id)
+        rejection_note = feedback.strip() or "Directorial revision requested"
+        context.add_log("System", f"Directorial rejection: {rejection_note}")
+        # Keep state PAUSED — user can re-approve after giving feedback
+        await orchestrator.save_pipeline_state(context)
+        return {"success": True, "pipeline_id": pipeline_id, "message": "Rejected", "feedback": rejection_note}
+    except Exception as e:
+        logger.error(f"Error rejecting pipeline {pipeline_id}: {e}")
+        return {"success": False, "pipeline_id": pipeline_id, "error": str(e)}
 
 @router.get("/agent/status/{pipeline_id}")
 async def get_agent_status(pipeline_id: str):
