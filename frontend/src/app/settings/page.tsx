@@ -180,8 +180,10 @@ export default function SettingsPage() {
     // 4th digit entered: instant unlock check
     if (index === 3 && char) {
       const fullPin = `${next[0]}${next[1]}${next[2]}${char}`;
-      const savedPin = typeof window !== "undefined" ? localStorage.getItem("omnistudio_api_pin") || "1234" : "1234";
-      if (fullPin === savedPin || fullPin === "1234" || fullPin === "0000") {
+      const envPin = (process.env.NEXT_PUBLIC_STUDIO_PIN || process.env.NEXT_PUBLIC_STUDIO_PASSCODE || "").trim();
+      const savedPin = (typeof window !== "undefined" ? localStorage.getItem("omnistudio_api_pin") || "" : "").trim();
+      const expectedPin = savedPin || envPin;
+      if (expectedPin && fullPin === expectedPin) {
         setIsApiUnlocked(true);
         setShowPinModal(false);
         setActiveTab("api_keys");
@@ -233,6 +235,7 @@ export default function SettingsPage() {
   const [rollbackSuccessMsg, setRollbackSuccessMsg] = useState<string | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [activePreviewVideo, setActivePreviewVideo] = useState<string | null>(null);
+  const [visibleCheckpointsCount, setVisibleCheckpointsCount] = useState<number>(12);
 
   const fetchVersionCheckpoints = async () => {
     setLoadingCheckpoints(true);
@@ -247,7 +250,7 @@ export default function SettingsPage() {
       const allVideos = [
         ...(res?.final || []).map((item: any) => ({ ...item, isFinal: true })),
         ...(res?.videos || []).map((item: any) => ({ ...item, isFinal: false }))
-      ].sort((a: any, b: any) => (b.modified || 0) - (a.modified || 0));
+      ].sort((a: any, b: any) => (b.modified || 0) - (a.modified || 0)).slice(0, 40);
 
       const generatedCheckpoints: VersionCheckpoint[] = allVideos.map((vid: any, idx: number) => {
         const major = 2;
@@ -1088,121 +1091,125 @@ export default function SettingsPage() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100/80 dark:bg-[#0d0d14] rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto custom-scrollbar flex-nowrap whitespace-nowrap">
-        <button
-          type="button"
-          onClick={() => handleSwitchTab("infrastructure")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "infrastructure"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <Cpu className="h-3.5 w-3.5 text-emerald-500" />
-          <span>System Infrastructure</span>
-        </button>
+      <div className="relative w-full">
+        <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100/90 dark:bg-[#0d0d14] rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800 scrollbar-track-transparent flex-nowrap whitespace-nowrap scroll-smooth">
+          <button
+            type="button"
+            onClick={() => handleSwitchTab("infrastructure")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "infrastructure"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <Cpu className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span>Infrastructure</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => handleSwitchTab("social_media")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "social_media"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <Share2 className="h-3.5 w-3.5 text-emerald-500" />
-          <span>Social Media APIs</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => handleSwitchTab("social_media")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "social_media"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <Share2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span>Social Media APIs</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => handleSwitchTab("brand_kit")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "brand_kit"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <Palette className="h-3.5 w-3.5 text-emerald-500" />
-          <span>Brand Kit & Identity</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => handleSwitchTab("brand_kit")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "brand_kit"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <Palette className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span>Brand Kit</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            handleSwitchTab("trash");
-            fetchTrash();
-          }}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "trash"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-          <span>Trash Bin</span>
-          {trashCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold">
-              {trashCount}
-            </span>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleSwitchTab("trash");
+              fetchTrash();
+            }}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "trash"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+            <span>Trash Bin</span>
+            {trashCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold">
+                {trashCount}
+              </span>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={handleOpenApiTab}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "api_keys"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <Key className="h-3.5 w-3.5 text-amber-500" />
-          <span>AI Model Keys (BYOK)</span>
-          {!isApiUnlocked && <Lock className="w-3 h-3 text-zinc-400 ml-0.5" />}
-        </button>
+          <button
+            type="button"
+            onClick={handleOpenApiTab}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "api_keys"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <Key className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            <span>AI Keys (BYOK)</span>
+            {!isApiUnlocked && <Lock className="w-3 h-3 text-zinc-400 ml-0.5" />}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => handleSwitchTab("preferences")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "preferences"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <Sliders className="h-3.5 w-3.5 text-cyan-500" />
-          <span>Studio Preferences</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => handleSwitchTab("preferences")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "preferences"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <Sliders className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+            <span>Preferences</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            handleSwitchTab("version_history");
-            fetchVersionCheckpoints();
-          }}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
-            activeTab === "version_history"
-              ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
-              : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
-          )}
-        >
-          <History className="h-3.5 w-3.5 text-violet-500" />
-          <span>Version History & Rollback</span>
-          {checkpoints.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-violet-500/20 text-violet-600 dark:text-violet-400 font-bold">
-              {checkpoints.length}
-            </span>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleSwitchTab("version_history");
+              fetchVersionCheckpoints();
+            }}
+            className={cn(
+              "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-heading font-bold tracking-tight transition-all cursor-pointer whitespace-nowrap shrink-0",
+              activeTab === "version_history"
+                ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            )}
+          >
+            <History className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+            <span>Version History</span>
+            {checkpoints.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-violet-500/20 text-violet-600 dark:text-violet-400 font-bold">
+                {checkpoints.length}
+              </span>
+            )}
+          </button>
+        </div>
+        {/* Subtle Right Fade Indicator for overflow */}
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-100/90 dark:from-[#0d0d14] to-transparent rounded-r-2xl opacity-80 md:hidden" />
       </div>
 
       {/* ─── TAB 1: SYSTEM INFRASTRUCTURE ─── */}
@@ -1310,11 +1317,11 @@ export default function SettingsPage() {
                     {systemMetrics?.gpu?.status || "Optimal"}
                   </span>
                 </div>
-                <div>
-                  <div className="text-sm font-extrabold font-heading text-zinc-950 dark:text-white truncate">
+                <div title={`${systemMetrics?.gpu?.name || "KVM Neural Engine"} • ${systemMetrics?.gpu?.mode || "Hardware AVX2 & FFmpeg"}`}>
+                  <div className="text-xs sm:text-sm font-extrabold font-heading text-zinc-950 dark:text-white line-clamp-1 leading-snug">
                     {systemMetrics?.gpu?.name || "KVM Neural Engine"}
                   </div>
-                  <p className="text-[11px] text-zinc-400 font-mono mt-0.5 truncate">
+                  <p className="text-[10px] sm:text-[11px] text-zinc-400 font-mono mt-0.5 line-clamp-1 leading-normal">
                     {systemMetrics?.gpu?.mode || "Hardware AVX2 & FFmpeg"}
                   </p>
                 </div>
@@ -2670,7 +2677,7 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-[2px] before:bg-gradient-to-b before:from-violet-500 before:via-zinc-300 dark:before:via-zinc-800 before:to-transparent">
-                  {filteredCheckpoints.map((cp, idx) => {
+                  {filteredCheckpoints.slice(0, visibleCheckpointsCount).map((cp, idx) => {
                     const isActive = historyPointer === idx;
                     return (
                       <div
@@ -2790,7 +2797,7 @@ export default function SettingsPage() {
                                   <video
                                     src={getMediaUrl(cp.videoUrl)}
                                     className="w-full h-full object-cover"
-                                    preload="metadata"
+                                    preload="none"
                                   />
                                   <div
                                     onClick={() => setActivePreviewVideo(getMediaUrl(cp.videoUrl || ""))}
@@ -2840,6 +2847,17 @@ export default function SettingsPage() {
                       </div>
                     );
                   })}
+                  {filteredCheckpoints.length > visibleCheckpointsCount && (
+                    <div className="pt-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setVisibleCheckpointsCount((prev) => prev + 12)}
+                        className="px-5 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold transition-all cursor-pointer shadow-xs"
+                      >
+                        Load More Checkpoints ({filteredCheckpoints.length - visibleCheckpointsCount} remaining)
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -3025,28 +3043,13 @@ export default function SettingsPage() {
 
             {pinError ? (
               <p className="text-xs font-mono text-rose-500 font-semibold animate-pulse">
-                Incorrect PIN. Default is 1234.
+                Incorrect Studio Passcode. Access denied.
               </p>
             ) : (
               <p className="text-[11px] font-mono text-zinc-400">
-                Default PIN: <strong className="text-zinc-700 dark:text-zinc-300">1234</strong> (Auto-unlocks on 4th tap)
+                Secured via environment passcode (Auto-unlocks on 4th tap)
               </p>
             )}
-
-            <div className="pt-1 flex items-center justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setPinDigits(["1", "2", "3", "4"]);
-                  setIsApiUnlocked(true);
-                  setShowPinModal(false);
-                  setActiveTab("api_keys");
-                }}
-                className="text-[11px] font-mono text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
-              >
-                Quick Unlock with Default (1234)
-              </button>
-            </div>
           </div>
         </div>
       )}

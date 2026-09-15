@@ -1225,28 +1225,37 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Shot Meta Details */}
-                  <div className="space-y-1 text-[11px] font-mono text-left">
-                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                  <div className="space-y-1 text-[11px] font-mono text-left min-w-0">
+                    <div
+                      title={shot.title}
+                      className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
+                    >
                       {shot.title}
                     </div>
-                    <div className="text-zinc-500 text-[10px] truncate flex items-center gap-1">
+                    <div
+                      title={`Camera Motion: ${shot.motion}`}
+                      className="text-zinc-500 text-[10px] flex items-center gap-1 min-w-0"
+                    >
                       <Compass className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span>{shot.motion}</span>
+                      <span className="truncate">{shot.motion}</span>
                     </div>
-                    <div className="text-zinc-400 dark:text-zinc-500 text-[10px] truncate flex items-center gap-1">
+                    <div
+                      title={`Optics: ${shot.lens}`}
+                      className="text-zinc-400 dark:text-zinc-500 text-[10px] flex items-center gap-1 min-w-0"
+                    >
                       <Camera className="w-3 h-3 text-sky-400 shrink-0" />
-                      <span>{shot.lens}</span>
+                      <span className="truncate">{shot.lens}</span>
                     </div>
                   </div>
 
                   {/* Transition Connector Pill at Card Bottom (if not last card) */}
                   {idx < 3 && (
-                    <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.05] flex items-center justify-between text-[9px] font-mono">
-                      <span className="text-zinc-400">TRANSITION:</span>
+                    <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.05] flex items-center justify-between gap-1.5 text-[9px] font-mono">
+                      <span className="text-zinc-400 shrink-0">TRANSITION:</span>
                       <button
                         type="button"
                         onClick={(e) => cycleTransition(shot.id, e)}
-                        className="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-emerald-500/20 text-zinc-700 dark:text-zinc-300 hover:text-emerald-400 font-bold border border-black/[0.06] dark:border-white/10 transition-colors cursor-pointer"
+                        className="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-emerald-500/20 text-zinc-700 dark:text-zinc-300 hover:text-emerald-400 font-bold border border-black/[0.06] dark:border-white/10 transition-colors cursor-pointer shrink-0"
                         title="Click to switch transition type"
                       >
                         {transition} ⟳

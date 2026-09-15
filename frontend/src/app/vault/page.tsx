@@ -100,6 +100,7 @@ export default function VaultPage() {
   const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [mediaAspects, setMediaAspects] = useState<Record<string, { ratio: number; label: string }>>({});
   const [loadedMedia, setLoadedMedia] = useState<Record<string, boolean>>({});
+  const [mediaErrors, setMediaErrors] = useState<Record<string, boolean>>({});
   const [lightboxLoading, setLightboxLoading] = useState<boolean>(true);
 
   // Context Menu & Rename states matching Reference Images
@@ -901,18 +902,41 @@ export default function VaultPage() {
                 {/* Media Display with Faded Smooth Transition & Aspect Ratio */}
                 <div className="w-full relative overflow-hidden rounded-t-2xl bg-zinc-900/90 flex items-center justify-center min-h-[160px]">
                   {/* Shimmer skeleton placeholder while image/video is loading */}
-                  {!loadedMedia[file.filename] && !isAudio && (
+                  {!loadedMedia[file.filename] && !mediaErrors[file.filename] && !isAudio && (
                     <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 animate-pulse flex items-center justify-center pointer-events-none">
                       <ImageIcon className="w-6 h-6 text-zinc-700 animate-pulse opacity-60" />
                     </div>
                   )}
 
-                  {isImage && (
+                  {mediaErrors[file.filename] ? (
+                    <div className="w-full h-44 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 flex flex-col items-center justify-center gap-2.5 p-4 text-center select-none border-b border-zinc-800/60">
+                      <div className={cn(
+                        "w-11 h-11 rounded-xl flex items-center justify-center shadow-lg border",
+                        isVideo 
+                          ? "bg-cyan-950/50 border-cyan-500/30 text-cyan-400" 
+                          : "bg-emerald-950/50 border-emerald-500/30 text-emerald-400"
+                      )}>
+                        {isVideo ? <Film className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+                      </div>
+                      <div className="flex flex-col items-center max-w-[85%]">
+                        <span className="text-[11px] font-medium text-zinc-300 truncate max-w-full">
+                          {file.filename}
+                        </span>
+                        <span className="text-[9px] uppercase tracking-wider text-zinc-500 mt-0.5 font-mono">
+                          {isVideo ? "Video Clip" : "Image Asset"} • {formatBytes(file.size_bytes)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : isImage ? (
                     <img
                       src={getMediaUrl(file.url)}
                       alt={file.filename}
                       loading="lazy"
                       decoding="async"
+                      onError={() => {
+                        setMediaErrors((prev) => ({ ...prev, [file.filename]: true }));
+                        setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
+                      }}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         if (img.naturalWidth && img.naturalHeight) {
@@ -934,16 +958,18 @@ export default function VaultPage() {
                           : "opacity-0 scale-[1.02] blur-xs"
                       )}
                     />
-                  )}
-
-                  {isVideo && (
+                  ) : isVideo ? (
                     <div className="relative w-full h-full flex items-center justify-center">
                       <video
-                        src={getMediaUrl(file.url)}
+                        src={`${getMediaUrl(file.url)}${file.url.includes("#") ? "" : "#t=0.5"}`}
                         playsInline
                         loop
                         muted
                         preload="metadata"
+                        onError={() => {
+                          setMediaErrors((prev) => ({ ...prev, [file.filename]: true }));
+                          setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
+                        }}
                         onLoadedData={() => {
                           setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
                         }}
@@ -968,7 +994,7 @@ export default function VaultPage() {
                         )}
                       />
                     </div>
-                  )}
+                  ) : null}
 
                   {isAudio && (
                   <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[190px]">

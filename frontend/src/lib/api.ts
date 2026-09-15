@@ -38,11 +38,13 @@ function getBackendToken(): string | null {
     const pinSession = sessionStorage.getItem("omnistudio_pin_session") || localStorage.getItem("omnistudio_pin_session");
     if (pinSession) {
       const p = JSON.parse(pinSession);
-      if (p?.authenticated) return "7391";
+      if (p?.authenticated) {
+        return process.env.NEXT_PUBLIC_STUDIO_PIN || process.env.NEXT_PUBLIC_STUDIO_PASSCODE || null;
+      }
     }
   } catch {}
-  // Studio Passcode fallback (7391) accepted by backend require_auth and require_admin_token
-  return process.env.NEXT_PUBLIC_STUDIO_PASSCODE || process.env.NEXT_PUBLIC_DEFAULT_PIN || "7391";
+  // Studio Passcode from environment variable only
+  return process.env.NEXT_PUBLIC_STUDIO_PIN || process.env.NEXT_PUBLIC_STUDIO_PASSCODE || process.env.NEXT_PUBLIC_DEFAULT_PIN || null;
 }
 
 function getAuthHeaders(): Record<string, string> {

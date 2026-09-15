@@ -25,7 +25,7 @@ ALLOWED_PIPELINE_ASPECTS = {"16:9", "9:16", "1:1", "4:3", "21:9"}
 class PipelineRequest(BaseModel):
     topic: str
     num_scenes: int = 3
-    image_model: str = "dall-e-3"
+    image_model: str = "gemini_flash_image"
     voice_id: str = "pNInz6obpgDQGcFmaJgB"
     voice_provider: str = "edge"
     enhance_prompts: bool = True

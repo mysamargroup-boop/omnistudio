@@ -285,7 +285,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation Groups */}
-        <div className="overflow-y-auto flex-1 hide-scrollbar">
+        <div className="overflow-y-auto flex-1 hide-scrollbar pb-6">
           {navGroups.map((group) => (
             <div key={group.label} className="mb-1">
               {!isDesktopCollapsed ? (
@@ -340,31 +340,18 @@ export default function Sidebar() {
                           )
                     )}
                   >
-                    {isPending ? (
-                      <Spinner size="xs" variant="emerald" className="shrink-0" />
-                    ) : (
-                      <item.icon
-                        className={cn(
-                          "shrink-0 transition-all duration-150",
-                          isDesktopCollapsed ? "h-4 w-4" : "h-4 w-4",
-                          isDesktopCollapsed
-                            ? isActive
-                              ? "text-emerald-600 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)] scale-110"
-                              : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:scale-105"
-                            : isActive
-                            ? "text-white dark:text-zinc-950"
-                            : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
-                        )}
-                      />
-                    )}
+                    <item.icon className={cn(
+                      "shrink-0 transition-transform group-hover:scale-110",
+                      isDesktopCollapsed ? "h-4 w-4" : "h-3.5 w-3.5",
+                      isActive
+                        ? isDesktopCollapsed ? "text-emerald-500" : "text-white dark:text-zinc-950"
+                        : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white"
+                    )} />
+
                     {!isDesktopCollapsed && (
                       <>
-                        <span className="truncate">{item.label}</span>
-                        {isPending ? (
-                          <span className="rounded-full px-1.5 py-0.2 text-[8px] font-mono ml-auto shrink-0 bg-emerald-500 text-black font-bold animate-pulse">
-                            OPENING...
-                          </span>
-                        ) : item.badge ? (
+                        <span className="flex-1 truncate tracking-tight">{item.label}</span>
+                        {item.badge ? (
                           <span
                             className={cn(
                               "rounded-full px-1.5 py-0.2 text-[9px] font-mono ml-auto shrink-0",
@@ -389,7 +376,7 @@ export default function Sidebar() {
 
       {/* Diagnostics & Meta Footer */}
       {isDesktopCollapsed ? (
-        <div className="p-2 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0 flex flex-col items-center gap-2">
+        <div className="p-2 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0 flex flex-col items-center gap-2 bg-[var(--bg-secondary)] relative z-10">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="System Online" />
           <button
             type="button"
@@ -404,7 +391,7 @@ export default function Sidebar() {
           </button>
         </div>
       ) : (
-        <div className="p-2.5 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0 space-y-1.5 font-mono">
+        <div className="p-2.5 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0 space-y-1.5 font-mono bg-[var(--bg-secondary)] relative z-10">
           <div className="rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] px-2.5 py-1.5 flex items-center justify-between text-[10px]">
             <div className="flex items-center gap-1.5">
               <Radio className="h-2.5 w-2.5 text-emerald-500 animate-pulse shrink-0" />

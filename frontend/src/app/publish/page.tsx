@@ -830,7 +830,12 @@ function PublishStudioContent() {
             )}
           >
             <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Calendar ({posts.length})</span>
+            <span>Calendar</span>
+            {posts.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                {posts.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("ai_manager")}
@@ -902,7 +907,12 @@ function PublishStudioContent() {
             )}
           >
             <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Channels ({accounts.length})</span>
+            <span>Channels</span>
+            {accounts.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                {accounts.length}
+              </span>
+            )}
           </button>
         </div>
       </header>

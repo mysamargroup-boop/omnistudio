@@ -668,19 +668,20 @@ function PipelineContent() {
         />
 
         {/* Quick Inspiration Concept Chips */}
-        <div className="pt-1 flex flex-wrap items-center gap-2 font-mono">
-          <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold shrink-0">
+        <div className="pt-1.5 flex flex-wrap items-center gap-2 font-mono">
+          <span className="text-[9px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold shrink-0">
             QUICK CONCEPTS:
           </span>
           {PRESETS.map((p, idx) => (
             <button
               key={idx}
               type="button"
+              title={p.text}
               onClick={() => setTopic(p.text)}
-              className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
+              className="text-[10px] px-2.5 py-1 rounded-xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5 group"
             >
-              <span className="font-bold text-emerald-500">[{p.genre}]</span>
-              <span className="truncate max-w-[170px]">{p.text}</span>
+              <span className="font-bold text-emerald-500 shrink-0">[{p.genre}]</span>
+              <span className="truncate max-w-[220px] sm:max-w-[280px] md:max-w-[340px] text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-200">{p.text}</span>
             </button>
           ))}
         </div>
@@ -1386,7 +1387,7 @@ function PipelineContent() {
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-jakarta">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed font-jakarta">
                 Single prompt into finished 4K cinematic video and omnichannel social distribution. All 22 AI agents coordinate autonomously without manual approval stops.
               </p>
             </div>
@@ -1429,7 +1430,7 @@ function PipelineContent() {
                     <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
                       Directorial Review Gates
                     </h3>
-                    <p className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase">
+                    <p className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase tracking-wider">
                       Interactive Approval Popups
                     </p>
                   </div>
@@ -1445,7 +1446,7 @@ function PipelineContent() {
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-jakarta">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed font-jakarta">
                 Human-in-the-loop studio. Agents pause at key milestones (Screenplay, Visual Keyframes, Master Cut) with approval popups for directorial sign-off and revisions.
               </p>
             </div>

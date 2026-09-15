@@ -564,21 +564,22 @@ export default function LoginPage() {
                     onClick={() => executePinLogin(pin.join(""))}
                     disabled={isPinVerifying || pinSuccess || pin.join("").length < 4}
                     className={cn(
-                      "w-full rounded-xl py-3.5 px-5 font-bold text-xs tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2",
-                      "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20",
-                      "active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none",
-                      (isPinVerifying || pinSuccess) && "bg-emerald-500"
+                      "w-full rounded-xl py-3.5 px-5 font-heading font-black text-xs tracking-wider uppercase transition-all duration-200 flex items-center justify-center gap-2 shadow-md",
+                      pin.join("").length === 4
+                        ? "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-emerald-500/30 active:scale-[0.98] cursor-pointer"
+                        : "bg-zinc-800/90 text-zinc-400 border border-zinc-700/60 cursor-not-allowed opacity-90",
+                      (isPinVerifying || pinSuccess) && "bg-emerald-500 text-zinc-950 opacity-100"
                     )}
                   >
                     {isPinVerifying ? (
                       <div className="flex items-center gap-2">
-                        <Spinner size="sm" variant="current" className="text-white" />
-                        <span>Authenticating Credentials...</span>
+                        <Spinner size="sm" variant="current" className="text-zinc-950" />
+                        <span className="font-bold text-zinc-950">Authenticating Credentials...</span>
                       </div>
                     ) : pinSuccess ? (
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-white" />
-                        <span>Passcode Verified · Opening Studio...</span>
+                        <CheckCircle2 className="w-4 h-4 text-zinc-950" />
+                        <span className="font-bold text-zinc-950">Passcode Verified · Opening Studio...</span>
                       </div>
                     ) : (
                       <>
@@ -723,10 +724,10 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full rounded-xl py-3 px-5 font-bold text-xs tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 active:scale-[0.98] disabled:opacity-40"
+                  className="w-full rounded-xl py-3.5 px-5 font-heading font-black text-xs tracking-wider uppercase transition-all cursor-pointer flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-lg shadow-emerald-500/25 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
                   ) : (
                     <>
                       <span>
@@ -734,7 +735,7 @@ export default function LoginPage() {
                           ? "Authenticate with Password"
                           : "Verify Code & Enter Studio"}
                       </span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-4 h-4 text-zinc-950" />
                     </>
                   )}
                 </button>
