@@ -25,6 +25,7 @@ export interface DropdownProps {
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
   align?: "left" | "right";
+  openDirection?: "up" | "down" | "auto";
   actionItem?: {
     label: string;
     icon?: React.ReactNode;
@@ -44,11 +45,13 @@ export default function Dropdown({
   disabled = false,
   size = "md",
   align = "left",
+  openDirection = "auto",
   actionItem,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [actualDirection, setActualDirection] = useState<"up" | "down">("down");
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -56,8 +59,26 @@ export default function Dropdown({
     if (isOpen) {
       const idx = options.findIndex((opt) => opt.value === value);
       setFocusedIndex(idx >= 0 ? idx : 0);
+
+      if (openDirection === "up") {
+        setActualDirection("up");
+      } else if (openDirection === "down") {
+        setActualDirection("down");
+      } else {
+        // Auto: check available space in viewport
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const spaceAbove = rect.top;
+          if (spaceBelow < 280 && spaceAbove > spaceBelow) {
+            setActualDirection("up");
+          } else {
+            setActualDirection("down");
+          }
+        }
+      }
     }
-  }, [isOpen, value, options]);
+  }, [isOpen, value, options, openDirection]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -99,7 +120,7 @@ export default function Dropdown({
   };
 
   return (
-    <div className={cn("relative space-y-1.5", isOpen ? "z-40" : "z-10", className)} ref={containerRef}>
+    <div className={cn("relative space-y-1.5", isOpen ? "z-[9999]" : "z-10", className)} ref={containerRef}>
       {label && (
         <label className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block font-mono font-medium">
           {label}
@@ -137,7 +158,7 @@ export default function Dropdown({
         <ChevronDown
           className={cn(
             "h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 transition-transform duration-200 shrink-0 ml-2",
-            isOpen && "rotate-180 text-emerald-500 dark:text-emerald-400"
+            isOpen && (actualDirection === "up" ? "rotate-0 text-emerald-500 dark:text-emerald-400" : "rotate-180 text-emerald-500 dark:text-emerald-400")
           )}
         />
       </button>
@@ -145,7 +166,8 @@ export default function Dropdown({
       {isOpen && (
         <div
           className={cn(
-            "absolute top-full mt-1.5 z-50 min-w-full sm:min-w-[220px] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
+            "absolute z-[9999] min-w-full sm:min-w-[240px] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
+            actualDirection === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5",
             align === "right" ? "right-0" : "left-0",
             menuClassName
           )}

@@ -53,6 +53,7 @@ import SceneReviewGrid from "@/components/pipeline/SceneReviewGrid";
 import PipelineActivityLog, { ActivityLogEntry } from "@/components/pipeline/PipelineActivityLog";
 import LiveProgressBar from "@/components/ui/LiveProgressBar";
 import Dropdown, { DropdownOption } from "@/components/ui/Dropdown";
+import { startActiveJob, completeActiveJob, updateActiveJob } from "@/lib/generationTracker";
 
 const DEFAULT_PIPELINE_PROMPT =
   "Create an ultra-luxury cinematic commercial for an emerald jewelry collection featuring an elegant protagonist walking through a grand moonlit palace with flowing silks and volumetric lighting";
@@ -340,6 +341,11 @@ function PipelineContent() {
         AGENT_ORDER.forEach((id) => {
           updated[id] = { state: "complete", message: "Completed successfully" };
         });
+        const pId = event.pipeline_id || pipelineId;
+        if (pId) {
+          completeActiveJob(pId);
+          try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+        }
       } else if (currentState === "paused") {
         if (currentAgentId) {
           updated[currentAgentId] = { state: "paused", message: "Awaiting your directorial approval popup" };
@@ -347,6 +353,11 @@ function PipelineContent() {
       } else if (currentState === "failed") {
         if (currentAgentId) {
           updated[currentAgentId] = { state: "failed", message: event.error_message || "Agent execution failed" };
+        }
+        const pId = event.pipeline_id || pipelineId;
+        if (pId) {
+          completeActiveJob(pId);
+          try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
         }
       } else {
         AGENT_ORDER.forEach((id, idx) => {
@@ -361,7 +372,7 @@ function PipelineContent() {
       }
       return updated;
     });
-  }, [style]);
+  }, [style, pipelineId]);
 
   const handleSSEEvent = useCallback((event: any) => {
     // Errors are always processed immediately
@@ -403,6 +414,79 @@ function PipelineContent() {
       if (sseThrottleRef.current) clearTimeout(sseThrottleRef.current);
     };
   }, []);
+
+  // ── Auto Reconnect to Active Pipeline across Page Refreshes ──
+  const reconnectAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (reconnectAttemptedRef.current) return;
+    reconnectAttemptedRef.current = true;
+
+    const activeId = typeof window !== "undefined" ? localStorage.getItem("omnistudio_pipeline_active_id") : null;
+    if (!activeId) return;
+
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await api.getAgentPipelineStatus(activeId);
+        if (!mounted) return;
+        if (res && res.success && res.context) {
+          const ctx = res.context;
+          setPipelineId(activeId);
+          if (ctx.user_prompt) setTopic(ctx.user_prompt);
+          if (ctx.scenes && Array.isArray(ctx.scenes) && ctx.scenes.length > 0) {
+            setChoreographedScenes(ctx.scenes);
+          }
+          if (ctx.master_video_path) setMasterVideo(ctx.master_video_path);
+          if (ctx.image_model) setImageModel(ctx.image_model);
+          if (ctx.style) setStyle(ctx.style);
+          if (ctx.num_scenes) setScenes(ctx.num_scenes);
+
+          if (ctx.agent_logs && Array.isArray(ctx.agent_logs)) {
+            setActivityLogs(
+              ctx.agent_logs.map((l: any) => ({
+                timestamp: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+                agent: l.agent?.toLowerCase().replace("agent", "") || "system",
+                message: l.message,
+                cost_usd: l.cost_usd,
+                cost_inr: l.cost_inr,
+                type: l.agent === "System" ? "system" : "action",
+              }))
+            );
+          }
+
+          if (ctx.state === "paused") {
+            setRunning(false);
+            setPausedState(ctx.state);
+            setApprovalModalOpen(true);
+            setShowDebugTelemetry(true);
+          } else if (ctx.state !== "complete" && ctx.state !== "failed") {
+            // Pipeline still actively generating: reconnect SSE stream immediately
+            setRunning(true);
+            setShowDebugTelemetry(true);
+            startActiveJob(activeId, "pipeline", "/pipeline", `Autonomous Agent Pipeline: ${(ctx.user_prompt || topic).slice(0, 32)}...`);
+            abortRef.current = new AbortController();
+            api.streamAgentPipeline(activeId, handleSSEEvent, abortRef.current.signal)
+              .finally(() => {
+                if (mounted) setRunning(false);
+              });
+          } else {
+            // Completed
+            completeActiveJob(activeId);
+            try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+          }
+        } else {
+          try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+        }
+      } catch (e) {
+        console.warn("Failed to reconnect to active pipeline:", e);
+        try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [handleSSEEvent, topic]);
 
   const handleLaunchAgency = async () => {
     const effectiveTopic = topic.trim() || DEFAULT_PIPELINE_PROMPT;
@@ -450,6 +534,14 @@ function PipelineContent() {
 
       const pId = startRes.pipeline_id;
       setPipelineId(pId);
+      try {
+        localStorage.setItem("omnistudio_pipeline_active_id", pId);
+        startActiveJob(pId, "pipeline", "/pipeline", `22-Agent Pipeline: ${effectiveTopic.slice(0, 32)}...`, {
+          prompt: effectiveTopic,
+          scenes,
+          style,
+        });
+      } catch {}
 
       // 2. Stream real-time SSE progress (throttled to prevent scroll lag)
       await api.streamAgentPipeline(
@@ -483,16 +575,8 @@ function PipelineContent() {
       await api.approveAgentStep(pipelineId);
       setApprovalModalOpen(false);
       setRunning(true);
-      await api.streamAgentPipeline(pipelineId, (event: any) => {
-        if (event.scenes) setChoreographedScenes(event.scenes);
-        if (event.master_video_path) setMasterVideo(event.master_video_path);
-        if (event.state === "paused") {
-          setPausedState(event.state);
-          setApprovalModalOpen(true);
-        } else if (event.state === "complete") {
-          setApprovalModalOpen(false);
-        }
-      });
+      startActiveJob(pipelineId, "pipeline", "/pipeline", `22-Agent Pipeline: ${topic.slice(0, 32)}...`);
+      await api.streamAgentPipeline(pipelineId, handleSSEEvent);
     } catch (e: any) {
       console.error("Failed to approve step:", e);
     } finally {
@@ -521,7 +605,11 @@ function PipelineContent() {
     if (abortRef.current) abortRef.current.abort();
     setRunning(false);
     setApprovalModalOpen(false);
-    if (pipelineId) api.cancelAgentPipeline(pipelineId).catch(console.error);
+    if (pipelineId) {
+      completeActiveJob(pipelineId);
+      try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+      api.cancelAgentPipeline(pipelineId).catch(console.error);
+    }
   };
 
   // Direct 1-Click Publishing across channels
@@ -812,9 +900,18 @@ function PipelineContent() {
               value={imageModel}
               onChange={(v) => setImageModel(v)}
               size="sm"
+              openDirection="up"
               triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#101420] text-xs py-2 shadow-xs"
               menuClassName="bg-white/95 dark:bg-[#0c101d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/10"
             />
+            {imageModel === "auto" && (
+              <div className="p-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/20 text-[10px] text-emerald-800 dark:text-emerald-300 flex items-start gap-2 leading-relaxed animate-in fade-in duration-150">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Auto Engine Mode:</span> Creative Director Agent analyzes prompt keywords (e.g. <i>"using flux pro"</i>, <i>"using imagen 3"</i>, <i>"using gpt image 2"</i>) or dynamically selects the optimal diffusion model based on your concept style.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 4. Neural Voice Provider */}

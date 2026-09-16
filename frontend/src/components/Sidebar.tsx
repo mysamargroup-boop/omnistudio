@@ -27,8 +27,10 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useActiveJobs } from "@/lib/generationTracker";
 import Spinner from "@/components/ui/Spinner";
 import OmniLogo from "@/components/ui/OmniLogo";
 
@@ -47,6 +49,7 @@ interface NavGroup {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isProcessing } = useActiveJobs();
   const [assetCount, setAssetCount] = useState<number | null>(null);
   const [health, setHealth] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -308,13 +311,14 @@ export default function Sidebar() {
                   ? (pathname === "/settings" && !isBrandKitActive) 
                   : (pathname === item.href);
                 const isPending = pendingHref === item.href && !isActive;
+                const isJobProcessing = isProcessing(item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     prefetch={true}
-                    title={isDesktopCollapsed ? `${item.label} ${item.badge ? `(${item.badge})` : ""}` : undefined}
+                    title={isDesktopCollapsed ? `${item.label} ${isJobProcessing ? "(PROCESSING)" : item.badge ? `(${item.badge})` : ""}` : undefined}
                     onClick={() => {
                       if (pathname !== item.href) {
                         setPendingHref(item.href);
@@ -327,9 +331,11 @@ export default function Sidebar() {
                       "group flex items-center font-jakarta text-xs transition-all duration-150 relative cursor-pointer",
                       isDesktopCollapsed
                         ? cn(
-                            "w-9 h-9 mx-auto justify-center rounded-xl p-0 transition-all",
+                            "w-9 h-9 mx-auto justify-center rounded-xl p-0 transition-all relative",
                             isActive
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30"
+                              : isJobProcessing
+                              ? "bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/30"
                               : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
                           )
                         : cn(
@@ -338,6 +344,8 @@ export default function Sidebar() {
                               ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
                               : isPending
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/40 ring-2 ring-emerald-500/10 shadow-xs"
+                              : isJobProcessing
+                              ? "bg-emerald-500/[0.06] text-emerald-700 dark:text-emerald-300 font-medium border border-emerald-500/25 ring-1 ring-emerald-500/10 shadow-xs"
                               : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent font-medium"
                           )
                     )}
@@ -347,13 +355,27 @@ export default function Sidebar() {
                       isDesktopCollapsed ? "h-4 w-4" : "h-3.5 w-3.5",
                       isActive
                         ? isDesktopCollapsed ? "text-emerald-500" : "text-white dark:text-zinc-950"
+                        : isJobProcessing
+                        ? "text-emerald-500"
                         : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white"
                     )} />
+
+                    {isDesktopCollapsed && isJobProcessing && (
+                      <span className="absolute top-1 right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                    )}
 
                     {!isDesktopCollapsed && (
                       <>
                         <span className="flex-1 truncate tracking-tight">{item.label}</span>
-                        {item.badge ? (
+                        {isJobProcessing ? (
+                          <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 ml-auto shrink-0 animate-pulse shadow-xs">
+                            <Loader2 className="w-2.5 h-2.5 animate-spin text-emerald-500" />
+                            <span>PROCESSING</span>
+                          </span>
+                        ) : item.badge ? (
                           <span
                             className={cn(
                               "rounded-full px-1.5 py-0.2 text-[9px] font-mono ml-auto shrink-0",
