@@ -95,10 +95,11 @@ interface PipelineModelOption {
 }
 
 const DIFFUSION_MODELS: PipelineModelOption[] = [
+  { id: "auto", name: "Auto (AI Agent Selected)", badge: "SMART", provider: "Director Agent", description: "Agent analyzes prompt & switches to optimal diffusion model dynamically", active: true },
   { id: "gemini_flash_image", name: "Google Gemini 2.5 Flash", badge: "FAST", provider: "Google DeepMind", description: "Ultra-fast high fidelity image diffusion", active: true },
   { id: "imagen_3", name: "Google Imagen 3", badge: "PRO", provider: "Google Cloud AI", description: "Flagship photoreal lighting & textures", active: true },
   { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "Composition precision & realistic skin", active: true },
-  { id: "flux_pro", name: "Flux.1 Pro", badge: "SOTA", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: false },
+  { id: "flux_pro", name: "Flux.1 Pro", badge: "SOTA", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: true },
 ];
 
 const STYLES = [
@@ -176,7 +177,7 @@ function PipelineContent() {
   const [style, setStyle] = useState("cinematic");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [voiceProvider, setVoiceProvider] = useState("edge");
-  const [imageModel, setImageModel] = useState("gemini_flash_image");
+  const [imageModel, setImageModel] = useState("auto");
   
   // Two distinct operation modes (presented as 2 large interactive cards)
   const [agentMode, setAgentMode] = useState<"autonomous" | "assisted">("autonomous");
@@ -291,6 +292,9 @@ function PipelineContent() {
     if (typeof event.total_cost_inr === "number") setTotalCostInr(event.total_cost_inr);
     if (event.master_video_path) {
       setMasterVideo(event.master_video_path);
+    }
+    if (event.image_model && event.image_model !== imageModel) {
+      setImageModel(event.image_model);
     }
 
     if (event.state === "complete" || event.master_video_path) {
@@ -675,6 +679,37 @@ function PipelineContent() {
             running && "ring-2 ring-emerald-500/30 border-emerald-500/50"
           )}
         />
+
+        {/* Model Directives in Prompt */}
+        <div className="pt-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+          <span className="text-zinc-500 flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider">
+            <Sparkles className="w-3 h-3 text-emerald-500" />
+            Specify Model in Prompt:
+          </span>
+          {[
+            { label: "Flux.1 Pro", text: "using Flux.1 Pro" },
+            { label: "Imagen 3", text: "using Google Imagen 3" },
+            { label: "GPT Image 2", text: "using GPT Image 2" },
+            { label: "Gemini Flash", text: "using Gemini Flash" },
+          ].map((m) => (
+            <button
+              key={m.label}
+              type="button"
+              onClick={() => {
+                setTopic((prev) => {
+                  const base = prev.replace(/\s*\(using [^)]+\)/gi, "").trim();
+                  return base ? `${base} (${m.text})` : m.text;
+                });
+              }}
+              className="text-[9px] px-2 py-0.5 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/15 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold transition cursor-pointer hover:border-emerald-500/40"
+            >
+              +{m.label}
+            </button>
+          ))}
+          <span className="text-[9px] text-zinc-400 dark:text-zinc-500 hidden sm:inline ml-1">
+            (Agent auto-detects model from prompt)
+          </span>
+        </div>
 
         {/* Quick Inspiration Concept Chips */}
         <div className="pt-1.5 flex flex-wrap items-center gap-2 font-mono">
