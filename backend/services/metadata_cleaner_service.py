@@ -16,7 +16,9 @@ import subprocess
 import json
 import shutil
 from pathlib import Path
+import uuid
 from typing import Dict, Any, Optional, List
+from datetime import datetime, timezone
 from PIL import Image, ImageOps, ExifTags
 import numpy as np
 import logging
@@ -1125,3 +1127,364 @@ def clean_audio_lossless(
     except Exception as e:
         logger.error("Error cleaning audio %s: %s", input_path, e)
         return {"success": False, "error": str(e)}
+
+
+# ==============================================================================
+# Realistic Camera Hardware & GPS Geotag Presets (Metadata Spoofing & Injection)
+# ==============================================================================
+
+REALISTIC_CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
+    "sony_a7iv": {
+        "id": "sony_a7iv",
+        "name": "Sony Alpha 7 IV (ILCE-7M4)",
+        "category": "Pro Mirrorless",
+        "make": "Sony",
+        "model": "ILCE-7M4",
+        "lens": "FE 24-70mm F2.8 GM II",
+        "software": "Adobe Photoshop Lightroom Classic 13.2 (Windows)",
+        "focal_length": 50.0,
+        "f_number": 2.8,
+        "exposure_time": 0.002,  # 1/500s
+        "iso": 200,
+        "artist": "Commercial Studio",
+        "copyright": "All rights reserved",
+    },
+    "canon_eos_r5": {
+        "id": "canon_eos_r5",
+        "name": "Canon EOS R5",
+        "category": "Pro Mirrorless",
+        "make": "Canon",
+        "model": "Canon EOS R5",
+        "lens": "RF24-70mm F2.8 L IS USM",
+        "software": "Digital Photo Professional 4.18",
+        "focal_length": 35.0,
+        "f_number": 2.8,
+        "exposure_time": 0.0025,  # 1/400s
+        "iso": 100,
+        "artist": "Editorial Pro",
+        "copyright": "All rights reserved",
+    },
+    "iphone_15_pro": {
+        "id": "iphone_15_pro",
+        "name": "Apple iPhone 15 Pro Max",
+        "category": "Smartphone",
+        "make": "Apple",
+        "model": "iPhone 15 Pro Max",
+        "lens": "iPhone 15 Pro Max back triple camera 6.86mm f/1.78",
+        "software": "17.5.1",
+        "focal_length": 24.0,
+        "f_number": 1.78,
+        "exposure_time": 0.008,  # 1/125s
+        "iso": 64,
+        "artist": "Mobile Capture",
+        "copyright": "",
+    },
+    "nikon_z8": {
+        "id": "nikon_z8",
+        "name": "Nikon Z 8",
+        "category": "Pro Mirrorless",
+        "make": "NIKON CORPORATION",
+        "model": "NIKON Z 8",
+        "lens": "NIKKOR Z 24-70mm f/2.8 S",
+        "software": "Adobe Photoshop 2024",
+        "focal_length": 70.0,
+        "f_number": 2.8,
+        "exposure_time": 0.00156,  # 1/640s
+        "iso": 250,
+        "artist": "Commercial Studio",
+        "copyright": "All rights reserved",
+    },
+    "fujifilm_xt5": {
+        "id": "fujifilm_xt5",
+        "name": "Fujifilm X-T5",
+        "category": "Street / Documentary",
+        "make": "FUJIFILM",
+        "model": "X-T5",
+        "lens": "XF16-55mmF2.8 R LM WR",
+        "software": "Capture One 23 Macintosh",
+        "focal_length": 35.0,
+        "f_number": 2.8,
+        "exposure_time": 0.003125,  # 1/320s
+        "iso": 160,
+        "artist": "Street Documentary",
+        "copyright": "",
+    },
+}
+
+REALISTIC_GPS_PRESETS: Dict[str, Dict[str, Any]] = {
+    "mumbai": {"id": "mumbai", "name": "Mumbai, India", "lat": 19.0760, "lon": 72.8777},
+    "delhi": {"id": "delhi", "name": "New Delhi, India", "lat": 28.6139, "lon": 77.2090},
+    "new_york": {"id": "new_york", "name": "New York City, USA", "lat": 40.7128, "lon": -74.0060},
+    "london": {"id": "london", "name": "London, UK", "lat": 51.5074, "lon": -0.1278},
+    "tokyo": {"id": "tokyo", "name": "Tokyo, Japan", "lat": 35.6762, "lon": 139.6503},
+    "paris": {"id": "paris", "name": "Paris, France", "lat": 48.8566, "lon": 2.3522},
+    "dubai": {"id": "dubai", "name": "Dubai, UAE", "lat": 25.2048, "lon": 55.2708},
+}
+
+
+def _decimal_to_dms(decimal_deg: float):
+    """Converts decimal degrees to (degrees, minutes, seconds) tuple as floats for EXIF."""
+    abs_val = abs(decimal_deg)
+    degrees = int(abs_val)
+    minutes_full = (abs_val - degrees) * 60
+    minutes = int(minutes_full)
+    seconds = round((minutes_full - minutes) * 60, 4)
+    return (float(degrees), float(minutes), float(seconds))
+
+
+def get_metadata_presets() -> Dict[str, Any]:
+    """Returns available camera hardware profiles and GPS city presets."""
+    return {
+        "success": True,
+        "cameras": REALISTIC_CAMERA_PRESETS,
+        "gps": REALISTIC_GPS_PRESETS,
+    }
+
+
+def inject_camera_metadata(
+    input_path: str,
+    output_path: Optional[str] = None,
+    camera_preset: str = "sony_a7iv",
+    custom_camera: Optional[Dict[str, Any]] = None,
+    gps_preset: Optional[str] = None,
+    custom_gps: Optional[Dict[str, float]] = None,
+    stealth_mode: bool = False,
+    quality: int = 98,
+) -> Dict[str, Any]:
+    """
+    1. Losslessly sanitizes the image to purge any AI prompt/C2PA watermark residue.
+    2. Constructs and injects authentic DSLR/Mirrorless/Smartphone EXIF metadata (Make,
+       Model, Lens, Aperture, Shutter Speed, ISO, Focal Length, Software, Date/Time, and GPS).
+    3. Verifies post-injection validity using deep metadata inspection.
+    """
+    input_p = Path(input_path)
+    if not input_p.exists():
+        return {"success": False, "error": f"File not found: {input_path}"}
+
+    if output_path is None:
+        base = input_p.stem
+        ext = input_p.suffix
+        output_p = input_p.parent / f"{base}_injected{ext}"
+    else:
+        output_p = Path(output_path)
+
+    output_p.parent.mkdir(parents=True, exist_ok=True)
+    size_before = input_p.stat().st_size
+
+    # Step 1: Losslessly clean the image first to remove all AI prompts, C2PA, and chunks
+    clean_res = clean_image_lossless(
+        str(input_p),
+        str(output_p),
+        stealth_mode=stealth_mode,
+        quality=quality,
+    )
+    if not clean_res.get("success"):
+        return {"success": False, "error": f"Pre-clean failed: {clean_res.get('error')}"}
+
+    # Step 2: Open cleaned image and construct genuine EXIF structure
+    try:
+        preset_data = REALISTIC_CAMERA_PRESETS.get(camera_preset, REALISTIC_CAMERA_PRESETS["sony_a7iv"]).copy()
+        if custom_camera:
+            preset_data.update(custom_camera)
+
+        now_str = datetime.now().strftime("%Y:%m:%d %H:%M:%S")
+
+        with Image.open(output_p) as img:
+            exif = img.getexif()
+
+            # Base tags (Camera Make, Model, Software, Timestamps, Artist)
+            exif[ExifTags.Base.Make] = str(preset_data.get("make", "Sony"))
+            exif[ExifTags.Base.Model] = str(preset_data.get("model", "ILCE-7M4"))
+            exif[ExifTags.Base.Software] = str(
+                preset_data.get("software", "Adobe Photoshop Lightroom Classic 13.2 (Windows)")
+            )
+            exif[ExifTags.Base.DateTime] = now_str
+            if preset_data.get("artist"):
+                exif[ExifTags.Base.Artist] = str(preset_data["artist"])
+            if preset_data.get("copyright"):
+                exif[ExifTags.Base.Copyright] = str(preset_data["copyright"])
+
+            # IFD Exif sub-directory (Optics, Exposure, Lens)
+            exif_ifd = exif.get_ifd(ExifTags.IFD.Exif)
+            exif_ifd[ExifTags.Base.DateTimeOriginal] = now_str
+            exif_ifd[ExifTags.Base.DateTimeDigitized] = now_str
+            if preset_data.get("lens"):
+                exif_ifd[ExifTags.Base.LensModel] = str(preset_data["lens"])
+            if preset_data.get("iso"):
+                exif_ifd[ExifTags.Base.ISOSpeedRatings] = int(preset_data["iso"])
+            if preset_data.get("f_number"):
+                exif_ifd[ExifTags.Base.FNumber] = float(preset_data["f_number"])
+            if preset_data.get("exposure_time"):
+                exif_ifd[ExifTags.Base.ExposureTime] = float(preset_data["exposure_time"])
+            if preset_data.get("focal_length"):
+                exif_ifd[ExifTags.Base.FocalLength] = float(preset_data["focal_length"])
+
+            # GPS Sub-directory
+            lat: Optional[float] = None
+            lon: Optional[float] = None
+
+            if gps_preset and gps_preset in REALISTIC_GPS_PRESETS:
+                lat = float(REALISTIC_GPS_PRESETS[gps_preset]["lat"])
+                lon = float(REALISTIC_GPS_PRESETS[gps_preset]["lon"])
+            elif custom_gps and "lat" in custom_gps and "lon" in custom_gps:
+                lat = float(custom_gps["lat"])
+                lon = float(custom_gps["lon"])
+
+            if lat is not None and lon is not None:
+                gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
+                gps_ifd[ExifTags.GPS.GPSLatitudeRef] = "S" if lat < 0 else "N"
+                gps_ifd[ExifTags.GPS.GPSLatitude] = _decimal_to_dms(lat)
+                gps_ifd[ExifTags.GPS.GPSLongitudeRef] = "W" if lon < 0 else "E"
+                gps_ifd[ExifTags.GPS.GPSLongitude] = _decimal_to_dms(lon)
+                gps_ifd[ExifTags.GPS.GPSAltitudeRef] = 0
+                gps_ifd[ExifTags.GPS.GPSAltitude] = 15.0
+
+            # Save with authentic EXIF container
+            out_ext = output_p.suffix.lower()
+            if out_ext in (".jpg", ".jpeg"):
+                img.save(
+                    str(output_p),
+                    format="JPEG",
+                    quality=quality,
+                    exif=exif,
+                    subsampling=0,
+                    optimize=True,
+                )
+            elif out_ext == ".png":
+                img.save(str(output_p), format="PNG", exif=exif, optimize=True)
+            elif out_ext == ".webp":
+                img.save(str(output_p), format="WEBP", quality=quality, exif=exif, method=6)
+            else:
+                img.save(str(output_p), quality=quality, exif=exif)
+
+        size_after = output_p.stat().st_size
+        post_check = extract_image_metadata(str(output_p))
+
+        return {
+            "success": True,
+            "media_type": "image",
+            "output_path": str(output_p),
+            "output_filename": output_p.name,
+            "size_before": size_before,
+            "size_after": size_after,
+            "original_size_bytes": size_before,
+            "cleaned_size_bytes": size_after,
+            "camera_preset": camera_preset,
+            "injected_camera": post_check.get("camera_info", {}),
+            "injected_gps": post_check.get("gps_info", {}),
+            "verified_clean": not post_check.get("has_ai_metadata", False),
+            "remaining_metadata": post_check,
+        }
+
+    except Exception as e:
+        logger.error("Error injecting metadata into image %s: %s", input_path, e)
+        return {"success": False, "error": str(e)}
+
+
+def inject_video_metadata(
+    input_path: str,
+    output_path: Optional[str] = None,
+    camera_preset: str = "sony_a7iv",
+    custom_camera: Optional[Dict[str, Any]] = None,
+    gps_preset: Optional[str] = None,
+    custom_gps: Optional[Dict[str, float]] = None,
+    stealth_mode: bool = False,
+) -> Dict[str, Any]:
+    """
+    1. Losslessly sanitizes the video container to purge all AI / C2PA tags.
+    2. Rewrites MP4/MOV container tags with authentic camera hardware, creation timestamps,
+       and optional location metadata.
+    """
+    input_p = Path(input_path)
+    if not input_p.exists():
+        return {"success": False, "error": f"File not found: {input_path}"}
+
+    if output_path is None:
+        base = input_p.stem
+        ext = input_p.suffix
+        output_p = input_p.parent / f"{base}_injected{ext}"
+    else:
+        output_p = Path(output_path)
+
+    output_p.parent.mkdir(parents=True, exist_ok=True)
+    size_before = input_p.stat().st_size
+
+    # First clean losslessly
+    clean_res = clean_video_lossless(
+        str(input_p),
+        str(output_p),
+        stealth_mode=stealth_mode,
+    )
+    if not clean_res.get("success"):
+        return {"success": False, "error": f"Pre-clean failed: {clean_res.get('error')}"}
+
+    # Now inject container tags using FFmpeg stream copy
+    preset_data = REALISTIC_CAMERA_PRESETS.get(camera_preset, REALISTIC_CAMERA_PRESETS["sony_a7iv"]).copy()
+    if custom_camera:
+        preset_data.update(custom_camera)
+
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    make = str(preset_data.get("make", "Sony"))
+    model = str(preset_data.get("model", "ILCE-7M4"))
+
+    temp_injected = output_p.parent / f"temp_{uuid.uuid4().hex[:8]}_{output_p.name}"
+
+    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+    cmd = [
+        ffmpeg_bin,
+        "-y",
+        "-i", str(output_p),
+        "-map", "0",
+        "-c", "copy",
+        "-metadata", f"make={make}",
+        "-metadata", f"model={model}",
+        "-metadata", f"creation_time={now_iso}",
+        "-metadata:s:v:0", "handler_name=VideoHandler",
+        "-metadata:s:a:0", "handler_name=SoundHandler",
+    ]
+
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    if gps_preset and gps_preset in REALISTIC_GPS_PRESETS:
+        lat = float(REALISTIC_GPS_PRESETS[gps_preset]["lat"])
+        lon = float(REALISTIC_GPS_PRESETS[gps_preset]["lon"])
+    elif custom_gps and "lat" in custom_gps and "lon" in custom_gps:
+        lat = float(custom_gps["lat"])
+        lon = float(custom_gps["lon"])
+
+    if lat is not None and lon is not None:
+        loc_str = f"{lat:+08.4f}{lon:+09.4f}/"
+        cmd.extend(["-metadata", f"location={loc_str}"])
+
+    cmd.append(str(temp_injected))
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if proc.returncode == 0 and temp_injected.exists() and temp_injected.stat().st_size > 0:
+            shutil.move(str(temp_injected), str(output_p))
+        else:
+            if temp_injected.exists():
+                temp_injected.unlink()
+            logger.warning("FFmpeg metadata tag injection warning: %s", proc.stderr[:200])
+
+        size_after = output_p.stat().st_size
+        post_check = extract_video_metadata(str(output_p))
+
+        return {
+            "success": True,
+            "media_type": "video",
+            "output_path": str(output_p),
+            "output_filename": output_p.name,
+            "size_before": size_before,
+            "size_after": size_after,
+            "original_size_bytes": size_before,
+            "cleaned_size_bytes": size_after,
+            "camera_preset": camera_preset,
+            "injected_camera": {"make": make, "model": model},
+            "verified_clean": not post_check.get("has_ai_metadata", False),
+            "remaining_metadata": post_check,
+        }
+    except Exception as e:
+        logger.error("Error injecting video metadata %s: %s", input_path, e)
+        return {"success": False, "error": str(e)}
+

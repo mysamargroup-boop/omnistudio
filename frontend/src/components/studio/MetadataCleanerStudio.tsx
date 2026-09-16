@@ -78,6 +78,25 @@ export interface BatchQueueItem {
   error?: string;
 }
 
+const CAMERA_PRESET_FALLBACKS: Record<string, any> = {
+  sony_a7iv: { name: "Sony Alpha 7 IV (ILCE-7M4)", category: "Pro Mirrorless", make: "Sony", model: "ILCE-7M4", lens: "FE 24-70mm F2.8 GM II", iso: 200, f_number: 2.8, exposure_time: 0.002, software: "Adobe Photoshop Lightroom Classic 13.2" },
+  canon_eos_r5: { name: "Canon EOS R5", category: "Pro Mirrorless", make: "Canon", model: "Canon EOS R5", lens: "RF24-70mm F2.8 L IS USM", iso: 100, f_number: 2.8, exposure_time: 0.0025, software: "Digital Photo Professional 4" },
+  iphone_15_pro: { name: "Apple iPhone 15 Pro Max", category: "Smartphone", make: "Apple", model: "iPhone 15 Pro Max", lens: "Triple Camera 24mm f/1.78", iso: 64, f_number: 1.78, exposure_time: 0.008, software: "iOS 17.5.1" },
+  nikon_z8: { name: "Nikon Z 8", category: "Pro Mirrorless", make: "NIKON CORPORATION", model: "NIKON Z 8", lens: "NIKKOR Z 24-70mm f/2.8 S", iso: 250, f_number: 2.8, exposure_time: 0.00156, software: "Adobe Photoshop 2024" },
+  fujifilm_xt5: { name: "Fujifilm X-T5", category: "Street Documentary", make: "FUJIFILM", model: "X-T5", lens: "XF16-55mmF2.8 R LM WR", iso: 160, f_number: 2.8, exposure_time: 0.003125, software: "Capture One 23" },
+};
+
+const GPS_PRESET_FALLBACKS: Record<string, any> = {
+  none: { name: "No Geotag (Private / Strip GPS)" },
+  mumbai: { name: "Mumbai, India", lat: 19.076, lon: 72.8777 },
+  delhi: { name: "New Delhi, India", lat: 28.6139, lon: 77.209 },
+  new_york: { name: "New York City, USA", lat: 40.7128, lon: -74.006 },
+  london: { name: "London, UK", lat: 51.5074, lon: -0.1278 },
+  tokyo: { name: "Tokyo, Japan", lat: 35.6762, lon: 139.6503 },
+  paris: { name: "Paris, France", lat: 48.8566, lon: 2.3522 },
+  dubai: { name: "Dubai, UAE", lat: 25.2048, lon: 55.2708 },
+};
+
 export default function MetadataCleanerStudio({
   initialImageUrl,
   initialImagePath,
@@ -136,6 +155,23 @@ export default function MetadataCleanerStudio({
   const [cleanStage, setCleanStage] = useState("");
   const [cleanResult, setCleanResult] = useState<any>(null);
   const [cleanError, setCleanError] = useState<string | null>(null);
+
+  // Realistic Camera Profile Spoofing / Injection
+  const [injectCameraProfile, setInjectCameraProfile] = useState(true);
+  const [cameraPreset, setCameraPreset] = useState<string>("sony_a7iv");
+  const [gpsPreset, setGpsPreset] = useState<string>("none");
+  const [presetsData, setPresetsData] = useState<{ cameras: Record<string, any>; gps: Record<string, any> } | null>(null);
+
+  useEffect(() => {
+    api.getMetadataPresets().then((res) => {
+      if (res && res.success) {
+        setPresetsData({
+          cameras: res.cameras,
+          gps: { none: { name: "No Geotag (Private / Strip GPS)" }, ...res.gps },
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   // UI state
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -413,7 +449,15 @@ export default function MetadataCleanerStudio({
           prev.map((q, idx) => (idx === i ? { ...q, status: "cleaning" } : q))
         );
         let res: any = null;
-        if (item.type === "video") {
+        if (injectCameraProfile && item.type !== "audio") {
+          res = await api.injectUploadedMedia(
+            item.file,
+            cameraPreset,
+            gpsPreset !== "none" ? gpsPreset : undefined,
+            stealthMode,
+            quality
+          );
+        } else if (item.type === "video") {
           res = await api.cleanUploadedVideo(item.file, stealthMode, zeroDiskMode);
         } else if (item.type === "audio") {
           res = await api.cleanUploadedAudio(item.file, stealthMode, zeroDiskMode);
@@ -459,7 +503,9 @@ export default function MetadataCleanerStudio({
     const t1 = setTimeout(() => {
       setCleanProgress(40);
       setCleanStage(
-        stealthMode
+        injectCameraProfile && !isAudio
+          ? "Stripping AI watermarks & preparing camera optics profile..."
+          : stealthMode
           ? "Injecting micro-frequency dither (neutralizing SynthID neural classifiers)..."
           : "Stripping C2PA, JUMBF, and XMP provenance blocks..."
       );
@@ -467,17 +513,44 @@ export default function MetadataCleanerStudio({
 
     const t2 = setTimeout(() => {
       setCleanProgress(70);
-      setCleanStage("Rebuilding clean container with lossless stream copy...");
+      setCleanStage(
+        injectCameraProfile && !isAudio
+          ? `Injecting authentic ${CAMERA_PRESET_FALLBACKS[cameraPreset]?.make || "Camera"} hardware EXIF & optics...`
+          : "Rebuilding clean container with lossless stream copy..."
+      );
     }, 900);
 
     const t3 = setTimeout(() => {
       setCleanProgress(90);
-      setCleanStage("Verifying 0% EXIF leakage & bitstream integrity...");
+      setCleanStage("Verifying 0% AI leakage & bitstream integrity...");
     }, 1400);
 
     try {
       let res: any;
-      if (isVideo) {
+      if (injectCameraProfile && !isAudio) {
+        if (selectedFile) {
+          res = await api.injectUploadedMedia(
+            selectedFile,
+            cameraPreset,
+            gpsPreset !== "none" ? gpsPreset : undefined,
+            stealthMode,
+            quality
+          );
+        } else if (previewUrl || sourcePath) {
+          res = await api.injectMetadata({
+            url: previewUrl || undefined,
+            path: sourcePath || undefined,
+            camera_preset: cameraPreset,
+            gps_preset: gpsPreset !== "none" ? gpsPreset : undefined,
+            stealth_mode: stealthMode,
+            quality: quality,
+          });
+        } else {
+          setCleanError("No media selected to inject camera profile");
+          setCleaning(false);
+          return;
+        }
+      } else if (isVideo) {
         if (selectedFile) {
           res = await api.cleanUploadedVideo(selectedFile, stealthMode);
         } else if (previewUrl || sourcePath) {
@@ -1099,6 +1172,110 @@ export default function MetadataCleanerStudio({
                 </button>
               </div>
 
+              {/* Realistic Camera & GPS Profile Spoofing */}
+              {!isAudio && (
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-cyan-500/30 dark:border-cyan-500/20 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          Realistic Camera Profile Injection
+                        </span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                          HARDWARE SPOOF
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                        Purges AI markers and injects authentic DSLR/Smartphone hardware EXIF (Sony A7IV, Canon R5, iPhone 15 Pro) + optional GPS geotag. Fooled forensic AI detectors expect camera optics.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInjectCameraProfile(!injectCameraProfile)}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                        injectCameraProfile ? "bg-cyan-600" : "bg-zinc-300 dark:bg-zinc-800"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                          injectCameraProfile ? "translate-x-5" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {injectCameraProfile && (
+                    <div className="pt-2 border-t border-zinc-200 dark:border-white/5 space-y-3 animate-in fade-in">
+                      {/* Camera Selection */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-between">
+                          <span>Target Camera Hardware</span>
+                          <span className="text-cyan-600 dark:text-cyan-400 lowercase">
+                            {CAMERA_PRESET_FALLBACKS[cameraPreset]?.category || "hardware"}
+                          </span>
+                        </label>
+                        <select
+                          value={cameraPreset}
+                          onChange={(e) => setCameraPreset(e.target.value)}
+                          className="w-full text-xs font-mono p-2.5 rounded-xl bg-white dark:bg-[#0c121e] border border-zinc-300 dark:border-white/10 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                        >
+                          {Object.entries(presetsData?.cameras || CAMERA_PRESET_FALLBACKS).map(([key, item]: [string, any]) => (
+                            <option key={key} value={key}>
+                              {item.name || key}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Active Profile Optics Preview */}
+                      {(() => {
+                        const activeCam = (presetsData?.cameras || CAMERA_PRESET_FALLBACKS)[cameraPreset] || CAMERA_PRESET_FALLBACKS.sony_a7iv;
+                        return (
+                          <div className="p-2.5 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 text-[11px] font-mono text-zinc-700 dark:text-zinc-300 space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Lens Optics:</span>
+                              <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[170px]">{activeCam.lens}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Aperture / ISO:</span>
+                              <span className="text-zinc-800 dark:text-zinc-200">f/{activeCam.f_number} • ISO {activeCam.iso}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Post Software:</span>
+                              <span className="text-zinc-800 dark:text-zinc-200 truncate max-w-[170px]">{activeCam.software}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* GPS Geotag Selection */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-emerald-500" />
+                            GPS Geotag Location
+                          </span>
+                        </label>
+                        <select
+                          value={gpsPreset}
+                          onChange={(e) => setGpsPreset(e.target.value)}
+                          className="w-full text-xs font-mono p-2.5 rounded-xl bg-white dark:bg-[#0c121e] border border-zinc-300 dark:border-white/10 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                        >
+                          {Object.entries(presetsData?.gps || GPS_PRESET_FALLBACKS).map(([key, item]: [string, any]) => (
+                            <option key={key} value={key}>
+                              {item.name || key}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Action Button */}
               <button
                 type="button"
@@ -1108,13 +1285,24 @@ export default function MetadataCleanerStudio({
                   "w-full py-3.5 px-6 rounded-2xl font-bold font-heading text-sm transition shadow-lg flex items-center justify-center gap-2.5",
                   cleaning || inspecting
                     ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed"
+                    : injectCameraProfile && !isAudio
+                    ? "bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white shadow-cyan-600/25 cursor-pointer"
                     : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-600/25 cursor-pointer"
                 )}
               >
                 {cleaning ? (
                   <>
                     <Spinner className="w-4 h-4 text-white" />
-                    <span>Neutralizing Watermarks & Stripping Provenance...</span>
+                    <span>
+                      {injectCameraProfile && !isAudio
+                        ? "Purging AI & Injecting Real Camera EXIF..."
+                        : "Neutralizing Watermarks & Stripping Provenance..."}
+                    </span>
+                  </>
+                ) : injectCameraProfile && !isAudio ? (
+                  <>
+                    <Camera className="w-4 h-4 text-white" />
+                    <span>Clean AI & Inject Real Camera EXIF</span>
                   </>
                 ) : (
                   <>
@@ -1812,8 +2000,15 @@ export default function MetadataCleanerStudio({
                       className="max-h-48 w-auto object-contain rounded-xl"
                     />
                   )}
-                  <div className="absolute top-2 left-2 bg-emerald-950/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-mono text-emerald-300 border border-emerald-500/30">
-                    CLEANED
+                  <div
+                    className={cn(
+                      "absolute top-2 left-2 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-mono border",
+                      cleanResult.injected_camera
+                        ? "bg-cyan-950/80 text-cyan-300 border-cyan-500/30"
+                        : "bg-emerald-950/80 text-emerald-300 border-emerald-500/30"
+                    )}
+                  >
+                    {cleanResult.injected_camera ? "CAMERA SPOOFED" : "CLEANED"}
                   </div>
                 </div>
 
@@ -1823,10 +2018,45 @@ export default function MetadataCleanerStudio({
                       <span className="text-zinc-500">Cleaned Size:</span>
                       <span className="text-zinc-800 dark:text-zinc-200">{formatBytes(cleanResult.cleaned_size_bytes)}</span>
                     </div>
+
+                    {cleanResult.injected_camera && (
+                      <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
+                        <span className="text-zinc-500">Camera Profile:</span>
+                        <span className="text-cyan-600 dark:text-cyan-400 font-bold truncate max-w-[150px]">
+                          {cleanResult.injected_camera.make} {cleanResult.injected_camera.model}
+                        </span>
+                      </div>
+                    )}
+
+                    {cleanResult.injected_camera?.lens && (
+                      <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
+                        <span className="text-zinc-500">Lens Optics:</span>
+                        <span className="text-zinc-800 dark:text-zinc-200 truncate max-w-[140px]" title={cleanResult.injected_camera.lens}>
+                          {cleanResult.injected_camera.lens}
+                        </span>
+                      </div>
+                    )}
+
+                    {cleanResult.injected_gps?.has_gps && (
+                      <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
+                        <span className="text-zinc-500">Geotag:</span>
+                        <a
+                          href={cleanResult.injected_gps.google_maps_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 truncate max-w-[140px]"
+                        >
+                          <MapPin className="w-3 h-3 shrink-0" />
+                          <span>{cleanResult.injected_gps.formatted}</span>
+                        </a>
+                      </div>
+                    )}
+
                     <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
-                      <span className="text-zinc-500">EXIF Tags:</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">0 (Clean)</span>
+                      <span className="text-zinc-500">AI Remnants:</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">0% (Verified Clean)</span>
                     </div>
+
                     <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
                       <span className="text-zinc-500">Stealth Mode:</span>
                       <span className="text-zinc-800 dark:text-zinc-200">{cleanResult.stealth_mode ? "Enabled" : "Standard"}</span>

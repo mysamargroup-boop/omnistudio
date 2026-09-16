@@ -18,6 +18,9 @@ from services.metadata_cleaner_service import (
     clean_video_lossless,
     extract_audio_metadata,
     clean_audio_lossless,
+    inject_camera_metadata,
+    inject_video_metadata,
+    get_metadata_presets,
 )
 from database import db_save_asset
 
@@ -48,6 +51,25 @@ class MetadataCleanRequest(BaseModel):
     def validate_quality(cls, v: Optional[int]) -> int:
         if v is None:
             return 99
+        return max(50, min(100, v))
+
+
+class MetadataInjectRequest(BaseModel):
+    url: Optional[str] = None
+    path: Optional[str] = None
+    filename: Optional[str] = None
+    camera_preset: Optional[str] = "sony_a7iv"
+    custom_camera: Optional[Dict[str, Any]] = None
+    gps_preset: Optional[str] = None
+    custom_gps: Optional[Dict[str, float]] = None
+    stealth_mode: Optional[bool] = False
+    quality: Optional[int] = 98
+
+    @field_validator("quality")
+    @classmethod
+    def validate_quality(cls, v: Optional[int]) -> int:
+        if v is None:
+            return 98
         return max(50, min(100, v))
 
 
@@ -731,4 +753,158 @@ async def clean_audio_upload_endpoint(
 ):
     """Upload and clean audio file metadata losslessly."""
     return await clean_uploaded_media(request, file=file, stealth_mode=stealth_mode, quality=99)
+
+
+# ==============================================================================
+# Camera Spoofing & Realistic Hardware/GPS Injection Endpoints
+# ==============================================================================
+
+@router.get("/presets")
+@limiter.limit("60/minute")
+async def get_presets_endpoint(request: Request):
+    """Retrieve available camera hardware and GPS geotag spoofing presets."""
+    return get_metadata_presets()
+
+
+@router.post("/inject")
+@limiter.limit("20/minute")
+async def inject_metadata_endpoint(req: MetadataInjectRequest, request: Request):
+    """
+    Sanitizes AI media and injects authentic DSLR/Smartphone EXIF & container metadata.
+    """
+    target_path = _resolve_target_media_path(req.url, req.path, req.filename)
+
+    if is_video_path(target_path):
+        injected_filename = f"camera_{uuid.uuid4().hex[:6]}_{target_path.stem}{target_path.suffix}"
+        output_path = settings.VIDEOS_PATH / injected_filename
+
+        res = inject_video_metadata(
+            input_path=str(target_path),
+            output_path=str(output_path),
+            camera_preset=req.camera_preset or "sony_a7iv",
+            custom_camera=req.custom_camera,
+            gps_preset=req.gps_preset,
+            custom_gps=req.custom_gps,
+            stealth_mode=bool(req.stealth_mode),
+        )
+        if not res.get("success"):
+            raise HTTPException(status_code=500, detail=res.get("error", "Failed to inject video metadata."))
+
+        clean_url = f"/outputs/videos/{injected_filename}"
+        res["url"] = clean_url
+        res["clean_url"] = clean_url
+        return res
+
+    elif target_path.suffix.lower() in IMAGE_EXTENSIONS:
+        injected_filename = f"camera_{uuid.uuid4().hex[:6]}_{target_path.stem}{target_path.suffix}"
+        output_path = settings.IMAGES_PATH / injected_filename
+
+        res = inject_camera_metadata(
+            input_path=str(target_path),
+            output_path=str(output_path),
+            camera_preset=req.camera_preset or "sony_a7iv",
+            custom_camera=req.custom_camera,
+            gps_preset=req.gps_preset,
+            custom_gps=req.custom_gps,
+            stealth_mode=bool(req.stealth_mode),
+            quality=req.quality or 98,
+        )
+        if not res.get("success"):
+            raise HTTPException(status_code=500, detail=res.get("error", "Failed to inject image metadata."))
+
+        clean_url = f"/outputs/images/{injected_filename}"
+        res["url"] = clean_url
+        res["clean_url"] = clean_url
+        return res
+
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported media format for camera metadata injection.")
+
+
+@router.post("/inject-upload")
+@limiter.limit("15/minute")
+async def inject_upload_endpoint(
+    request: Request,
+    file: UploadFile = File(...),
+    camera_preset: str = Form("sony_a7iv"),
+    gps_preset: Optional[str] = Form(None),
+    stealth_mode: bool = Form(False),
+    quality: int = Form(98),
+):
+    """Upload media directly, strip AI metadata, and inject authentic camera/GPS EXIF."""
+    clean_orig = sanitize_filename(file.filename or "photo.jpg")
+    ext = Path(clean_orig).suffix.lower() or ".jpg"
+
+    content = await file.read()
+    if ext in VIDEO_EXTENSIONS:
+        try:
+            validate_uploaded_media(content, clean_orig, "video")
+        except Exception:
+            pass
+        orig_filename = f"raw_{uuid.uuid4().hex[:6]}_{clean_orig}"
+        orig_path = settings.VIDEOS_PATH / orig_filename
+        with open(orig_path, "wb") as f:
+            f.write(content)
+
+        injected_filename = f"camera_{uuid.uuid4().hex[:6]}_{clean_orig}"
+        injected_path = settings.VIDEOS_PATH / injected_filename
+
+        try:
+            res = inject_video_metadata(
+                input_path=str(orig_path),
+                output_path=str(injected_path),
+                camera_preset=camera_preset,
+                gps_preset=gps_preset if gps_preset and gps_preset != "none" else None,
+                stealth_mode=stealth_mode,
+            )
+            if not res.get("success"):
+                raise HTTPException(status_code=500, detail=res.get("error", "Video injection failed."))
+
+            clean_url = f"/outputs/videos/{injected_filename}"
+            res["url"] = clean_url
+            res["clean_url"] = clean_url
+            return res
+        finally:
+            if orig_path.exists():
+                try:
+                    orig_path.unlink()
+                except Exception:
+                    pass
+
+    elif ext in IMAGE_EXTENSIONS:
+        validate_uploaded_media(content, clean_orig, "image")
+        orig_filename = f"raw_{uuid.uuid4().hex[:6]}_{clean_orig}"
+        orig_path = settings.IMAGES_PATH / orig_filename
+        with open(orig_path, "wb") as f:
+            f.write(content)
+
+        injected_filename = f"camera_{uuid.uuid4().hex[:6]}_{clean_orig}"
+        injected_path = settings.IMAGES_PATH / injected_filename
+
+        try:
+            res = inject_camera_metadata(
+                input_path=str(orig_path),
+                output_path=str(injected_path),
+                camera_preset=camera_preset,
+                gps_preset=gps_preset if gps_preset and gps_preset != "none" else None,
+                stealth_mode=stealth_mode,
+                quality=quality,
+            )
+            if not res.get("success"):
+                raise HTTPException(status_code=500, detail=res.get("error", "Image injection failed."))
+
+            clean_url = f"/outputs/images/{injected_filename}"
+            res["url"] = clean_url
+            res["clean_url"] = clean_url
+            return res
+        finally:
+            if orig_path.exists():
+                try:
+                    orig_path.unlink()
+                except Exception:
+                    pass
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported format for metadata injection: {ext}")
+
 

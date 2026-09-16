@@ -819,6 +819,43 @@ export const api = {
       body: formData,
     });
   },
+
+  // Realistic Camera Profile Injection & Metadata Spoofing
+  getMetadataPresets: () =>
+    fetchApi<MetadataPresetsResponse>("/api/metadata/presets"),
+  injectMetadata: (params: {
+    url?: string;
+    path?: string;
+    filename?: string;
+    camera_preset?: string;
+    custom_camera?: any;
+    gps_preset?: string;
+    custom_gps?: any;
+    stealth_mode?: boolean;
+    quality?: number;
+  }) =>
+    fetchApi<InjectMetadataResponse>("/api/metadata/inject", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  injectUploadedMedia: (
+    file: File,
+    camera_preset: string = "sony_a7iv",
+    gps_preset?: string,
+    stealth_mode: boolean = false,
+    quality: number = 98
+  ) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("camera_preset", camera_preset);
+    if (gps_preset) formData.append("gps_preset", gps_preset);
+    formData.append("stealth_mode", stealth_mode ? "true" : "false");
+    formData.append("quality", String(quality));
+    return fetchApi<InjectMetadataResponse>("/api/metadata/inject-upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
 };
 
 export interface ImageMetadataInspection {
@@ -996,5 +1033,50 @@ export interface CleanAudioResponse {
   error?: string;
 }
 
+export interface CameraPreset {
+  id: string;
+  name: string;
+  category: string;
+  make: string;
+  model: string;
+  lens: string;
+  software: string;
+  focal_length: number;
+  f_number: number;
+  exposure_time: number;
+  iso: number;
+  artist?: string;
+  copyright?: string;
+}
 
+export interface GpsPreset {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+}
 
+export interface MetadataPresetsResponse {
+  success: boolean;
+  cameras: Record<string, CameraPreset>;
+  gps: Record<string, GpsPreset>;
+}
+
+export interface InjectMetadataResponse {
+  success: boolean;
+  media_type: "image" | "video";
+  url: string;
+  clean_url: string;
+  output_path: string;
+  output_filename: string;
+  size_before: number;
+  size_after: number;
+  original_size_bytes: number;
+  cleaned_size_bytes: number;
+  camera_preset: string;
+  injected_camera: Record<string, any>;
+  injected_gps?: Record<string, any>;
+  verified_clean: boolean;
+  remaining_metadata?: Record<string, any>;
+  error?: string;
+}

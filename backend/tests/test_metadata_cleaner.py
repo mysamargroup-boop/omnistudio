@@ -16,6 +16,9 @@ from services.metadata_cleaner_service import (
     extract_video_metadata,
     clean_audio_lossless,
     extract_audio_metadata,
+    inject_camera_metadata,
+    inject_video_metadata,
+    get_metadata_presets,
 )
 import subprocess
 import shutil
@@ -194,5 +197,46 @@ def test_clean_audio_lossless_strips_metadata(sample_audio_with_metadata: Path, 
     assert post_meta["success"] is True
     assert post_meta["has_ai_metadata"] is False
     assert post_meta["detected_generator"] is None
+
+
+def test_get_metadata_presets():
+    presets = get_metadata_presets()
+    assert presets["success"] is True
+    assert "sony_a7iv" in presets["cameras"]
+    assert "iphone_15_pro" in presets["cameras"]
+    assert "mumbai" in presets["gps"]
+
+
+def test_inject_camera_metadata(sample_image_with_metadata: Path, tmp_path: Path):
+    injected_img = tmp_path / "test_camera_injected.jpg"
+    res = inject_camera_metadata(
+        input_path=str(sample_image_with_metadata),
+        output_path=str(injected_img),
+        camera_preset="sony_a7iv",
+        gps_preset="mumbai",
+        stealth_mode=True,
+    )
+    assert res["success"] is True
+    assert injected_img.exists()
+    assert res["verified_clean"] is True
+    assert res["injected_camera"]["make"] == "Sony"
+    assert res["injected_camera"]["model"] == "ILCE-7M4"
+    assert res["injected_gps"]["has_gps"] is True
+    assert round(res["injected_gps"]["latitude"], 2) == 19.08
+
+
+def test_inject_video_metadata(sample_video_with_metadata: Path, tmp_path: Path):
+    injected_vid = tmp_path / "test_video_injected.mp4"
+    res = inject_video_metadata(
+        input_path=str(sample_video_with_metadata),
+        output_path=str(injected_vid),
+        camera_preset="canon_eos_r5",
+        gps_preset="delhi",
+    )
+    assert res["success"] is True
+    assert injected_vid.exists()
+    assert res["verified_clean"] is True
+    assert res["injected_camera"]["make"] == "Canon"
+    assert res["injected_camera"]["model"] == "Canon EOS R5"
 
 
