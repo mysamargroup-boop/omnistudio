@@ -42,6 +42,7 @@ import {
   ArrowUpDown,
   SlidersHorizontal,
   Calendar,
+  Zap,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
@@ -52,7 +53,7 @@ import CreateCollectionModal from "@/components/ui/CreateCollectionModal";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
 import Spinner from "@/components/ui/Spinner";
 
-type Tab = "all" | "favorites" | "final" | "videos" | "images" | "audio" | "trash";
+type Tab = "all" | "favorites" | "browser_ram" | "final" | "videos" | "images" | "audio" | "trash";
 type SortOption = "date_desc" | "date_asc" | "size_desc" | "size_asc" | "name_asc" | "name_desc";
 type FilterMediaType = "all" | "images" | "videos" | "audio";
 type FilterDateRange = "all" | "today" | "week" | "month";
@@ -60,12 +61,14 @@ type FilterDateRange = "all" | "today" | "week" | "month";
 interface VaultAsset {
   filename: string;
   url: string;
-  local_path: string;
+  local_path?: string;
   size_bytes: number;
   size_mb: number;
   modified: number;
   type: string;
   is_trash?: boolean;
+  is_browser_memory?: boolean;
+  status?: string;
   prompt?: string;
   has_prompt?: boolean;
 }
@@ -121,6 +124,161 @@ export default function VaultPage() {
   const [renameError, setRenameError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // In-Browser Memory (RAM) Ephemeral Assets state
+  const [browserMemoryAssets, setBrowserMemoryAssets] = useState<VaultAsset[]>([]);
+
+  // Marquee Drag-to-Select state
+  const [marquee, setMarquee] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    active: boolean;
+  } | null>(null);
+  const marqueeRef = React.useRef<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    active: boolean;
+    initialKeys: Set<string>;
+    shiftKey: boolean;
+  } | null>(null);
+
+  const loadBrowserMemoryAssets = () => {
+    try {
+      const raw = sessionStorage.getItem("omnistudio_ephemeral_assets");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setBrowserMemoryAssets(parsed);
+          return;
+        }
+      }
+      setBrowserMemoryAssets([]);
+    } catch {
+      setBrowserMemoryAssets([]);
+    }
+  };
+
+  useEffect(() => {
+    loadBrowserMemoryAssets();
+    const handleStorage = () => loadBrowserMemoryAssets();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleStorage);
+    };
+  }, []);
+
+  // Marquee mouse drag listener on window
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!marqueeRef.current) return;
+      const m = marqueeRef.current;
+
+      const dx = e.clientX - m.startX;
+      const dy = e.clientY - m.startY;
+
+      // 5px distance threshold to distinguish deliberate drag from click
+      if (!m.active && Math.sqrt(dx * dx + dy * dy) > 5) {
+        m.active = true;
+        document.body.style.userSelect = "none";
+      }
+
+      m.currentX = e.clientX;
+      m.currentY = e.clientY;
+
+      if (m.active) {
+        setMarquee({
+          startX: m.startX,
+          startY: m.startY,
+          currentX: m.currentX,
+          currentY: m.currentY,
+          active: true,
+        });
+
+        const boxLeft = Math.min(m.startX, m.currentX);
+        const boxRight = Math.max(m.startX, m.currentX);
+        const boxTop = Math.min(m.startY, m.currentY);
+        const boxBottom = Math.max(m.startY, m.currentY);
+
+        const cardEls = document.querySelectorAll("[data-asset-card='true']");
+        const intersectedKeys = new Set<string>(m.initialKeys);
+
+        cardEls.forEach((el) => {
+          const rect = el.getBoundingClientRect();
+          const intersects = !(
+            rect.right < boxLeft ||
+            rect.left > boxRight ||
+            rect.bottom < boxTop ||
+            rect.top > boxBottom
+          );
+
+          const key = el.getAttribute("data-asset-key");
+          if (key && intersects) {
+            intersectedKeys.add(key);
+          }
+        });
+
+        setSelectedKeys(intersectedKeys);
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!marqueeRef.current) return;
+      const m = marqueeRef.current;
+
+      document.body.style.userSelect = "";
+
+      if (!m.active) {
+        // Simple click on empty space: clear selection if Shift not held
+        if (!m.shiftKey) {
+          setSelectedKeys(new Set());
+        }
+      }
+
+      marqueeRef.current = null;
+      setMarquee(null);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+    };
+  }, []);
+
+  const handleGalleryMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return; // Only left-click triggers marquee
+
+    const target = e.target as HTMLElement;
+    // Do not initiate marquee on interactive controls or inside an asset card
+    if (
+      target.closest(
+        "button, a, input, select, textarea, [data-no-marquee='true'], [data-asset-card='true']"
+      )
+    ) {
+      return;
+    }
+
+    const isShift = e.shiftKey;
+    const initialKeys = isShift ? new Set(selectedKeys) : new Set<string>();
+
+    marqueeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      currentX: e.clientX,
+      currentY: e.clientY,
+      active: false,
+      initialKeys,
+      shiftKey: isShift,
+    };
+  };
+
   useEffect(() => {
     const handleWindowClick = () => setActiveMenuKey(null);
     window.addEventListener("click", handleWindowClick);
@@ -129,6 +287,7 @@ export default function VaultPage() {
 
   const loadData = async () => {
     setLoading(true);
+    loadBrowserMemoryAssets();
     try {
       const [allRes, trashRes, favRes, colRes] = await Promise.allSettled([
         api.getAllAssets(),
@@ -303,10 +462,13 @@ export default function VaultPage() {
     if (tab === "trash") {
       if (!trashAssets?.items) return [];
       list = [...trashAssets.items];
+    } else if (tab === "browser_ram") {
+      list = [...browserMemoryAssets];
     } else if (!assets) {
-      return [];
+      list = [...browserMemoryAssets];
     } else if (tab === "favorites") {
       list = [
+        ...browserMemoryAssets.filter((f) => favorites.has(f.filename)),
         ...(assets.final || []),
         ...(assets.videos || []),
         ...(assets.images || []),
@@ -314,13 +476,15 @@ export default function VaultPage() {
       ].filter((f) => favorites.has(f.filename));
     } else if (tab === "all") {
       list = [
+        ...browserMemoryAssets,
         ...(assets.final || []),
         ...(assets.videos || []),
         ...(assets.images || []),
         ...(assets.audio || []),
       ];
     } else {
-      list = [...(assets[tab] || [])];
+      const ramItems = browserMemoryAssets.filter((f) => f.type === tab);
+      list = [...ramItems, ...(assets[tab] || [])];
     }
 
     // Filter by selected collection if active
@@ -374,6 +538,7 @@ export default function VaultPage() {
     tab,
     assets,
     trashAssets,
+    browserMemoryAssets,
     search,
     favorites,
     selectedCollectionId,
@@ -665,6 +830,25 @@ export default function VaultPage() {
         }));
         await api.moveToTrash(payload);
       }
+
+      // If any deleted items were in-browser RAM ephemeral assets, purge them from memory & sessionStorage
+      const ramFilenames = new Set(
+        modalItems
+          .filter((i) => browserMemoryAssets.some((b) => b.filename === i.filename))
+          .map((i) => i.filename)
+      );
+      if (ramFilenames.size > 0) {
+        const updated = browserMemoryAssets.filter((b) => !ramFilenames.has(b.filename));
+        setBrowserMemoryAssets(updated);
+        try {
+          if (updated.length > 0) {
+            sessionStorage.setItem("omnistudio_ephemeral_assets", JSON.stringify(updated));
+          } else {
+            sessionStorage.removeItem("omnistudio_ephemeral_assets");
+          }
+        } catch {}
+      }
+
       setSelectedKeys(new Set());
       setModalOpen(false);
       // Close lightbox if the deleted item was currently open in lightbox
@@ -694,6 +878,7 @@ export default function VaultPage() {
   const tabIcon = {
     all: FolderArchive,
     favorites: Star,
+    browser_ram: Zap,
     final: Film,
     videos: Video,
     images: ImageIcon,
@@ -738,19 +923,22 @@ export default function VaultPage() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-nowrap whitespace-nowrap">
-          {(["all", "favorites", "final", "videos", "images", "audio", "trash"] as Tab[]).map((t) => {
+          {(["all", "favorites", "browser_ram", "final", "videos", "images", "audio", "trash"] as Tab[]).map((t) => {
             const Icon = tabIcon[t];
             const count =
               t === "trash"
                 ? trashCount
                 : t === "favorites"
                 ? favorites.size
+                : t === "browser_ram"
+                ? browserMemoryAssets.length
                 : t === "all"
-                ? assets?.total || 0
-                : assets?.[t]?.length || 0;
+                ? (assets?.total || 0) + browserMemoryAssets.length
+                : (assets?.[t]?.length || 0) + browserMemoryAssets.filter((b) => b.type === t).length;
 
             const isTrashTab = t === "trash";
             const isFavTab = t === "favorites";
+            const isBrowserRamTab = t === "browser_ram";
             const isActive = tab === t;
 
             return (
@@ -764,16 +952,37 @@ export default function VaultPage() {
                       ? "bg-rose-600 text-white font-semibold shadow-sm"
                       : isFavTab
                       ? "bg-amber-400 text-zinc-950 font-bold shadow-sm"
+                      : isBrowserRamTab
+                      ? "bg-gradient-to-r from-amber-400 to-amber-500 text-zinc-950 font-bold shadow-sm"
                       : "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm"
                     : isTrashTab && trashCount > 0
                     ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100 dark:hover:bg-rose-900/60"
                     : isFavTab && favorites.size > 0
                     ? "bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+                    : isBrowserRamTab && browserMemoryAssets.length > 0
+                    ? "bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/20"
                     : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:border-zinc-700"
                 )}
               >
-                <Icon className={cn("h-3.5 w-3.5", isTrashTab && !isActive && "text-rose-500", isFavTab && (isActive ? "text-zinc-950 fill-current" : "text-amber-400 fill-current"))} />
-                <span>{t === "final" ? "Masters" : t === "trash" ? "Trash Bin" : t === "favorites" ? "Favorites" : t}</span>
+                <Icon
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    isTrashTab && !isActive && "text-rose-500",
+                    isFavTab && (isActive ? "text-zinc-950 fill-current" : "text-amber-400 fill-current"),
+                    isBrowserRamTab && (isActive ? "text-zinc-950 fill-current" : "text-amber-400 fill-current")
+                  )}
+                />
+                <span>
+                  {t === "final"
+                    ? "Masters"
+                    : t === "trash"
+                    ? "Trash Bin"
+                    : t === "favorites"
+                    ? "Favorites"
+                    : t === "browser_ram"
+                    ? "Browser RAM"
+                    : t}
+                </span>
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.2 rounded-full font-mono",
@@ -782,9 +991,13 @@ export default function VaultPage() {
                         ? "bg-white/20 text-white"
                         : isFavTab
                         ? "bg-black/20 text-zinc-950 font-bold"
+                        : isBrowserRamTab
+                        ? "bg-black/20 text-zinc-950 font-bold"
                         : "bg-white/20 dark:bg-zinc-900/40 text-white dark:text-zinc-950 font-bold"
                       : isTrashTab && trashCount > 0
                       ? "bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 font-bold"
+                      : isBrowserRamTab && browserMemoryAssets.length > 0
+                      ? "bg-amber-400/20 text-amber-600 dark:text-amber-300 font-bold"
                       : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                   )}
                 >
@@ -1045,47 +1258,66 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Stable Media Display with True Masonry Layout & Smooth Faded Image Transitions */}
+      {/* Stable Media Display with True Masonry Layout & Smooth Faded Image Transitions & Marquee Lasso Selection */}
       {!loading && (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-          {activeFiles.map((file, i) => {
-            const selected = isSelected(file.type, file.filename);
-            const isImage = file.type === "images";
-            const isVideo = file.type === "videos" || file.type === "final";
-            const isAudio = file.type === "audio";
-            const isMenuOpen = activeMenuKey === file.filename;
+        <div
+          onMouseDown={handleGalleryMouseDown}
+          className="relative min-h-[500px] select-none pb-28"
+        >
+          {/* Marquee Selection Rectangle Box */}
+          {marquee && marquee.active && (
+            <div
+              className="fixed pointer-events-none z-[99999] border-2 border-emerald-500 bg-emerald-500/15 backdrop-blur-[0.5px] rounded-lg shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-none"
+              style={{
+                left: Math.min(marquee.startX, marquee.currentX),
+                top: Math.min(marquee.startY, marquee.currentY),
+                width: Math.abs(marquee.currentX - marquee.startX),
+                height: Math.abs(marquee.currentY - marquee.startY),
+              }}
+            />
+          )}
 
-            return (
-              <div
-                key={`${file.type}-${file.filename}-${i}`}
-                onClick={(e) => {
-                  if (e.shiftKey || selectedKeys.size > 0) {
-                    e.stopPropagation();
-                    toggleSelect(file.type, file.filename, e.shiftKey);
-                  } else {
-                    openLightbox(file);
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  const v = e.currentTarget.querySelector("video");
-                  if (v) {
-                    v.muted = true;
-                    v.play().catch(() => {});
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  const v = e.currentTarget.querySelector("video");
-                  if (v) {
-                    v.pause();
-                    v.currentTime = 0;
-                  }
-                }}
-                className={cn(
-                  "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0",
-                  isMenuOpen ? "overflow-visible z-[100] relative" : "overflow-hidden z-10",
-                  selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
-                )}
-              >
+          <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            {activeFiles.map((file, i) => {
+              const selected = isSelected(file.type, file.filename);
+              const isImage = file.type === "images";
+              const isVideo = file.type === "videos" || file.type === "final";
+              const isAudio = file.type === "audio";
+              const isMenuOpen = activeMenuKey === file.filename;
+
+              return (
+                <div
+                  key={`${file.type}-${file.filename}-${i}`}
+                  data-asset-card="true"
+                  data-asset-key={`${file.type}::${file.filename}`}
+                  onClick={(e) => {
+                    if (e.shiftKey || selectedKeys.size > 0) {
+                      e.stopPropagation();
+                      toggleSelect(file.type, file.filename, e.shiftKey);
+                    } else {
+                      openLightbox(file);
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    const v = e.currentTarget.querySelector("video");
+                    if (v) {
+                      v.muted = true;
+                      v.play().catch(() => {});
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    const v = e.currentTarget.querySelector("video");
+                    if (v) {
+                      v.pause();
+                      v.currentTime = 0;
+                    }
+                  }}
+                  className={cn(
+                    "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0",
+                    isMenuOpen ? "overflow-visible z-[100] relative" : "overflow-hidden z-10",
+                    selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
+                  )}
+                >
                 {/* Media Display with Faded Smooth Transition & Aspect Ratio */}
                 <div className="w-full relative overflow-hidden rounded-t-2xl bg-zinc-900/90 flex items-center justify-center min-h-[160px]">
                   {/* Shimmer skeleton placeholder while image/video is loading */}
@@ -1237,6 +1469,17 @@ export default function VaultPage() {
                 {selected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
               </button>
 
+              {/* Ephemeral In-Browser RAM Label Badge */}
+              {file.is_browser_memory && (
+                <div
+                  className="absolute top-3 right-20 z-30 flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-zinc-950 px-2 py-0.5 rounded-md shadow-md border border-amber-300/50 pointer-events-none"
+                  title="In-Browser Ephemeral Media (Held in RAM, Zero-Disk)"
+                >
+                  <Zap className="w-2.5 h-2.5 fill-current animate-pulse" />
+                  <span className="font-mono text-[9px] font-extrabold tracking-wider">BROWSER RAM</span>
+                </div>
+              )}
+
               {/* Top Right Floating Capsule: Heart (Favorite) + Three-Dots (Options) */}
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -1284,6 +1527,11 @@ export default function VaultPage() {
                   {isVideo && <Video className="w-3.5 h-3.5 text-cyan-300 shrink-0" />}
                   {isAudio && <Mic className="w-3.5 h-3.5 text-rose-300 shrink-0" />}
                   <span className="text-[11px] font-mono truncate">{file.filename}</span>
+                  {file.is_browser_memory && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-400 text-zinc-950 font-bold shrink-0 shadow-xs">
+                      RAM
+                    </span>
+                  )}
                 </div>
 
                 {isVideo && (
@@ -1555,20 +1803,29 @@ export default function VaultPage() {
           <div className="col-span-full break-inside-avoid w-full text-center py-20 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 space-y-2">
             {tab === "trash" ? (
                <Trash2 className="h-10 w-10 text-zinc-400 dark:text-zinc-600 mx-auto" />
+            ) : tab === "browser_ram" ? (
+               <Zap className="h-10 w-10 text-amber-500 mx-auto" />
             ) : (
                <FolderArchive className="h-10 w-10 text-zinc-400 dark:text-zinc-600 mx-auto" />
             )}
             <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-300 font-heading tracking-tight uppercase">
-              {tab === "trash" ? "TRASH BIN EMPTY" : "REPOSITORY EMPTY"}
+              {tab === "trash"
+                ? "TRASH BIN EMPTY"
+                : tab === "browser_ram"
+                ? "NO IN-BROWSER MEDIA IN RAM"
+                : "REPOSITORY EMPTY"}
             </p>
             <p className="text-[11px] text-zinc-500 font-mono max-w-sm mx-auto">
               {tab === "trash"
                 ? "There are no discarded assets in the Recycle Bin."
+                : tab === "browser_ram"
+                ? "Media uploaded or cleaned in Metadata Cleaner with Zero-Disk or Browser-Only mode will appear here while held in browser memory."
                 : "Generate images, videos, or cinema productions to store them in your vault."}
             </p>
           </div>
         )}
-      </div>
+          </div>
+        </div>
       )}
 
       {/* Floating Bulk Action Bar (when 1 or more selected) */}

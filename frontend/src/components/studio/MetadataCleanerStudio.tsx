@@ -224,6 +224,30 @@ export default function MetadataCleanerStudio({
     }
   }, [previewUrl, sourcePath, metadata, cleanResult, zeroDiskMode, browserOnlyMode, stealthMode, injectCameraProfile, cameraPreset, gpsPreset, activeTab]);
 
+  // Sync ephemeral browser media to sessionStorage for Vault visibility
+  useEffect(() => {
+    try {
+      if (batchQueue.length > 0) {
+        const items = batchQueue.map((item) => ({
+          filename: item.name,
+          url: item.cleanedResult?.clean_url || item.cleanedResult?.url || item.previewUrl,
+          size_bytes: item.size,
+          size_mb: Number((item.size / (1024 * 1024)).toFixed(2)),
+          modified: Math.floor(Date.now() / 1000),
+          type: item.type === "video" ? "videos" : item.type === "audio" ? "audio" : "images",
+          is_browser_memory: true,
+          status: item.status,
+          prompt: "In-Browser Ephemeral Media (Zero-Disk)",
+        }));
+        sessionStorage.setItem("omnistudio_ephemeral_assets", JSON.stringify(items));
+      } else {
+        sessionStorage.removeItem("omnistudio_ephemeral_assets");
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [batchQueue]);
+
   // Load vault assets for selector
   const loadVaultImages = async () => {
     setLoadingVault(true);

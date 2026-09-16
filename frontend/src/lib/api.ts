@@ -175,7 +175,7 @@ export function getMediaUrl(path: string): string {
     return `${base}/outputs/${typeFolder}/${filename}`;
   }
 
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) return path;
   const base = getApiBase();
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const token = getBackendToken() || "";
