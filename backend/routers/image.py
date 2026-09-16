@@ -16,6 +16,7 @@ from services.openai_service import generate_openai_image
 from services.replicate_service import generate_flux_image
 from services.prompt_enhancer import enhance_prompt
 from services.security_service import sanitize_filename, validate_uploaded_media
+from services.metadata_cleaner_service import extract_image_metadata
 from database import db_save_asset
 import logging
 
@@ -467,13 +468,21 @@ async def generate_image(req: ImageRequest, request: Request):
             result = single_res
         else:
             result = dict(single_res)
+            img_meta = {}
+            if single_res.get("local_path"):
+                try:
+                    img_meta = extract_image_metadata(single_res["local_path"])
+                except Exception as me:
+                    logger.debug("Metadata extraction error: %s", me)
             result["images"] = [{
                 "url": single_res.get("url"),
                 "filename": single_res.get("filename"),
                 "local_path": single_res.get("local_path"),
                 "model": single_res.get("model", req.model),
-                "seed": single_res.get("seed")
+                "seed": single_res.get("seed"),
+                "metadata": img_meta
             }]
+            result["metadata"] = img_meta
             result["count"] = 1
     else:
         # Multi-image generation
@@ -482,12 +491,19 @@ async def generate_image(req: ImageRequest, request: Request):
         for i in range(batch_count):
             sub_res = await _generate_single_pass(req, composed_prompt, seed_offset=i)
             if sub_res.get("success"):
+                sub_meta = {}
+                if sub_res.get("local_path"):
+                    try:
+                        sub_meta = extract_image_metadata(sub_res["local_path"])
+                    except Exception as me:
+                        logger.debug("Metadata extraction error: %s", me)
                 images.append({
                     "url": sub_res.get("url"),
                     "filename": sub_res.get("filename"),
                     "local_path": sub_res.get("local_path"),
                     "model": sub_res.get("model", req.model),
-                    "seed": sub_res.get("seed")
+                    "seed": sub_res.get("seed"),
+                    "metadata": sub_meta
                 })
             else:
                 last_error = sub_res.get("error", "Generation variation error")
@@ -497,17 +513,18 @@ async def generate_image(req: ImageRequest, request: Request):
         else:
             result = {
                 "success": True,
-            "count": len(images),
-            "images": images,
-            "url": images[0]["url"],
-            "filename": images[0]["filename"],
-            "local_path": images[0].get("local_path"),
-            "model": images[0].get("model", req.model),
-            "enhanced_prompt": composed_prompt,
-            "quality": req.quality,
-            "aspect_ratio": req.aspect_ratio,
-            "resolution": req.resolution
-        }
+                "count": len(images),
+                "images": images,
+                "url": images[0]["url"],
+                "filename": images[0]["filename"],
+                "local_path": images[0].get("local_path"),
+                "model": images[0].get("model", req.model),
+                "enhanced_prompt": composed_prompt,
+                "quality": req.quality,
+                "aspect_ratio": req.aspect_ratio,
+                "resolution": req.resolution,
+                "metadata": images[0].get("metadata", {})
+            }
 
     try:
         from services.usage_tracker import log_generation

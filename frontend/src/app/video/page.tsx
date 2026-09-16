@@ -59,8 +59,10 @@ import {
   Music,
   Bookmark,
   ShieldAlert,
+  ShieldCheck,
+  FileVideo,
 } from "lucide-react";
-import { api, getMediaUrl } from "@/lib/api";
+import { api, getMediaUrl, VideoMetadataInspection } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
@@ -249,6 +251,16 @@ function VideoStudioContent() {
   // Motion Transfer State
   const [sourceVideoUrl, setSourceVideoUrl] = useState("");
   const [uploadingVideo, setUploadingVideo] = useState(false);
+
+  // AI Video Metadata & Provenance State
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadataInspection | null>(null);
+  const [showMetadataInspector, setShowMetadataInspector] = useState(false);
+  const [cleaningVideoMetadata, setCleaningVideoMetadata] = useState(false);
+  const [cleanSuccessNotice, setCleanSuccessNotice] = useState<string | null>(null);
+
+  // Uploaded Video Metadata State
+  const [uploadedVideoMetadata, setUploadedVideoMetadata] = useState<VideoMetadataInspection | null>(null);
+  const [cleaningUploadedVideo, setCleaningUploadedVideo] = useState(false);
 
   // Character Lock State (Sidebar & Consistent Persona)
   const [characterModalOpen, setCharacterModalOpen] = useState(false);
@@ -861,15 +873,69 @@ function VideoStudioContent() {
     setUploadingVideo(true);
     setUploadType("Motion Reference Video");
     setUploadProgress(0);
+    setUploadedVideoMetadata(null);
     try {
       const res = await api.uploadSourceVideoWithProgress(file, (pct) => setUploadProgress(pct));
       const url = typeof res === "string" ? res : res?.url;
       if (url) setSourceVideoUrl(url);
+      if (res?.metadata) {
+        setUploadedVideoMetadata(res.metadata);
+      } else {
+        api.inspectUploadedVideo(file)
+          .then((m) => m?.success && setUploadedVideoMetadata(m))
+          .catch(() => {});
+      }
     } catch (err) {
       console.error("Failed to upload source video:", err);
     } finally {
       setUploadingVideo(false);
       setUploadProgress(null);
+    }
+  };
+
+  const handleStripGeneratedVideoMetadata = async () => {
+    if (!result?.url) return;
+    setCleaningVideoMetadata(true);
+    setCleanSuccessNotice(null);
+    try {
+      const res = await api.cleanVideoMetadata({
+        url: result.url,
+        filename: result.filename,
+        stealth_mode: false,
+      });
+      if (res?.success) {
+        setResult((prev: any) => ({
+          ...prev,
+          url: res.clean_url || res.url,
+          filename: res.clean_filename || res.output_filename,
+        }));
+        setVideoMetadata(res.after_metadata);
+        setCleanSuccessNotice(
+          `Lossless stream-copy complete: ${res.saved_bytes > 0 ? `${Math.round(res.saved_bytes / 1024)} KB metadata purged` : "All metadata purged"}. Zero quality loss, zero color shift.`
+        );
+      }
+    } catch (err: any) {
+      console.error("Failed to clean video metadata:", err);
+    } finally {
+      setCleaningVideoMetadata(false);
+    }
+  };
+
+  const handleStripUploadedVideoMetadata = async () => {
+    if (!sourceVideoUrl) return;
+    setCleaningUploadedVideo(true);
+    try {
+      const res = await api.cleanVideoMetadata({
+        url: sourceVideoUrl,
+      });
+      if (res?.success) {
+        setSourceVideoUrl(res.clean_url || res.url);
+        setUploadedVideoMetadata(res.after_metadata);
+      }
+    } catch (err: any) {
+      console.error("Failed to clean uploaded video metadata:", err);
+    } finally {
+      setCleaningUploadedVideo(false);
     }
   };
 
@@ -1336,6 +1402,13 @@ function VideoStudioContent() {
           const data = await api.generateVideo(curPayload);
           if (data && data.success) {
             setResult(data);
+            if (data.metadata) {
+              setVideoMetadata(data.metadata);
+            } else if (data.url) {
+              api.inspectVideoMetadata({ url: data.url, filename: data.filename })
+                .then((m) => m?.success && setVideoMetadata(m))
+                .catch(() => {});
+            }
             setVideoDockCollapsed(true);
             const doneJob = {
               ...currentJob,
@@ -1447,6 +1520,13 @@ function VideoStudioContent() {
       const data = await api.generateVideo(payload);
       setResult(data);
       if (data && data.success) {
+        if (data.metadata) {
+          setVideoMetadata(data.metadata);
+        } else if (data.url) {
+          api.inspectVideoMetadata({ url: data.url, filename: data.filename })
+            .then((m) => m?.success && setVideoMetadata(m))
+            .catch(() => {});
+        }
         setVideoDockCollapsed(true);
         setProgress(100);
         setStageTitle("VIDEO RENDER COMPLETE");
@@ -1803,7 +1883,7 @@ function VideoStudioContent() {
                       } catch {}
                     }}
                   />
-                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <div className="absolute top-3 left-3 flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/90 dark:bg-black/80 text-zinc-800 dark:text-zinc-100 border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md shadow-sm">
                       {result.mode?.toUpperCase() || "CINEMATIC"} • {fps} FPS • {aspectRatio}
                     </span>
@@ -1811,6 +1891,28 @@ function VideoStudioContent() {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       <span>RENDERED</span>
                     </span>
+                    {videoMetadata && (
+                      <span
+                        className={cn(
+                          "text-[10px] font-mono font-bold px-2.5 py-1 rounded-full backdrop-blur-md flex items-center gap-1.5 border shadow-sm",
+                          videoMetadata.has_ai_metadata
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                        )}
+                      >
+                        {videoMetadata.has_ai_metadata ? (
+                          <>
+                            <ShieldAlert className="w-3 h-3 text-amber-400" />
+                            <span>AI METADATA DETECTED</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                            <span>CLEAN BITSTREAM</span>
+                          </>
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1827,13 +1929,40 @@ function VideoStudioContent() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => setResult(null)}
+                      onClick={() => {
+                        setResult(null);
+                        setVideoMetadata(null);
+                        setShowMetadataInspector(false);
+                        setCleanSuccessNotice(null);
+                      }}
                       className="px-4 py-2 rounded-xl text-xs font-mono border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       New Generation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMetadataInspector((prev) => !prev)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border",
+                        showMetadataInspector
+                          ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-transparent shadow-sm"
+                          : videoMetadata?.has_ai_metadata
+                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                      )}
+                    >
+                      {videoMetadata?.has_ai_metadata ? (
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                      ) : (
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      )}
+                      <span>AI Metadata</span>
+                      {videoMetadata?.has_ai_metadata && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      )}
                     </button>
                     <button
                       type="button"
@@ -1858,6 +1987,141 @@ function VideoStudioContent() {
                     </a>
                   </div>
                 </div>
+
+                {/* AI Video Metadata & Provenance Inspector Panel */}
+                {showMetadataInspector && (
+                  <div className="max-w-4xl mx-auto p-5 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn(
+                          "w-8 h-8 rounded-xl flex items-center justify-center border",
+                          videoMetadata?.has_ai_metadata
+                            ? "bg-amber-500/10 border-amber-500/30 text-amber-500"
+                            : "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                        )}>
+                          {videoMetadata?.has_ai_metadata ? (
+                            <ShieldAlert className="w-4 h-4" />
+                          ) : (
+                            <ShieldCheck className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-zinc-950 dark:text-white">
+                              AI Video Provenance & Metadata
+                            </h4>
+                            <span className={cn(
+                              "text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border",
+                              videoMetadata?.has_ai_metadata
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                            )}>
+                              {videoMetadata?.has_ai_metadata ? "C2PA / AI Manifest Detected" : "100% Clean Bitstream"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 font-mono">
+                            Inspected via Python FFprobe & Binary Container Header Scanner
+                          </p>
+                        </div>
+                      </div>
+
+                      {videoMetadata?.has_ai_metadata && (
+                        <button
+                          type="button"
+                          disabled={cleaningVideoMetadata}
+                          onClick={handleStripGeneratedVideoMetadata}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-mono font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                        >
+                          {cleaningVideoMetadata ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Purging Metadata (Stream Copy)...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Strip Metadata (Lossless Stream Copy)</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {cleanSuccessNotice && (
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                        <span>{cleanSuccessNotice}</span>
+                      </div>
+                    )}
+
+                    {videoMetadata?.has_ai_metadata ? (
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300 font-mono">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
+                          <span>Embedded AI Provenance Detected</span>
+                        </div>
+                        <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                          This video container contains machine-readable AI signatures
+                          {videoMetadata.detected_generator ? ` (${videoMetadata.detected_generator})` : ""}
+                          {videoMetadata.c2pa_detected ? " including C2PA Content Credentials manifests" : ""}
+                          {videoMetadata.synthid_detected ? " and SynthID digital provenance markers" : ""}.
+                          Use the button above to strip all metadata losslessly using ultra-fast stream copy with zero re-encoding and 0% quality loss.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-2.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <p className="text-xs text-emerald-800 dark:text-emerald-300 font-mono">
+                          Verified Clean: Zero C2PA manifests, SynthID watermarks, or AI generator tags found in container atoms.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Technical Specifications Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/30 border border-black/[0.04] dark:border-white/[0.04]">
+                        <span className="text-[10px] font-mono text-zinc-400 block uppercase">Duration</span>
+                        <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                          {videoMetadata?.duration_formatted || "00:00"} ({videoMetadata?.duration || 0}s)
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/30 border border-black/[0.04] dark:border-white/[0.04]">
+                        <span className="text-[10px] font-mono text-zinc-400 block uppercase">Resolution & FPS</span>
+                        <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                          {videoMetadata?.width || 0}x{videoMetadata?.height || 0} @ {videoMetadata?.fps || fps} FPS
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/30 border border-black/[0.04] dark:border-white/[0.04]">
+                        <span className="text-[10px] font-mono text-zinc-400 block uppercase">Video Codec</span>
+                        <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                          {videoMetadata?.video_codec || "H.264 / AVC"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/30 border border-black/[0.04] dark:border-white/[0.04]">
+                        <span className="text-[10px] font-mono text-zinc-400 block uppercase">File Size & Bitrate</span>
+                        <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                          {videoMetadata?.file_size_formatted || "0 KB"} {videoMetadata?.bitrate_kbps ? `(${videoMetadata.bitrate_kbps} kbps)` : ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Raw Text Tags / Atoms */}
+                    {videoMetadata?.raw_text_metadata && videoMetadata.raw_text_metadata.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold block">
+                          Container Atom Tags ({videoMetadata.raw_text_metadata.length})
+                        </span>
+                        <div className="max-h-28 overflow-y-auto p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.04] space-y-1 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 custom-scrollbar">
+                          {videoMetadata.raw_text_metadata.map((tag, idx) => (
+                            <div key={idx} className="truncate">
+                              {tag}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2344,15 +2608,62 @@ function VideoStudioContent() {
                         disabled={uploadingVideo}
                       />
                       {sourceVideoUrl ? (
-                        <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-black flex items-center justify-center p-1.5">
-                          <video src={getMediaUrl(sourceVideoUrl)} controls className="max-h-[240px] w-auto max-w-full object-contain mx-auto rounded-lg" />
-                          <button
-                            type="button"
-                            onClick={() => setSourceVideoUrl("")}
-                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white cursor-pointer shadow-sm transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="space-y-2">
+                          <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-black flex items-center justify-center p-1.5">
+                            <video src={getMediaUrl(sourceVideoUrl)} controls className="max-h-[240px] w-auto max-w-full object-contain mx-auto rounded-lg" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSourceVideoUrl("");
+                                setUploadedVideoMetadata(null);
+                              }}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-rose-500 text-white cursor-pointer shadow-sm transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Uploaded Video Metadata Card */}
+                          {uploadedVideoMetadata && (
+                            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/30 border border-zinc-200 dark:border-zinc-800/80 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {uploadedVideoMetadata.has_ai_metadata ? (
+                                    <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                                  ) : (
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                  )}
+                                  <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
+                                    {uploadedVideoMetadata.has_ai_metadata ? "AI Metadata Detected" : "Clean Video Bitstream"}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-mono text-zinc-500">
+                                  {uploadedVideoMetadata.duration_formatted} • {uploadedVideoMetadata.width}x{uploadedVideoMetadata.height} • {uploadedVideoMetadata.fps} FPS
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50">
+                                <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[200px]">
+                                  Codec: {uploadedVideoMetadata.video_codec || "H264"} | Size: {uploadedVideoMetadata.file_size_formatted}
+                                </span>
+                                {uploadedVideoMetadata.has_ai_metadata && (
+                                  <button
+                                    type="button"
+                                    disabled={cleaningUploadedVideo}
+                                    onClick={handleStripUploadedVideoMetadata}
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[11px] font-mono font-bold transition-colors cursor-pointer"
+                                  >
+                                    {cleaningUploadedVideo ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-3 h-3" />
+                                    )}
+                                    <span>Strip Metadata</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <button
@@ -3154,7 +3465,8 @@ function VideoStudioContent() {
                           : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-700 dark:text-zinc-300"
                       )}
                     >
-                      <span>⏱ {duration}s • {resolution}</span>
+                      <Film className="w-3 h-3 text-zinc-400" />
+                      <span>{duration}s • {resolution}</span>
                       <ChevronUp className={cn("w-3.5 h-3.5 text-zinc-400 transition-transform", durationPopoverOpen && "rotate-180")} />
                     </button>
 

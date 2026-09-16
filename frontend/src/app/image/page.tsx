@@ -227,6 +227,14 @@ export default function ImageStudioPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [animateMenuOpen, setAnimateMenuOpen] = useState(false);
 
+  // AI Metadata Inspection & Cleaning State
+  const [showMetadataInspector, setShowMetadataInspector] = useState(false);
+  const [cleaningMetadata, setCleaningMetadata] = useState(false);
+  const [metadataStealthMode, setMetadataStealthMode] = useState(true);
+  const [cleanMetadataSuccessMessage, setCleanMetadataSuccessMessage] = useState<string | null>(null);
+  const [inspectedMetadata, setInspectedMetadata] = useState<any | null>(null);
+  const [loadingMetadataInspect, setLoadingMetadataInspect] = useState(false);
+
   // Image-to-Image / Variations State
   const [refImageFile, setRefImageFile] = useState<File | null>(null);
   const [refImageUrl, setRefImageUrl] = useState("");
@@ -1354,14 +1362,89 @@ export default function ImageStudioPage() {
   });
 
   // Current display image from result
-  const displayImages: Array<{ url: string; filename: string }> =
+  const displayImages: Array<{ url: string; filename: string; metadata?: any; local_path?: string }> =
     result?.images && result.images.length > 0
       ? result.images
       : result?.url
-      ? [{ url: result.url, filename: result.filename || "output.png" }]
+      ? [{ url: result.url, filename: result.filename || "output.png", metadata: result.metadata, local_path: result.local_path }]
       : [];
 
   const currentDisplayImage = displayImages[selectedImageIndex] || displayImages[0];
+
+  // Sync or fetch metadata for currentDisplayImage
+  useEffect(() => {
+    if (currentDisplayImage?.metadata && Object.keys(currentDisplayImage.metadata).length > 0) {
+      setInspectedMetadata(currentDisplayImage.metadata);
+    } else if (currentDisplayImage?.url) {
+      let cancelled = false;
+      setLoadingMetadataInspect(true);
+      api.inspectMetadata({ url: currentDisplayImage.url, path: currentDisplayImage.local_path })
+        .then((res) => {
+          if (!cancelled && res && res.success) {
+            setInspectedMetadata(res);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setLoadingMetadataInspect(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    } else {
+      setInspectedMetadata(null);
+    }
+  }, [currentDisplayImage?.url, currentDisplayImage?.filename, currentDisplayImage?.metadata]);
+
+  const handleCleanCurrentDisplayImage = async () => {
+    if (!currentDisplayImage?.url) return;
+    setCleaningMetadata(true);
+    setCleanMetadataSuccessMessage(null);
+    try {
+      const res = await api.cleanMetadata({
+        url: currentDisplayImage.url,
+        path: currentDisplayImage.local_path,
+        stealth_mode: metadataStealthMode,
+        quality: 98,
+      });
+      if (res && res.success) {
+        setCleanMetadataSuccessMessage(`Successfully stripped all metadata & SynthID (${res.saved_percent}% size reduction)!`);
+        setInspectedMetadata(res.after_metadata);
+        // Replace currentDisplayImage in result with the sanitized version
+        setResult((prev: any) => {
+          if (!prev) return prev;
+          const updated = { ...prev };
+          if (updated.images && updated.images.length > 0) {
+            const nextImgs = [...updated.images];
+            if (nextImgs[selectedImageIndex]) {
+              nextImgs[selectedImageIndex] = {
+                ...nextImgs[selectedImageIndex],
+                url: res.url,
+                filename: res.output_filename,
+                local_path: res.local_path,
+                metadata: res.after_metadata,
+              };
+            }
+            updated.images = nextImgs;
+          }
+          if (updated.url === currentDisplayImage.url || !updated.images) {
+            updated.url = res.url;
+            updated.filename = res.output_filename;
+            updated.local_path = res.local_path;
+            updated.metadata = res.after_metadata;
+          }
+          return updated;
+        });
+        setTimeout(() => setCleanMetadataSuccessMessage(null), 5000);
+      } else {
+        alert(res?.error || "Failed to strip metadata.");
+      }
+    } catch (err: any) {
+      alert("Error cleaning metadata: " + (err.message || err));
+    } finally {
+      setCleaningMetadata(false);
+    }
+  };
 
   // Actual Spend Calculation (Dynamic based on model, resolution, quality, and batch count)
   const activeBatchCount = studioMode === "text_to_image" ? imageCount : batchSize;
@@ -1724,6 +1807,31 @@ export default function ImageStudioPage() {
                       SIMULATED
                     </span>
                   )}
+                  {inspectedMetadata && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMetadataInspector((p) => !p)}
+                      className={cn(
+                        "text-[9px] font-mono px-2.5 py-1 rounded-full border backdrop-blur-md font-semibold flex items-center gap-1 shadow-sm cursor-pointer hover:opacity-90 transition",
+                        inspectedMetadata.has_ai_metadata
+                          ? "bg-amber-950/80 text-amber-300 border-amber-500/40"
+                          : "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                      )}
+                      title="Inspect / Strip AI Provenance & Metadata"
+                    >
+                      {inspectedMetadata.has_ai_metadata ? (
+                        <>
+                          <ShieldAlert className="w-3 h-3 text-amber-400" />
+                          <span>AI Metadata</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                          <span>Clean</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Floating Top Right Zoom Trigger */}
@@ -1818,6 +1926,22 @@ export default function ImageStudioPage() {
                     )}
                   </div>
 
+                  {/* Clean AI Metadata Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMetadataInspector((p) => !p)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-mono border backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105",
+                      showMetadataInspector
+                        ? "bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20"
+                        : "bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border-black/[0.08] dark:border-white/[0.2]"
+                    )}
+                    title="Inspect and Clean AI Metadata & C2PA Provenance"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>AI Metadata</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1894,6 +2018,125 @@ export default function ImageStudioPage() {
                 </div>
               )}
             </div>
+
+            {/* AI Metadata & Provenance Inspector Panel */}
+            {showMetadataInspector && (
+              <div className="w-full mt-4 p-5 rounded-2xl bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.1] shadow-xl space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-white flex items-center gap-2">
+                        <span>AI Metadata & Provenance Inspector (Python Engine)</span>
+                        {inspectedMetadata?.detected_generator && (
+                          <span className="text-[10px] px-2 py-0.2 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            {inspectedMetadata.detected_generator}
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        Deep binary and EXIF scan of generated frame • 100% Lossless stripping
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={metadataStealthMode}
+                        onChange={(e) => setMetadataStealthMode(e.target.checked)}
+                        className="w-3.5 h-3.5 accent-emerald-500 rounded"
+                      />
+                      <span>Stealth Mode</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleCleanCurrentDisplayImage}
+                      disabled={cleaningMetadata}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 text-white text-xs font-mono font-bold transition shadow-sm cursor-pointer"
+                    >
+                      {cleaningMetadata ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Stripping...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Strip Metadata (Lossless)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {cleanMetadataSuccessMessage && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{cleanMetadataSuccessMessage}</span>
+                  </div>
+                )}
+
+                {loadingMetadataInspect ? (
+                  <div className="py-6 text-center text-xs font-mono text-zinc-400 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                    <span>Analyzing image binary headers with Python...</span>
+                  </div>
+                ) : inspectedMetadata ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
+                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                      <span className="text-[10px] text-zinc-400 uppercase">C2PA Manifest</span>
+                      <div className={cn("font-bold", inspectedMetadata.c2pa_detected ? "text-rose-400" : "text-emerald-400")}>
+                        {inspectedMetadata.c2pa_detected ? "DETECTED & ACTIVE" : "CLEAN (NONE)"}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                      <span className="text-[10px] text-zinc-400 uppercase">SynthID Watermark</span>
+                      <div className={cn("font-bold", inspectedMetadata.synthid_detected ? "text-amber-400" : "text-emerald-400")}>
+                        {inspectedMetadata.synthid_detected ? "DETECTED" : "CLEAN (NONE)"}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                      <span className="text-[10px] text-zinc-400 uppercase">Dimensions & Mode</span>
+                      <div className="font-bold text-zinc-800 dark:text-zinc-200">
+                        {inspectedMetadata.width} × {inspectedMetadata.height} ({inspectedMetadata.mode || "sRGB"})
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                      <span className="text-[10px] text-zinc-400 uppercase">File Size & Format</span>
+                      <div className="font-bold text-zinc-800 dark:text-zinc-200">
+                        {inspectedMetadata.file_size_formatted || `${Math.round((inspectedMetadata.file_size_bytes || 0) / 1024)} KB`} ({inspectedMetadata.format || "PNG"})
+                      </div>
+                    </div>
+
+                    {/* Embedded Prompt */}
+                    {inspectedMetadata.embedded_prompt && (
+                      <div className="md:col-span-2 lg:col-span-4 p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.06] space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400 uppercase">
+                          <span>Embedded Generation Prompt</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(inspectedMetadata.embedded_prompt);
+                              alert("Embedded prompt copied to clipboard!");
+                            }}
+                            className="text-emerald-500 hover:underline"
+                          >
+                            Copy Prompt
+                          </button>
+                        </div>
+                        <p className="text-[11px] font-sans text-zinc-700 dark:text-zinc-300 leading-relaxed bg-black/20 p-2 rounded">
+                          {inspectedMetadata.embedded_prompt}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
 

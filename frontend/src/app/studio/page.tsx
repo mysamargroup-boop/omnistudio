@@ -14,6 +14,7 @@ import {
   Layers,
   HelpCircle,
   Gem,
+  ShieldCheck,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,12 @@ const ApifyIntelligenceSuite = dynamic(() => import("@/components/studio/ApifyIn
   ssr: false,
 });
 
-type StudioTab = "video" | "image" | "voice" | "apify";
+const MetadataCleanerStudio = dynamic(() => import("@/components/studio/MetadataCleanerStudio"), {
+  loading: () => <TabLoadingSkeleton />,
+  ssr: false,
+});
+
+type StudioTab = "video" | "image" | "voice" | "apify" | "metadata";
 
 interface TabConfig {
   id: StudioTab;
@@ -94,23 +100,34 @@ const STUDIO_TABS: TabConfig[] = [
     color: "text-amber-500",
     activeColor: "bg-amber-500 text-zinc-950 shadow-amber-500/20",
   },
+  {
+    id: "metadata",
+    label: "Metadata Cleaner",
+    icon: ShieldCheck,
+    badge: "STEALTH C2PA",
+    description: "Lossless AI watermark stripper, C2PA manifest remover & SynthID scrambler",
+    color: "text-emerald-500",
+    activeColor: "bg-emerald-600 text-white shadow-emerald-500/20",
+  },
 ];
+
+const VALID_STUDIO_TABS: StudioTab[] = ["video", "image", "voice", "apify", "metadata"];
 
 function AllInOneStudioContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Read initial mode from URL search params (?mode=video|image|voice|apify or ?tab=...)
+  // Read initial mode from URL search params (?mode=video|image|voice|apify|metadata or ?tab=...)
   const initialMode = (searchParams?.get("mode") || searchParams?.get("tab") || "video") as StudioTab;
   const [activeTab, setActiveTab] = useState<StudioTab>(
-    ["video", "image", "voice", "apify"].includes(initialMode) ? initialMode : "video"
+    VALID_STUDIO_TABS.includes(initialMode) ? initialMode : "video"
   );
 
   // Sync state if URL query changes externally
   useEffect(() => {
-    const modeParam = searchParams?.get("mode") || searchParams?.get("tab");
-    if (modeParam && ["video", "image", "voice", "apify"].includes(modeParam) && modeParam !== activeTab) {
-      setActiveTab(modeParam as StudioTab);
+    const modeParam = (searchParams?.get("mode") || searchParams?.get("tab")) as StudioTab;
+    if (modeParam && VALID_STUDIO_TABS.includes(modeParam) && modeParam !== activeTab) {
+      setActiveTab(modeParam);
     }
   }, [searchParams]);
 
@@ -238,6 +255,12 @@ function AllInOneStudioContent() {
         {activeTab === "apify" && (
           <div className="animate-in fade-in duration-200">
             <ApifyIntelligenceSuite onTransferToStudio={handleTransferToStudio} />
+          </div>
+        )}
+
+        {activeTab === "metadata" && (
+          <div className="animate-in fade-in duration-200">
+            <MetadataCleanerStudio />
           </div>
         )}
       </main>

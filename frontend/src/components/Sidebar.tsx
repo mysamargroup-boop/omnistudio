@@ -24,6 +24,7 @@ import {
   Share2,
   Palette,
   UserCheck,
+  ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -165,6 +166,7 @@ export default function Sidebar() {
         { href: "/video", label: "Video Studio", icon: Video, badge: "MOTION" },
         { href: "/voice", label: "Voice Studio", icon: Mic, badge: "NEURAL" },
         { href: "/character", label: "Character Studio", icon: UserCheck, badge: "LOCK" },
+        { href: "/metadata", label: "Metadata Cleaner", icon: ShieldCheck, badge: "STEALTH" },
       ],
     },
     {

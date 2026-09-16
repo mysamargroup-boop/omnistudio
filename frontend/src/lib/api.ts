@@ -714,6 +714,170 @@ export const api = {
     fetchApi<{ success: boolean; id: string; is_favorite: number; isFavorite: boolean }>(`/api/prompts/${id}/favorite`, {
       method: "POST",
     }),
+
+  // AI Metadata Cleaner & Provenance Inspector
+  inspectMetadata: (params: { url?: string; path?: string; filename?: string }) =>
+    fetchApi<ImageMetadataInspection>("/api/metadata/inspect", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  inspectUploadedImage: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<ImageMetadataInspection>("/api/metadata/inspect-upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
+  cleanMetadata: (params: {
+    url?: string;
+    path?: string;
+    filename?: string;
+    stealth_mode?: boolean;
+    quality?: number;
+    save_as_copy?: boolean;
+  }) =>
+    fetchApi<CleanMetadataResponse>("/api/metadata/clean", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  cleanUploadedImage: (file: File, stealth_mode: boolean = false, quality: number = 95) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const qs = new URLSearchParams({
+      stealth_mode: stealth_mode ? "true" : "false",
+      quality: String(quality),
+    }).toString();
+    return fetchApi<CleanMetadataResponse>(`/api/metadata/clean-upload?${qs}`, {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  // Video AI Metadata Cleaner & Provenance Inspector
+  inspectVideoMetadata: (params: { url?: string; path?: string; filename?: string }) =>
+    fetchApi<VideoMetadataInspection>("/api/metadata/video/inspect", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  inspectUploadedVideo: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<VideoMetadataInspection>("/api/metadata/inspect-upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
+  cleanVideoMetadata: (params: {
+    url?: string;
+    path?: string;
+    filename?: string;
+    stealth_mode?: boolean;
+  }) =>
+    fetchApi<CleanVideoResponse>("/api/metadata/video/clean", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  cleanUploadedVideo: (file: File, stealth_mode: boolean = false) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const qs = new URLSearchParams({
+      stealth_mode: stealth_mode ? "true" : "false",
+    }).toString();
+    return fetchApi<CleanVideoResponse>(`/api/metadata/clean-upload?${qs}`, {
+      method: "POST",
+      body: formData,
+    });
+  },
 };
+
+export interface ImageMetadataInspection {
+  success: boolean;
+  filename: string;
+  file_size_bytes: number;
+  file_size_formatted: string;
+  format: string | null;
+  mode: string | null;
+  width: number;
+  height: number;
+  aspect_ratio: string;
+  has_exif: boolean;
+  exif_tags: Record<string, any>;
+  png_info_chunks: Record<string, any>;
+  raw_text_metadata: string[];
+  c2pa_detected: boolean;
+  synthid_detected: boolean;
+  detected_generator: string | null;
+  embedded_prompt: string | null;
+  embedded_parameters: Record<string, any>;
+  has_ai_metadata: boolean;
+  error?: string;
+}
+
+export interface CleanMetadataResponse {
+  success: boolean;
+  input_filename: string;
+  output_filename: string;
+  url: string;
+  clean_url?: string;
+  local_path: string;
+  original_size_bytes: number;
+  cleaned_size_bytes: number;
+  saved_bytes: number;
+  saved_percent: number;
+  format: string;
+  stealth_mode: boolean;
+  before_metadata: ImageMetadataInspection;
+  after_metadata: ImageMetadataInspection;
+  error?: string;
+}
+
+export interface VideoMetadataInspection {
+  success: boolean;
+  filename: string;
+  file_size_bytes: number;
+  file_size_formatted: string;
+  format: string;
+  duration: number;
+  duration_formatted: string;
+  width: number;
+  height: number;
+  aspect_ratio: string;
+  fps: number;
+  video_codec: string | null;
+  audio_codec: string | null;
+  bitrate_kbps: number;
+  has_audio: boolean;
+  c2pa_detected: boolean;
+  synthid_detected: boolean;
+  detected_generator: string | null;
+  has_ai_metadata: boolean;
+  tags: Record<string, any>;
+  raw_text_metadata: string[];
+  url?: string;
+  media_type?: string;
+  error?: string;
+}
+
+export interface CleanVideoResponse {
+  success: boolean;
+  media_type: string;
+  url: string;
+  clean_url: string;
+  input_filename: string;
+  output_filename: string;
+  clean_filename: string;
+  local_path: string;
+  original_size_bytes: number;
+  cleaned_size_bytes: number;
+  saved_bytes: number;
+  saved_percent: number;
+  format: string;
+  stealth_mode: boolean;
+  verified_clean: boolean;
+  before_metadata: VideoMetadataInspection;
+  after_metadata: VideoMetadataInspection;
+  error?: string;
+}
 
 

@@ -17,6 +17,7 @@ from services.ffmpeg_service import (
 from services.director_agent import direct_video_prompt
 from services.video_editor_service import edit_video
 from services.security_service import sanitize_filename
+from services.metadata_cleaner_service import extract_video_metadata
 from database import db_save_asset
 
 logger = logging.getLogger("omnistudio.video")
@@ -539,7 +540,7 @@ async def generate_video(req: VideoRequest, request: Request):
             except Exception as e:
                 logger.warning("Failed to record motion transfer usage log: %s", e)
 
-            return {
+            res_payload = {
                 "success": True,
                 "filename": filename,
                 "url": f"/outputs/videos/{filename}",
@@ -551,6 +552,11 @@ async def generate_video(req: VideoRequest, request: Request):
                 "quality": req.quality,
                 "loop": req.loop
             }
+            try:
+                res_payload["metadata"] = await asyncio.to_thread(extract_video_metadata, str(output_path))
+            except Exception as meta_err:
+                logger.warning("Failed to extract motion transfer metadata: %s", meta_err)
+            return res_payload
         except Exception as e:
             return record_failure(f"Motion transfer failed: {str(e)}")
 
@@ -642,6 +648,11 @@ async def generate_video(req: VideoRequest, request: Request):
                 )
             except Exception as e:
                 logger.warning("Failed to record video generation usage log: %s", e)
+            if result.get("local_path") and Path(result["local_path"]).exists():
+                try:
+                    result["metadata"] = await asyncio.to_thread(extract_video_metadata, result["local_path"])
+                except Exception as meta_err:
+                    logger.warning("Failed to extract text-to-video metadata: %s", meta_err)
 
             return result
 
@@ -706,7 +717,7 @@ async def generate_video(req: VideoRequest, request: Request):
         except Exception as e:
             logger.warning("Failed to record multi-keyframe usage log: %s", e)
 
-        return {
+        res_payload = {
             "success": True,
             "filename": filename,
             "url": f"/outputs/videos/{filename}",
@@ -720,6 +731,11 @@ async def generate_video(req: VideoRequest, request: Request):
             "quality": req.quality,
             "loop": req.loop
         }
+        try:
+            res_payload["metadata"] = await asyncio.to_thread(extract_video_metadata, str(output_path))
+        except Exception as meta_err:
+            logger.warning("Failed to extract multi-keyframe video metadata: %s", meta_err)
+        return res_payload
 
     # ─── Mode: First Frame + Last Frame Interpolation ───
     if req.mode == "first_to_last_frame" and req.end_image_path:
@@ -761,7 +777,7 @@ async def generate_video(req: VideoRequest, request: Request):
         except Exception as e:
             logger.warning("Failed to record keyframe morph usage log: %s", e)
         
-        return {
+        res_payload = {
             "success": True,
             "filename": filename,
             "url": f"/outputs/videos/{filename}",
@@ -776,6 +792,11 @@ async def generate_video(req: VideoRequest, request: Request):
             "quality": req.quality,
             "loop": req.loop
         }
+        try:
+            res_payload["metadata"] = await asyncio.to_thread(extract_video_metadata, str(output_path))
+        except Exception as meta_err:
+            logger.warning("Failed to extract morph video metadata: %s", meta_err)
+        return res_payload
 
     # ─── Mode: Single Keyframe Motion (First Frame) ───
     start_resolved = resolve_path(start_img)
@@ -850,6 +871,12 @@ async def generate_video(req: VideoRequest, request: Request):
         except Exception as e:
             logger.warning("Failed to sync video asset to cloud storage: %s", e)
 
+        if Path(result["local_path"]).exists():
+            try:
+                result["metadata"] = await asyncio.to_thread(extract_video_metadata, result["local_path"])
+            except Exception as meta_err:
+                logger.warning("Failed to extract generated video metadata: %s", meta_err)
+
     try:
         from services.usage_tracker import log_generation
         prov = "google" if "veo" in req.model.lower() else ("local" if "ffmpeg" in req.model.lower() else "cloud")
@@ -886,6 +913,11 @@ async def upload_and_generate(
     result = await generate_video_from_image(
         image_path=str(save_path), motion_type=motion_type, duration=duration
     )
+    if result.get("local_path") and Path(result["local_path"]).exists():
+        try:
+            result["metadata"] = await asyncio.to_thread(extract_video_metadata, result["local_path"])
+        except Exception as meta_err:
+            logger.warning("Failed to extract upload_and_generate metadata: %s", meta_err)
     return result
 
 @router.get("/motions")
@@ -1083,6 +1115,13 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
     # Calculate duration
     duration = await asyncio.to_thread(get_media_duration, dest_path)
 
+    # Extract complete video metadata & AI provenance
+    video_meta = {}
+    try:
+        video_meta = await asyncio.to_thread(extract_video_metadata, str(dest_path))
+    except Exception as meta_err:
+        logger.warning("Failed to extract uploaded video metadata: %s", meta_err)
+
     db_save_asset(
         asset_id=asset_id,
         project_id=None,
@@ -1093,7 +1132,7 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         storage_provider="local",
         size_bytes=stat.st_size,
         mime_type=file.content_type or f"video/{ext.lstrip('.')}",
-        metadata={"original_name": raw_name, "duration": duration, "uploaded": True}
+        metadata={"original_name": raw_name, "duration": duration, "uploaded": True, **video_meta}
     )
 
     return {
@@ -1103,7 +1142,8 @@ async def upload_video(request: Request, file: UploadFile = File(...)):
         "url": url,
         "duration": duration,
         "size_bytes": stat.st_size,
-        "size_mb": round(stat.st_size / (1024 * 1024), 2)
+        "size_mb": round(stat.st_size / (1024 * 1024), 2),
+        "metadata": video_meta
     }
 
 
