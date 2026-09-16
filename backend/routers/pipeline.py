@@ -693,18 +693,30 @@ async def stream_agent_pipeline(pipeline_id: str, request: Request):
             await q.put(ctx.to_dict())
 
         task = asyncio.create_task(orchestrator.resume_pipeline(pipeline_id, progress_callback))
+        disconnect_count = 0
         
         while not task.done() or not q.empty():
             try:
-                # Use a small timeout to periodically check if task is done and client is connected
                 ctx_dict = await asyncio.wait_for(q.get(), timeout=1.0)
+                disconnect_count = 0
                 yield f"data: {json.dumps(ctx_dict)}\n\n"
             except asyncio.TimeoutError:
                 if task.done():
                     break
-                if await request.is_disconnected():
-                    task.cancel()
-                    break
+                # Check client connection safely
+                try:
+                    if await request.is_disconnected():
+                        disconnect_count += 1
+                        if disconnect_count >= 15:  # Grace period of 15 seconds before aborting
+                            logger.info(f"Client disconnected from pipeline {pipeline_id}; canceling background task")
+                            task.cancel()
+                            break
+                    else:
+                        disconnect_count = 0
+                except Exception:
+                    pass
+                # Send SSE comment heartbeat to prevent reverse-proxy and browser socket timeouts
+                yield ": keep-alive\n\n"
 
         if not task.cancelled():
             try:
@@ -713,7 +725,15 @@ async def stream_agent_pipeline(pipeline_id: str, request: Request):
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 @router.post("/agent/approve/{pipeline_id}")
 async def approve_agent_step(pipeline_id: str):

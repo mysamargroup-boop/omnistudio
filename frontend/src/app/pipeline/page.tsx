@@ -52,6 +52,7 @@ import AgentCard from "@/components/pipeline/AgentCard";
 import SceneReviewGrid from "@/components/pipeline/SceneReviewGrid";
 import PipelineActivityLog, { ActivityLogEntry } from "@/components/pipeline/PipelineActivityLog";
 import LiveProgressBar from "@/components/ui/LiveProgressBar";
+import Dropdown, { DropdownOption } from "@/components/ui/Dropdown";
 
 const DEFAULT_PIPELINE_PROMPT =
   "Create an ultra-luxury cinematic commercial for an emerald jewelry collection featuring an elegant protagonist walking through a grand moonlit palace with flowing silks and volumetric lighting";
@@ -423,10 +424,7 @@ function PipelineContent() {
     });
     setAgentStatuses(initialStatuses);
 
-    // Smooth scroll down to live studio floor
-    setTimeout(() => {
-      studioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
+    // Keep user in steady focus without disruptive viewport jumps
 
     abortRef.current = new AbortController();
 
@@ -758,25 +756,30 @@ function PipelineContent() {
           </div>
 
           {/* 3. Diffusion Engine */}
-          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5">
-            <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
-              DIFFUSION ENGINE
-            </label>
-            <select
-              value={imageModel}
-              onChange={(e) => setImageModel(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              {DIFFUSION_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} [{m.badge}]
-                </option>
-              ))}
-            </select>
-            <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Engine: {DIFFUSION_MODELS.find((m) => m.id === imageModel)?.badge || "READY"}</span>
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <div className="flex items-center justify-between font-mono">
+              <label className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold block">
+                DIFFUSION ENGINE
+              </label>
+              <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{DIFFUSION_MODELS.find((m) => m.id === imageModel)?.badge || "READY"}</span>
+              </div>
             </div>
+            <Dropdown
+              options={DIFFUSION_MODELS.map((m) => ({
+                value: m.id,
+                label: m.name,
+                badge: m.badge,
+                description: `${m.provider} • ${m.description}`,
+                active: m.active,
+              }))}
+              value={imageModel}
+              onChange={(v) => setImageModel(v)}
+              size="sm"
+              triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#101420] text-xs py-2 shadow-xs"
+              menuClassName="bg-white/95 dark:bg-[#0c101d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/10"
+            />
           </div>
 
           {/* 4. Neural Voice Provider */}

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import Dropdown from '@/components/ui/Dropdown';
 
 export interface SavedPromptItem {
   id: string;
@@ -453,17 +454,17 @@ export default function PromptVaultModal({
                 <label className="text-xs font-mono font-semibold text-zinc-700 dark:text-zinc-300 block">
                   Category
                 </label>
-                <select
+                <Dropdown
+                  options={CATEGORIES.filter((c) => c !== 'all').map((c) => ({
+                    value: c,
+                    label: c.charAt(0).toUpperCase() + c.slice(1),
+                    badge: c.toUpperCase(),
+                  }))}
                   value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-[#181822] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {CATEGORIES.filter((c) => c !== 'all').map((c) => (
-                    <option key={c} value={c}>
-                      {c.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setNewCategory(val)}
+                  size="sm"
+                  triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.08] bg-zinc-50 dark:bg-[#181822] text-xs py-2 shadow-xs"
+                />
               </div>
 
               <div className="space-y-1.5">

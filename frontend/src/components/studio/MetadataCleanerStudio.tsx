@@ -183,6 +183,7 @@ export default function MetadataCleanerStudio({
   const [vaultTab, setVaultTab] = useState<"all" | "images" | "videos" | "audio">("all");
   const [vaultSearch, setVaultSearch] = useState("");
   const [hideSmallTestFiles, setHideSmallTestFiles] = useState(true);
+  const [vaultVisibleCount, setVaultVisibleCount] = useState(36);
 
   // Inspection & Progress state
   const [inspecting, setInspecting] = useState(false);
@@ -2578,56 +2579,75 @@ export default function MetadataCleanerStudio({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-                  {filteredVaultAssets.map((asset, idx) => {
-                    const isAssetVid =
-                      asset.asset_type === "videos" || /\.(mp4|mov|webm|mkv)$/i.test(asset.filename || asset.url);
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => handleSelectFromVault(asset)}
-                        className="group relative rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#070b13] overflow-hidden cursor-pointer hover:border-emerald-500/80 transition duration-200 shadow-xs hover:shadow-md"
-                      >
-                        {isAssetVid ? (
-                          <div className="w-full h-32 bg-zinc-100 dark:bg-[#05080f] flex flex-col items-center justify-center gap-2 group-hover:scale-105 transition duration-200">
-                            <Video className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
-                              VIDEO
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                    {filteredVaultAssets.slice(0, vaultVisibleCount).map((asset, idx) => {
+                      const isAssetVid =
+                        asset.asset_type === "videos" || /\.(mp4|mov|webm|mkv)$/i.test(asset.filename || asset.url);
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => handleSelectFromVault(asset)}
+                          className="group relative rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#070b13] overflow-hidden cursor-pointer hover:border-emerald-500/80 transition duration-200 shadow-xs hover:shadow-md"
+                        >
+                          {isAssetVid ? (
+                            <div className="w-full h-32 bg-zinc-100 dark:bg-[#05080f] flex flex-col items-center justify-center gap-2 group-hover:scale-105 transition duration-200">
+                              <Video className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                                VIDEO
+                              </span>
+                            </div>
+                          ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={getMediaUrl(asset.url)}
+                              alt={asset.filename}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-32 object-cover group-hover:scale-105 transition duration-200 bg-zinc-100 dark:bg-zinc-800"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.onerror = null;
+                                target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='1.5'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E";
+                              }}
+                            />
+                          )}
+
+                          {/* Badges */}
+                          <div className="absolute top-2 right-2 flex items-center gap-1">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase bg-black/70 text-zinc-200 backdrop-blur-xs border border-white/10">
+                              {isAssetVid ? "MP4" : "IMG"}
                             </span>
                           </div>
-                        ) : (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={getMediaUrl(asset.url)}
-                            alt={asset.filename}
-                            className="w-full h-32 object-cover group-hover:scale-105 transition duration-200"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = "none";
-                            }}
-                          />
-                        )}
 
-                        {/* Badges */}
-                        <div className="absolute top-2 right-2 flex items-center gap-1">
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase bg-black/70 text-zinc-200 backdrop-blur-xs border border-white/10">
-                            {isAssetVid ? "MP4" : "IMG"}
-                          </span>
-                        </div>
-
-                        <div className="p-2.5 bg-white dark:bg-[#090e18] border-t border-zinc-200 dark:border-white/5 space-y-0.5">
-                          <div className="text-[11px] font-mono text-zinc-800 dark:text-zinc-200 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition">
-                            {asset.filename}
-                          </div>
-                          <div className="text-[10px] font-mono text-zinc-500 flex justify-between">
-                            <span>{formatBytes(asset.size_bytes || 0)}</span>
-                            {asset.size_bytes && asset.size_bytes < 10000 && (
-                              <span className="text-amber-600 dark:text-amber-400">Sample</span>
-                            )}
+                          <div className="p-2.5 bg-white dark:bg-[#090e18] border-t border-zinc-200 dark:border-white/5 space-y-0.5">
+                            <div className="text-[11px] font-mono text-zinc-800 dark:text-zinc-200 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition">
+                              {asset.filename}
+                            </div>
+                            <div className="text-[10px] font-mono text-zinc-500 flex justify-between">
+                              <span>{formatBytes(asset.size_bytes || 0)}</span>
+                              {asset.size_bytes && asset.size_bytes < 10000 && (
+                                <span className="text-amber-600 dark:text-amber-400">Sample</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+
+                  {/* Progressive Load More */}
+                  {filteredVaultAssets.length > vaultVisibleCount && (
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setVaultVisibleCount((c) => c + 36)}
+                        className="px-5 py-2 rounded-xl text-xs font-mono font-bold bg-zinc-100 dark:bg-white/[0.06] hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 transition cursor-pointer"
+                      >
+                        Load More Assets ({filteredVaultAssets.length - vaultVisibleCount} remaining)
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

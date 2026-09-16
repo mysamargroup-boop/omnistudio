@@ -78,6 +78,8 @@ export default function SceneReviewGrid({
               {hasVideo ? (
                 <video
                   src={videoUrl!}
+                  poster={imageUrl || undefined}
+                  preload="metadata"
                   className="w-full h-full object-cover"
                   muted
                   loop
