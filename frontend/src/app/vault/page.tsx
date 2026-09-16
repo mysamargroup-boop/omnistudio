@@ -26,6 +26,7 @@ import {
   Maximize2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Copy,
   Star,
   Share2,
@@ -66,6 +67,29 @@ type SortOption = "date_desc" | "date_asc" | "size_desc" | "size_asc" | "name_as
 type FilterMediaType = "all" | "images" | "videos" | "audio";
 type FilterDateRange = "all" | "today" | "week" | "month";
 
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "date_desc", label: "Date (Newest First)" },
+  { value: "date_asc", label: "Date (Oldest First)" },
+  { value: "size_desc", label: "Size (Largest First)" },
+  { value: "size_asc", label: "Size (Smallest First)" },
+  { value: "name_asc", label: "Name (A → Z)" },
+  { value: "name_desc", label: "Name (Z → A)" },
+];
+
+const DATE_OPTIONS: { value: FilterDateRange; label: string }[] = [
+  { value: "all", label: "All Time" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "Past 7 Days" },
+  { value: "month", label: "Past 30 Days" },
+];
+
+const TYPE_OPTIONS: { value: FilterMediaType; label: string }[] = [
+  { value: "all", label: "All Types" },
+  { value: "images", label: "Images" },
+  { value: "videos", label: "Videos" },
+  { value: "audio", label: "Audio" },
+];
+
 interface VaultAsset {
   filename: string;
   url: string;
@@ -88,6 +112,7 @@ export default function VaultPage() {
   const [sortBy, setSortBy] = useState<SortOption>("date_desc");
   const [filterType, setFilterType] = useState<FilterMediaType>("all");
   const [filterDate, setFilterDate] = useState<FilterDateRange>("all");
+  const [openDropdown, setOpenDropdown] = useState<"sort" | "date" | "type" | null>(null);
   const [assets, setAssets] = useState<any>(null);
   const [trashAssets, setTrashAssets] = useState<any>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -293,7 +318,10 @@ export default function VaultPage() {
   };
 
   useEffect(() => {
-    const handleWindowClick = () => setActiveMenuKey(null);
+    const handleWindowClick = () => {
+      setActiveMenuKey(null);
+      setOpenDropdown(null);
+    };
     window.addEventListener("click", handleWindowClick);
     return () => window.removeEventListener("click", handleWindowClick);
   }, []);
@@ -1111,53 +1139,171 @@ export default function VaultPage() {
 
         {/* Search, Sort, Filter & Bulk Select All */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Sort By Dropdown */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 shrink-0">
-            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-            <span className="text-[10px] uppercase font-bold text-zinc-400 hidden sm:inline">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="bg-transparent text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+          {/* Sort By Custom Dropdown */}
+          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer select-none",
+                openDropdown === "sort"
+                  ? "bg-zinc-200 dark:bg-zinc-800 border-violet-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-violet-500/30"
+                  : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-zinc-800/80"
+              )}
             >
-              <option value="date_desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Date (Newest First)</option>
-              <option value="date_asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Date (Oldest First)</option>
-              <option value="size_desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Size (Largest First)</option>
-              <option value="size_asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Size (Smallest First)</option>
-              <option value="name_asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Name (A → Z)</option>
-              <option value="name_desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Name (Z → A)</option>
-            </select>
+              <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <span className="text-[10px] uppercase font-bold text-zinc-400 hidden sm:inline">Sort:</span>
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                {SORT_OPTIONS.find((o) => o.value === sortBy)?.label || "Sort"}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
+                  openDropdown === "sort" && "rotate-180 text-violet-500"
+                )}
+              />
+            </button>
+
+            {openDropdown === "sort" && (
+              <div className="absolute top-full left-0 mt-2 w-52 bg-white/95 dark:bg-[#12131a]/95 backdrop-blur-2xl border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold border-b border-zinc-100 dark:border-white/5 mb-1">
+                  Sort Order
+                </div>
+                {SORT_OPTIONS.map((opt) => {
+                  const isSelected = sortBy === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setSortBy(opt.value);
+                        setOpenDropdown(null);
+                      }}
+                      className={cn(
+                        "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-violet-600/10 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300 font-semibold"
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5"
+                      )}
+                    >
+                      <span>{opt.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Date Filter Dropdown */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 shrink-0">
-            <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-            <select
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value as FilterDateRange)}
-              className="bg-transparent text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+          {/* Date Filter Custom Dropdown */}
+          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setOpenDropdown(openDropdown === "date" ? null : "date")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer select-none",
+                openDropdown === "date"
+                  ? "bg-zinc-200 dark:bg-zinc-800 border-violet-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-violet-500/30"
+                  : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-zinc-800/80"
+              )}
             >
-              <option value="all" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Time</option>
-              <option value="today" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Today</option>
-              <option value="week" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Past 7 Days</option>
-              <option value="month" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Past 30 Days</option>
-            </select>
+              <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                {DATE_OPTIONS.find((o) => o.value === filterDate)?.label || "Date"}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
+                  openDropdown === "date" && "rotate-180 text-violet-500"
+                )}
+              />
+            </button>
+
+            {openDropdown === "date" && (
+              <div className="absolute top-full left-0 mt-2 w-44 bg-white/95 dark:bg-[#12131a]/95 backdrop-blur-2xl border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold border-b border-zinc-100 dark:border-white/5 mb-1">
+                  Date Range
+                </div>
+                {DATE_OPTIONS.map((opt) => {
+                  const isSelected = filterDate === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setFilterDate(opt.value);
+                        setOpenDropdown(null);
+                      }}
+                      className={cn(
+                        "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-violet-600/10 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300 font-semibold"
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5"
+                      )}
+                    >
+                      <span>{opt.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Media Type Filter (on All, Favorites, Trash) */}
+          {/* Media Type Filter Custom Dropdown */}
           {(tab === "all" || tab === "favorites" || tab === "trash") && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 shrink-0">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as FilterMediaType)}
-                className="bg-transparent text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+            <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setOpenDropdown(openDropdown === "type" ? null : "type")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer select-none",
+                  openDropdown === "type"
+                    ? "bg-zinc-200 dark:bg-zinc-800 border-violet-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-violet-500/30"
+                    : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-zinc-800/80"
+                )}
               >
-                <option value="all" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Types</option>
-                <option value="images" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Images</option>
-                <option value="videos" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Videos</option>
-                <option value="audio" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Audio</option>
-              </select>
+                <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {TYPE_OPTIONS.find((o) => o.value === filterType)?.label || "Type"}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
+                    openDropdown === "type" && "rotate-180 text-violet-500"
+                  )}
+                />
+              </button>
+
+              {openDropdown === "type" && (
+                <div className="absolute top-full left-0 mt-2 w-44 bg-white/95 dark:bg-[#12131a]/95 backdrop-blur-2xl border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold border-b border-zinc-100 dark:border-white/5 mb-1">
+                    Media Type
+                  </div>
+                  {TYPE_OPTIONS.map((opt) => {
+                    const isSelected = filterType === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setFilterType(opt.value);
+                          setOpenDropdown(null);
+                        }}
+                        className={cn(
+                          "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-violet-600/10 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300 font-semibold"
+                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5"
+                        )}
+                      >
+                        <span>{opt.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
