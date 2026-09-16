@@ -16,11 +16,14 @@ from services.metadata_cleaner_service import (
     batch_clean_images,
     extract_video_metadata,
     clean_video_lossless,
+    extract_audio_metadata,
+    clean_audio_lossless,
 )
 from database import db_save_asset
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".m4v", ".avi"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"}
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".opus", ".wma"}
 
 logger = logging.getLogger("omnistudio.metadata_router")
 
@@ -52,8 +55,12 @@ def is_video_path(path: Path) -> bool:
     return path.suffix.lower() in VIDEO_EXTENSIONS
 
 
+def is_audio_path(path: Path) -> bool:
+    return path.suffix.lower() in AUDIO_EXTENSIONS
+
+
 def _resolve_target_media_path(req_url: Optional[str], req_path: Optional[str], req_filename: Optional[str]) -> Path:
-    """Helper to safely resolve an image or video file from URL, path, or filename."""
+    """Helper to safely resolve an image, video, or audio file from URL, path, or filename."""
     candidate = req_path or req_url or req_filename
     if not candidate:
         raise HTTPException(status_code=400, detail="Media path, URL, or filename is required.")
@@ -67,7 +74,7 @@ def _resolve_target_media_path(req_url: Optional[str], req_path: Optional[str], 
         pass
 
     # Try resolving across allowed directories
-    for cat in ["videos", "images", "final", "brand_kit", "publish"]:
+    for cat in ["videos", "images", "audio", "final", "brand_kit", "publish"]:
         try:
             resolved = safe_resolve_output_path(candidate, cat, must_exist=True)
             if resolved and resolved.exists():
@@ -77,7 +84,7 @@ def _resolve_target_media_path(req_url: Optional[str], req_path: Optional[str], 
 
     # Also check settings directories directly
     clean_cand_name = Path(candidate).name
-    for base_dir in [settings.VIDEOS_PATH, settings.IMAGES_PATH, settings.FINAL_PATH]:
+    for base_dir in [settings.VIDEOS_PATH, settings.IMAGES_PATH, settings.AUDIO_PATH, settings.FINAL_PATH]:
         p = base_dir / clean_cand_name
         if p.exists():
             return p
@@ -89,8 +96,8 @@ def _resolve_target_media_path(req_url: Optional[str], req_path: Optional[str], 
 @limiter.limit("30/minute")
 async def inspect_metadata(req: MetadataInspectRequest, request: Request):
     """
-    Inspect metadata, EXIF tags, PNG text chunks, or video container atoms,
-    and scan for C2PA / SynthID / AI signatures in images and videos.
+    Inspect metadata, EXIF tags, PNG text chunks, or container atoms,
+    and scan for C2PA / SynthID / AI signatures in images, videos, and audio.
     """
     target_path = _resolve_target_media_path(req.url, req.path, req.filename)
 
@@ -100,6 +107,13 @@ async def inspect_metadata(req: MetadataInspectRequest, request: Request):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to inspect video metadata."))
         result["media_type"] = "video"
         result["url"] = f"/outputs/videos/{target_path.name}"
+        return result
+    elif is_audio_path(target_path):
+        result = extract_audio_metadata(str(target_path))
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to inspect audio metadata."))
+        result["media_type"] = "audio"
+        result["url"] = f"/outputs/audio/{target_path.name}"
         return result
     else:
         result = extract_image_metadata(str(target_path))
@@ -206,10 +220,52 @@ async def inspect_uploaded_media(
             result["url"] = f"/outputs/images/{temp_filename}"
             return result
 
+    elif ext in AUDIO_EXTENSIONS:
+        content = await file.read()
+        try:
+            validate_uploaded_media(content, clean_orig, "audio")
+        except Exception:
+            pass
+
+        if ephemeral:
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(content)
+                tmp_path = Path(tmp.name)
+
+            try:
+                result = extract_audio_metadata(str(tmp_path))
+                result["media_type"] = "audio"
+                result["filename"] = clean_orig
+                result["saved_to_disk"] = False
+                result["ephemeral"] = True
+                result["url"] = None
+                result["storage_status"] = "Zero-Disk Privacy (Ephemeral in-memory buffer, file unlinked from server)"
+                return result
+            finally:
+                try:
+                    if tmp_path.exists():
+                        tmp_path.unlink()
+                except Exception:
+                    pass
+        else:
+            temp_filename = f"inspect_{uuid.uuid4().hex[:8]}_{clean_orig}"
+            target_path = settings.AUDIO_PATH / temp_filename
+
+            with open(target_path, "wb") as f:
+                f.write(content)
+
+            result = extract_audio_metadata(str(target_path))
+            result["media_type"] = "audio"
+            result["saved_to_disk"] = True
+            result["ephemeral"] = False
+            result["url"] = f"/outputs/audio/{temp_filename}"
+            return result
+
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported format. Allowed images: {sorted(IMAGE_EXTENSIONS)}, Allowed videos: {sorted(VIDEO_EXTENSIONS)}"
+            detail=f"Unsupported format. Allowed images: {sorted(IMAGE_EXTENSIONS)}, videos: {sorted(VIDEO_EXTENSIONS)}, audio: {sorted(AUDIO_EXTENSIONS)}"
         )
 
 
@@ -258,6 +314,61 @@ async def clean_metadata(req: MetadataCleanRequest, request: Request):
         return {
             "success": True,
             "media_type": "video",
+            "url": clean_url,
+            "clean_url": clean_url,
+            "input_filename": target_path.name,
+            "output_filename": clean_filename,
+            "clean_filename": clean_filename,
+            "local_path": str(output_path),
+            "original_size_bytes": clean_res.get("original_size_bytes", 0),
+            "cleaned_size_bytes": clean_res.get("cleaned_size_bytes", 0),
+            "saved_bytes": clean_res.get("saved_bytes", 0),
+            "saved_percent": clean_res.get("saved_percent", 0.0),
+            "format": target_path.suffix.replace(".", "").upper(),
+            "stealth_mode": req.stealth_mode,
+            "verified_clean": clean_res.get("verified_clean", True),
+            "before_metadata": pre_meta,
+            "after_metadata": clean_res.get("after_metadata", {}),
+            "pre_cleaning_metadata": pre_meta,
+            "cleaning_report": clean_res,
+            "stealth_mode_applied": req.stealth_mode,
+        }
+
+    elif is_audio_path(target_path):
+        pre_meta = extract_audio_metadata(str(target_path))
+        clean_filename = f"{target_path.stem}_clean_{uuid.uuid4().hex[:4]}{target_path.suffix}"
+        output_path = settings.AUDIO_PATH / clean_filename
+
+        clean_res = clean_audio_lossless(
+            str(target_path),
+            str(output_path),
+            stealth_mode=bool(req.stealth_mode),
+        )
+
+        if not clean_res.get("success"):
+            raise HTTPException(status_code=500, detail=clean_res.get("error", "Failed to clean audio metadata."))
+
+        clean_url = f"/outputs/audio/{clean_filename}"
+
+        try:
+            db_save_asset(
+                filename=clean_filename,
+                asset_type="audio",
+                url=clean_url,
+                prompt=f"Lossless Cleaned Audio: {target_path.name}",
+                parameters={
+                    "source_file": target_path.name,
+                    "stealth_mode": req.stealth_mode,
+                    "bytes_saved": clean_res.get("bytes_saved", 0),
+                    "stream_copy": True,
+                },
+            )
+        except Exception as db_err:
+            logger.warning("Could not register cleaned audio in DB: %s", db_err)
+
+        return {
+            "success": True,
+            "media_type": "audio",
             "url": clean_url,
             "clean_url": clean_url,
             "input_filename": target_path.name,
@@ -482,10 +593,79 @@ async def clean_uploaded_media(
             "cleaning_report": clean_res,
             "stealth_mode_applied": stealth_mode,
         }
+    elif ext in AUDIO_EXTENSIONS:
+        content = await file.read()
+        try:
+            validate_uploaded_media(content, clean_orig, "audio")
+        except Exception:
+            pass
+
+        orig_filename = f"raw_{uuid.uuid4().hex[:6]}_{clean_orig}"
+        orig_path = settings.AUDIO_PATH / orig_filename
+        with open(orig_path, "wb") as f:
+            f.write(content)
+
+        pre_meta = extract_audio_metadata(str(orig_path))
+
+        clean_filename = f"clean_{uuid.uuid4().hex[:6]}_{Path(clean_orig).stem}{ext}"
+        clean_path = settings.AUDIO_PATH / clean_filename
+
+        try:
+            clean_res = clean_audio_lossless(
+                str(orig_path),
+                str(clean_path),
+                stealth_mode=stealth_mode,
+            )
+        finally:
+            try:
+                if orig_path.exists():
+                    orig_path.unlink()
+            except Exception:
+                pass
+
+        if not clean_res.get("success"):
+            raise HTTPException(status_code=500, detail=clean_res.get("error", "Failed to clean audio."))
+
+        clean_url = f"/outputs/audio/{clean_filename}"
+
+        try:
+            db_save_asset(
+                filename=clean_filename,
+                asset_type="audio",
+                url=clean_url,
+                prompt=f"Uploaded & Lossless Cleaned Audio: {clean_orig}",
+                parameters={"stealth_mode": stealth_mode, "stream_copy": True},
+            )
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "media_type": "audio",
+            "url": clean_url,
+            "clean_url": clean_url,
+            "input_filename": clean_orig,
+            "output_filename": clean_filename,
+            "clean_filename": clean_filename,
+            "local_path": str(clean_path),
+            "original_size_bytes": clean_res.get("original_size_bytes", 0),
+            "cleaned_size_bytes": clean_res.get("cleaned_size_bytes", 0),
+            "saved_bytes": clean_res.get("saved_bytes", 0),
+            "saved_percent": clean_res.get("saved_percent", 0.0),
+            "format": ext.replace(".", "").upper(),
+            "stealth_mode": stealth_mode,
+            "verified_clean": clean_res.get("verified_clean", True),
+            "before_metadata": pre_meta,
+            "after_metadata": clean_res.get("after_metadata", {}),
+            "pre_cleaning_metadata": pre_meta,
+            "cleaning_report": clean_res,
+            "stealth_mode_applied": stealth_mode,
+        }
+
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported media format. Allowed images: {sorted(IMAGE_EXTENSIONS)}, Allowed videos: {sorted(VIDEO_EXTENSIONS)}"
+            detail=f"Unsupported media format. Allowed images: {sorted(IMAGE_EXTENSIONS)}, videos: {sorted(VIDEO_EXTENSIONS)}, audio: {sorted(AUDIO_EXTENSIONS)}"
         )
 
 
@@ -519,3 +699,36 @@ async def clean_video_upload_endpoint(
 ):
     """Upload and clean video file metadata losslessly."""
     return await clean_uploaded_media(request, file=file, stealth_mode=stealth_mode, quality=99)
+
+
+# Dedicated Explicit Audio Endpoints
+@router.post("/audio/inspect")
+@limiter.limit("30/minute")
+async def inspect_audio_endpoint(req: MetadataInspectRequest, request: Request):
+    """Inspect audio file metadata directly."""
+    target_path = _resolve_target_media_path(req.url, req.path, req.filename)
+    res = extract_audio_metadata(str(target_path))
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to inspect audio."))
+    res["media_type"] = "audio"
+    res["url"] = f"/outputs/audio/{target_path.name}"
+    return res
+
+
+@router.post("/audio/clean")
+@limiter.limit("20/minute")
+async def clean_audio_endpoint(req: MetadataCleanRequest, request: Request):
+    """Clean audio file metadata losslessly with FFmpeg stream copy."""
+    return await clean_metadata(req, request)
+
+
+@router.post("/audio/clean-upload")
+@limiter.limit("15/minute")
+async def clean_audio_upload_endpoint(
+    request: Request,
+    file: UploadFile = File(...),
+    stealth_mode: bool = Form(False),
+):
+    """Upload and clean audio file metadata losslessly."""
+    return await clean_uploaded_media(request, file=file, stealth_mode=stealth_mode, quality=99)
+

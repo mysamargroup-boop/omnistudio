@@ -36,6 +36,11 @@ import {
   HardDriveDownload,
   Radio,
   SlidersHorizontal,
+  Volume2,
+  VolumeX,
+  Music,
+  Mic,
+  FileAudio,
 } from "lucide-react";
 import {
   api,
@@ -44,7 +49,10 @@ import {
   CleanMetadataResponse,
   VideoMetadataInspection,
   CleanVideoResponse,
+  AudioMetadataInspection,
+  CleanAudioResponse,
 } from "@/lib/api";
+import { inspectMediaInBrowser } from "@/lib/browserMetadataInspector";
 import { formatBytes, cn } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
 
@@ -68,20 +76,29 @@ export default function MetadataCleanerStudio({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Zero-Disk Privacy Mode (Ephemeral inspection: never saved to backend disk)
+  // Browser-Only Mode (Zero Network Upload: 100% in-browser offline inspection)
+  const [browserOnlyMode, setBrowserOnlyMode] = useState(true);
+
+  // Zero-Disk Privacy Mode (Ephemeral server inspection: never saved to backend disk)
   const [zeroDiskMode, setZeroDiskMode] = useState(true);
 
   const isVideo = Boolean(
     selectedFile
-      ? selectedFile.type.startsWith("video/") || /\.(mp4|mov|webm|mkv)$/i.test(selectedFile.name)
-      : previewUrl?.match(/\.(mp4|mov|webm|mkv)(\?.*)?$/i) || sourcePath?.match(/\.(mp4|mov|webm|mkv)$/i)
+      ? selectedFile.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|avi)$/i.test(selectedFile.name)
+      : previewUrl?.match(/\.(mp4|mov|webm|mkv|m4v|avi)(\?.*)?$/i) || sourcePath?.match(/\.(mp4|mov|webm|mkv|m4v|avi)$/i)
+  );
+
+  const isAudio = Boolean(
+    selectedFile
+      ? selectedFile.type.startsWith("audio/") || /\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i.test(selectedFile.name)
+      : previewUrl?.match(/\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)(\?.*)?$/i) || sourcePath?.match(/\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i)
   );
 
   // Vault selector modal state
   const [showVaultSelector, setShowVaultSelector] = useState(false);
   const [vaultImages, setVaultImages] = useState<any[]>([]);
   const [loadingVault, setLoadingVault] = useState(false);
-  const [vaultTab, setVaultTab] = useState<"all" | "images" | "videos">("all");
+  const [vaultTab, setVaultTab] = useState<"all" | "images" | "videos" | "audio">("all");
   const [vaultSearch, setVaultSearch] = useState("");
   const [hideSmallTestFiles, setHideSmallTestFiles] = useState(true);
 
@@ -104,7 +121,7 @@ export default function MetadataCleanerStudio({
   // UI state
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedNegPrompt, setCopiedNegPrompt] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "camera" | "gps" | "streams" | "rights" | "raw">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "camera" | "gps" | "streams" | "audio" | "rights" | "raw">("overview");
   const [rawTagSearch, setRawTagSearch] = useState("");
 
   // Load vault assets for selector
@@ -112,7 +129,10 @@ export default function MetadataCleanerStudio({
     setLoadingVault(true);
     try {
       const res = await api.getAllAssets();
-      const allMedia = (res?.images || []).concat(res?.final || []).concat(res?.videos || []);
+      const allMedia = (res?.images || [])
+        .concat(res?.final || [])
+        .concat(res?.videos || [])
+        .concat(res?.audio || []);
       setVaultImages(allMedia);
     } catch (e) {
       console.error("Failed to load vault assets:", e);
@@ -122,7 +142,12 @@ export default function MetadataCleanerStudio({
   };
 
   // Run inspection on media change
-  const inspectCurrentSource = async (file?: File, url?: string, path?: string) => {
+  const inspectCurrentSource = async (
+    file?: File,
+    url?: string,
+    path?: string,
+    useBrowserOnlyOverride?: boolean
+  ) => {
     setInspecting(true);
     setInspectProgress(15);
     setInspectStage("Reading file binary stream...");
@@ -130,27 +155,49 @@ export default function MetadataCleanerStudio({
     setCleanResult(null);
     setCleanError(null);
 
+    const isUseBrowser =
+      useBrowserOnlyOverride !== undefined ? useBrowserOnlyOverride : browserOnlyMode;
+
     const isVid = file
-      ? file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv)$/i.test(file.name)
-      : Boolean((url || path)?.match(/\.(mp4|mov|webm|mkv)(\?.*)?$/i));
+      ? file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|avi)$/i.test(file.name)
+      : Boolean((url || path)?.match(/\.(mp4|mov|webm|mkv|m4v|avi)(\?.*)?$/i));
+
+    const isAud = file
+      ? file.type.startsWith("audio/") || /\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i.test(file.name)
+      : Boolean((url || path)?.match(/\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)(\?.*)?$/i));
 
     const t1 = setTimeout(() => {
       setInspectProgress(45);
-      setInspectStage("Scanning C2PA manifests & SynthID watermarks...");
-    }, 250);
+      setInspectStage("Scanning C2PA manifests, SynthID & AI signatures...");
+    }, 200);
 
     const t2 = setTimeout(() => {
       setInspectProgress(75);
-      setInspectStage("Parsing EXIF camera optics, GPS & generation parameters...");
-    }, 600);
+      setInspectStage(
+        isVid
+          ? "Parsing MP4 container atoms, video codec & audio bitstream..."
+          : isAud
+          ? "Decoding acoustics, sample rate, channels & ID3 metadata..."
+          : "Parsing EXIF camera optics, GPS & generation parameters..."
+      );
+    }, 450);
 
     try {
       let res: any;
-      if (isVid) {
+      if (file && isUseBrowser) {
+        setInspectStage("Inspecting in-browser memory (Zero network upload)...");
+        res = await inspectMediaInBrowser(file);
+      } else if (isVid) {
         if (file) {
           res = await api.inspectUploadedVideo(file, zeroDiskMode);
         } else if (url || path) {
           res = await api.inspectVideoMetadata({ url, path });
+        }
+      } else if (isAud) {
+        if (file) {
+          res = await api.inspectUploadedAudio(file, zeroDiskMode);
+        } else if (url || path) {
+          res = await api.inspectAudioMetadata({ url, path });
         }
       } else {
         if (file) {
@@ -201,10 +248,11 @@ export default function MetadataCleanerStudio({
   };
 
   const handleFileSelected = (file: File) => {
-    const isVid = file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv)$/i.test(file.name);
+    const isVid = file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|avi)$/i.test(file.name);
+    const isAud = file.type.startsWith("audio/") || /\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i.test(file.name);
     const isImg = file.type.startsWith("image/") || /\.(png|jpg|jpeg|webp|bmp|tiff)$/i.test(file.name);
-    if (!isVid && !isImg) {
-      setInspectError("Please upload a valid image (PNG, JPG, WEBP) or video (MP4, MOV, WEBM) file");
+    if (!isVid && !isAud && !isImg) {
+      setInspectError("Please upload a valid image, video (MP4, MOV, WEBM) or audio (MP3, WAV, AAC, FLAC) file");
       return;
     }
     setSelectedFile(file);
@@ -245,7 +293,7 @@ export default function MetadataCleanerStudio({
 
     const t3 = setTimeout(() => {
       setCleanProgress(90);
-      setCleanStage("Verifying 0% EXIF leakage & sRGB color accuracy...");
+      setCleanStage("Verifying 0% EXIF leakage & bitstream integrity...");
     }, 1400);
 
     try {
@@ -261,6 +309,20 @@ export default function MetadataCleanerStudio({
           });
         } else {
           setCleanError("No video selected to clean");
+          setCleaning(false);
+          return;
+        }
+      } else if (isAudio) {
+        if (selectedFile) {
+          res = await api.cleanUploadedAudio(selectedFile, stealthMode);
+        } else if (previewUrl || sourcePath) {
+          res = await api.cleanAudioMetadata({
+            url: previewUrl || undefined,
+            path: sourcePath || undefined,
+            stealth_mode: stealthMode,
+          });
+        } else {
+          setCleanError("No audio selected to clean");
           setCleaning(false);
           return;
         }
@@ -320,10 +382,12 @@ export default function MetadataCleanerStudio({
   // Filtered Vault Assets
   const filteredVaultAssets = useMemo(() => {
     return vaultImages.filter((asset) => {
-      const isVid = asset.asset_type === "videos" || /\.(mp4|mov|webm|mkv)$/i.test(asset.filename || asset.url);
-      if (vaultTab === "images" && isVid) return false;
+      const isVid = asset.asset_type === "videos" || /\.(mp4|mov|webm|mkv|m4v|avi)$/i.test(asset.filename || asset.url);
+      const isAud = asset.asset_type === "audio" || /\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i.test(asset.filename || asset.url);
+      if (vaultTab === "images" && (isVid || isAud)) return false;
       if (vaultTab === "videos" && !isVid) return false;
-      if (hideSmallTestFiles && (asset.size_bytes || 0) < 10000 && !isVid) return false;
+      if (vaultTab === "audio" && !isAud) return false;
+      if (hideSmallTestFiles && (asset.size_bytes || 0) < 10000 && !isVid && !isAud) return false;
       if (vaultSearch.trim()) {
         const query = vaultSearch.toLowerCase();
         const fname = (asset.filename || "").toLowerCase();
@@ -366,26 +430,56 @@ export default function MetadataCleanerStudio({
               Strip hidden AI watermarks and cryptographic manifests losslessly with 100% sRGB color fidelity.
             </p>
 
-            {/* Zero-Disk Mode Badge / Notice */}
-            <div className="pt-1 flex items-center gap-3">
+            {/* Privacy Badges / Switches */}
+            <div className="pt-1 flex flex-wrap items-center gap-3">
+              <div
+                onClick={() => {
+                  const next = !browserOnlyMode;
+                  setBrowserOnlyMode(next);
+                  if (selectedFile) {
+                    inspectCurrentSource(selectedFile, undefined, undefined, next);
+                  }
+                }}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono cursor-pointer transition select-none",
+                  browserOnlyMode
+                    ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                    : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                )}
+                title="When enabled, files are inspected 100% locally in browser memory without network upload"
+              >
+                <div
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all",
+                    browserOnlyMode ? "bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-zinc-400 dark:bg-zinc-600"
+                  )}
+                />
+                <span className="font-semibold">
+                  {browserOnlyMode ? "Browser-Only Mode: ZERO-UPLOAD" : "Server Mode: ACTIVE"}
+                </span>
+                <span className="text-[10px] opacity-75">
+                  ({browserOnlyMode ? "100% In-Browser" : "Deep FFprobe"})
+                </span>
+              </div>
+
               <div
                 onClick={() => setZeroDiskMode(!zeroDiskMode)}
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono cursor-pointer transition select-none",
                   zeroDiskMode
-                    ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                    ? "bg-cyan-50 dark:bg-cyan-950/50 border-cyan-500/40 text-cyan-700 dark:text-cyan-300 shadow-xs"
                     : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                 )}
-                title="When enabled, files are analyzed in temporary memory and immediately deleted from server disk"
+                title="When enabled on server, files are analyzed in temporary memory and immediately deleted from server disk"
               >
                 <div
                   className={cn(
                     "w-2 h-2 rounded-full transition-all",
-                    zeroDiskMode ? "bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-zinc-400 dark:bg-zinc-600"
+                    zeroDiskMode ? "bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_8px_#22d3ee]" : "bg-zinc-400 dark:bg-zinc-600"
                   )}
                 />
                 <span className="font-semibold">
-                  {zeroDiskMode ? "Zero-Disk Privacy Mode: ACTIVE" : "Server Storage Mode: STANDARD"}
+                  {zeroDiskMode ? "Zero-Disk Server Mode: ACTIVE" : "Server Storage: STANDARD"}
                 </span>
                 <span className="text-[10px] opacity-75">
                   ({zeroDiskMode ? "No disk saving" : "Saves to vault"})
@@ -415,7 +509,7 @@ export default function MetadataCleanerStudio({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,video/mp4,video/quicktime,video/webm"
+              accept="image/*,video/*,audio/*,.mp4,.mov,.webm,.mkv,.png,.jpg,.jpeg,.webp,.mp3,.wav,.aac,.flac,.ogg,.m4a"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
@@ -434,7 +528,7 @@ export default function MetadataCleanerStudio({
             <div className="flex items-center gap-2">
               <Spinner className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span className="text-zinc-800 dark:text-zinc-200 font-semibold uppercase tracking-wider">
-                {inspecting ? "Deep Metadata Scanner Active" : "Lossless Sanitizer Active"}
+                {inspecting ? "Metadata Scanner Active" : "Lossless Sanitizer Active"}
               </span>
               <span className="text-zinc-500 dark:text-zinc-400">• {inspecting ? inspectStage : cleanStage}</span>
             </div>
@@ -473,13 +567,33 @@ export default function MetadataCleanerStudio({
           >
             {previewUrl ? (
               <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
-                <div className="relative max-h-[360px] max-w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-white/10 bg-black/50 group">
+                <div className="relative max-h-[360px] max-w-full w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-white/10 bg-black/50 group flex items-center justify-center">
                   {isVideo ? (
                     <video
                       src={previewUrl}
                       controls
                       className="max-h-[360px] w-auto object-contain rounded-2xl bg-black"
                     />
+                  ) : isAudio ? (
+                    <div className="w-full py-10 px-6 flex flex-col items-center justify-center space-y-4 bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-[#0b101c] dark:to-[#060a12] rounded-2xl">
+                      <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
+                        <Music className="w-8 h-8 animate-pulse" />
+                      </div>
+                      <div className="text-center space-y-1">
+                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                          {metadata?.tags?.title || selectedFile?.name || metadata?.filename || "Audio Bitstream"}
+                        </div>
+                        {metadata?.tags?.artist && (
+                          <div className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                            {metadata.tags.artist}
+                          </div>
+                        )}
+                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                          {metadata?.audio_codec || "Audio"} • {metadata?.sample_rate || "44.1/48 kHz"} • {metadata?.channel_layout || "Stereo"}
+                        </div>
+                      </div>
+                      <audio controls src={previewUrl} className="w-full max-w-sm h-10 accent-emerald-500" />
+                    </div>
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -493,7 +607,7 @@ export default function MetadataCleanerStudio({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="p-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white backdrop-blur-md transition cursor-pointer"
-                      title={isVideo ? "Replace Video" : "Replace Image"}
+                      title={isVideo ? "Replace Video" : isAudio ? "Replace Audio" : "Replace Image"}
                     >
                       <Upload className="w-4 h-4" />
                     </button>
@@ -511,18 +625,24 @@ export default function MetadataCleanerStudio({
 
                 <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-zinc-700 dark:text-zinc-300">
                   <span className="truncate max-w-[220px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    {selectedFile?.name || metadata?.filename || (isVideo ? "Selected Video" : "Selected Image")}
+                    {selectedFile?.name || metadata?.filename || (isVideo ? "Selected Video" : isAudio ? "Selected Audio" : "Selected Image")}
                   </span>
                   <span>•</span>
                   <span>{metadata?.file_size_formatted || (selectedFile ? formatBytes(selectedFile.size) : "")}</span>
-                  {isVideo && metadata?.duration_formatted && (
+                  {(isVideo || isAudio) && metadata?.duration_formatted && (
                     <>
                       <span>•</span>
                       <span>{metadata.duration_formatted}</span>
                     </>
                   )}
-                  {zeroDiskMode && selectedFile && (
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {browserOnlyMode && selectedFile && (
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 flex items-center gap-1 font-mono">
+                      <Lock className="w-3 h-3" />
+                      Zero-Upload (Browser)
+                    </span>
+                  )}
+                  {zeroDiskMode && selectedFile && !browserOnlyMode && (
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-mono">
                       Zero-Disk Mode
                     </span>
                   )}
@@ -535,7 +655,7 @@ export default function MetadataCleanerStudio({
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                    Drag and drop your AI image or video here, or{" "}
+                    Drag and drop your AI image, video, or audio here, or{" "}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -545,7 +665,7 @@ export default function MetadataCleanerStudio({
                     </button>
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Supports PNG, JPG, WEBP, and MP4, MOV, WEBM videos up to 500MB
+                    Supports PNG, JPG, WEBP, MP4, MOV, WEBM, and MP3, WAV, AAC, FLAC audio
                   </p>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
@@ -580,19 +700,58 @@ export default function MetadataCleanerStudio({
                 </span>
               </div>
 
+              {/* Browser-Only Mode (Zero Network Upload) */}
+              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                      In-Browser Mode (Zero Network Upload)
+                    </span>
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      100% PRIVATE
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Inspect video, audio, and images directly in browser memory without sending a single byte to the server. File is held temporarily in RAM and destroyed when tab closes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !browserOnlyMode;
+                    setBrowserOnlyMode(next);
+                    if (selectedFile) {
+                      inspectCurrentSource(selectedFile, undefined, undefined, next);
+                    }
+                  }}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                    browserOnlyMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                      browserOnlyMode ? "translate-x-5" : "translate-x-0"
+                    )}
+                  />
+                </button>
+              </div>
+
               {/* Zero-Disk Storage Option Switch */}
               <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                      Zero-Disk Privacy Mode
+                      Zero-Disk Server Mode (Ephemeral Buffer)
                     </span>
                     <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                       RECOMMENDED
                     </span>
                   </div>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    Upload & analyze media in a memory buffer. Files are never permanently saved to server storage, guaranteeing 100% confidentiality.
+                    When cleaning on the server, media is processed in a temporary RAM/buffer and immediately deleted upon completion. Zero disk retention.
                   </p>
                 </div>
                 <button
@@ -754,28 +913,32 @@ export default function MetadataCleanerStudio({
                 >
                   Overview & AI
                 </button>
-                <button
-                  onClick={() => setActiveTab("camera")}
-                  className={cn(
-                    "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
-                    activeTab === "camera"
-                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                  )}
-                >
-                  Camera & Optics
-                </button>
-                <button
-                  onClick={() => setActiveTab("gps")}
-                  className={cn(
-                    "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
-                    activeTab === "gps"
-                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                  )}
-                >
-                  GPS Location
-                </button>
+                {!isAudio && (
+                  <button
+                    onClick={() => setActiveTab("camera")}
+                    className={cn(
+                      "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
+                      activeTab === "camera"
+                        ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                        : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    Camera & Optics
+                  </button>
+                )}
+                {!isAudio && (
+                  <button
+                    onClick={() => setActiveTab("gps")}
+                    className={cn(
+                      "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
+                      activeTab === "gps"
+                        ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                        : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    GPS Location
+                  </button>
+                )}
                 {isVideo && (
                   <button
                     onClick={() => setActiveTab("streams")}
@@ -786,7 +949,21 @@ export default function MetadataCleanerStudio({
                         : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                     )}
                   >
-                    Streams & Codecs
+                    Video Streams
+                  </button>
+                )}
+                {(isAudio || metadata?.has_audio) && (
+                  <button
+                    onClick={() => setActiveTab("audio")}
+                    className={cn(
+                      "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer flex items-center gap-1.5",
+                      activeTab === "audio"
+                        ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                        : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    <Music className="w-3.5 h-3.5" />
+                    <span>Audio & Acoustics</span>
                   </button>
                 )}
                 <button
@@ -819,34 +996,96 @@ export default function MetadataCleanerStudio({
                 {activeTab === "overview" && (
                   <div className="space-y-4">
                     {/* Basic Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Format</div>
-                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                          {metadata.format || (isVideo ? "MP4" : "PNG")}
+                    {isAudio ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Format</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            {metadata.format || "MP3"}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Duration</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            {metadata.duration_formatted}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Acoustics</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                            {metadata.sample_rate || "44.1 kHz"} • {metadata.channel_layout || "Stereo"}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Bitrate / Size</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                            {metadata.bitrate_kbps ? `${metadata.bitrate_kbps}k` : ""} • {metadata.file_size_formatted}
+                          </div>
                         </div>
                       </div>
-                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Dimensions</div>
-                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                          {metadata.width} × {metadata.height}
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Format</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            {metadata.format || (isVideo ? "MP4" : "PNG")}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Dimensions</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            {metadata.width} × {metadata.height}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">
+                            {isVideo ? "FPS & Codec" : "Color Mode"}
+                          </div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                            {isVideo ? `${metadata.fps || 30} FPS • ${metadata.video_codec || "H.264"}` : metadata.mode || "sRGB"}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                          <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">File Size</div>
+                          <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            {metadata.file_size_formatted}
+                          </div>
                         </div>
                       </div>
-                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">
-                          {isVideo ? "FPS & Codec" : "Color Mode"}
+                    )}
+
+                    {/* Video Audio Track Status Badge */}
+                    {isVideo && (
+                      <div
+                        className={cn(
+                          "p-3.5 rounded-2xl border flex items-center justify-between transition-all",
+                          metadata.has_audio
+                            ? "bg-emerald-50/80 dark:bg-emerald-950/25 border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+                            : "bg-amber-50/80 dark:bg-amber-950/25 border-amber-500/30 text-amber-800 dark:text-amber-300"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {metadata.has_audio ? (
+                            <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <VolumeX className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          )}
+                          <div>
+                            <span className="text-xs font-bold font-mono uppercase">
+                              {metadata.has_audio ? "Embedded Audio Track Detected" : "No Audio Track (Muted / Silent Video)"}
+                            </span>
+                            <p className="text-[11px] opacity-80 font-mono">
+                              {metadata.has_audio
+                                ? `${metadata.audio_codec || "AAC"} • ${metadata.audio_technical?.sample_rate || "48000 Hz"} • ${metadata.audio_technical?.channel_layout || "Stereo"}`
+                                : "Video container contains 0 audio channels. Verified silent."}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 truncate">
-                          {isVideo ? `${metadata.fps || 30} FPS • ${metadata.video_codec || "H.264"}` : metadata.mode || "sRGB"}
-                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border border-current">
+                          {metadata.has_audio ? "AUDIO ACTIVE" : "SILENT"}
+                        </span>
                       </div>
-                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">File Size</div>
-                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                          {metadata.file_size_formatted}
-                        </div>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Extracted Prompt */}
                     {metadata.embedded_prompt && (
@@ -854,7 +1093,7 @@ export default function MetadataCleanerStudio({
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-mono font-bold uppercase text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5" />
-                            Extracted AI Prompt
+                            {isAudio ? "Embedded Lyrics / Audio Prompt" : "Extracted AI Prompt"}
                           </span>
                           <button
                             onClick={() => copyToClipboard(metadata.embedded_prompt || "")}
@@ -965,7 +1204,7 @@ export default function MetadataCleanerStudio({
                 )}
 
                 {/* 2. CAMERA & OPTICS */}
-                {activeTab === "camera" && (
+                {activeTab === "camera" && !isAudio && (
                   <div className="space-y-4">
                     {metadata.camera_info && Object.keys(metadata.camera_info).length > 0 ? (
                       <div className="grid grid-cols-2 gap-2.5 text-xs font-mono">
@@ -989,7 +1228,7 @@ export default function MetadataCleanerStudio({
                 )}
 
                 {/* 3. GPS GEOLOCATION */}
-                {activeTab === "gps" && (
+                {activeTab === "gps" && !isAudio && (
                   <div className="space-y-4">
                     {metadata.gps_info?.has_gps ? (
                       <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-emerald-500/25 space-y-4">
@@ -1037,7 +1276,7 @@ export default function MetadataCleanerStudio({
                   </div>
                 )}
 
-                {/* 4. VIDEO & AUDIO STREAMS */}
+                {/* 4. VIDEO STREAMS */}
                 {activeTab === "streams" && isVideo && (
                   <div className="space-y-4">
                     {/* Video Tech */}
@@ -1057,23 +1296,98 @@ export default function MetadataCleanerStudio({
                       </div>
                     )}
 
-                    {/* Audio Tech */}
-                    {metadata.audio_technical?.has_audio && (
-                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 space-y-3">
-                        <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 uppercase">
-                          Audio Stream Metrics
-                        </span>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
-                          {Object.entries(metadata.audio_technical).map(([k, v]) => {
-                            if (k === "has_audio") return null;
-                            return (
-                              <div key={k} className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
-                                <span className="text-[10px] text-zinc-500 uppercase block">{k.replace(/_/g, " ")}</span>
-                                <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{String(v)}</span>
-                              </div>
-                            );
-                          })}
+                    {/* Audio Stream In Video */}
+                    {metadata.has_audio ? (
+                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-emerald-500/20 dark:border-emerald-500/10 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 uppercase flex items-center gap-1.5">
+                            <Volume2 className="w-4 h-4" />
+                            Audio Stream Detected In Video
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            {metadata.audio_codec || "AAC"}
+                          </span>
                         </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                            <span className="text-[10px] text-zinc-500 uppercase block">Codec</span>
+                            <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.audio_codec || "AAC"}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                            <span className="text-[10px] text-zinc-500 uppercase block">Sample Rate</span>
+                            <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.audio_technical?.sample_rate || "48000 Hz"}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                            <span className="text-[10px] text-zinc-500 uppercase block">Channels</span>
+                            <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.audio_technical?.channels || 2} ({metadata.audio_technical?.channel_layout || "Stereo"})</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-amber-500/25 space-y-2">
+                        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                          <VolumeX className="w-4 h-4" />
+                          <span className="text-xs font-bold font-mono uppercase">
+                            Audio Stream Status: No Audio Track
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                          This video file is silent / muted. No embedded audio bitstream was found in the container.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 5. AUDIO & ACOUSTICS TAB */}
+                {activeTab === "audio" && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 uppercase flex items-center gap-1.5">
+                          <Music className="w-4 h-4" />
+                          Acoustics & Bitstream Metrics
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                          {metadata.audio_codec || metadata.format || "AUDIO"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Sample Rate</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.sample_rate || metadata.audio_technical?.sample_rate || "44100 Hz"}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Channels</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.channels || 2} ({metadata.channel_layout || "Stereo"})</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Bitrate</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.bitrate_kbps ? `${metadata.bitrate_kbps} kbps` : "Lossless VBR"}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Duration</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.duration_formatted}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Bit Depth</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.bits_per_sample ? `${metadata.bits_per_sample}-bit` : "16-bit Standard"}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
+                          <span className="text-[10px] text-zinc-500 uppercase block">Codec</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{metadata.audio_codec || "PCM / AAC"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {metadata.detected_generator && (
+                      <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#0c1424] border border-amber-500/30 dark:border-amber-500/20 space-y-1">
+                        <span className="text-xs font-bold font-mono text-amber-800 dark:text-amber-400 uppercase">
+                          AI Voice / Music Generator Detected
+                        </span>
+                        <p className="text-xs font-mono text-zinc-800 dark:text-zinc-200">
+                          Identified Audio Model: <span className="font-bold text-emerald-600 dark:text-emerald-400">{metadata.detected_generator}</span>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1178,13 +1492,22 @@ export default function MetadataCleanerStudio({
 
               {/* Cleaned Preview & Actions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-white/10 max-h-48 bg-black/10 dark:bg-black/50 flex items-center justify-center">
+                <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-white/10 max-h-48 bg-black/10 dark:bg-black/50 flex items-center justify-center p-2">
                   {isVideo ? (
                     <video
                       src={getMediaUrl(cleanResult.clean_url || cleanResult.url)}
                       controls
                       className="max-h-48 w-auto object-contain rounded-xl bg-black"
                     />
+                  ) : isAudio ? (
+                    <div className="w-full p-4 flex flex-col items-center justify-center space-y-2 bg-zinc-900/60 rounded-xl">
+                      <Music className="w-8 h-8 text-emerald-400 animate-pulse" />
+                      <audio
+                        src={getMediaUrl(cleanResult.clean_url || cleanResult.url)}
+                        controls
+                        className="w-full h-8 accent-emerald-500"
+                      />
+                    </div>
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -1304,6 +1627,18 @@ export default function MetadataCleanerStudio({
                   )}
                 >
                   Videos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVaultTab("audio")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition cursor-pointer",
+                    vaultTab === "audio"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-zinc-100 dark:bg-[#101726] text-zinc-700 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+                  )}
+                >
+                  Audio
                 </button>
               </div>
 

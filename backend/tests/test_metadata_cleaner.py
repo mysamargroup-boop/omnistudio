@@ -14,6 +14,8 @@ from services.metadata_cleaner_service import (
     extract_image_metadata,
     clean_video_lossless,
     extract_video_metadata,
+    clean_audio_lossless,
+    extract_audio_metadata,
 )
 import subprocess
 import shutil
@@ -141,4 +143,56 @@ def test_clean_video_lossless_strips_metadata(sample_video_with_metadata: Path, 
     assert post_meta["video_codec"] == "H264"
     assert post_meta["detected_generator"] is None
     assert post_meta["has_ai_metadata"] is False
+
+
+@pytest.fixture
+def sample_audio_with_metadata(tmp_path: Path):
+    """Creates a 1-second sample MP3 audio with embedded ID3 and AI metadata."""
+    aud_path = tmp_path / "test_ai_audio.mp3"
+    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+
+    cmd = [
+        ffmpeg_bin,
+        "-y",
+        "-f", "lavfi",
+        "-i", "sine=frequency=440:duration=1",
+        "-c:a", "libmp3lame",
+        "-metadata", "title=AI Synthesized Voice",
+        "-metadata", "artist=ElevenLabs Neural Voice",
+        "-metadata", "comment=Generated via Suno AI",
+        str(aud_path),
+    ]
+    subprocess.run(cmd, capture_output=True, check=True)
+    return aud_path
+
+
+def test_extract_audio_metadata(sample_audio_with_metadata: Path):
+    meta = extract_audio_metadata(str(sample_audio_with_metadata))
+    assert meta["success"] is True
+    assert meta["media_type"] == "audio"
+    assert meta["format"] == "MP3"
+    assert meta["duration"] >= 0.9
+    assert meta["audio_codec"] == "MP3"
+    assert meta["has_ai_metadata"] is True
+    assert meta["detected_generator"] in ["Elevenlabs", "Suno"]
+    assert meta["audio_technical"]["has_audio"] is True
+
+
+def test_clean_audio_lossless_strips_metadata(sample_audio_with_metadata: Path, tmp_path: Path):
+    cleaned_aud = tmp_path / "test_ai_audio_cleaned.mp3"
+    res = clean_audio_lossless(
+        input_path=str(sample_audio_with_metadata),
+        output_path=str(cleaned_aud),
+        stealth_mode=False
+    )
+
+    assert res["success"] is True
+    assert cleaned_aud.exists()
+    assert res["size_after"] > 0
+
+    post_meta = extract_audio_metadata(str(cleaned_aud))
+    assert post_meta["success"] is True
+    assert post_meta["has_ai_metadata"] is False
+    assert post_meta["detected_generator"] is None
+
 

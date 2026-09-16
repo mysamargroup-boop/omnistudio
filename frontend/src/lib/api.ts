@@ -785,6 +785,40 @@ export const api = {
       body: formData,
     });
   },
+
+  // Audio AI Metadata Cleaner & Provenance Inspector
+  inspectAudioMetadata: (params: { url?: string; path?: string; filename?: string }) =>
+    fetchApi<AudioMetadataInspection>("/api/metadata/audio/inspect", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  inspectUploadedAudio: (file: File, ephemeral: boolean = false) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("ephemeral", ephemeral ? "true" : "false");
+    return fetchApiFormData<AudioMetadataInspection>("/api/metadata/inspect-upload", formData);
+  },
+  cleanAudioMetadata: (params: {
+    url?: string;
+    path?: string;
+    filename?: string;
+    stealth_mode?: boolean;
+  }) =>
+    fetchApi<CleanAudioResponse>("/api/metadata/audio/clean", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+  cleanUploadedAudio: (file: File, stealth_mode: boolean = false) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const qs = new URLSearchParams({
+      stealth_mode: stealth_mode ? "true" : "false",
+    }).toString();
+    return fetchApi<CleanAudioResponse>(`/api/metadata/clean-upload?${qs}`, {
+      method: "POST",
+      body: formData,
+    });
+  },
 };
 
 export interface ImageMetadataInspection {
@@ -909,5 +943,58 @@ export interface CleanVideoResponse {
   after_metadata: VideoMetadataInspection;
   error?: string;
 }
+
+export interface AudioMetadataInspection {
+  success: boolean;
+  media_type: "audio";
+  filename: string;
+  file_size_bytes: number;
+  file_size_formatted: string;
+  format: string;
+  duration: number;
+  duration_formatted: string;
+  audio_codec: string | null;
+  bitrate_kbps: number;
+  sample_rate: string | null;
+  channels: number;
+  channel_layout: string;
+  bits_per_sample?: number | null;
+  c2pa_detected: boolean;
+  synthid_detected: boolean;
+  detected_generator: string | null;
+  has_ai_metadata: boolean;
+  tags: Record<string, any>;
+  raw_text_metadata: string[];
+  audio_technical?: Record<string, any>;
+  rights_and_creator?: Record<string, any>;
+  embedded_prompt?: string | null;
+  saved_to_disk?: boolean;
+  ephemeral?: boolean;
+  storage_status?: string;
+  url?: string;
+  error?: string;
+}
+
+export interface CleanAudioResponse {
+  success: boolean;
+  media_type: string;
+  url: string;
+  clean_url: string;
+  input_filename: string;
+  output_filename: string;
+  clean_filename: string;
+  local_path: string;
+  original_size_bytes: number;
+  cleaned_size_bytes: number;
+  saved_bytes: number;
+  saved_percent: number;
+  format: string;
+  stealth_mode: boolean;
+  verified_clean: boolean;
+  before_metadata: AudioMetadataInspection;
+  after_metadata: AudioMetadataInspection;
+  error?: string;
+}
+
 
 

@@ -66,6 +66,30 @@ AI_VIDEO_SIGNATURE_KEYWORDS = [
     "morph studio",
 ]
 
+# Known AI audio generators, voice clones, and synthesizer signatures
+AI_AUDIO_SIGNATURE_KEYWORDS = [
+    "c2pa",
+    "jumbf",
+    "synthid",
+    "suno",
+    "udio",
+    "elevenlabs",
+    "edge-tts",
+    "bark",
+    "musicgen",
+    "audiocraft",
+    "rvc",
+    "so-vits",
+    "diffsinger",
+    "ai-voice",
+    "speechify",
+    "play.ht",
+    "resemble.ai",
+    "tortoise-tts",
+    "coqui",
+    "vits",
+]
+
 
 def _convert_gps_to_degrees(value) -> Optional[float]:
     """Helper to convert GPS rational tuples ((d, 1), (m, 1), (s, 100)) or IFDRational to float decimal degrees."""
@@ -289,7 +313,7 @@ def extract_image_metadata(input_path: str) -> Dict[str, Any]:
                         if not result["detected_generator"]:
                             result["detected_generator"] = "Stable Diffusion / WebUI"
 
-                    # ComfyUI format
+                    # ComfyUI format or direct prompt
                     elif k_lower == "prompt":
                         parsed_comfy = _parse_comfyui_graph(str_v)
                         if parsed_comfy["prompt"] and not result["embedded_prompt"]:
@@ -298,9 +322,11 @@ def extract_image_metadata(input_path: str) -> Dict[str, Any]:
                             result["negative_prompt"] = parsed_comfy["negative_prompt"]
                         if parsed_comfy["parameters"]:
                             result["embedded_parameters"].update(parsed_comfy["parameters"])
+                        if not result["embedded_prompt"] and str_v.strip():
+                            result["embedded_prompt"] = str_v.strip()[:1500]
                         result["has_ai_metadata"] = True
                         if not result["detected_generator"]:
-                            result["detected_generator"] = "ComfyUI"
+                            result["detected_generator"] = "ComfyUI" if (parsed_comfy["prompt"] or parsed_comfy["parameters"]) else "AI Prompt"
 
                     # Generic Prompt / Comment
                     elif k_lower in ("description", "comment", "usercomment"):
@@ -886,4 +912,216 @@ def clean_video_lossless(
 
     except Exception as e:
         logger.error("Error cleaning video %s: %s", input_path, e)
+        return {"success": False, "error": str(e)}
+
+
+def extract_audio_metadata(input_path: str) -> Dict[str, Any]:
+    """
+    Extracts complete audio metadata, acoustic properties, sample rate, bit depth,
+    ID3 / Vorbis tags, and scans for AI audio signatures (Suno, Udio, ElevenLabs, etc.).
+    """
+    path_obj = Path(input_path)
+    if not path_obj.exists():
+        return {"success": False, "error": f"File not found: {input_path}"}
+
+    file_size = path_obj.stat().st_size
+    result: Dict[str, Any] = {
+        "success": True,
+        "media_type": "audio",
+        "filename": path_obj.name,
+        "file_size_bytes": file_size,
+        "file_size_formatted": f"{round(file_size / 1024, 1)} KB" if file_size < 1024 * 1024 else f"{round(file_size / (1024 * 1024), 2)} MB",
+        "format": path_obj.suffix.replace(".", "").upper(),
+        "duration": 0.0,
+        "duration_formatted": "00:00",
+        "audio_codec": None,
+        "bitrate_kbps": 0,
+        "sample_rate": None,
+        "channels": 2,
+        "channel_layout": "stereo",
+        "bits_per_sample": None,
+        "c2pa_detected": False,
+        "synthid_detected": False,
+        "detected_generator": None,
+        "has_ai_metadata": False,
+        "tags": {},
+        "raw_text_metadata": [],
+        "audio_technical": {"has_audio": True},
+        "rights_and_creator": {},
+        "embedded_prompt": None,
+    }
+
+    # 1. Binary Scan for AI audio signatures & watermark stamps
+    try:
+        with open(path_obj, "rb") as bf:
+            head_bytes = bf.read(131072)
+            bf.seek(max(0, file_size - 65536))
+            tail_bytes = bf.read(65536)
+            sample_bytes = (head_bytes + tail_bytes).lower()
+
+            if b"c2pa" in sample_bytes or b"jumbf" in sample_bytes:
+                result["c2pa_detected"] = True
+                result["has_ai_metadata"] = True
+
+            if b"synthid" in sample_bytes:
+                result["synthid_detected"] = True
+                result["has_ai_metadata"] = True
+
+            for kw in AI_AUDIO_SIGNATURE_KEYWORDS:
+                if kw.encode("utf-8") in sample_bytes:
+                    if not result["detected_generator"]:
+                        result["detected_generator"] = kw.title()
+                    result["has_ai_metadata"] = True
+    except Exception as scan_err:
+        logger.warning("Audio binary header scan error: %s", scan_err)
+
+    # 2. FFprobe inspection
+    ffprobe_bin = shutil.which("ffprobe") or "ffprobe"
+    try:
+        probe_cmd = [
+            ffprobe_bin,
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_format",
+            "-show_streams",
+            str(path_obj),
+        ]
+        proc = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=15)
+        if proc.returncode == 0 and proc.stdout:
+            data = json.loads(proc.stdout)
+            fmt = data.get("format", {})
+            streams = data.get("streams", [])
+
+            duration_val = float(fmt.get("duration", 0.0))
+            result["duration"] = round(duration_val, 2)
+            mins = int(duration_val // 60)
+            secs = int(duration_val % 60)
+            result["duration_formatted"] = f"{mins:02d}:{secs:02d}"
+
+            if fmt.get("bit_rate"):
+                result["bitrate_kbps"] = int(int(fmt["bit_rate"]) / 1000)
+
+            tags = fmt.get("tags", {})
+            result["tags"] = tags
+
+            creator_info = {}
+            for k, v in tags.items():
+                result["raw_text_metadata"].append(f"{k}: {v}")
+                lower_k = str(k).lower()
+                lower_v = str(v).lower()
+
+                if lower_k in ["title", "artist", "album", "genre", "date", "year", "composer", "comment"]:
+                    creator_info[lower_k] = str(v)
+
+                if "prompt" in lower_k or "description" in lower_k or "lyrics" in lower_k:
+                    if not result["embedded_prompt"]:
+                        result["embedded_prompt"] = str(v)
+
+                for kw in AI_AUDIO_SIGNATURE_KEYWORDS:
+                    if kw in lower_v or kw in lower_k:
+                        if not result["detected_generator"]:
+                            result["detected_generator"] = kw.title()
+                        result["has_ai_metadata"] = True
+
+            result["rights_and_creator"] = creator_info
+
+            for s in streams:
+                if s.get("codec_type") == "audio" and not result["audio_codec"]:
+                    cname = s.get("codec_name", "").upper()
+                    result["audio_codec"] = cname
+                    srate = s.get("sample_rate")
+                    result["sample_rate"] = f"{srate} Hz" if srate else None
+                    result["channels"] = int(s.get("channels", 2))
+                    result["channel_layout"] = s.get("channel_layout", "stereo")
+                    result["bits_per_sample"] = s.get("bits_per_raw_sample") or s.get("bits_per_sample")
+
+                    a_tech = {
+                        "has_audio": True,
+                        "codec": cname,
+                        "profile": s.get("profile", ""),
+                        "sample_rate": result["sample_rate"],
+                        "channels": result["channels"],
+                        "channel_layout": result["channel_layout"],
+                        "bitrate_kbps": int(int(s.get("bit_rate", 0)) / 1000) if s.get("bit_rate") else result["bitrate_kbps"],
+                        "bits_per_sample": result["bits_per_sample"],
+                    }
+                    result["audio_technical"] = a_tech
+
+                    s_tags = s.get("tags", {})
+                    for sk, sv in s_tags.items():
+                        result["raw_text_metadata"].append(f"audio.{sk}: {sv}")
+    except Exception as probe_err:
+        logger.warning("ffprobe audio inspection error: %s", probe_err)
+
+    return result
+
+
+def clean_audio_lossless(
+    input_path: str,
+    output_path: str,
+    stealth_mode: bool = False,
+) -> Dict[str, Any]:
+    """
+    Strips all ID3v1, ID3v2, Vorbis tags, RIFF chunks, comments, and AI metadata from an audio file.
+    Uses ultra-fast stream copy (-c copy) so 100% of the raw acoustic samples are preserved with 0% loss.
+    """
+    input_p = Path(input_path)
+    output_p = Path(output_path)
+
+    if not input_p.exists():
+        return {"success": False, "error": f"Input audio not found: {input_path}"}
+
+    output_p.parent.mkdir(parents=True, exist_ok=True)
+    size_before = input_p.stat().st_size
+
+    pre_meta = extract_audio_metadata(str(input_p))
+
+    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+
+    cmd = [
+        ffmpeg_bin,
+        "-y",
+        "-i", str(input_p),
+        "-map", "0",
+        "-map_metadata", "-1",
+        "-map_metadata:s", "-1",
+        "-c", "copy",
+        "-fflags", "+bitexact",
+        "-flags:a", "+bitexact",
+        str(output_p),
+    ]
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if proc.returncode != 0 or not output_p.exists():
+            err_msg = proc.stderr or "FFmpeg audio clean failed"
+            logger.error("FFmpeg audio error: %s", err_msg)
+            return {"success": False, "error": f"FFmpeg audio clean failed: {err_msg[:200]}"}
+
+        size_after = output_p.stat().st_size
+        bytes_saved = max(0, size_before - size_after)
+        saved_percent = round((bytes_saved / max(size_before, 1)) * 100, 1)
+
+        post_meta = extract_audio_metadata(str(output_p))
+
+        return {
+            "success": True,
+            "media_type": "audio",
+            "output_path": str(output_p),
+            "output_filename": output_p.name,
+            "size_before": size_before,
+            "size_after": size_after,
+            "original_size_bytes": size_before,
+            "cleaned_size_bytes": size_after,
+            "bytes_saved": bytes_saved,
+            "saved_bytes": bytes_saved,
+            "saved_percent": saved_percent,
+            "stealth_mode": stealth_mode,
+            "verified_clean": not post_meta.get("has_ai_metadata", False),
+            "before_metadata": pre_meta,
+            "after_metadata": post_meta,
+        }
+
+    except Exception as e:
+        logger.error("Error cleaning audio %s: %s", input_path, e)
         return {"success": False, "error": str(e)}
