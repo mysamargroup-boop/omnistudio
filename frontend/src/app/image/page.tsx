@@ -51,6 +51,7 @@ import {
   Info,
   Gem,
   AtSign,
+  Settings,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -571,11 +572,27 @@ export default function ImageStudioPage() {
       if (typeof draft.lockBackground === "boolean") setLockBackground(draft.lockBackground);
       if (typeof draft.applyBrandKit === "boolean") setApplyBrandKit(draft.applyBrandKit);
 
-      const urlImage = params.get("input_image") || params.get("image");
+      const urlMode = params.get("mode");
+      const urlEditorImage = params.get("editor_image");
+      if (urlMode === "image_editor" || urlEditorImage) {
+        setStudioMode("image_editor");
+        setPromptDockCollapsed(true);
+        if (urlEditorImage && urlEditorImage.trim()) {
+          const cleanEd = urlEditorImage.trim();
+          setEditorImageUrl(cleanEd);
+          setOriginalEditorImageUrl(cleanEd);
+        }
+      }
+
+      const urlImage = params.get("input_image") || params.get("image") || params.get("source");
       if (urlImage && urlImage.trim()) {
         const cleanUrl = urlImage.trim();
         setRefImageUrl(cleanUrl);
         setResult({ success: true, url: cleanUrl, local_path: cleanUrl });
+        if (urlMode === "image_editor") {
+          setEditorImageUrl(cleanUrl);
+          setOriginalEditorImageUrl(cleanUrl);
+        }
       }
 
       hasHydrated.current = true;
@@ -661,6 +678,17 @@ export default function ImageStudioPage() {
     }
     if (charName) {
       setPrompt(`is image ka use karo or isi ka use karke exactly same face sab kuch same, or 10 multiple different pose image generate karo character: ${charName}`);
+    }
+
+    const sMode = searchParams?.get("mode");
+    const sEditorImg = searchParams?.get("editor_image") || (sMode === "image_editor" ? (searchParams?.get("image") || searchParams?.get("source")) : null);
+    if (sMode === "image_editor" || sEditorImg) {
+      setStudioMode("image_editor");
+      setPromptDockCollapsed(true);
+      if (sEditorImg) {
+        setEditorImageUrl(sEditorImg);
+        setOriginalEditorImageUrl(sEditorImg);
+      }
     }
 
     return () => {
@@ -1569,7 +1597,7 @@ export default function ImageStudioPage() {
                     : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
                 )}
               >
-                <Grid className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 dark:text-amber-300" />
                 <span>Image Variations</span>
               </button>
               <button
@@ -1585,7 +1613,7 @@ export default function ImageStudioPage() {
                     : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-white/[0.04] border border-transparent"
                 )}
               >
-                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                <Settings className="w-3.5 h-3.5 text-white shrink-0" />
                 <span>Image Editor</span>
                 <span className={cn(
                   "text-[9px] px-1.5 py-0.5 rounded-md font-bold tracking-wider uppercase transition-all",

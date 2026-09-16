@@ -2448,7 +2448,7 @@ export default function VaultPage() {
                   </div>
 
                   {/* Drawer Content Body */}
-                  <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs font-mono scrollbar-thin scrollbar-thumb-zinc-800">
+                  <div className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar overscroll-contain p-5 space-y-5 text-xs font-mono">
                     {/* Loading State */}
                     {metadataLoading && (
                       <div className="flex flex-col items-center justify-center py-16 gap-3 text-center text-zinc-400">
@@ -2648,6 +2648,20 @@ export default function VaultPage() {
 
                         {/* 6. Quick Action Buttons */}
                         <div className="pt-2 flex flex-col gap-2">
+                          {isLbImage && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const assetUrl = lightboxAsset.url;
+                                setLightboxAsset(null);
+                                router.push(`/image?mode=image_editor&editor_image=${encodeURIComponent(assetUrl)}`);
+                              }}
+                              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-all cursor-pointer active:scale-[0.98]"
+                            >
+                              <Sliders className="w-3.5 h-3.5" />
+                              <span>OPEN IN IMAGE EDITOR</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
@@ -2655,7 +2669,10 @@ export default function VaultPage() {
                               setLightboxAsset(null);
                               router.push(`/metadata?image=${encodeURIComponent(assetUrl)}`);
                             }}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-all cursor-pointer active:scale-[0.98]"
+                            className={cn(
+                              "w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white text-xs font-semibold shadow-md transition-all cursor-pointer active:scale-[0.98]",
+                              isLbImage ? "bg-zinc-800 hover:bg-zinc-700" : "bg-emerald-600 hover:bg-emerald-500"
+                            )}
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
                             <span>OPEN IN METADATA CLEANER</span>
@@ -2798,6 +2815,22 @@ export default function VaultPage() {
                   >
                     <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                     <span>REUSE PROMPT</span>
+                  </button>
+                )}
+
+                {tab !== "trash" && isLbImage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const imgUrl = lightboxAsset.url;
+                      setLightboxAsset(null);
+                      router.push(`/image?mode=image_editor&editor_image=${encodeURIComponent(imgUrl)}`);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold shadow-md transition-all cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
+                    title="Open in Precision Image Editor & Inpainting Canvas"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>IMAGE EDITOR</span>
                   </button>
                 )}
 

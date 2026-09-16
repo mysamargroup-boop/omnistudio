@@ -801,6 +801,26 @@ async def inject_metadata_endpoint(req: MetadataInjectRequest, request: Request)
         clean_url = f"/outputs/videos/{injected_filename}"
         res["url"] = clean_url
         res["clean_url"] = clean_url
+        res["input_filename"] = target_path.name
+        res["output_filename"] = injected_filename
+        res["clean_filename"] = injected_filename
+
+        try:
+            db_save_asset(
+                filename=injected_filename,
+                asset_type="videos",
+                url=clean_url,
+                prompt=f"Camera Injected Video ({req.camera_preset}): {target_path.name}",
+                parameters={
+                    "source_file": target_path.name,
+                    "camera_preset": req.camera_preset,
+                    "gps_preset": req.gps_preset,
+                    "stealth_mode": req.stealth_mode,
+                },
+            )
+        except Exception as db_err:
+            logger.warning("Could not register injected video in DB: %s", db_err)
+
         return res
 
     elif target_path.suffix.lower() in IMAGE_EXTENSIONS:
@@ -823,6 +843,27 @@ async def inject_metadata_endpoint(req: MetadataInjectRequest, request: Request)
         clean_url = f"/outputs/images/{injected_filename}"
         res["url"] = clean_url
         res["clean_url"] = clean_url
+        res["input_filename"] = target_path.name
+        res["output_filename"] = injected_filename
+        res["clean_filename"] = injected_filename
+
+        try:
+            db_save_asset(
+                filename=injected_filename,
+                asset_type="images",
+                url=clean_url,
+                prompt=f"Camera Injected Image ({req.camera_preset}): {target_path.name}",
+                parameters={
+                    "source_file": target_path.name,
+                    "camera_preset": req.camera_preset,
+                    "gps_preset": req.gps_preset,
+                    "stealth_mode": req.stealth_mode,
+                    "quality": req.quality,
+                },
+            )
+        except Exception as db_err:
+            logger.warning("Could not register injected image in DB: %s", db_err)
+
         return res
 
     else:

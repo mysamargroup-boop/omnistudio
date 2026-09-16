@@ -62,6 +62,8 @@ import {
   ShieldCheck,
   FileVideo,
   History,
+  Camera,
+  MapPin,
 } from "lucide-react";
 import { api, getMediaUrl, VideoMetadataInspection } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -387,6 +389,11 @@ function VideoStudioContent() {
   const [showMetadataInspector, setShowMetadataInspector] = useState(false);
   const [cleaningVideoMetadata, setCleaningVideoMetadata] = useState(false);
   const [cleanSuccessNotice, setCleanSuccessNotice] = useState<string | null>(null);
+
+  // Fake Camera / Production Metadata State for Video
+  const [videoCameraPreset, setVideoCameraPreset] = useState<string>("sony_fx3");
+  const [videoGpsPreset, setVideoGpsPreset] = useState<string>("none");
+  const [injectingVideoMetadata, setInjectingVideoMetadata] = useState(false);
 
   // Uploaded Video Metadata State
   const [uploadedVideoMetadata, setUploadedVideoMetadata] = useState<VideoMetadataInspection | null>(null);
@@ -1067,6 +1074,37 @@ function VideoStudioContent() {
       console.error("Failed to clean video metadata:", err);
     } finally {
       setCleaningVideoMetadata(false);
+    }
+  };
+
+  const handleInjectGeneratedVideoMetadata = async () => {
+    if (!result?.url) return;
+    setInjectingVideoMetadata(true);
+    setCleanSuccessNotice(null);
+    try {
+      const res = await api.injectMetadata({
+        url: result.url,
+        filename: result.filename,
+        camera_preset: videoCameraPreset,
+        gps_preset: videoGpsPreset !== "none" ? videoGpsPreset : undefined,
+        stealth_mode: true,
+      });
+      if (res?.success) {
+        setResult((prev: any) => ({
+          ...prev,
+          url: res.clean_url || res.url,
+          filename: res.output_filename || res.clean_filename || prev.filename,
+        }));
+        setVideoMetadata(res.remaining_metadata);
+        setCleanSuccessNotice(
+          `Authentic camera & container metadata (${res.injected_camera?.model || videoCameraPreset}) successfully injected into video bitstream! AI signatures purged with lossless stream copy.`
+        );
+      }
+    } catch (err: any) {
+      console.error("Failed to inject video metadata:", err);
+      alert(err.message || "Failed to inject camera metadata into video");
+    } finally {
+      setInjectingVideoMetadata(false);
     }
   };
 
@@ -2204,26 +2242,28 @@ function VideoStudioContent() {
                         </div>
                       </div>
 
-                      {videoMetadata?.has_ai_metadata && (
-                        <button
-                          type="button"
-                          disabled={cleaningVideoMetadata}
-                          onClick={handleStripGeneratedVideoMetadata}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-mono font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
-                        >
-                          {cleaningVideoMetadata ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Purging Metadata (Stream Copy)...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Strip Metadata (Lossless Stream Copy)</span>
-                            </>
-                          )}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        {videoMetadata?.has_ai_metadata && (
+                          <button
+                            type="button"
+                            disabled={cleaningVideoMetadata || injectingVideoMetadata}
+                            onClick={handleStripGeneratedVideoMetadata}
+                            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-mono font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                          >
+                            {cleaningVideoMetadata ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Purging Metadata...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Strip Metadata</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {cleanSuccessNotice && (
@@ -2232,6 +2272,116 @@ function VideoStudioContent() {
                         <span>{cleanSuccessNotice}</span>
                       </div>
                     )}
+
+                    {/* Camera / Hardware Metadata Card (if present or injected) */}
+                    {videoMetadata?.camera_info && Object.keys(videoMetadata.camera_info).length > 0 && (
+                      <div className="p-3.5 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
+                          <Camera className="w-4 h-4 text-cyan-500" />
+                          <span>Camera Hardware & Production Profile</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                          {Object.entries(videoMetadata.camera_info).map(([k, v]) => (
+                            <div key={k} className="p-2 rounded-lg bg-white/60 dark:bg-black/30 border border-cyan-500/10">
+                              <span className="text-[10px] text-zinc-400 uppercase block truncate">{k}</span>
+                              <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate block">{String(v)}</span>
+                            </div>
+                          ))}
+                          {videoMetadata?.gps_info?.has_gps && (
+                            <div className="p-2 rounded-lg bg-white/60 dark:bg-black/30 border border-cyan-500/10 col-span-2">
+                              <span className="text-[10px] text-zinc-400 uppercase block">GPS Geotag Location</span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 block truncate">
+                                {videoMetadata.gps_info.formatted || `${videoMetadata.gps_info.latitude}, ${videoMetadata.gps_info.longitude}`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fake Camera / Hardware Metadata Injection Dock */}
+                    <div className="p-4 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.06] dark:border-white/[0.08] space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/[0.05] dark:border-white/[0.05] pb-2">
+                        <div className="flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-emerald-500" />
+                          <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-900 dark:text-white">
+                            Inject Fake Camera & Production Metadata
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          Lossless container stream-copy • Zero re-encoding
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        {/* Camera Preset Dropdown */}
+                        <div className="sm:col-span-5 space-y-1.5">
+                          <label className="text-[10px] font-mono uppercase text-zinc-500 font-semibold block">
+                            Camera Hardware / Cinema Line
+                          </label>
+                          <select
+                            value={videoCameraPreset}
+                            onChange={(e) => setVideoCameraPreset(e.target.value)}
+                            className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-white dark:bg-[#121824] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
+                          >
+                            <option value="sony_fx3">Sony FX3 Cinema Line (ILME-FX3)</option>
+                            <option value="arri_alexa">ARRI ALEXA Mini LF (Hollywood Prime)</option>
+                            <option value="red_v_raptor">RED V-RAPTOR 8K VV (8K RAW Cinema)</option>
+                            <option value="canon_c70">Canon Cinema EOS C70 (RF Cinema)</option>
+                            <option value="blackmagic_6k">Blackmagic Pocket Cinema 6K Pro</option>
+                            <option value="dji_ronin_4d">DJI Ronin 4D 8K (Steadicam Gimbal)</option>
+                            <option value="iphone_15_pro">Apple iPhone 15 Pro Max (ProRes 4K)</option>
+                            <option value="sony_a7iv">Sony Alpha 7 IV (ILCE-7M4)</option>
+                            <option value="canon_eos_r5">Canon EOS R5 (Full Frame)</option>
+                            <option value="nikon_z8">Nikon Z 8 (Flagship N-RAW)</option>
+                            <option value="fujifilm_xt5">Fujifilm X-T5 (Film Simulation)</option>
+                          </select>
+                        </div>
+
+                        {/* Location / GPS Dropdown */}
+                        <div className="sm:col-span-4 space-y-1.5">
+                          <label className="text-[10px] font-mono uppercase text-zinc-500 font-semibold block">
+                            Location Geotag
+                          </label>
+                          <select
+                            value={videoGpsPreset}
+                            onChange={(e) => setVideoGpsPreset(e.target.value)}
+                            className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-white dark:bg-[#121824] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
+                          >
+                            <option value="none">No Geotag (Private Location)</option>
+                            <option value="tokyo">Tokyo, Japan</option>
+                            <option value="new_york">New York City, USA</option>
+                            <option value="london">London, UK</option>
+                            <option value="paris">Paris, France</option>
+                            <option value="mumbai">Mumbai, India</option>
+                            <option value="delhi">New Delhi, India</option>
+                            <option value="dubai">Dubai, UAE</option>
+                          </select>
+                        </div>
+
+                        {/* Inject Button */}
+                        <div className="sm:col-span-3">
+                          <button
+                            type="button"
+                            disabled={injectingVideoMetadata || cleaningVideoMetadata}
+                            onClick={handleInjectGeneratedVideoMetadata}
+                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white font-mono font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                          >
+                            {injectingVideoMetadata ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Injecting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>Inject Metadata</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
                     {videoMetadata?.has_ai_metadata ? (
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5">
@@ -2244,7 +2394,7 @@ function VideoStudioContent() {
                           {videoMetadata.detected_generator ? ` (${videoMetadata.detected_generator})` : ""}
                           {videoMetadata.c2pa_detected ? " including C2PA Content Credentials manifests" : ""}
                           {videoMetadata.synthid_detected ? " and SynthID digital provenance markers" : ""}.
-                          Use the button above to strip all metadata losslessly using ultra-fast stream copy with zero re-encoding and 0% quality loss.
+                          Use the buttons above to strip metadata or inject realistic camera hardware tags using ultra-fast stream copy with zero quality loss.
                         </p>
                       </div>
                     ) : (
@@ -2284,15 +2434,15 @@ function VideoStudioContent() {
                       </div>
                     </div>
 
-                    {/* Raw Text Tags / Atoms */}
+                    {/* Raw Text Tags / Atoms with Smooth Scrolling */}
                     {videoMetadata?.raw_text_metadata && videoMetadata.raw_text_metadata.length > 0 && (
                       <div className="space-y-1.5">
                         <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold block">
                           Container Atom Tags ({videoMetadata.raw_text_metadata.length})
                         </span>
-                        <div className="max-h-28 overflow-y-auto p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.04] space-y-1 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 custom-scrollbar">
+                        <div className="max-h-48 overflow-y-auto scroll-smooth custom-scrollbar overscroll-contain p-2.5 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.04] space-y-1 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
                           {videoMetadata.raw_text_metadata.map((tag, idx) => (
-                            <div key={idx} className="truncate">
+                            <div key={idx} className="truncate hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
                               {tag}
                             </div>
                           ))}

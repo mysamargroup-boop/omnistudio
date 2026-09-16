@@ -745,8 +745,8 @@ def extract_video_metadata(input_path: str) -> Dict[str, Any]:
                 lower_k = str(k).lower()
                 lower_v = str(v).lower()
 
-                # Camera & device info
-                if "model" in lower_k or "make" in lower_k:
+                # Camera, Lens, Software, Artist & device info
+                if any(x in lower_k for x in ["model", "make", "lens", "camera", "software", "artist", "copyright"]):
                     result["camera_info"][k] = str(v)
 
                 # Location / GPS detection in MP4 tags (e.g. ISO 6709: +37.7749-122.4194/)
@@ -1209,6 +1209,96 @@ REALISTIC_CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
         "artist": "Street Documentary",
         "copyright": "",
     },
+    "sony_fx3": {
+        "id": "sony_fx3",
+        "name": "Sony FX3 (Cinema Line)",
+        "category": "Cinema / Video",
+        "make": "Sony",
+        "model": "ILME-FX3",
+        "lens": "FE 24-70mm F2.8 GM II",
+        "software": "Sony Catalyst Browse / Cinema Line v4.0",
+        "focal_length": 35.0,
+        "f_number": 2.8,
+        "exposure_time": 0.02,  # 1/50s (180-deg shutter rule)
+        "iso": 800,
+        "artist": "Cinema Line Productions",
+        "copyright": "All rights reserved",
+    },
+    "arri_alexa": {
+        "id": "arri_alexa",
+        "name": "ARRI ALEXA Mini LF",
+        "category": "Cinema / Hollywood",
+        "make": "ARRI",
+        "model": "ALEXA Mini LF",
+        "lens": "ARRI Signature Prime 47mm T1.8",
+        "software": "ARRI Look Creator 2.4",
+        "focal_length": 47.0,
+        "f_number": 1.8,
+        "exposure_time": 0.02,
+        "iso": 800,
+        "artist": "Hollywood Cinematography",
+        "copyright": "All rights reserved",
+    },
+    "red_v_raptor": {
+        "id": "red_v_raptor",
+        "name": "RED V-RAPTOR 8K VV",
+        "category": "Cinema / 8K RAW",
+        "make": "RED Digital Cinema",
+        "model": "V-RAPTOR 8K VV",
+        "lens": "Canon CN-E 35mm T1.5 L F",
+        "software": "REDCINE-X PRO 64-bit",
+        "focal_length": 35.0,
+        "f_number": 1.5,
+        "exposure_time": 0.02,
+        "iso": 800,
+        "artist": "RED Digital Studio",
+        "copyright": "All rights reserved",
+    },
+    "canon_c70": {
+        "id": "canon_c70",
+        "name": "Canon Cinema EOS C70",
+        "category": "Cinema / Documentary",
+        "make": "Canon",
+        "model": "EOS C70",
+        "lens": "RF 24-70mm F2.8 L IS USM",
+        "software": "Canon Cinema RAW Development",
+        "focal_length": 50.0,
+        "f_number": 2.8,
+        "exposure_time": 0.02,
+        "iso": 800,
+        "artist": "Cinema Documentary",
+        "copyright": "All rights reserved",
+    },
+    "blackmagic_6k": {
+        "id": "blackmagic_6k",
+        "name": "Blackmagic Pocket Cinema 6K Pro",
+        "category": "Cinema / Indie Film",
+        "make": "Blackmagic Design",
+        "model": "Pocket Cinema Camera 6K Pro",
+        "lens": "Sigma 18-35mm F1.8 DC HSM Art",
+        "software": "DaVinci Resolve Studio 19.1",
+        "focal_length": 24.0,
+        "f_number": 1.8,
+        "exposure_time": 0.02,
+        "iso": 400,
+        "artist": "Blackmagic RAW Productions",
+        "copyright": "All rights reserved",
+    },
+    "dji_ronin_4d": {
+        "id": "dji_ronin_4d",
+        "name": "DJI Ronin 4D 8K",
+        "category": "Cinema / Gimbal Steadicam",
+        "make": "DJI",
+        "model": "Ronin 4D-8K",
+        "lens": "DJI DL 35mm F2.8 LS ASPH",
+        "software": "DJI CineCore 3.0",
+        "focal_length": 35.0,
+        "f_number": 2.8,
+        "exposure_time": 0.02,
+        "iso": 800,
+        "artist": "DJI Master Studio",
+        "copyright": "All rights reserved",
+    },
 }
 
 REALISTIC_GPS_PRESETS: Dict[str, Dict[str, Any]] = {
@@ -1426,6 +1516,10 @@ def inject_video_metadata(
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     make = str(preset_data.get("make", "Sony"))
     model = str(preset_data.get("model", "ILCE-7M4"))
+    lens = str(preset_data.get("lens", "FE 24-70mm F2.8 GM II"))
+    software = str(preset_data.get("software", "Cinema Production Studio"))
+    artist = str(preset_data.get("artist", "Cinema Producer"))
+    copyright_str = str(preset_data.get("copyright", "All rights reserved"))
 
     temp_injected = output_p.parent / f"temp_{uuid.uuid4().hex[:8]}_{output_p.name}"
 
@@ -1436,11 +1530,19 @@ def inject_video_metadata(
         "-i", str(output_p),
         "-map", "0",
         "-c", "copy",
+        "-movflags", "use_metadata_tags",
         "-metadata", f"make={make}",
         "-metadata", f"model={model}",
+        "-metadata", f"lens={lens}",
+        "-metadata", f"camera_make={make}",
+        "-metadata", f"camera_model={model}",
+        "-metadata", f"software={software}",
+        "-metadata", f"artist={artist}",
+        "-metadata", f"copyright={copyright_str}",
         "-metadata", f"creation_time={now_iso}",
-        "-metadata:s:v:0", "handler_name=VideoHandler",
-        "-metadata:s:a:0", "handler_name=SoundHandler",
+        "-metadata:s:v:0", f"handler_name={make} Video Stream",
+        "-metadata:s:v:0", f"encoder={software}",
+        "-metadata:s:a:0", "handler_name=Stereo Audio Stream",
     ]
 
     lat: Optional[float] = None
@@ -1454,7 +1556,7 @@ def inject_video_metadata(
 
     if lat is not None and lon is not None:
         loc_str = f"{lat:+08.4f}{lon:+09.4f}/"
-        cmd.extend(["-metadata", f"location={loc_str}"])
+        cmd.extend(["-metadata", f"location={loc_str}", "-metadata", f"location-eng={loc_str}"])
 
     cmd.append(str(temp_injected))
 

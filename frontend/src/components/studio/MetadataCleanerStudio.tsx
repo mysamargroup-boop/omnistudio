@@ -80,6 +80,12 @@ export interface BatchQueueItem {
 
 const CAMERA_PRESET_FALLBACKS: Record<string, any> = {
   sony_a7iv: { name: "Sony Alpha 7 IV (ILCE-7M4)", category: "Pro Mirrorless", make: "Sony", model: "ILCE-7M4", lens: "FE 24-70mm F2.8 GM II", iso: 200, f_number: 2.8, exposure_time: 0.002, software: "Adobe Photoshop Lightroom Classic 13.2" },
+  sony_fx3: { name: "Sony FX3 (Cinema Line)", category: "Cinema / Video", make: "Sony", model: "ILME-FX3", lens: "FE 24-70mm F2.8 GM II", iso: 800, f_number: 2.8, exposure_time: 0.02, software: "Sony Catalyst Browse / Cinema Line v4.0" },
+  arri_alexa: { name: "ARRI ALEXA Mini LF", category: "Cinema / Hollywood", make: "ARRI", model: "ALEXA Mini LF", lens: "ARRI Signature Prime 47mm T1.8", iso: 800, f_number: 1.8, exposure_time: 0.02, software: "ARRI Look Creator 2.4" },
+  red_v_raptor: { name: "RED V-RAPTOR 8K VV", category: "Cinema / 8K RAW", make: "RED Digital Cinema", model: "V-RAPTOR 8K VV", lens: "Canon CN-E 35mm T1.5 L F", iso: 800, f_number: 1.5, exposure_time: 0.02, software: "REDCINE-X PRO 64-bit" },
+  canon_c70: { name: "Canon Cinema EOS C70", category: "Cinema / Documentary", make: "Canon", model: "EOS C70", lens: "RF 24-70mm F2.8 L IS USM", iso: 800, f_number: 2.8, exposure_time: 0.02, software: "Canon Cinema RAW Development" },
+  blackmagic_6k: { name: "Blackmagic Pocket Cinema 6K Pro", category: "Cinema / Indie Film", make: "Blackmagic Design", model: "Pocket Cinema Camera 6K Pro", lens: "Sigma 18-35mm F1.8 DC HSM Art", iso: 400, f_number: 1.8, exposure_time: 0.02, software: "DaVinci Resolve Studio 19.1" },
+  dji_ronin_4d: { name: "DJI Ronin 4D 8K", category: "Cinema / Gimbal Steadicam", make: "DJI", model: "Ronin 4D-8K", lens: "DJI DL 35mm F2.8 LS ASPH", iso: 800, f_number: 2.8, exposure_time: 0.02, software: "DJI CineCore 3.0" },
   canon_eos_r5: { name: "Canon EOS R5", category: "Pro Mirrorless", make: "Canon", model: "Canon EOS R5", lens: "RF24-70mm F2.8 L IS USM", iso: 100, f_number: 2.8, exposure_time: 0.0025, software: "Digital Photo Professional 4" },
   iphone_15_pro: { name: "Apple iPhone 15 Pro Max", category: "Smartphone", make: "Apple", model: "iPhone 15 Pro Max", lens: "Triple Camera 24mm f/1.78", iso: 64, f_number: 1.78, exposure_time: 0.008, software: "iOS 17.5.1" },
   nikon_z8: { name: "Nikon Z 8", category: "Pro Mirrorless", make: "NIKON CORPORATION", model: "NIKON Z 8", lens: "NIKKOR Z 24-70mm f/2.8 S", iso: 250, f_number: 2.8, exposure_time: 0.00156, software: "Adobe Photoshop 2024" },
@@ -1633,7 +1639,7 @@ export default function MetadataCleanerStudio({
               </div>
 
               {/* Tab Contents */}
-              <div className="p-5 space-y-5 max-h-[480px] overflow-y-auto">
+              <div className="p-5 space-y-5 max-h-[500px] overflow-y-auto scroll-smooth custom-scrollbar overscroll-contain">
                 {/* 1. OVERVIEW & AI */}
                 {activeTab === "overview" && (
                   <div className="space-y-4">
@@ -2075,7 +2081,7 @@ export default function MetadataCleanerStudio({
                       />
                     </div>
 
-                    <div className="divide-y divide-zinc-200 dark:divide-white/5 border border-zinc-200 dark:border-white/5 rounded-2xl overflow-hidden text-xs bg-zinc-50/60 dark:bg-[#060a12]/60">
+                    <div className="divide-y divide-zinc-200 dark:divide-white/5 border border-zinc-200 dark:border-white/5 rounded-2xl overflow-y-auto max-h-[380px] scroll-smooth custom-scrollbar overscroll-contain text-xs bg-zinc-50/60 dark:bg-[#060a12]/60">
                       {Object.entries(metadata.exif_tags || metadata.tags || {})
                         .filter(([tag, val]) => {
                           if (!rawTagSearch.trim()) return true;
