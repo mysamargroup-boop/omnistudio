@@ -848,22 +848,49 @@ export default function VaultPage() {
           )}
 
           {activeFiles.length > 0 && (
-            <button
-              onClick={selectedKeys.size === activeFiles.length ? clearSelection : selectAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-            >
-              {selectedKeys.size === activeFiles.length ? (
-                <>
-                  <CheckSquare className="w-3.5 h-3.5 text-zinc-950 dark:text-white" />
-                  <span>Deselect All</span>
-                </>
-              ) : (
-                <>
-                  <Square className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Select All</span>
-                </>
-              )}
-            </button>
+            <>
+              <button
+                onClick={selectedKeys.size === activeFiles.length ? clearSelection : selectAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                {selectedKeys.size === activeFiles.length ? (
+                  <>
+                    <CheckSquare className="w-3.5 h-3.5 text-zinc-950 dark:text-white" />
+                    <span>Deselect All</span>
+                  </>
+                ) : (
+                  <>
+                    <Square className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Select All</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedKeys.size > 0) {
+                    handleBulkDownload();
+                  } else {
+                    selectAll();
+                    activeFiles.forEach((item, index) => {
+                      setTimeout(() => {
+                        downloadAsset(item.url, item.filename);
+                      }, index * 250);
+                    });
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
+                title={selectedKeys.size > 0 ? `Download ${selectedKeys.size} selected assets` : `Download all ${activeFiles.length} assets`}
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>
+                  {selectedKeys.size > 0
+                    ? `Download Selected (${selectedKeys.size})`
+                    : `Bulk Download (${activeFiles.length})`}
+                </span>
+              </button>
+            </>
           )}
 
           <div className="relative min-w-[200px] flex-1">

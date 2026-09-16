@@ -173,6 +173,12 @@ export default function MetadataCleanerStudio({
     }).catch(() => {});
   }, []);
 
+  // UI state
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedNegPrompt, setCopiedNegPrompt] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "camera" | "gps" | "streams" | "audio" | "rights" | "raw">("overview");
+  const [rawTagSearch, setRawTagSearch] = useState("");
+
   // Restore session state when navigating back or after downloading
   useEffect(() => {
     try {
@@ -217,12 +223,6 @@ export default function MetadataCleanerStudio({
       // ignore quota limits
     }
   }, [previewUrl, sourcePath, metadata, cleanResult, zeroDiskMode, browserOnlyMode, stealthMode, injectCameraProfile, cameraPreset, gpsPreset, activeTab]);
-
-  // UI state
-  const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [copiedNegPrompt, setCopiedNegPrompt] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "camera" | "gps" | "streams" | "audio" | "rights" | "raw">("overview");
-  const [rawTagSearch, setRawTagSearch] = useState("");
 
   // Load vault assets for selector
   const loadVaultImages = async () => {

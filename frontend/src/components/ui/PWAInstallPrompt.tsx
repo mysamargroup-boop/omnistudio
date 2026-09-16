@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
-import { Download, X, Sparkles, Smartphone, Monitor } from "lucide-react";
+import { Download, X } from "lucide-react";
+import OmniLogo from "@/components/ui/OmniLogo";
 import { cn } from "@/lib/utils";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -87,8 +88,8 @@ export default function PWAInstallPrompt() {
       className="fixed bottom-5 right-5 z-[9999] max-w-sm w-[calc(100vw-2.5rem)] rounded-2xl bg-white/95 dark:bg-[#0c121e]/95 border border-emerald-500/30 dark:border-emerald-500/20 shadow-2xl backdrop-blur-xl p-4 animate-in slide-in-from-bottom-5 duration-300 select-none"
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-emerald-500/20">
-          <Sparkles className="w-5 h-5" />
+        <div className="shrink-0 flex items-center justify-center p-1 rounded-xl bg-black/5 dark:bg-white/5 border border-zinc-200 dark:border-white/10 shadow-sm">
+          <OmniLogo size={36} />
         </div>
 
         <div className="flex-1 min-w-0 pr-1">
