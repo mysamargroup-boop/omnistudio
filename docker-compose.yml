@@ -5,7 +5,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     image: ghcr.io/mysamargroup-boop/omnistudio-backend:latest
-    container_name: omnistudio-backend
     restart: unless-stopped
     ports:
       # Isolated Host Port 8050 -> Container Port 8000
@@ -61,7 +60,6 @@ services:
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     image: ghcr.io/mysamargroup-boop/omnistudio-frontend:latest
-    container_name: omnistudio-frontend
     restart: unless-stopped
     ports:
       # Isolated Host Port 3050 -> Container Port 3000
