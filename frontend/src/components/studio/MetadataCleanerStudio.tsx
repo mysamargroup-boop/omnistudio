@@ -41,6 +41,7 @@ import {
   Music,
   Mic,
   FileAudio,
+  Files,
 } from "lucide-react";
 import {
   api,
@@ -64,6 +65,19 @@ interface MetadataCleanerStudioProps {
   onCleanSuccess?: (cleaned: any) => void;
 }
 
+export interface BatchQueueItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  name: string;
+  size: number;
+  type: "image" | "video" | "audio";
+  metadata?: any;
+  cleanedResult?: any;
+  status: "idle" | "inspecting" | "inspected" | "cleaning" | "cleaned" | "error";
+  error?: string;
+}
+
 export default function MetadataCleanerStudio({
   initialImageUrl,
   initialImagePath,
@@ -75,6 +89,11 @@ export default function MetadataCleanerStudio({
   const [sourcePath, setSourcePath] = useState<string | null>(initialImagePath || null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Bulk / Batch Upload Queue (Files kept temporarily in browser memory)
+  const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
+  const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   // Browser-Only Mode (Zero Network Upload: 100% in-browser offline inspection)
   const [browserOnlyMode, setBrowserOnlyMode] = useState(true);
@@ -237,14 +256,48 @@ export default function MetadataCleanerStudio({
     }
   }, [initialImageUrl, initialImagePath]);
 
-  // Handle File selection
+  // Handle File selection (single & bulk)
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      handleFileSelected(file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (e.dataTransfer.files.length === 1) {
+        handleFileSelected(e.dataTransfer.files[0]);
+      } else {
+        handleFilesBatch(Array.from(e.dataTransfer.files));
+      }
     }
+  };
+
+  const handleFilesBatch = (files: File[]) => {
+    const valid = files.filter((file) => {
+      const isVid = file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|avi)$/i.test(file.name);
+      const isAud = file.type.startsWith("audio/") || /\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i.test(file.name);
+      const isImg = file.type.startsWith("image/") || /\.(png|jpg|jpeg|webp|bmp|tiff)$/i.test(file.name);
+      return isVid || isAud || isImg;
+    });
+
+    if (valid.length === 0) {
+      setInspectError("Please upload valid image, video, or audio files.");
+      return;
+    }
+
+    const newItems: BatchQueueItem[] = valid.map((file, idx) => {
+      const isVid = file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|avi)$/i.test(file.name);
+      const isAud = file.type.startsWith("audio/") || /\.(mp3|wav|flac|aac|ogg|m4a|opus|wma)$/i.test(file.name);
+      return {
+        id: `${file.name}-${file.size}-${Date.now()}-${idx}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+        type: isVid ? "video" : isAud ? "audio" : "image",
+        status: "idle",
+      };
+    });
+
+    setBatchQueue((prev) => [...prev, ...newItems]);
+    activateBatchItem(newItems[0]);
   };
 
   const handleFileSelected = (file: File) => {
@@ -255,11 +308,137 @@ export default function MetadataCleanerStudio({
       setInspectError("Please upload a valid image, video (MP4, MOV, WEBM) or audio (MP3, WAV, AAC, FLAC) file");
       return;
     }
-    setSelectedFile(file);
+    const item: BatchQueueItem = {
+      id: `${file.name}-${file.size}-${Date.now()}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      name: file.name,
+      size: file.size,
+      type: isVid ? "video" : isAud ? "audio" : "image",
+      status: "idle",
+    };
+    setBatchQueue((prev) => [...prev.filter((q) => q.name !== file.name), item]);
+    activateBatchItem(item);
+  };
+
+  const activateBatchItem = (item: BatchQueueItem) => {
+    setActiveBatchId(item.id);
+    setSelectedFile(item.file);
     setSourcePath(null);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-    inspectCurrentSource(file);
+    setPreviewUrl(item.previewUrl);
+    setCleanResult(item.cleanedResult || null);
+    if (item.metadata) {
+      setMetadata(item.metadata);
+    } else {
+      inspectCurrentSource(item.file);
+    }
+  };
+
+  const removeBatchItem = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setBatchQueue((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) {
+        try { URL.revokeObjectURL(target.previewUrl); } catch (_) {}
+      }
+      const remaining = prev.filter((item) => item.id !== id);
+      if (activeBatchId === id) {
+        if (remaining.length > 0) {
+          activateBatchItem(remaining[0]);
+        } else {
+          setActiveBatchId(null);
+          setSelectedFile(null);
+          setPreviewUrl(null);
+          setMetadata(null);
+          setCleanResult(null);
+        }
+      }
+      return remaining;
+    });
+  };
+
+  const clearAllBatch = () => {
+    batchQueue.forEach((item) => {
+      try { URL.revokeObjectURL(item.previewUrl); } catch (_) {}
+    });
+    setBatchQueue([]);
+    setActiveBatchId(null);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setMetadata(null);
+    setCleanResult(null);
+  };
+
+  const handleInspectAllBatch = async () => {
+    if (batchQueue.length === 0 || batchProcessing) return;
+    setBatchProcessing(true);
+    for (let i = 0; i < batchQueue.length; i++) {
+      const item = batchQueue[i];
+      if (item.metadata) continue;
+      try {
+        setBatchQueue((prev) =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: "inspecting" } : q))
+        );
+        let meta: any = null;
+        if (browserOnlyMode) {
+          meta = await inspectMediaInBrowser(item.file);
+        } else {
+          if (item.type === "video") meta = await api.inspectUploadedVideo(item.file, zeroDiskMode);
+          else if (item.type === "audio") meta = await api.inspectUploadedAudio(item.file, zeroDiskMode);
+          else meta = await api.inspectUploadedImage(item.file, zeroDiskMode);
+        }
+        setBatchQueue((prev) =>
+          prev.map((q, idx) => (idx === i ? { ...q, metadata: meta, status: "inspected" } : q))
+        );
+        if (item.id === activeBatchId) {
+          setMetadata(meta);
+        }
+      } catch (err: any) {
+        setBatchQueue((prev) =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: "error", error: err.message } : q))
+        );
+      }
+    }
+    setBatchProcessing(false);
+  };
+
+  const handleCleanAllBatch = async () => {
+    if (batchQueue.length === 0 || batchProcessing) return;
+    setBatchProcessing(true);
+    for (let i = 0; i < batchQueue.length; i++) {
+      const item = batchQueue[i];
+      if (item.cleanedResult) continue;
+      try {
+        setBatchQueue((prev) =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: "cleaning" } : q))
+        );
+        let res: any = null;
+        if (item.type === "video") {
+          res = await api.cleanUploadedVideo(item.file, stealthMode, zeroDiskMode);
+        } else if (item.type === "audio") {
+          res = await api.cleanUploadedAudio(item.file, stealthMode, zeroDiskMode);
+        } else {
+          res = await api.cleanUploadedImage(item.file, stealthMode, quality, zeroDiskMode);
+        }
+        if (res && res.success) {
+          setBatchQueue((prev) =>
+            prev.map((q, idx) => (idx === i ? { ...q, cleanedResult: res, status: "cleaned" } : q))
+          );
+          if (item.id === activeBatchId) {
+            setCleanResult(res);
+          }
+        } else {
+          setBatchQueue((prev) =>
+            prev.map((q, idx) => (idx === i ? { ...q, status: "error", error: res?.error } : q))
+          );
+        }
+      } catch (err: any) {
+        setBatchQueue((prev) =>
+          prev.map((q, idx) => (idx === i ? { ...q, status: "error", error: err.message } : q))
+        );
+      }
+    }
+    setBatchProcessing(false);
   };
 
   const handleSelectFromVault = (asset: any) => {
@@ -400,6 +579,25 @@ export default function MetadataCleanerStudio({
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 p-4 md:p-6 pb-24 text-zinc-900 dark:text-zinc-100">
+      {/* Hidden File Input supporting Multiple / Bulk Selection */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*,audio/*,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.mp4,.mov,.webm,.mkv,.m4v,.avi,.mp3,.wav,.flac,.aac,.ogg,.m4a,.opus,.wma"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            if (e.target.files.length === 1) {
+              handleFileSelected(e.target.files[0]);
+            } else {
+              handleFilesBatch(Array.from(e.target.files));
+            }
+            e.target.value = "";
+          }
+        }}
+      />
+
       {/* ── Top Header Banner ── */}
       <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 dark:border-emerald-500/25 bg-white/90 dark:bg-[#0a0f18]/90 p-6 md:p-8 backdrop-blur-xl shadow-xl dark:shadow-2xl">
         <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-28 -mt-28" />
@@ -541,6 +739,133 @@ export default function MetadataCleanerStudio({
               className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(16,185,129,0.8)]"
               style={{ width: `${inspecting ? inspectProgress : cleanProgress}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk / Batch Media Queue Tray (Ephemeral Browser RAM) ── */}
+      {batchQueue.length > 0 && (
+        <div className="p-4 md:p-5 rounded-3xl bg-white/95 dark:bg-[#0b101c]/95 border border-emerald-500/30 dark:border-emerald-500/25 shadow-xl backdrop-blur-md space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                <Files className="w-4 h-4" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Bulk Media Queue ({batchQueue.length} files)
+                  </h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                    Browser RAM (Zero Backend Storage)
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Files reside temporarily in your browser memory. Switch between items or run batch operations.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleInspectAllBatch}
+                disabled={batchProcessing}
+                className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-cyan-50 dark:bg-cyan-950/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Inspect All ({browserOnlyMode ? "Offline" : "Server"})
+              </button>
+              <button
+                type="button"
+                onClick={handleCleanAllBatch}
+                disabled={batchProcessing}
+                className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Clean All (Batch Lossless)
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-zinc-100 dark:bg-[#141b2b] hover:bg-zinc-200 dark:hover:bg-[#1e273d] text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                + Add Files
+              </button>
+              <button
+                type="button"
+                onClick={clearAllBatch}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition cursor-pointer"
+                title="Clear Entire Batch Queue"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filmstrip of queued items */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-2">
+            {batchQueue.map((item) => {
+              const isActive = item.id === activeBatchId;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => activateBatchItem(item)}
+                  className={cn(
+                    "relative shrink-0 w-44 p-2.5 rounded-2xl border transition-all cursor-pointer group select-none",
+                    isActive
+                      ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20 shadow-md"
+                      : "bg-zinc-50 dark:bg-[#070b13] border-zinc-200 dark:border-white/10 hover:border-emerald-500/50"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-zinc-700 dark:text-zinc-300">
+                      {item.type}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => removeBatchItem(item.id, e)}
+                      className="p-1 rounded-md text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
+                      title="Remove from queue"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="h-16 w-full rounded-xl bg-zinc-200/60 dark:bg-[#0e1422] overflow-hidden flex items-center justify-center mb-1.5">
+                    {item.type === "image" ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={item.previewUrl} alt={item.name} className="h-full w-full object-cover" />
+                    ) : item.type === "video" ? (
+                      <Video className="w-6 h-6 text-emerald-500" />
+                    ) : (
+                      <Music className="w-6 h-6 text-emerald-500" />
+                    )}
+                  </div>
+
+                  <div className="text-[11px] font-mono truncate text-zinc-800 dark:text-zinc-200" title={item.name}>
+                    {item.name}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 dark:text-zinc-400 mt-1">
+                    <span>{formatBytes(item.size)}</span>
+                    {item.status === "cleaned" ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                        <Check className="w-3 h-3" /> Cleaned
+                      </span>
+                    ) : item.status === "inspected" ? (
+                      <span className="text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-0.5">
+                        <Check className="w-3 h-3" /> Scanned
+                      </span>
+                    ) : item.status === "inspecting" || item.status === "cleaning" ? (
+                      <span className="text-amber-500 animate-pulse">Processing...</span>
+                    ) : (
+                      <span className="text-zinc-400">Ready</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
