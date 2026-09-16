@@ -3097,7 +3097,7 @@ function VideoStudioContent() {
               <div
                 className={cn(
                   "w-full p-3.5 sm:p-4 rounded-2xl bg-white/95 dark:bg-[#0e0e16]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-2xl space-y-3 transition-all duration-300",
-                  sidebarOpen ? "max-w-2xl xl:max-w-3xl" : "max-w-4xl xl:max-w-5xl",
+                  sidebarOpen ? "max-w-4xl xl:max-w-5xl 2xl:max-w-6xl" : "max-w-5xl xl:max-w-6xl 2xl:max-w-[1360px]",
                   loading && "lightning-border-active ring-2 ring-emerald-500/40"
                 )}
               >
@@ -3380,10 +3380,10 @@ function VideoStudioContent() {
                 />
               </div>
 
-              {/* Row 2: Bottom Control Pills Strip + Generate Button */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1.5 border-t border-black/[0.06] dark:border-white/[0.06]">
+              {/* Row 2: Synthesis Parameter Pills Strip */}
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pt-2 mt-1.5 border-t border-black/[0.06] dark:border-white/[0.06]">
                 {/* Left Controls Group */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap sm:flex-nowrap">
                   {/* 1. Model Selector Pill */}
                   <div className="relative">
                     <button
@@ -3783,9 +3783,12 @@ function VideoStudioContent() {
                     )}
                   </div>
                 </div>
+              </div>
 
-                {/* Right: Tool Tabs (Improve, Director, Vault, Character, Refs, Negative, Audio) + Batch Variation Selector + Submit Button */}
-                <div className="flex items-center gap-1.5 ml-auto flex-wrap sm:flex-nowrap">
+              {/* Row 3: Creative Tool Tabs + Batch Variation Selector + Submit Button */}
+              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-black/[0.04] dark:border-white/[0.04] w-full">
+                {/* Left: Tool Tabs (horizontally scrollable without breaking dock container) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0 flex-1 py-0.5">
                   {/* 1. Improve Prompt */}
                   <button
                     type="button"
@@ -3865,7 +3868,7 @@ function VideoStudioContent() {
                     </button>
                   )}
 
-                  {/* 5. Attach @Refs */}
+                  {/* 5. Attach */}
                   <button
                     type="button"
                     onClick={() => refFileInputRef.current?.click()}
@@ -3878,7 +3881,7 @@ function VideoStudioContent() {
                     title="Upload reference images or videos to tag with @ in prompt"
                   >
                     <Paperclip className="h-3 w-3 text-emerald-500 shrink-0" />
-                    <span>Attach @Refs</span>
+                    <span>Attach</span>
                     {referenceAssets.length > 0 && (
                       <span className="px-1 py-0.2 rounded-full bg-emerald-500 text-black text-[9px] font-bold">
                         {referenceAssets.length}
@@ -3937,6 +3940,10 @@ function VideoStudioContent() {
                       </span>
                     )}
                   </button>
+                </div>
+
+                {/* Right: Actions Group (Batch Selector + Generate Button - strictly inside container) */}
+                <div className="flex items-center gap-2 shrink-0">
                   {/* Batch Selector (1x, 2x, 4x) */}
                   <div className="flex items-center bg-zinc-100 dark:bg-[#16161f] p-0.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] shrink-0 shadow-xs">
                     <span className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 px-1.5 uppercase hidden sm:inline">
