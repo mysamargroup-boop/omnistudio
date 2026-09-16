@@ -15,11 +15,23 @@ logger = logging.getLogger("omnistudio.timeout")
 
 # Custom timeouts per path prefix/route
 LONG_TIMEOUT_ROUTES = (
+    "/api/image/generate",
+    "/api/image/variations",
+    "/api/image/agentic-generate",
+    "/api/image/advanced-edit",
+    "/api/image/relight",
+    "/api/image/face-restore",
+    "/api/image/outpaint",
+    "/api/image/remove-background",
     "/api/video/generate",
+    "/api/video/upload-and-generate",
+    "/api/video/director-agent",
+    "/api/video/edit",
+    "/api/video/concat",
     "/api/pipeline/run",
     "/api/pipeline/run-stream",
+    "/api/pipeline/agent",
     "/api/voice/change",
-    "/api/video/edit",
 )
 
 UPLOAD_TIMEOUT_ROUTES = (
@@ -29,7 +41,7 @@ UPLOAD_TIMEOUT_ROUTES = (
     "/upload-source-video",
 )
 
-DEFAULT_TIMEOUT_SECONDS = 45.0
+DEFAULT_TIMEOUT_SECONDS = 60.0
 LONG_TIMEOUT_SECONDS = 300.0
 UPLOAD_TIMEOUT_SECONDS = 120.0
 

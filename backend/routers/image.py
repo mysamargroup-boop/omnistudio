@@ -109,7 +109,10 @@ class ImageRequest(BaseModel):
         return v
 
 class ImageVariationsRequest(BaseModel):
-    reference_image_path: str
+    reference_image_path: Optional[str] = None
+    image_url: Optional[str] = None
+    reference_image_url: Optional[str] = None
+    image_path: Optional[str] = None
     prompt: Optional[str] = ""
     batch_size: int = 4  # 2, 4, 8
     variation_strength: float = 0.5  # 0.1 to 0.9
@@ -118,6 +121,9 @@ class ImageVariationsRequest(BaseModel):
     resolution: Optional[str] = "1080p"
     model: str = "dall-e-3"
     quality: str = "hd"
+
+    def get_effective_reference_path(self) -> str:
+        return self.reference_image_path or self.image_url or self.reference_image_url or self.image_path or ""
 
     @field_validator("batch_size")
     @classmethod
@@ -182,18 +188,20 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
     Generate multiple image variations in bulk from a single reference image + prompt/settings.
     Supports 2, 4, or 8 batch variations.
     """
-    ref_path = resolve_image_path(req.reference_image_path)
+    effective_ref = req.get_effective_reference_path()
+    ref_path = resolve_image_path(effective_ref)
     if not ref_path or not ref_path.exists():
-        return {"success": False, "error": f"Reference image not found: {req.reference_image_path}"}
+        return {"success": False, "error": f"Reference image not found: {effective_ref}"}
 
-    if not settings.OPENAI_API_KEY and not getattr(settings, 'REPLICATE_API_TOKEN', None):
+    from services.gemini_service import get_gemini_key, generate_gemini_image
+
+    if not settings.OPENAI_API_KEY and not get_gemini_key() and not getattr(settings, 'REPLICATE_API_TOKEN', None):
         return {
             "success": False, 
             "error_type": "KEY_MISSING",
-            "error": "API Key (OpenAI or Replicate) is required for neural image variations."
+            "error": "API Key (OpenAI or Gemini) is required for neural image variations."
         }
 
-    variations = []
     batch_count = min(max(req.batch_size, 1), 8)
 
     # Perspective / Aesthetic variation angles
@@ -204,9 +212,8 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
         {"desc": "Angle 4: Classic 35mm Silver Halide Film Emulation", "style": "vintage_noir"},
     ]
 
-    for i in range(batch_count):
+    async def _render_one_variation(i: int):
         angle = VARIATION_ANGLES[i % len(VARIATION_ANGLES)]
-        
         user_prompt = req.prompt.strip() if req.prompt else "Variation of reference subject"
         var_prompt = f"{user_prompt}, {angle['desc']}, variation strength {req.variation_strength}"
 
@@ -221,7 +228,7 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
                     filename_hint=f"{user_prompt} var {i+1}"
                 )
                 if res.get("success"):
-                    variations.append({
+                    return {
                         "id": i + 1,
                         "filename": res.get("filename"),
                         "url": res.get("url"),
@@ -230,9 +237,35 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
                         "style": angle["style"],
                         "prompt": var_prompt,
                         "model": res.get("model")
-                    })
+                    }
             except Exception as e:
-                logger.warning("Neural variation attempt failed: %s", e)
+                logger.warning("Neural variation attempt with OpenAI failed: %s", e)
+
+        if get_gemini_key():
+            try:
+                res = await generate_gemini_image(
+                    prompt=var_prompt,
+                    filename_hint=f"{user_prompt} var {i+1}",
+                    reference_image_path=str(ref_path)
+                )
+                if res.get("success"):
+                    return {
+                        "id": i + 1,
+                        "filename": res.get("filename"),
+                        "url": res.get("url"),
+                        "local_path": res.get("local_path"),
+                        "angle": angle["desc"],
+                        "style": angle["style"],
+                        "prompt": var_prompt,
+                        "model": res.get("model")
+                    }
+            except Exception as e:
+                logger.warning("Neural variation attempt with Gemini failed: %s", e)
+
+        return None
+
+    raw_results = await asyncio.gather(*[_render_one_variation(i) for i in range(batch_count)])
+    variations = [v for v in raw_results if v is not None]
 
     if not variations:
         try:
@@ -359,6 +392,14 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
             quality=openai_quality, style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural",
             filename_hint=req.prompt
         )
+        if not result.get("success"):
+            from services.gemini_service import get_gemini_key, generate_gemini_image
+            if get_gemini_key():
+                logger.info("OpenAI generation failed (%s), auto-falling back to Google Gemini", result.get("error"))
+                gem_res = await generate_gemini_image(effective_prompt, filename_hint=req.prompt)
+                if gem_res.get("success"):
+                    gem_res["model"] = f"{req.model} (Powered by Google Gemini)"
+                    result = gem_res
     elif req.model == "omni_diffusion":
         result = {
             "success": False,

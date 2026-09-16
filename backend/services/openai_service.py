@@ -51,12 +51,12 @@ async def generate_openai_image(
         
         # Determine candidate models to try
         # OpenAI image models: dall-e-3 is the official production flagship
-        if model in ["dall-e-3", "openai"]:
-            candidate_models = ["dall-e-3", "gpt-image-1-mini", "dall-e-2"]
-        elif model in ["gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]:
-            candidate_models = [model, "dall-e-3", "dall-e-2"]
+        if model in ["dall-e-3", "openai", "gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]:
+            candidate_models = ["dall-e-3", "dall-e-2"]
+        elif model in ["dall-e-2"]:
+            candidate_models = ["dall-e-2", "dall-e-3"]
         else:
-            candidate_models = [model, "dall-e-3"]
+            candidate_models = ["dall-e-3", "dall-e-2"]
         
         response = None
         used_model = None
