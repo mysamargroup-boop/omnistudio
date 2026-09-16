@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # OmniStudio AI Backend (FastAPI + FFmpeg + Neural Engines)
   omni-backend:
@@ -16,13 +14,25 @@ services:
     env_file:
       - path: ./.env
         required: false
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     environment:
       - STUDIO_PASSCODE=${STUDIO_PASSCODE}
       - JWT_SECRET=${JWT_SECRET}
       - BACKEND_API_TOKEN=${BACKEND_API_TOKEN}
       - ADMIN_API_TOKEN=${ADMIN_API_TOKEN}
       - CORS_ORIGINS=${CORS_ORIGINS}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_DOMAIN=${R2_PUBLIC_DOMAIN}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     volumes:
       # Mount outputs directory so videos, images, and database persist on the host
       - ./backend/outputs:/app/outputs
