@@ -578,7 +578,7 @@ export default function MetadataCleanerStudio({
   }, [vaultImages, vaultTab, vaultSearch, hideSmallTestFiles]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8 p-4 md:p-6 pb-24 text-zinc-900 dark:text-zinc-100">
+    <div className="w-full max-w-7xl mx-auto space-y-4 p-3 md:p-5 pb-20 text-zinc-900 dark:text-zinc-100">
       {/* Hidden File Input supporting Multiple / Bulk Selection */}
       <input
         ref={fileInputRef}
@@ -598,123 +598,93 @@ export default function MetadataCleanerStudio({
         }}
       />
 
-      {/* ── Top Header Banner ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 dark:border-emerald-500/25 bg-white/90 dark:bg-[#0a0f18]/90 p-6 md:p-8 backdrop-blur-xl shadow-xl dark:shadow-2xl">
-        <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-28 -mt-28" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 dark:border-emerald-500/35 shadow-xs">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Lossless Sanitizer
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-cyan-50 dark:bg-[#141b2a] text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                Deep EXIF & Optics
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                SynthID Neutralizer
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
-                C2PA Stripper
-              </span>
-            </div>
-            <h1 className="text-2xl md:text-4xl font-extrabold font-heading text-zinc-900 dark:text-white tracking-tight">
+      {/* ── Top Header Banner (Ultra Compact) ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 dark:border-emerald-500/25 bg-white/90 dark:bg-[#0a0f18]/90 px-4 py-3 md:px-5 md:py-3.5 backdrop-blur-xl shadow-md">
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          {/* Left: Title + Badges in single compact flow */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-base md:text-lg font-bold font-heading text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               AI Metadata & Provenance Engine
             </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
-              Extract complete EXIF camera optics, GPS coordinates, generation prompts, and container tags.
-              Strip hidden AI watermarks and cryptographic manifests losslessly with 100% sRGB color fidelity.
-            </p>
-
-            {/* Privacy Badges / Switches */}
-            <div className="pt-1 flex flex-wrap items-center gap-3">
-              <div
-                onClick={() => {
-                  const next = !browserOnlyMode;
-                  setBrowserOnlyMode(next);
-                  if (selectedFile) {
-                    inspectCurrentSource(selectedFile, undefined, undefined, next);
-                  }
-                }}
-                className={cn(
-                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono cursor-pointer transition select-none",
-                  browserOnlyMode
-                    ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-xs"
-                    : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                )}
-                title="When enabled, files are inspected 100% locally in browser memory without network upload"
-              >
-                <div
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    browserOnlyMode ? "bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-zinc-400 dark:bg-zinc-600"
-                  )}
-                />
-                <span className="font-semibold">
-                  {browserOnlyMode ? "Browser-Only Mode: ZERO-UPLOAD" : "Server Mode: ACTIVE"}
-                </span>
-                <span className="text-[10px] opacity-75">
-                  ({browserOnlyMode ? "100% In-Browser" : "Deep FFprobe"})
-                </span>
-              </div>
-
-              <div
-                onClick={() => setZeroDiskMode(!zeroDiskMode)}
-                className={cn(
-                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono cursor-pointer transition select-none",
-                  zeroDiskMode
-                    ? "bg-cyan-50 dark:bg-cyan-950/50 border-cyan-500/40 text-cyan-700 dark:text-cyan-300 shadow-xs"
-                    : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                )}
-                title="When enabled on server, files are analyzed in temporary memory and immediately deleted from server disk"
-              >
-                <div
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all",
-                    zeroDiskMode ? "bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_8px_#22d3ee]" : "bg-zinc-400 dark:bg-zinc-600"
-                  )}
-                />
-                <span className="font-semibold">
-                  {zeroDiskMode ? "Zero-Disk Server Mode: ACTIVE" : "Server Storage: STANDARD"}
-                </span>
-                <span className="text-[10px] opacity-75">
-                  ({zeroDiskMode ? "No disk saving" : "Saves to vault"})
-                </span>
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+              Lossless
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-cyan-50 dark:bg-[#141b2a] text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+              C2PA & SynthID Stripper
+            </span>
+            <span className="hidden xl:inline text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+              • 100% In-Browser Zero-Upload
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right: Mode switches & quick actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div
+              onClick={() => {
+                const next = !browserOnlyMode;
+                setBrowserOnlyMode(next);
+                if (selectedFile) {
+                  inspectCurrentSource(selectedFile, undefined, undefined, next);
+                }
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-mono cursor-pointer transition select-none",
+                browserOnlyMode
+                  ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                  : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400"
+              )}
+              title="When enabled, files are inspected 100% locally in browser memory without network upload"
+            >
+              <div
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  browserOnlyMode ? "bg-emerald-500 shadow-[0_0_6px_#34d399]" : "bg-zinc-400"
+                )}
+              />
+              <span className="font-semibold">
+                {browserOnlyMode ? "Zero-Upload: ON" : "Server Scan"}
+              </span>
+            </div>
+
+            <div
+              onClick={() => setZeroDiskMode(!zeroDiskMode)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-mono cursor-pointer transition select-none",
+                zeroDiskMode
+                  ? "bg-cyan-50 dark:bg-cyan-950/50 border-cyan-500/40 text-cyan-700 dark:text-cyan-300 shadow-xs"
+                  : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400"
+              )}
+              title="When enabled on server, files are never saved to server disk"
+            >
+              <div
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  zeroDiskMode ? "bg-cyan-500 shadow-[0_0_6px_#22d3ee]" : "bg-zinc-400"
+                )}
+              />
+              <span className="font-semibold">
+                {zeroDiskMode ? "Zero-Disk" : "Save Vault"}
+              </span>
+            </div>
+
             <button
               onClick={() => {
                 setShowVaultSelector(true);
                 loadVaultImages();
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-[#111726] hover:bg-zinc-200 dark:hover:bg-[#161f33] text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/40 transition shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-[#111726] hover:bg-zinc-200 dark:hover:bg-[#161f33] text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 transition cursor-pointer"
             >
-              <FolderArchive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Asset Vault</span>
+              <FolderArchive className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Vault</span>
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-600/25 cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm cursor-pointer"
             >
-              <Upload className="w-4 h-4" />
-              <span>Upload Media</span>
+              <Upload className="w-3.5 h-3.5" />
+              <span>Select Media</span>
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*,audio/*,.mp4,.mov,.webm,.mkv,.png,.jpg,.jpeg,.webp,.mp3,.wav,.aac,.flac,.ogg,.m4a"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  handleFileSelected(e.target.files[0]);
-                }
-              }}
-            />
           </div>
         </div>
       </div>
@@ -873,7 +843,7 @@ export default function MetadataCleanerStudio({
       {/* ── Main 2-Column Stage ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Media Preview & Clean Strategy */}
-        <div className="lg:col-span-6 space-y-6">
+        <div className="lg:col-span-6 space-y-4">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -882,7 +852,8 @@ export default function MetadataCleanerStudio({
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleFileDrop}
             className={cn(
-              "relative rounded-3xl border-2 border-dashed transition-all duration-200 overflow-hidden flex flex-col items-center justify-center min-h-[390px] p-6 text-center bg-white/90 dark:bg-[#080d16]/90 backdrop-blur-md shadow-xl",
+              "relative rounded-3xl border-2 border-dashed transition-all duration-200 overflow-hidden flex flex-col items-center justify-center text-center bg-white/90 dark:bg-[#080d16]/90 backdrop-blur-md shadow-lg",
+              previewUrl ? "min-h-[280px] p-4 md:p-5" : "min-h-[175px] sm:min-h-[195px] p-4",
               isDragging
                 ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/25 scale-[0.99]"
                 : previewUrl
@@ -891,20 +862,20 @@ export default function MetadataCleanerStudio({
             )}
           >
             {previewUrl ? (
-              <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
-                <div className="relative max-h-[360px] max-w-full w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-white/10 bg-black/50 group flex items-center justify-center">
+              <div className="w-full h-full flex flex-col items-center justify-center space-y-3">
+                <div className="relative max-h-[340px] max-w-full w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-white/10 bg-black/50 group flex items-center justify-center">
                   {isVideo ? (
                     <video
                       src={previewUrl}
                       controls
-                      className="max-h-[360px] w-auto object-contain rounded-2xl bg-black"
+                      className="max-h-[340px] w-auto object-contain rounded-2xl bg-black"
                     />
                   ) : isAudio ? (
-                    <div className="w-full py-10 px-6 flex flex-col items-center justify-center space-y-4 bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-[#0b101c] dark:to-[#060a12] rounded-2xl">
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
-                        <Music className="w-8 h-8 animate-pulse" />
+                    <div className="w-full py-6 px-4 flex flex-col items-center justify-center space-y-3 bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-[#0b101c] dark:to-[#060a12] rounded-2xl">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
+                        <Music className="w-6 h-6 animate-pulse" />
                       </div>
-                      <div className="text-center space-y-1">
+                      <div className="text-center space-y-0.5">
                         <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
                           {metadata?.tags?.title || selectedFile?.name || metadata?.filename || "Audio Bitstream"}
                         </div>
@@ -917,14 +888,14 @@ export default function MetadataCleanerStudio({
                           {metadata?.audio_codec || "Audio"} • {metadata?.sample_rate || "44.1/48 kHz"} • {metadata?.channel_layout || "Stereo"}
                         </div>
                       </div>
-                      <audio controls src={previewUrl} className="w-full max-w-sm h-10 accent-emerald-500" />
+                      <audio controls src={previewUrl} className="w-full max-w-sm h-9 accent-emerald-500" />
                     </div>
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={previewUrl}
                       alt="Source Preview"
-                      className="max-h-[360px] w-auto object-contain rounded-2xl"
+                      className="max-h-[340px] w-auto object-contain rounded-2xl"
                     />
                   )}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 pointer-events-none group-hover:pointer-events-auto">
@@ -974,33 +945,33 @@ export default function MetadataCleanerStudio({
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center space-y-4 py-10">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-[#101726] border border-zinc-200 dark:border-white/10 flex items-center justify-center text-zinc-500 dark:text-zinc-400 shadow-inner group-hover:scale-105 transition">
-                  <FileVideo className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col items-center justify-center space-y-2 py-4 sm:py-5">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-[#101726] border border-zinc-200 dark:border-white/10 flex items-center justify-center text-zinc-500 dark:text-zinc-400 shadow-inner group-hover:scale-105 transition">
+                  <Upload className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                     Drag and drop your AI image, video, or audio here, or{" "}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium cursor-pointer"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold cursor-pointer"
                     >
                       browse files
                     </button>
                   </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Supports PNG, JPG, WEBP, MP4, MOV, WEBM, and MP3, WAV, AAC, FLAC audio
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Supports Bulk Upload • PNG, JPG, WEBP, MP4, MOV, MP3, WAV, AAC • 100% In-Browser
                   </p>
                 </div>
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => {
                       setShowVaultSelector(true);
                       loadVaultImages();
                     }}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-mono bg-zinc-100 dark:bg-[#111726] hover:bg-zinc-200 dark:hover:bg-[#182136] text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/30 transition flex items-center gap-2 cursor-pointer"
+                    className="px-3 py-1 rounded-xl text-xs font-mono bg-zinc-100 dark:bg-[#111726] hover:bg-zinc-200 dark:hover:bg-[#182136] text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/30 transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <FolderArchive className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Select from Asset Vault
