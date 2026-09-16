@@ -43,8 +43,16 @@ import {
   SlidersHorizontal,
   Calendar,
   Zap,
+  Info,
+  ShieldCheck,
+  ShieldAlert,
+  Camera,
+  MapPin,
+  Cpu,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
-import { api, getMediaUrl } from "@/lib/api";
+import { api, getMediaUrl, ImageMetadataInspection } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
 import DeleteConfirmModal, { DeleteModalItem } from "@/components/ui/DeleteConfirmModal";
 import LazyImage from "@/components/ui/LazyImage";
@@ -115,6 +123,11 @@ export default function VaultPage() {
   const [loadedMedia, setLoadedMedia] = useState<Record<string, boolean>>({});
   const [mediaErrors, setMediaErrors] = useState<Record<string, boolean>>({});
   const [lightboxLoading, setLightboxLoading] = useState<boolean>(true);
+
+  // Lightbox Metadata & EXIF Info Panel state
+  const [showMetadataPanel, setShowMetadataPanel] = useState<boolean>(false);
+  const [metadataInspection, setMetadataInspection] = useState<ImageMetadataInspection | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState<boolean>(false);
 
   // Context Menu & Rename states matching Reference Images
   const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
@@ -558,15 +571,19 @@ export default function VaultPage() {
     return lightboxFiles.findIndex((f) => f.filename === lightboxAsset.filename);
   }, [lightboxAsset, lightboxFiles]);
 
-  // Lightbox keyboard navigation (Esc, Arrow keys, Zoom shortcuts)
+  // Lightbox keyboard navigation (Esc, Arrow keys, Zoom shortcuts, i for info)
   useEffect(() => {
     if (!lightboxAsset) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setLightboxAsset(null);
-        setLightboxZoom(1);
-        setImgNaturalSize(null);
+        if (showMetadataPanel) {
+          setShowMetadataPanel(false);
+        } else {
+          setLightboxAsset(null);
+          setLightboxZoom(1);
+          setImgNaturalSize(null);
+        }
       } else if (e.key === "ArrowRight") {
         if (currentLightboxIndex >= 0 && currentLightboxIndex < lightboxFiles.length - 1) {
           setLightboxAsset(lightboxFiles[currentLightboxIndex + 1]);
@@ -585,12 +602,96 @@ export default function VaultPage() {
         setLightboxZoom((prev) => Math.max(prev - 0.25, 0.5));
       } else if (e.key === "0") {
         setLightboxZoom(1);
+      } else if (e.key === "i" || e.key === "I") {
+        setShowMetadataPanel((prev) => !prev);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxAsset, currentLightboxIndex, lightboxFiles]);
+  }, [lightboxAsset, currentLightboxIndex, lightboxFiles, showMetadataPanel]);
+
+  // Fetch full EXIF & metadata inspection for the active lightbox media
+  useEffect(() => {
+    if (!lightboxAsset) {
+      setMetadataInspection(null);
+      setMetadataLoading(false);
+      return;
+    }
+
+    let isCurrent = true;
+    const fetchMeta = async () => {
+      setMetadataLoading(true);
+      try {
+        if (lightboxAsset.is_browser_memory) {
+          if (isCurrent) {
+            setMetadataInspection({
+              success: true,
+              filename: lightboxAsset.filename,
+              file_size_bytes: lightboxAsset.size_bytes || 0,
+              file_size_formatted: formatBytes(lightboxAsset.size_bytes || 0),
+              format: lightboxAsset.filename.split(".").pop()?.toUpperCase() || "IMAGE",
+              mode: "RGB",
+              width: imgNaturalSize?.width || 0,
+              height: imgNaturalSize?.height || 0,
+              aspect_ratio: imgNaturalSize ? `${imgNaturalSize.width}:${imgNaturalSize.height}` : "Unknown",
+              has_exif: false,
+              exif_tags: {},
+              png_info_chunks: {},
+              raw_text_metadata: [],
+              c2pa_detected: false,
+              synthid_detected: false,
+              detected_generator: "Zero-Disk RAM Ephemeral",
+              embedded_prompt: lightboxAsset.prompt || null,
+              embedded_parameters: {},
+              has_ai_metadata: false,
+              storage_status: "In-Browser RAM Memory (Ephemeral, 0 bytes on server disk)",
+            });
+          }
+        } else {
+          const res = await api.inspectMetadata({
+            url: lightboxAsset.url,
+            filename: lightboxAsset.filename,
+          });
+          if (isCurrent) {
+            setMetadataInspection(res);
+          }
+        }
+      } catch {
+        if (isCurrent) {
+          setMetadataInspection({
+            success: false,
+            filename: lightboxAsset.filename,
+            file_size_bytes: lightboxAsset.size_bytes || 0,
+            file_size_formatted: formatBytes(lightboxAsset.size_bytes || 0),
+            format: lightboxAsset.filename.split(".").pop()?.toUpperCase() || "IMAGE",
+            mode: "RGB",
+            width: imgNaturalSize?.width || 0,
+            height: imgNaturalSize?.height || 0,
+            aspect_ratio: "Unknown",
+            has_exif: false,
+            exif_tags: {},
+            png_info_chunks: {},
+            raw_text_metadata: [],
+            c2pa_detected: false,
+            synthid_detected: false,
+            detected_generator: null,
+            embedded_prompt: lightboxAsset.prompt || null,
+            embedded_parameters: {},
+            has_ai_metadata: false,
+          });
+        }
+      } finally {
+        if (isCurrent) setMetadataLoading(false);
+      }
+    };
+
+    fetchMeta();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [lightboxAsset]);
 
   // Open Lightbox
   const openLightbox = (file: VaultAsset) => {
@@ -1941,7 +2042,7 @@ export default function VaultPage() {
                   <p className="text-sm font-mono font-medium text-white truncate max-w-md" title={lightboxAsset.filename}>
                     {lightboxAsset.filename}
                   </p>
-                  <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 flex-wrap">
                     <span>{formatBytes(lightboxAsset.size_bytes)}</span>
                     {imgNaturalSize && isLbImage && (
                       <>
@@ -1957,12 +2058,50 @@ export default function VaultPage() {
                         </span>
                       </>
                     )}
+                    {/* Dynamic Metadata Badge */}
+                    {lightboxAsset.filename.toLowerCase().startsWith("clean_") ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">
+                        <ShieldCheck className="w-2.5 h-2.5" />
+                        CLEAN METADATA
+                      </span>
+                    ) : metadataInspection?.has_ai_metadata ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold">
+                        <Cpu className="w-2.5 h-2.5" />
+                        AI DETECTED
+                      </span>
+                    ) : metadataInspection?.has_exif ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] font-bold">
+                        <Camera className="w-2.5 h-2.5" />
+                        EXIF TAGS
+                      </span>
+                    ) : null}
+                    {lightboxAsset.is_browser_memory && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-400 border border-amber-400/30 text-[9px] font-bold">
+                        <Zap className="w-2.5 h-2.5 fill-current" />
+                        RAM
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Zoom Controls & Close Button */}
+              {/* Metadata Info Button, Zoom Controls & Close Button */}
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMetadataPanel((prev) => !prev)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer",
+                    showMetadataPanel
+                      ? "bg-emerald-500 text-zinc-950 border-emerald-400 font-bold shadow-sm"
+                      : "bg-zinc-900/80 hover:bg-white/10 text-zinc-300 hover:text-white border-white/10"
+                  )}
+                  title="Toggle Metadata & EXIF Details (Press 'i')"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">METADATA INFO</span>
+                </button>
+
                 {isLbImage && (
                   <div className="flex items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-lg p-1">
                     <button
@@ -2008,131 +2147,388 @@ export default function VaultPage() {
               </div>
             </div>
 
-            {/* Main Interactive Stage with Carousel Navigation */}
-            <div
-              className="flex-1 relative flex items-center justify-center p-6 overflow-auto"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  setLightboxAsset(null);
-                }
-              }}
-            >
-              {/* Previous Media Arrow */}
-              {lightboxFiles.length > 1 && currentLightboxIndex > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxAsset(lightboxFiles[currentLightboxIndex - 1]);
-                    setLightboxZoom(1);
-                    setImgNaturalSize(null);
-                    setLightboxLoading(true);
-                  }}
-                  className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
-                  title="Previous Media (Left Arrow)"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-              )}
-
-              {/* Centered Professional Loading Animation when opening large media */}
-              {lightboxLoading && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs pointer-events-none animate-in fade-in duration-200">
-                  <div className="p-6 rounded-3xl bg-zinc-950/80 border border-white/10 shadow-2xl flex flex-col items-center gap-3">
-                    <Spinner size="xl" variant="emerald" />
-                    <p className="text-xs font-mono font-medium text-zinc-300 tracking-wider uppercase">
-                      Opening High-Res Media...
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* High-Resolution Zoomable Image Display */}
-              {isLbImage && (
-                <div
-                  className="relative max-h-full max-w-full flex items-center justify-center transition-transform duration-150"
-                  style={{ transform: `scale(${lightboxZoom})` }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <img
-                    src={getMediaUrl(lightboxAsset.url)}
-                    alt={lightboxAsset.filename}
-                    onLoad={(e) => {
-                      const target = e.currentTarget;
-                      setImgNaturalSize({
-                        width: target.naturalWidth,
-                        height: target.naturalHeight,
-                      });
-                      setLightboxLoading(false);
+            {/* Main Interactive Stage with Carousel Navigation & Side Metadata Drawer */}
+            <div className="flex-1 flex overflow-hidden relative">
+              {/* Media Display Canvas */}
+              <div
+                className="flex-1 relative flex items-center justify-center p-6 overflow-auto"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setLightboxAsset(null);
+                  }
+                }}
+              >
+                {/* Previous Media Arrow */}
+                {lightboxFiles.length > 1 && currentLightboxIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxAsset(lightboxFiles[currentLightboxIndex - 1]);
+                      setLightboxZoom(1);
+                      setImgNaturalSize(null);
+                      setLightboxLoading(true);
                     }}
-                    onError={() => setLightboxLoading(false)}
-                    className={cn(
-                      "max-h-[75vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none transition-all duration-500 ease-out",
-                      lightboxLoading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
-                    )}
-                  />
-                </div>
-              )}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                    title="Previous Media (Left Arrow)"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                )}
 
-              {/* Cinema Video Player */}
-              {isLbVideo && (
-                <div
-                  className="relative max-h-full max-w-full flex items-center justify-center"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <video
-                    src={getMediaUrl(lightboxAsset.url)}
-                    controls
-                    autoPlay
-                    playsInline
-                    loop
-                    onLoadedData={() => setLightboxLoading(false)}
-                    onCanPlay={() => setLightboxLoading(false)}
-                    onError={() => setLightboxLoading(false)}
-                    className={cn(
-                      "max-h-[75vh] max-w-[85vw] object-contain rounded-2xl shadow-2xl border border-white/10 bg-black transition-all duration-500 ease-out",
-                      lightboxLoading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* Audio Player Card */}
-              {isLbAudio && (
-                <div
-                  className="relative max-h-full max-w-md w-full bg-zinc-900 border border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-white shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="w-20 h-20 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center shadow-lg">
-                    <Mic className="w-10 h-10" />
+                {/* Centered Professional Loading Animation when opening large media */}
+                {lightboxLoading && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs pointer-events-none animate-in fade-in duration-200">
+                    <div className="p-6 rounded-3xl bg-zinc-950/80 border border-white/10 shadow-2xl flex flex-col items-center gap-3">
+                      <Spinner size="xl" variant="emerald" />
+                      <p className="text-xs font-mono font-medium text-zinc-300 tracking-wider uppercase">
+                        Opening High-Res Media...
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm font-mono font-bold truncate max-w-xs">{lightboxAsset.filename}</p>
-                  <audio
-                    src={getMediaUrl(lightboxAsset.url)}
-                    controls
-                    className="w-full"
-                    autoPlay
-                    onCanPlay={() => setLightboxLoading(false)}
-                  />
-                </div>
-              )}
+                )}
 
-              {/* Next Media Arrow */}
-              {lightboxFiles.length > 1 && currentLightboxIndex < lightboxFiles.length - 1 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightboxAsset(lightboxFiles[currentLightboxIndex + 1]);
-                    setLightboxZoom(1);
-                    setImgNaturalSize(null);
-                    setLightboxLoading(true);
-                  }}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
-                  title="Next Media (Right Arrow)"
+                {/* High-Resolution Zoomable Image Display */}
+                {isLbImage && (
+                  <div
+                    className="relative max-h-full max-w-full flex items-center justify-center transition-transform duration-150"
+                    style={{ transform: `scale(${lightboxZoom})` }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <img
+                      src={getMediaUrl(lightboxAsset.url)}
+                      alt={lightboxAsset.filename}
+                      onLoad={(e) => {
+                        const target = e.currentTarget;
+                        setImgNaturalSize({
+                          width: target.naturalWidth,
+                          height: target.naturalHeight,
+                        });
+                        setLightboxLoading(false);
+                      }}
+                      onError={() => setLightboxLoading(false)}
+                      className={cn(
+                        "max-h-[75vh] max-w-[85vw] object-contain rounded-lg shadow-2xl select-none transition-all duration-500 ease-out",
+                        lightboxLoading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Cinema Video Player */}
+                {isLbVideo && (
+                  <div
+                    className="relative max-h-full max-w-full flex items-center justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <video
+                      src={getMediaUrl(lightboxAsset.url)}
+                      controls
+                      autoPlay
+                      playsInline
+                      loop
+                      onLoadedData={() => setLightboxLoading(false)}
+                      onCanPlay={() => setLightboxLoading(false)}
+                      onError={() => setLightboxLoading(false)}
+                      className={cn(
+                        "max-h-[75vh] max-w-[85vw] object-contain rounded-2xl shadow-2xl border border-white/10 bg-black transition-all duration-500 ease-out",
+                        lightboxLoading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Audio Player Card */}
+                {isLbAudio && (
+                  <div
+                    className="relative max-h-full max-w-md w-full bg-zinc-900 border border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-white shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-20 h-20 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center shadow-lg">
+                      <Mic className="w-10 h-10" />
+                    </div>
+                    <p className="text-sm font-mono font-bold truncate max-w-xs">{lightboxAsset.filename}</p>
+                    <audio
+                      src={getMediaUrl(lightboxAsset.url)}
+                      controls
+                      className="w-full"
+                      autoPlay
+                      onCanPlay={() => setLightboxLoading(false)}
+                    />
+                  </div>
+                )}
+
+                {/* Next Media Arrow */}
+                {lightboxFiles.length > 1 && currentLightboxIndex < lightboxFiles.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxAsset(lightboxFiles[currentLightboxIndex + 1]);
+                      setLightboxZoom(1);
+                      setImgNaturalSize(null);
+                      setLightboxLoading(true);
+                    }}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                    title="Next Media (Right Arrow)"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                )}
+              </div>
+
+              {/* Slide-in Metadata Info Panel Drawer */}
+              {showMetadataPanel && (
+                <aside
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-80 sm:w-96 border-l border-white/10 bg-[#0c0d12]/95 backdrop-blur-2xl flex flex-col shrink-0 z-30 shadow-2xl animate-in slide-in-from-right duration-200 overflow-hidden"
                 >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
+                  {/* Drawer Header */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Info className="w-4 h-4 text-emerald-400" />
+                      <h3 className="font-mono text-xs uppercase font-bold tracking-wider text-white">
+                        Metadata & EXIF Info
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowMetadataPanel(false)}
+                      className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                      title="Close Metadata Panel (i)"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Drawer Content Body */}
+                  <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs font-mono scrollbar-thin scrollbar-thumb-zinc-800">
+                    {/* Loading State */}
+                    {metadataLoading && (
+                      <div className="flex flex-col items-center justify-center py-16 gap-3 text-center text-zinc-400">
+                        <Spinner size="md" variant="emerald" />
+                        <span className="text-xs">Inspecting EXIF & Provenance...</span>
+                      </div>
+                    )}
+
+                    {!metadataLoading && (
+                      <>
+                        {/* 1. Status Banner */}
+                        <div
+                          className={cn(
+                            "p-3.5 rounded-xl border flex items-start gap-3",
+                            lightboxAsset.filename.toLowerCase().startsWith("clean_") ||
+                              (!metadataInspection?.has_ai_metadata && !metadataInspection?.has_exif)
+                              ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
+                              : metadataInspection?.has_ai_metadata
+                              ? "bg-amber-950/40 border-amber-500/30 text-amber-300"
+                              : "bg-cyan-950/40 border-cyan-500/30 text-cyan-300"
+                          )}
+                        >
+                          {lightboxAsset.filename.toLowerCase().startsWith("clean_") ||
+                          (!metadataInspection?.has_ai_metadata && !metadataInspection?.has_exif) ? (
+                            <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                          ) : metadataInspection?.has_ai_metadata ? (
+                            <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                          ) : (
+                            <Camera className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                          )}
+                          <div className="space-y-1">
+                            <p className="font-bold text-xs uppercase tracking-wide">
+                              {lightboxAsset.filename.toLowerCase().startsWith("clean_")
+                                ? "Metadata Cleaned & Protected"
+                                : metadataInspection?.has_ai_metadata
+                                ? "AI Signatures Detected"
+                                : metadataInspection?.has_exif
+                                ? "Hardware EXIF Tags Present"
+                                : "Clean / No EXIF Tags"}
+                            </p>
+                            <p className="text-[10px] text-zinc-400 leading-relaxed">
+                              {lightboxAsset.filename.toLowerCase().startsWith("clean_")
+                                ? "All AI prompts, device serials, and privacy tracking tags have been losslessly sanitized."
+                                : metadataInspection?.has_ai_metadata
+                                ? "C2PA, SynthID, or AI generation parameters found in metadata headers."
+                                : "Standard media format without embedded tracking tags."}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 2. AI Provenance & Signatures */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1.5">
+                            <Cpu className="w-3 h-3 text-zinc-400" />
+                            <span>AI PROVENANCE & WATERMARKS</span>
+                          </span>
+                          <div className="grid grid-cols-2 gap-2 bg-zinc-900/60 border border-white/5 rounded-xl p-3">
+                            <div>
+                              <span className="text-[10px] text-zinc-500 block">C2PA MANIFEST</span>
+                              <span
+                                className={cn(
+                                  "font-bold",
+                                  metadataInspection?.c2pa_detected ? "text-amber-400" : "text-emerald-400"
+                                )}
+                              >
+                                {metadataInspection?.c2pa_detected ? "Detected" : "Not Found"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-zinc-500 block">SYNTHID WATERMARK</span>
+                              <span
+                                className={cn(
+                                  "font-bold",
+                                  metadataInspection?.synthid_detected ? "text-amber-400" : "text-emerald-400"
+                                )}
+                              >
+                                {metadataInspection?.synthid_detected ? "Detected" : "Clean"}
+                              </span>
+                            </div>
+                            <div className="col-span-2 pt-1 border-t border-white/5">
+                              <span className="text-[10px] text-zinc-500 block">DETECTED GENERATOR</span>
+                              <span className="text-zinc-200 font-bold">
+                                {metadataInspection?.detected_generator || "None (Human or Sanitized)"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Embedded Prompt if available */}
+                        {(metadataInspection?.embedded_prompt || lightboxAsset.prompt) && (
+                          <div className="space-y-2">
+                            <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1.5">
+                              <Sparkles className="w-3 h-3 text-emerald-400" />
+                              <span>EMBEDDED PROMPT</span>
+                            </span>
+                            <div className="p-3 bg-zinc-900/80 border border-white/5 rounded-xl text-zinc-300 text-[11px] leading-relaxed break-words font-sans">
+                              {metadataInspection?.embedded_prompt || lightboxAsset.prompt}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. Camera & Optics (EXIF) */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1.5">
+                            <Camera className="w-3 h-3 text-zinc-400" />
+                            <span>CAMERA HARDWARE & EXPOSURE</span>
+                          </span>
+                          {metadataInspection?.camera_info && Object.keys(metadataInspection.camera_info).length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2 bg-zinc-900/60 border border-white/5 rounded-xl p-3">
+                              {Object.entries(metadataInspection.camera_info).map(([k, v]) => (
+                                <div key={k} className="space-y-0.5">
+                                  <span className="text-[9px] text-zinc-500 uppercase tracking-wider block">
+                                    {k.replace(/_/g, " ")}
+                                  </span>
+                                  <span className="text-zinc-200 font-bold truncate block">{String(v)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-zinc-900/40 border border-white/5 rounded-xl text-zinc-500 text-[11px] text-center">
+                              No hardware camera tags found (Stripped or Synthetic)
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 4. GPS Geolocation */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 text-zinc-400" />
+                            <span>GEOLOCATION (GPS)</span>
+                          </span>
+                          {metadataInspection?.gps_info?.has_gps ? (
+                            <div className="p-3 bg-zinc-900/60 border border-emerald-500/30 rounded-xl space-y-2">
+                              <span className="text-[11px] text-zinc-200 font-bold block">
+                                {metadataInspection.gps_info.formatted}
+                              </span>
+                              {metadataInspection.gps_info.google_maps_url && (
+                                <a
+                                  href={metadataInspection.gps_info.google_maps_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:underline font-semibold"
+                                >
+                                  <span>View on Google Maps</span>
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-zinc-900/40 border border-white/5 rounded-xl text-zinc-500 text-[11px] text-center">
+                              No GPS geotags (Location Privacy Safe)
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 5. Technical Specifications */}
+                        <div className="space-y-2">
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-1.5">
+                            <FileText className="w-3 h-3 text-zinc-400" />
+                            <span>FILE & TECHNICAL SPECS</span>
+                          </span>
+                          <div className="space-y-1.5 bg-zinc-900/60 border border-white/5 rounded-xl p-3 text-[11px]">
+                            <div className="flex justify-between py-0.5 border-b border-white/5">
+                              <span className="text-zinc-500">Dimensions:</span>
+                              <span className="text-zinc-200 font-semibold">
+                                {imgNaturalSize
+                                  ? `${imgNaturalSize.width} × ${imgNaturalSize.height} px`
+                                  : `${metadataInspection?.width || "?"} × ${metadataInspection?.height || "?"} px`}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-0.5 border-b border-white/5">
+                              <span className="text-zinc-500">File Size:</span>
+                              <span className="text-zinc-200 font-semibold">
+                                {formatBytes(lightboxAsset.size_bytes)} ({lightboxAsset.size_bytes.toLocaleString()} bytes)
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-0.5 border-b border-white/5">
+                              <span className="text-zinc-500">Format / Mode:</span>
+                              <span className="text-zinc-200 font-semibold">
+                                {metadataInspection?.format || lightboxAsset.filename.split(".").pop()?.toUpperCase()} / {metadataInspection?.mode || "RGB"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-0.5 border-b border-white/5">
+                              <span className="text-zinc-500">Raw EXIF Tags:</span>
+                              <span className="text-zinc-200 font-semibold">
+                                {metadataInspection?.exif_tags ? Object.keys(metadataInspection.exif_tags).length : 0} tags
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-0.5">
+                              <span className="text-zinc-500">Storage Tier:</span>
+                              <span className="text-zinc-200 font-semibold">
+                                {lightboxAsset.is_browser_memory ? "In-Browser RAM (Zero-Disk)" : "Vault & Cloud Storage"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 6. Quick Action Buttons */}
+                        <div className="pt-2 flex flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const assetUrl = lightboxAsset.url;
+                              setLightboxAsset(null);
+                              router.push(`/metadata?image=${encodeURIComponent(assetUrl)}`);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-all cursor-pointer active:scale-[0.98]"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>OPEN IN METADATA CLEANER</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(JSON.stringify(metadataInspection, null, 2));
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>COPY METADATA JSON</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </aside>
               )}
             </div>
 
@@ -2143,11 +2539,41 @@ export default function VaultPage() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-mono text-zinc-400">
-                  Navigation: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Left / Right Arrows</kbd> {isLbImage && <>• Zoom: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">+/-</kbd></>}
+                  Navigation: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Left / Right Arrows</kbd> {isLbImage && <>• Zoom: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">+/-</kbd></>} • Info: <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">i</kbd>
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Metadata Info Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowMetadataPanel((prev) => !prev)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-mono transition-colors cursor-pointer",
+                    showMetadataPanel
+                      ? "bg-emerald-500 text-zinc-950 border-emerald-400 font-bold shadow-md"
+                      : "bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-white/10"
+                  )}
+                  title="View EXIF, Camera, and AI Provenance Info (Press 'i')"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  <span>METADATA INFO</span>
+                </button>
+
+                {/* Open in Metadata Cleaner */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const assetUrl = lightboxAsset.url;
+                    setLightboxAsset(null);
+                    router.push(`/metadata?image=${encodeURIComponent(assetUrl)}`);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-xs font-mono transition-colors cursor-pointer"
+                  title="Inspect or sanitize in Metadata Cleaner"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>CLEAN IN STUDIO</span>
+                </button>
                 {isLbVideo && (
                   <button
                     type="button"
