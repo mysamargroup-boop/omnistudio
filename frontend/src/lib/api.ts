@@ -721,13 +721,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(params),
     }),
-  inspectUploadedImage: (file: File) => {
+  inspectUploadedImage: (file: File, ephemeral: boolean = false, onProgress?: (percent: number) => void) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetchApi<ImageMetadataInspection>("/api/metadata/inspect-upload", {
-      method: "POST",
-      body: formData,
-    });
+    formData.append("ephemeral", ephemeral ? "true" : "false");
+    return fetchApiFormData<ImageMetadataInspection>("/api/metadata/inspect-upload", formData);
   },
   cleanMetadata: (params: {
     url?: string;
@@ -760,13 +758,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(params),
     }),
-  inspectUploadedVideo: (file: File) => {
+  inspectUploadedVideo: (file: File, ephemeral: boolean = false, onProgress?: (percent: number) => void) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetchApi<VideoMetadataInspection>("/api/metadata/inspect-upload", {
-      method: "POST",
-      body: formData,
-    });
+    formData.append("ephemeral", ephemeral ? "true" : "false");
+    return fetchApiFormData<VideoMetadataInspection>("/api/metadata/inspect-upload", formData);
   },
   cleanVideoMetadata: (params: {
     url?: string;
@@ -809,8 +805,28 @@ export interface ImageMetadataInspection {
   synthid_detected: boolean;
   detected_generator: string | null;
   embedded_prompt: string | null;
+  negative_prompt?: string | null;
   embedded_parameters: Record<string, any>;
   has_ai_metadata: boolean;
+  camera_info?: Record<string, any>;
+  gps_info?: {
+    has_gps: boolean;
+    latitude?: number;
+    longitude?: number;
+    formatted?: string;
+    google_maps_url?: string;
+    altitude_meters?: number;
+  };
+  rights_and_creator?: {
+    artist?: string;
+    copyright?: string;
+    description?: string;
+  };
+  color_profile?: Record<string, any>;
+  saved_to_disk?: boolean;
+  ephemeral?: boolean;
+  storage_status?: string;
+  url?: string;
   error?: string;
 }
 
@@ -854,6 +870,20 @@ export interface VideoMetadataInspection {
   has_ai_metadata: boolean;
   tags: Record<string, any>;
   raw_text_metadata: string[];
+  video_technical?: Record<string, any>;
+  audio_technical?: Record<string, any>;
+  container_tags?: Record<string, any>;
+  camera_info?: Record<string, any>;
+  gps_info?: {
+    has_gps: boolean;
+    latitude?: number;
+    longitude?: number;
+    formatted?: string;
+    google_maps_url?: string;
+  };
+  saved_to_disk?: boolean;
+  ephemeral?: boolean;
+  storage_status?: string;
   url?: string;
   media_type?: string;
   error?: string;

@@ -67,10 +67,113 @@ AI_VIDEO_SIGNATURE_KEYWORDS = [
 ]
 
 
+def _convert_gps_to_degrees(value) -> Optional[float]:
+    """Helper to convert GPS rational tuples ((d, 1), (m, 1), (s, 100)) or IFDRational to float decimal degrees."""
+    try:
+        def _to_float(v):
+            if isinstance(v, (int, float)):
+                return float(v)
+            if hasattr(v, "numerator") and hasattr(v, "denominator"):
+                return float(v.numerator) / float(v.denominator) if v.denominator != 0 else 0.0
+            if isinstance(v, (list, tuple)) and len(v) >= 2:
+                return float(v[0]) / float(v[1]) if float(v[1]) != 0 else 0.0
+            return float(v)
+
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, (list, tuple)) and len(value) >= 3:
+            d = _to_float(value[0])
+            m = _to_float(value[1])
+            s = _to_float(value[2])
+            return d + (m / 60.0) + (s / 3600.0)
+    except Exception:
+        pass
+    return None
+
+
+def _parse_a1111_params(raw_text: str) -> Dict[str, Any]:
+    """Parse Automatic1111 / WebUI generation parameters into structured prompt, negative prompt, and settings."""
+    res = {
+        "prompt": "",
+        "negative_prompt": "",
+        "parameters": {},
+    }
+    if not raw_text or not isinstance(raw_text, str):
+        return res
+
+    lines = raw_text.strip().split("\n")
+    prompt_lines = []
+    neg_lines = []
+    in_neg = False
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("Negative prompt:"):
+            in_neg = True
+            neg_lines.append(stripped.replace("Negative prompt:", "").strip())
+        elif in_neg and ("Steps:" in line or "Sampler:" in line or "Seed:" in line):
+            in_neg = False
+            for part in stripped.split(","):
+                if ":" in part:
+                    k, _, v = part.partition(":")
+                    res["parameters"][k.strip()] = v.strip()
+        elif in_neg:
+            neg_lines.append(stripped)
+        elif not in_neg and ("Steps:" in line or "Sampler:" in line or "Seed:" in line):
+            for part in stripped.split(","):
+                if ":" in part:
+                    k, _, v = part.partition(":")
+                    res["parameters"][k.strip()] = v.strip()
+        else:
+            prompt_lines.append(stripped)
+
+    res["prompt"] = " ".join(prompt_lines).strip()
+    res["negative_prompt"] = " ".join(neg_lines).strip()
+    return res
+
+
+def _parse_comfyui_graph(raw_json_str: str) -> Dict[str, Any]:
+    """Parse ComfyUI prompt node graph to extract prompts, seed, steps, sampler, model."""
+    res = {
+        "prompt": "",
+        "negative_prompt": "",
+        "parameters": {},
+    }
+    try:
+        data = json.loads(raw_json_str)
+        if isinstance(data, dict):
+            prompts_found = []
+            for node_id, node in data.items():
+                if not isinstance(node, dict):
+                    continue
+                class_type = str(node.get("class_type", ""))
+                inputs = node.get("inputs", {})
+                if "CLIPTextEncode" in class_type:
+                    text_val = inputs.get("text")
+                    if text_val and isinstance(text_val, str) and len(text_val.strip()) > 2:
+                        prompts_found.append(text_val.strip())
+                elif "KSampler" in class_type:
+                    for param_k in ["seed", "steps", "cfg", "sampler_name", "scheduler", "denoise"]:
+                        if param_k in inputs:
+                            res["parameters"][param_k] = inputs[param_k]
+                elif "CheckpointLoader" in class_type:
+                    if "ckpt_name" in inputs:
+                        res["parameters"]["model"] = inputs["ckpt_name"]
+
+            if prompts_found:
+                res["prompt"] = prompts_found[0]
+                if len(prompts_found) > 1:
+                    res["negative_prompt"] = prompts_found[1]
+    except Exception:
+        pass
+    return res
+
+
 def extract_image_metadata(input_path: str) -> Dict[str, Any]:
     """
-    Extracts complete metadata, EXIF tags, PNG text chunks, and scans for AI signatures/C2PA manifests.
-    Returns structured data for the UI and security checks.
+    Extracts complete multi-domain metadata, EXIF tags, GPS coordinates, camera optics,
+    XMP packets, PNG text chunks, and scans for AI signatures/C2PA manifests.
+    Returns structured data for the UI and security verification.
     """
     path_obj = Path(input_path)
     if not path_obj.exists():
@@ -95,19 +198,24 @@ def extract_image_metadata(input_path: str) -> Dict[str, Any]:
         "synthid_detected": False,
         "detected_generator": None,
         "embedded_prompt": None,
+        "negative_prompt": None,
         "embedded_parameters": {},
         "has_ai_metadata": False,
+        "camera_info": {},
+        "gps_info": {"has_gps": False},
+        "rights_and_creator": {},
+        "color_profile": {},
     }
 
-    # 1. Binary Scan for raw byte markers (C2PA JUMBF, SynthID tags)
+    # 1. Binary Scan for raw byte markers (C2PA JUMBF, SynthID tags, XMP packets)
+    raw_sample = b""
     try:
         with open(path_obj, "rb") as bf:
-            # Read first 128KB and last 64KB where headers, XMP packets, and C2PA manifests reside
             head_bytes = bf.read(131072)
             bf.seek(max(0, file_size - 65536))
             tail_bytes = bf.read(65536)
-            sample_bytes = head_bytes + tail_bytes
-            sample_lower = sample_bytes.lower()
+            raw_sample = head_bytes + tail_bytes
+            sample_lower = raw_sample.lower()
 
             if b"c2pa" in sample_lower or b"jumbf" in sample_lower:
                 result["c2pa_detected"] = True
@@ -126,7 +234,7 @@ def extract_image_metadata(input_path: str) -> Dict[str, Any]:
     except Exception as scan_err:
         logger.warning("Binary header scan error: %s", scan_err)
 
-    # 2. PIL Image & Header Analysis
+    # 2. PIL Image & Deep Header Analysis
     try:
         with Image.open(path_obj) as img:
             result["format"] = img.format
@@ -149,20 +257,55 @@ def extract_image_metadata(input_path: str) -> Dict[str, Any]:
                 else:
                     result["aspect_ratio"] = f"{result['width']}:{result['height']}"
 
-            # PNG info text chunks
+            # Color profile details
+            icc = img.info.get("icc_profile")
+            result["color_profile"] = {
+                "color_mode": img.mode,
+                "has_icc_profile": icc is not None,
+                "icc_size_bytes": len(icc) if icc else 0,
+            }
+
+            # 3. PNG Info Chunks & AI Generation Parameters
             if hasattr(img, "info") and isinstance(img.info, dict):
                 for k, v in img.info.items():
                     if k in ("icc_profile", "exif"):
                         continue
                     str_v = str(v)
-                    result["png_info_chunks"][str(k)] = str_v[:1000]
+                    result["png_info_chunks"][str(k)] = str_v[:1500]
                     result["raw_text_metadata"].append(f"{k}: {str_v[:200]}")
 
-                    # Check for embedded prompt in ComfyUI / Automatic1111 / NovelAI text chunks
                     k_lower = str(k).lower()
-                    if k_lower in ("prompt", "parameters", "description", "comment", "usercomment"):
+
+                    # Automatic1111 / WebUI format
+                    if k_lower == "parameters":
+                        parsed_a11 = _parse_a1111_params(str_v)
+                        if parsed_a11["prompt"] and not result["embedded_prompt"]:
+                            result["embedded_prompt"] = parsed_a11["prompt"]
+                        if parsed_a11["negative_prompt"] and not result["negative_prompt"]:
+                            result["negative_prompt"] = parsed_a11["negative_prompt"]
+                        if parsed_a11["parameters"]:
+                            result["embedded_parameters"].update(parsed_a11["parameters"])
+                        result["has_ai_metadata"] = True
+                        if not result["detected_generator"]:
+                            result["detected_generator"] = "Stable Diffusion / WebUI"
+
+                    # ComfyUI format
+                    elif k_lower == "prompt":
+                        parsed_comfy = _parse_comfyui_graph(str_v)
+                        if parsed_comfy["prompt"] and not result["embedded_prompt"]:
+                            result["embedded_prompt"] = parsed_comfy["prompt"]
+                        if parsed_comfy["negative_prompt"] and not result["negative_prompt"]:
+                            result["negative_prompt"] = parsed_comfy["negative_prompt"]
+                        if parsed_comfy["parameters"]:
+                            result["embedded_parameters"].update(parsed_comfy["parameters"])
+                        result["has_ai_metadata"] = True
+                        if not result["detected_generator"]:
+                            result["detected_generator"] = "ComfyUI"
+
+                    # Generic Prompt / Comment
+                    elif k_lower in ("description", "comment", "usercomment"):
                         if not result["embedded_prompt"]:
-                            result["embedded_prompt"] = str_v[:1000]
+                            result["embedded_prompt"] = str_v[:1500]
                         result["has_ai_metadata"] = True
 
                     for kw in AI_SIGNATURE_KEYWORDS:
@@ -171,24 +314,168 @@ def extract_image_metadata(input_path: str) -> Dict[str, Any]:
                             if not result["detected_generator"]:
                                 result["detected_generator"] = kw.title()
 
-            # EXIF tags inspection
+            # 4. Deep EXIF Inspection (Main IFD, SubIFD Exif, GPSInfo)
             exif_obj = img.getexif()
             if exif_obj:
                 result["has_exif"] = True
+                # Main 0th IFD
                 for tag_id, value in exif_obj.items():
                     tag_name = ExifTags.TAGS.get(tag_id, str(tag_id))
                     str_val = str(value)
                     result["exif_tags"][tag_name] = str_val[:500]
 
-                    tag_lower = tag_name.lower()
-                    val_lower = str_val.lower()
+                # SubIFD: Exif (Optics, Exposure, Lens)
+                try:
+                    if hasattr(ExifTags, "IFD") and hasattr(ExifTags.IFD, "Exif"):
+                        exif_ifd = exif_obj.get_ifd(ExifTags.IFD.Exif)
+                        for tag_id, value in exif_ifd.items():
+                            tag_name = ExifTags.TAGS.get(tag_id, str(tag_id))
+                            result["exif_tags"][tag_name] = str(value)[:500]
+                except Exception as ifd_err:
+                    logger.debug("SubIFD Exif error: %s", ifd_err)
 
-                    if tag_lower in ("software", "imagedescription", "usercomment", "artist", "copyright"):
+                # SubIFD: GPSInfo (Geographic coordinates)
+                try:
+                    if hasattr(ExifTags, "IFD") and hasattr(ExifTags.IFD, "GPSInfo"):
+                        gps_ifd = exif_obj.get_ifd(ExifTags.IFD.GPSInfo)
+                        gps_dict = {}
+                        for tag_id, value in gps_ifd.items():
+                            gps_tag = ExifTags.GPSTAGS.get(tag_id, str(tag_id))
+                            gps_dict[gps_tag] = value
+
+                        lat = gps_dict.get("GPSLatitude")
+                        lat_ref = gps_dict.get("GPSLatitudeRef", "N")
+                        lon = gps_dict.get("GPSLongitude")
+                        lon_ref = gps_dict.get("GPSLongitudeRef", "E")
+                        alt = gps_dict.get("GPSAltitude")
+
+                        if lat and lon:
+                            lat_deg = _convert_gps_to_degrees(lat)
+                            lon_deg = _convert_gps_to_degrees(lon)
+                            if lat_deg is not None and lon_deg is not None:
+                                if str(lat_ref).upper() == "S":
+                                    lat_deg = -lat_deg
+                                if str(lon_ref).upper() == "W":
+                                    lon_deg = -lon_deg
+                                result["gps_info"] = {
+                                    "has_gps": True,
+                                    "latitude": round(lat_deg, 6),
+                                    "longitude": round(lon_deg, 6),
+                                    "formatted": f"{abs(lat_deg):.4f}° {'N' if lat_deg >= 0 else 'S'}, {abs(lon_deg):.4f}° {'E' if lon_deg >= 0 else 'W'}",
+                                    "google_maps_url": f"https://www.google.com/maps?q={lat_deg:.6f},{lon_deg:.6f}",
+                                }
+                        if alt and result["gps_info"].get("has_gps"):
+                            try:
+                                result["gps_info"]["altitude_meters"] = round(float(alt), 1)
+                            except Exception:
+                                pass
+                except Exception as gps_err:
+                    logger.debug("GPS IFD error: %s", gps_err)
+
+                # Camera & Optics Details Extraction
+                camera_info = {}
+                make = result["exif_tags"].get("Make")
+                model = result["exif_tags"].get("Model")
+                lens = result["exif_tags"].get("LensModel") or result["exif_tags"].get("Lens")
+                exp = result["exif_tags"].get("ExposureTime")
+                fnum = result["exif_tags"].get("FNumber")
+                iso = result["exif_tags"].get("ISOSpeedRatings") or result["exif_tags"].get("PhotographicSensitivity")
+                focal = result["exif_tags"].get("FocalLength")
+                date_orig = result["exif_tags"].get("DateTimeOriginal") or result["exif_tags"].get("DateTime")
+                software = result["exif_tags"].get("Software")
+
+                if make:
+                    camera_info["make"] = str(make).strip()
+                if model:
+                    camera_info["model"] = str(model).strip()
+                if lens:
+                    camera_info["lens"] = str(lens).strip()
+                if exp:
+                    camera_info["exposure_time"] = f"1/{round(1/float(exp))}s" if isinstance(exp, (int, float)) and 0 < exp < 1 else str(exp)
+                if fnum:
+                    try:
+                        camera_info["aperture"] = f"f/{float(fnum):.1f}"
+                    except Exception:
+                        camera_info["aperture"] = f"f/{fnum}"
+                if iso:
+                    camera_info["iso"] = str(iso)
+                if focal:
+                    try:
+                        camera_info["focal_length"] = f"{float(focal):.0f}mm"
+                    except Exception:
+                        camera_info["focal_length"] = str(focal)
+                if date_orig:
+                    camera_info["date_taken"] = str(date_orig).strip()
+                if software:
+                    camera_info["software"] = str(software).strip()
+
+                result["camera_info"] = camera_info
+
+                # Creator & Rights
+                artist = result["exif_tags"].get("Artist") or result["exif_tags"].get("Creator")
+                copyright_notice = result["exif_tags"].get("Copyright") or result["exif_tags"].get("Rights")
+                img_desc = result["exif_tags"].get("ImageDescription")
+
+                if artist:
+                    result["rights_and_creator"]["artist"] = str(artist).strip()
+                if copyright_notice:
+                    result["rights_and_creator"]["copyright"] = str(copyright_notice).strip()
+                if img_desc and not result["embedded_prompt"]:
+                    result["embedded_prompt"] = str(img_desc).strip()
+
+                # Check software / artist for AI signatures
+                for tag_val in [software, artist, img_desc]:
+                    if tag_val:
+                        low_val = str(tag_val).lower()
                         for kw in AI_SIGNATURE_KEYWORDS:
-                            if kw in val_lower:
+                            if kw in low_val:
                                 result["has_ai_metadata"] = True
                                 if not result["detected_generator"]:
                                     result["detected_generator"] = kw.title()
+
+            # 5. XMP XML Packet Parsing (Adobe XMP, C2PA claims, Dublin Core)
+            xmp_raw = img.info.get("XML:com.adobe.xmp") or img.info.get("xmp")
+            if not xmp_raw and raw_sample:
+                start_xmp = raw_sample.find(b"<x:xmpmeta")
+                if start_xmp != -1:
+                    end_xmp = raw_sample.find(b"</x:xmpmeta>", start_xmp)
+                    if end_xmp != -1:
+                        xmp_raw = raw_sample[start_xmp : end_xmp + 12]
+
+            if xmp_raw:
+                try:
+                    import re
+                    xmp_str = xmp_raw.decode("utf-8", errors="ignore") if isinstance(xmp_raw, bytes) else str(xmp_raw)
+
+                    # Extract dc:description
+                    desc_m = re.search(r"<dc:description[^>]*>.*?<rdf:li[^>]*>(.*?)</rdf:li>", xmp_str, re.DOTALL | re.IGNORECASE)
+                    if desc_m and not result["embedded_prompt"]:
+                        result["embedded_prompt"] = desc_m.group(1).strip()
+                        result["has_ai_metadata"] = True
+
+                    # Extract dc:creator
+                    creator_m = re.search(r"<dc:creator[^>]*>.*?<rdf:li[^>]*>(.*?)</rdf:li>", xmp_str, re.DOTALL | re.IGNORECASE)
+                    if creator_m and "artist" not in result["rights_and_creator"]:
+                        result["rights_and_creator"]["artist"] = creator_m.group(1).strip()
+
+                    # Extract dc:rights
+                    rights_m = re.search(r"<dc:rights[^>]*>.*?<rdf:li[^>]*>(.*?)</rdf:li>", xmp_str, re.DOTALL | re.IGNORECASE)
+                    if rights_m and "copyright" not in result["rights_and_creator"]:
+                        result["rights_and_creator"]["copyright"] = rights_m.group(1).strip()
+
+                    # Detect C2PA / Content Credentials in XMP
+                    if "c2pa" in xmp_str.lower() or "contentcredentials" in xmp_str.lower():
+                        result["c2pa_detected"] = True
+                        result["has_ai_metadata"] = True
+
+                    # Detect Generative AI tool claims
+                    for kw in AI_SIGNATURE_KEYWORDS:
+                        if kw in xmp_str.lower():
+                            result["has_ai_metadata"] = True
+                            if not result["detected_generator"]:
+                                result["detected_generator"] = kw.title()
+                except Exception as xmp_err:
+                    logger.debug("XMP extraction error: %s", xmp_err)
 
     except Exception as pil_err:
         logger.warning("PIL metadata extraction error: %s", pil_err)
@@ -332,7 +619,8 @@ def batch_clean_images(
 
 def extract_video_metadata(input_path: str) -> Dict[str, Any]:
     """
-    Extracts complete metadata, codec metrics, streams, and scans for AI signatures/C2PA manifests in video.
+    Extracts complete metadata, codec metrics, streams, color profiles, audio properties,
+    and scans for AI signatures/C2PA manifests in video.
     Returns structured data for the UI and security verification.
     """
     path_obj = Path(input_path)
@@ -362,6 +650,11 @@ def extract_video_metadata(input_path: str) -> Dict[str, Any]:
         "has_ai_metadata": False,
         "tags": {},
         "raw_text_metadata": [],
+        "video_technical": {},
+        "audio_technical": {"has_audio": False},
+        "container_tags": {},
+        "camera_info": {},
+        "gps_info": {"has_gps": False},
     }
 
     # 1. Binary Scan for C2PA JUMBF / SynthID / Known AI Video Tags in container atoms
@@ -414,20 +707,49 @@ def extract_video_metadata(input_path: str) -> Dict[str, Any]:
             if fmt.get("bit_rate"):
                 result["bitrate_kbps"] = int(int(fmt["bit_rate"]) / 1000)
 
+            # Container format tags
             tags = fmt.get("tags", {})
             result["tags"] = tags
+            result["container_tags"] = dict(tags)
+
             for k, v in tags.items():
                 result["raw_text_metadata"].append(f"{k}: {v}")
+                lower_k = str(k).lower()
                 lower_v = str(v).lower()
+
+                # Camera & device info
+                if "model" in lower_k or "make" in lower_k:
+                    result["camera_info"][k] = str(v)
+
+                # Location / GPS detection in MP4 tags (e.g. ISO 6709: +37.7749-122.4194/)
+                if "location" in lower_k:
+                    import re
+                    loc_m = re.search(r"([+-]\d+\.?\d*)([+-]\d+\.?\d*)", str(v))
+                    if loc_m:
+                        try:
+                            lat = float(loc_m.group(1))
+                            lon = float(loc_m.group(2))
+                            result["gps_info"] = {
+                                "has_gps": True,
+                                "latitude": lat,
+                                "longitude": lon,
+                                "formatted": f"{abs(lat):.4f}° {'N' if lat >= 0 else 'S'}, {abs(lon):.4f}° {'E' if lon >= 0 else 'W'}",
+                                "google_maps_url": f"https://www.google.com/maps?q={lat:.6f},{lon:.6f}",
+                            }
+                        except Exception:
+                            pass
+
                 for kw in AI_VIDEO_SIGNATURE_KEYWORDS:
-                    if kw in lower_v:
+                    if kw in lower_v or kw in lower_k:
                         if not result["detected_generator"]:
                             result["detected_generator"] = kw.title()
                         result["has_ai_metadata"] = True
 
             for s in streams:
-                if s.get("codec_type") == "video" and not result["video_codec"]:
-                    result["video_codec"] = s.get("codec_name", "").upper()
+                codec_type = s.get("codec_type")
+                if codec_type == "video" and not result["video_codec"]:
+                    cname = s.get("codec_name", "").upper()
+                    result["video_codec"] = cname
                     result["width"] = int(s.get("width", 0))
                     result["height"] = int(s.get("height", 0))
                     if result["height"] > 0:
@@ -444,9 +766,47 @@ def extract_video_metadata(input_path: str) -> Dict[str, Any]:
                     elif fps_str:
                         result["fps"] = round(float(fps_str), 2)
 
-                elif s.get("codec_type") == "audio" and not result["audio_codec"]:
+                    # Deep video technicals
+                    v_tech = {
+                        "codec": cname,
+                        "profile": s.get("profile", "Main"),
+                        "level": str(s.get("level", "")),
+                        "pixel_format": s.get("pix_fmt", "yuv420p"),
+                        "color_space": s.get("color_space") or "sRGB/Rec.709",
+                        "color_primaries": s.get("color_primaries") or "Rec.709",
+                        "color_transfer": s.get("color_transfer") or "sRGB",
+                        "color_range": s.get("color_range") or "tv",
+                        "bitrate_kbps": int(int(s.get("bit_rate", 0)) / 1000) if s.get("bit_rate") else result["bitrate_kbps"],
+                        "total_frames": s.get("nb_frames") or (int(result["fps"] * result["duration"]) if result["fps"] and result["duration"] else None),
+                    }
+                    result["video_technical"] = v_tech
+
+                    # Merge video stream tags
+                    s_tags = s.get("tags", {})
+                    for sk, sv in s_tags.items():
+                        result["raw_text_metadata"].append(f"video.{sk}: {sv}")
+                        if "handler_name" in sk.lower() or "encoder" in sk.lower():
+                            result["container_tags"][f"video_{sk}"] = str(sv)
+
+                elif codec_type == "audio" and not result["audio_codec"]:
+                    cname = s.get("codec_name", "").upper()
                     result["has_audio"] = True
-                    result["audio_codec"] = s.get("codec_name", "").upper()
+                    result["audio_codec"] = cname
+
+                    a_tech = {
+                        "has_audio": True,
+                        "codec": cname,
+                        "profile": s.get("profile", ""),
+                        "sample_rate": f"{s.get('sample_rate', '48000')} Hz",
+                        "channels": int(s.get("channels", 2)),
+                        "channel_layout": s.get("channel_layout", "stereo"),
+                        "bitrate_kbps": int(int(s.get("bit_rate", 0)) / 1000) if s.get("bit_rate") else None,
+                    }
+                    result["audio_technical"] = a_tech
+
+                    s_tags = s.get("tags", {})
+                    for sk, sv in s_tags.items():
+                        result["raw_text_metadata"].append(f"audio.{sk}: {sv}")
 
     except Exception as probe_err:
         logger.warning("ffprobe inspection error: %s", probe_err)

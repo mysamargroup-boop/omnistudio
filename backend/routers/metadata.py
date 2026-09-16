@@ -112,8 +112,16 @@ async def inspect_metadata(req: MetadataInspectRequest, request: Request):
 
 @router.post("/inspect-upload")
 @limiter.limit("20/minute")
-async def inspect_uploaded_media(request: Request, file: UploadFile = File(...)):
-    """Upload an image or video to perform deep metadata and AI provenance inspection."""
+async def inspect_uploaded_media(
+    request: Request,
+    file: UploadFile = File(...),
+    ephemeral: bool = Form(False),
+):
+    """
+    Upload an image or video to perform deep metadata and AI provenance inspection.
+    When ephemeral=True (Zero-Disk Privacy Mode), media is analyzed in temporary memory/disk
+    and immediately deleted upon extraction so nothing is persisted on the server.
+    """
     clean_orig = sanitize_filename(file.filename or "upload.png")
     ext = Path(clean_orig).suffix.lower() or ".png"
 
@@ -124,31 +132,79 @@ async def inspect_uploaded_media(request: Request, file: UploadFile = File(...))
         except Exception:
             pass
 
-        temp_filename = f"inspect_{uuid.uuid4().hex[:8]}_{clean_orig}"
-        target_path = settings.VIDEOS_PATH / temp_filename
+        if ephemeral:
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(content)
+                tmp_path = Path(tmp.name)
 
-        with open(target_path, "wb") as f:
-            f.write(content)
+            try:
+                result = extract_video_metadata(str(tmp_path))
+                result["media_type"] = "video"
+                result["filename"] = clean_orig
+                result["saved_to_disk"] = False
+                result["ephemeral"] = True
+                result["url"] = None
+                result["storage_status"] = "Zero-Disk Privacy (Ephemeral in-memory buffer, file unlinked from server)"
+                return result
+            finally:
+                try:
+                    if tmp_path.exists():
+                        tmp_path.unlink()
+                except Exception:
+                    pass
+        else:
+            temp_filename = f"inspect_{uuid.uuid4().hex[:8]}_{clean_orig}"
+            target_path = settings.VIDEOS_PATH / temp_filename
 
-        result = extract_video_metadata(str(target_path))
-        result["media_type"] = "video"
-        result["url"] = f"/outputs/videos/{temp_filename}"
-        return result
+            with open(target_path, "wb") as f:
+                f.write(content)
+
+            result = extract_video_metadata(str(target_path))
+            result["media_type"] = "video"
+            result["saved_to_disk"] = True
+            result["ephemeral"] = False
+            result["url"] = f"/outputs/videos/{temp_filename}"
+            return result
 
     elif ext in IMAGE_EXTENSIONS:
         content = await file.read()
         validate_uploaded_media(content, clean_orig, "image")
 
-        temp_filename = f"inspect_{uuid.uuid4().hex[:8]}_{clean_orig}"
-        target_path = settings.IMAGES_PATH / temp_filename
+        if ephemeral:
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(content)
+                tmp_path = Path(tmp.name)
 
-        with open(target_path, "wb") as f:
-            f.write(content)
+            try:
+                result = extract_image_metadata(str(tmp_path))
+                result["media_type"] = "image"
+                result["filename"] = clean_orig
+                result["saved_to_disk"] = False
+                result["ephemeral"] = True
+                result["url"] = None
+                result["storage_status"] = "Zero-Disk Privacy (Ephemeral in-memory buffer, file unlinked from server)"
+                return result
+            finally:
+                try:
+                    if tmp_path.exists():
+                        tmp_path.unlink()
+                except Exception:
+                    pass
+        else:
+            temp_filename = f"inspect_{uuid.uuid4().hex[:8]}_{clean_orig}"
+            target_path = settings.IMAGES_PATH / temp_filename
 
-        result = extract_image_metadata(str(target_path))
-        result["media_type"] = "image"
-        result["url"] = f"/outputs/images/{temp_filename}"
-        return result
+            with open(target_path, "wb") as f:
+                f.write(content)
+
+            result = extract_image_metadata(str(target_path))
+            result["media_type"] = "image"
+            result["saved_to_disk"] = True
+            result["ephemeral"] = False
+            result["url"] = f"/outputs/images/{temp_filename}"
+            return result
 
     else:
         raise HTTPException(
@@ -309,11 +365,18 @@ async def clean_uploaded_media(
         clean_filename = f"clean_{uuid.uuid4().hex[:6]}_{Path(clean_orig).stem}{ext}"
         clean_path = settings.VIDEOS_PATH / clean_filename
 
-        clean_res = clean_video_lossless(
-            str(orig_path),
-            str(clean_path),
-            stealth_mode=stealth_mode,
-        )
+        try:
+            clean_res = clean_video_lossless(
+                str(orig_path),
+                str(clean_path),
+                stealth_mode=stealth_mode,
+            )
+        finally:
+            try:
+                if orig_path.exists():
+                    orig_path.unlink()
+            except Exception:
+                pass
 
         if not clean_res.get("success"):
             raise HTTPException(status_code=500, detail=clean_res.get("error", "Failed to clean video."))
@@ -368,12 +431,19 @@ async def clean_uploaded_media(
         clean_filename = f"clean_{uuid.uuid4().hex[:6]}_{Path(clean_orig).stem}{ext}"
         clean_path = settings.IMAGES_PATH / clean_filename
 
-        clean_res = clean_image_lossless(
-            str(orig_path),
-            str(clean_path),
-            stealth_mode=stealth_mode,
-            quality=quality,
-        )
+        try:
+            clean_res = clean_image_lossless(
+                str(orig_path),
+                str(clean_path),
+                stealth_mode=stealth_mode,
+                quality=quality,
+            )
+        finally:
+            try:
+                if orig_path.exists():
+                    orig_path.unlink()
+            except Exception:
+                pass
 
         if not clean_res.get("success"):
             raise HTTPException(status_code=500, detail=clean_res.get("error", "Failed to clean image."))

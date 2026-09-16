@@ -28,11 +28,15 @@ export default function NavigationProgress() {
       if (!target) return;
 
       const href = target.getAttribute("href");
+      const isDownload = target.hasAttribute("download");
+      const isHash = href && href.startsWith("#");
       // Only internal routes
       if (
         href &&
         href.startsWith("/") &&
         !href.startsWith("//") &&
+        !isDownload &&
+        !isHash &&
         target.getAttribute("target") !== "_blank" &&
         !e.ctrlKey &&
         !e.metaKey &&
@@ -49,12 +53,22 @@ export default function NavigationProgress() {
         setProgress(25);
 
         // Gradually advance progress while waiting for chunk
-        const t1 = setTimeout(() => setProgress(60), 100);
-        const t2 = setTimeout(() => setProgress(85), 350);
+        const t1 = setTimeout(() => setProgress(60), 120);
+        const t2 = setTimeout(() => setProgress(85), 380);
+
+        // Safety fallback: auto-complete if route doesn't fire route change within 2.2s
+        const tSafety = setTimeout(() => {
+          setProgress(100);
+          setTimeout(() => {
+            setIsNavigating(false);
+            setProgress(0);
+          }, 250);
+        }, 2200);
 
         return () => {
           clearTimeout(t1);
           clearTimeout(t2);
+          clearTimeout(tSafety);
         };
       }
     };
