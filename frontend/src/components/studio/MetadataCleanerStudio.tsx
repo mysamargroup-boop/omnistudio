@@ -173,6 +173,51 @@ export default function MetadataCleanerStudio({
     }).catch(() => {});
   }, []);
 
+  // Restore session state when navigating back or after downloading
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("omnistudio_cleaner_state");
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.previewUrl && !previewUrl && !initialImageUrl) setPreviewUrl(data.previewUrl);
+        if (data.sourcePath && !sourcePath && !initialImagePath) setSourcePath(data.sourcePath);
+        if (data.metadata && !metadata) setMetadata(data.metadata);
+        if (data.cleanResult && !cleanResult) setCleanResult(data.cleanResult);
+        if (typeof data.zeroDiskMode === "boolean") setZeroDiskMode(data.zeroDiskMode);
+        if (typeof data.browserOnlyMode === "boolean") setBrowserOnlyMode(data.browserOnlyMode);
+        if (typeof data.stealthMode === "boolean") setStealthMode(data.stealthMode);
+        if (typeof data.injectCameraProfile === "boolean") setInjectCameraProfile(data.injectCameraProfile);
+        if (data.cameraPreset) setCameraPreset(data.cameraPreset);
+        if (data.gpsPreset) setGpsPreset(data.gpsPreset);
+        if (data.activeTab) setActiveTab(data.activeTab);
+      }
+    } catch (e) {
+      console.warn("Could not restore cleaner session state", e);
+    }
+  }, []);
+
+  // Save session state on change
+  useEffect(() => {
+    try {
+      const stateToSave = {
+        previewUrl: previewUrl && !previewUrl.startsWith("blob:") ? previewUrl : (cleanResult?.clean_url || cleanResult?.url || null),
+        sourcePath,
+        metadata,
+        cleanResult,
+        zeroDiskMode,
+        browserOnlyMode,
+        stealthMode,
+        injectCameraProfile,
+        cameraPreset,
+        gpsPreset,
+        activeTab,
+      };
+      sessionStorage.setItem("omnistudio_cleaner_state", JSON.stringify(stateToSave));
+    } catch (e) {
+      // ignore quota limits
+    }
+  }, [previewUrl, sourcePath, metadata, cleanResult, zeroDiskMode, browserOnlyMode, stealthMode, injectCameraProfile, cameraPreset, gpsPreset, activeTab]);
+
   // UI state
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedNegPrompt, setCopiedNegPrompt] = useState(false);
@@ -455,14 +500,15 @@ export default function MetadataCleanerStudio({
             cameraPreset,
             gpsPreset !== "none" ? gpsPreset : undefined,
             stealthMode,
-            quality
+            quality,
+            !zeroDiskMode
           );
         } else if (item.type === "video") {
-          res = await api.cleanUploadedVideo(item.file, stealthMode, zeroDiskMode);
+          res = await api.cleanUploadedVideo(item.file, stealthMode, !zeroDiskMode);
         } else if (item.type === "audio") {
-          res = await api.cleanUploadedAudio(item.file, stealthMode, zeroDiskMode);
+          res = await api.cleanUploadedAudio(item.file, stealthMode, !zeroDiskMode);
         } else {
-          res = await api.cleanUploadedImage(item.file, stealthMode, quality, zeroDiskMode);
+          res = await api.cleanUploadedImage(item.file, stealthMode, quality, !zeroDiskMode);
         }
         if (res && res.success) {
           setBatchQueue((prev) =>
@@ -483,6 +529,28 @@ export default function MetadataCleanerStudio({
       }
     }
     setBatchProcessing(false);
+  };
+
+  const handleDownloadAllCleaned = () => {
+    const cleanedItems = batchQueue.filter(
+      (q) => q.status === "cleaned" && (q.cleanedResult?.clean_url || q.cleanedResult?.url)
+    );
+    if (cleanedItems.length === 0) return;
+    cleanedItems.forEach((item, index) => {
+      setTimeout(() => {
+        const url = getMediaUrl(item.cleanedResult.clean_url || item.cleanedResult.url);
+        const filename =
+          item.cleanedResult.output_filename ||
+          item.cleanedResult.clean_filename ||
+          `cleaned_${item.name}`;
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, index * 250);
+    });
   };
 
   const handleSelectFromVault = (asset: any) => {
@@ -534,7 +602,8 @@ export default function MetadataCleanerStudio({
             cameraPreset,
             gpsPreset !== "none" ? gpsPreset : undefined,
             stealthMode,
-            quality
+            quality,
+            !zeroDiskMode
           );
         } else if (previewUrl || sourcePath) {
           res = await api.injectMetadata({
@@ -552,7 +621,7 @@ export default function MetadataCleanerStudio({
         }
       } else if (isVideo) {
         if (selectedFile) {
-          res = await api.cleanUploadedVideo(selectedFile, stealthMode);
+          res = await api.cleanUploadedVideo(selectedFile, stealthMode, !zeroDiskMode);
         } else if (previewUrl || sourcePath) {
           res = await api.cleanVideoMetadata({
             url: previewUrl || undefined,
@@ -566,7 +635,7 @@ export default function MetadataCleanerStudio({
         }
       } else if (isAudio) {
         if (selectedFile) {
-          res = await api.cleanUploadedAudio(selectedFile, stealthMode);
+          res = await api.cleanUploadedAudio(selectedFile, stealthMode, !zeroDiskMode);
         } else if (previewUrl || sourcePath) {
           res = await api.cleanAudioMetadata({
             url: previewUrl || undefined,
@@ -580,7 +649,7 @@ export default function MetadataCleanerStudio({
         }
       } else {
         if (selectedFile) {
-          res = await api.cleanUploadedImage(selectedFile, stealthMode, quality);
+          res = await api.cleanUploadedImage(selectedFile, stealthMode, quality, !zeroDiskMode);
         } else if (previewUrl || sourcePath) {
           res = await api.cleanMetadata({
             url: previewUrl || undefined,
@@ -600,6 +669,15 @@ export default function MetadataCleanerStudio({
 
       if (res && res.success) {
         setCleanResult(res);
+        if (activeBatchId) {
+          setBatchQueue((prev) =>
+            prev.map((item) =>
+              item.id === activeBatchId
+                ? { ...item, cleanedResult: res, status: "cleaned" }
+                : item
+            )
+          );
+        }
         if (onCleanSuccess) {
           onCleanSuccess(res);
         }
@@ -810,6 +888,16 @@ export default function MetadataCleanerStudio({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {batchQueue.some((q) => q.status === "cleaned" && (q.cleanedResult?.clean_url || q.cleanedResult?.url)) && (
+                <button
+                  type="button"
+                  onClick={handleDownloadAllCleaned}
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition flex items-center gap-1.5 shadow-md cursor-pointer animate-in fade-in"
+                >
+                  <HardDriveDownload className="w-3.5 h-3.5" />
+                  Download All Cleaned ({batchQueue.filter((q) => q.status === "cleaned").length})
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleInspectAllBatch}
@@ -866,14 +954,39 @@ export default function MetadataCleanerStudio({
                     <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-zinc-700 dark:text-zinc-300">
                       {item.type}
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => removeBatchItem(item.id, e)}
-                      className="p-1 rounded-md text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
-                      title="Remove from queue"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {item.status === "cleaned" && (item.cleanedResult?.clean_url || item.cleanedResult?.url) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = getMediaUrl(item.cleanedResult.clean_url || item.cleanedResult.url);
+                            const filename =
+                              item.cleanedResult.output_filename ||
+                              item.cleanedResult.clean_filename ||
+                              `cleaned_${item.name}`;
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }}
+                          className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition cursor-pointer"
+                          title="Download cleaned file"
+                        >
+                          <Download className="w-3 h-3" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => removeBatchItem(item.id, e)}
+                        className="p-1 rounded-md text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                        title="Remove from queue"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="h-16 w-full rounded-xl bg-zinc-200/60 dark:bg-[#0e1422] overflow-hidden flex items-center justify-center mb-1.5">
@@ -1108,36 +1221,57 @@ export default function MetadataCleanerStudio({
                 </button>
               </div>
 
-              {/* Zero-Disk Storage Option Switch */}
-              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
-                <div className="space-y-1">
+              {/* Backend Storage Option (Ephemeral RAM vs Save to Vault) */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
+                <div className="space-y-1 max-w-md">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                      Zero-Disk Server Mode (Ephemeral Buffer)
+                      Backend Storage Destination
                     </span>
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                      RECOMMENDED
+                    <span
+                      className={cn(
+                        "text-[9px] font-mono px-2 py-0.5 rounded border font-semibold",
+                        zeroDiskMode
+                          ? "bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
+                          : "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                      )}
+                    >
+                      {zeroDiskMode ? "ZERO-DISK (EPHEMERAL)" : "SAVE TO VAULT"}
                     </span>
                   </div>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    When cleaning on the server, media is processed in a temporary RAM/buffer and immediately deleted upon completion. Zero disk retention.
+                    {zeroDiskMode
+                      ? "Zero Backend Storage: Processed purely in temporary RAM and purged immediately. Never saved to server disk or database."
+                      : "Vault Library Storage: Cleaned media will be saved to your permanent Asset Vault for library browsing and future downloads."}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setZeroDiskMode(!zeroDiskMode)}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                    zeroDiskMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
-                  )}
-                >
-                  <span
+
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-200/70 dark:bg-black/40 border border-zinc-300 dark:border-white/10 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setZeroDiskMode(true)}
                     className={cn(
-                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
-                      zeroDiskMode ? "translate-x-5" : "translate-x-0"
+                      "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer",
+                      zeroDiskMode
+                        ? "bg-cyan-600 text-white shadow-sm font-bold"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                     )}
-                  />
-                </button>
+                  >
+                    Zero-Disk (RAM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZeroDiskMode(false)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer",
+                      !zeroDiskMode
+                        ? "bg-emerald-600 text-white shadow-sm font-bold"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                    )}
+                  >
+                    Save to Vault
+                  </button>
+                </div>
               </div>
 
               {/* Stealth Mode (Scramble SynthID) */}

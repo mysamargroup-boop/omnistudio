@@ -39,6 +39,9 @@ import {
   VolumeX,
   Scissors,
   Sparkles,
+  ArrowUpDown,
+  SlidersHorizontal,
+  Calendar,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
@@ -50,6 +53,9 @@ import VideoEditorModal from "@/components/video/VideoEditorModal";
 import Spinner from "@/components/ui/Spinner";
 
 type Tab = "all" | "favorites" | "final" | "videos" | "images" | "audio" | "trash";
+type SortOption = "date_desc" | "date_asc" | "size_desc" | "size_asc" | "name_asc" | "name_desc";
+type FilterMediaType = "all" | "images" | "videos" | "audio";
+type FilterDateRange = "all" | "today" | "week" | "month";
 
 interface VaultAsset {
   filename: string;
@@ -68,6 +74,9 @@ export default function VaultPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("date_desc");
+  const [filterType, setFilterType] = useState<FilterMediaType>("all");
+  const [filterDate, setFilterDate] = useState<FilterDateRange>("all");
   const [assets, setAssets] = useState<any>(null);
   const [trashAssets, setTrashAssets] = useState<any>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -83,6 +92,7 @@ export default function VaultPage() {
 
   // Multi-selection state: Set of "type::filename"
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [lastSelectedKey, setLastSelectedKey] = useState<string | null>(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -287,21 +297,15 @@ export default function VaultPage() {
     setSelectedKeys(new Set());
   }, [tab]);
 
-  // Derive current list based on tab & collection
+  // Derive current list based on tab, collection, filters & sort
   const activeFiles: VaultAsset[] = useMemo(() => {
+    let list: VaultAsset[] = [];
     if (tab === "trash") {
       if (!trashAssets?.items) return [];
-      let list: VaultAsset[] = trashAssets.items;
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        list = list.filter((f) => f.filename.toLowerCase().includes(q));
-      }
-      return list;
-    }
-
-    if (!assets) return [];
-    let list: VaultAsset[] = [];
-    if (tab === "favorites") {
+      list = [...trashAssets.items];
+    } else if (!assets) {
+      return [];
+    } else if (tab === "favorites") {
       list = [
         ...(assets.final || []),
         ...(assets.videos || []),
@@ -316,7 +320,7 @@ export default function VaultPage() {
         ...(assets.audio || []),
       ];
     } else {
-      list = assets[tab] || [];
+      list = [...(assets[tab] || [])];
     }
 
     // Filter by selected collection if active
@@ -324,12 +328,60 @@ export default function VaultPage() {
       list = list.filter((f) => collectionFilenames.has(f.filename));
     }
 
+    // Filter by Media Type (if active)
+    if (filterType !== "all") {
+      list = list.filter((f) => {
+        if (filterType === "images") return f.type === "images";
+        if (filterType === "videos") return f.type === "videos" || f.type === "final";
+        if (filterType === "audio") return f.type === "audio";
+        return true;
+      });
+    }
+
+    // Filter by Date Range
+    if (filterDate !== "all") {
+      const nowSec = Date.now() / 1000;
+      let windowSec = 86400; // today
+      if (filterDate === "week") windowSec = 86400 * 7;
+      else if (filterDate === "month") windowSec = 86400 * 30;
+      const cutoff = nowSec - windowSec;
+      list = list.filter((f) => (f.modified || 0) >= cutoff);
+    }
+
+    // Search filter
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter((f) => f.filename.toLowerCase().includes(q));
+      list = list.filter(
+        (f) =>
+          f.filename.toLowerCase().includes(q) ||
+          (f.prompt && f.prompt.toLowerCase().includes(q))
+      );
     }
+
+    // Deterministic Sorting (Newest modified date first by default)
+    list.sort((a, b) => {
+      if (sortBy === "date_desc") return (b.modified || 0) - (a.modified || 0);
+      if (sortBy === "date_asc") return (a.modified || 0) - (b.modified || 0);
+      if (sortBy === "size_desc") return (b.size_bytes || 0) - (a.size_bytes || 0);
+      if (sortBy === "size_asc") return (a.size_bytes || 0) - (b.size_bytes || 0);
+      if (sortBy === "name_asc") return a.filename.localeCompare(b.filename);
+      if (sortBy === "name_desc") return b.filename.localeCompare(a.filename);
+      return (b.modified || 0) - (a.modified || 0);
+    });
+
     return list;
-  }, [tab, assets, trashAssets, search, favorites, selectedCollectionId, collectionFilenames]);
+  }, [
+    tab,
+    assets,
+    trashAssets,
+    search,
+    favorites,
+    selectedCollectionId,
+    collectionFilenames,
+    filterType,
+    filterDate,
+    sortBy,
+  ]);
 
   // All media assets in current active list for lightbox carousel
   const lightboxFiles = useMemo(() => {
@@ -395,9 +447,28 @@ export default function VaultPage() {
     }
   };
 
-  // Selection toggle
-  const toggleSelect = (type: string, filename: string) => {
+  // Selection toggle with Shift+Click Range Selection
+  const toggleSelect = (type: string, filename: string, shiftKey: boolean = false) => {
     const key = `${type}::${filename}`;
+    if (shiftKey && lastSelectedKey) {
+      const lastIdx = activeFiles.findIndex((f) => `${f.type}::${f.filename}` === lastSelectedKey);
+      const currIdx = activeFiles.findIndex((f) => `${f.type}::${f.filename}` === key);
+      if (lastIdx !== -1 && currIdx !== -1) {
+        const start = Math.min(lastIdx, currIdx);
+        const end = Math.max(lastIdx, currIdx);
+        setSelectedKeys((prev) => {
+          const next = new Set(prev);
+          for (let i = start; i <= end; i++) {
+            const item = activeFiles[i];
+            next.add(`${item.type}::${item.filename}`);
+          }
+          return next;
+        });
+        setLastSelectedKey(key);
+        return;
+      }
+    }
+
     setSelectedKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -407,6 +478,7 @@ export default function VaultPage() {
       }
       return next;
     });
+    setLastSelectedKey(key);
   };
 
   const isSelected = (type: string, filename: string) =>
@@ -431,6 +503,37 @@ export default function VaultPage() {
       }
     });
     return items;
+  };
+
+  // Bulk Actions
+  const handleBulkDownload = async () => {
+    const items = getSelectedItems();
+    if (items.length === 0) return;
+    items.forEach((item, index) => {
+      setTimeout(() => {
+        downloadAsset(item.url, item.filename);
+      }, index * 250);
+    });
+  };
+
+  const handleBulkFavorite = async () => {
+    const items = getSelectedItems();
+    if (items.length === 0) return;
+    const allFav = items.every((i) => favorites.has(i.filename));
+    const newFavState = !allFav;
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      items.forEach((i) => {
+        if (newFavState) next.add(i.filename);
+        else next.delete(i.filename);
+      });
+      return next;
+    });
+    for (const item of items) {
+      try {
+        await api.toggleFavorite(item.filename, newFavState);
+      } catch (_) {}
+    }
   };
 
   // ─── Modal Triggers ───
@@ -692,8 +795,58 @@ export default function VaultPage() {
           })}
         </div>
 
-        {/* Search & Bulk Select All */}
-        <div className="flex items-center gap-2">
+        {/* Search, Sort, Filter & Bulk Select All */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Sort By Dropdown */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 shrink-0">
+            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            <span className="text-[10px] uppercase font-bold text-zinc-400 hidden sm:inline">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="bg-transparent text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="date_desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Date (Newest First)</option>
+              <option value="date_asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Date (Oldest First)</option>
+              <option value="size_desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Size (Largest First)</option>
+              <option value="size_asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Size (Smallest First)</option>
+              <option value="name_asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Name (A → Z)</option>
+              <option value="name_desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Name (Z → A)</option>
+            </select>
+          </div>
+
+          {/* Date Filter Dropdown */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 shrink-0">
+            <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            <select
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value as FilterDateRange)}
+              className="bg-transparent text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="all" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Time</option>
+              <option value="today" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Today</option>
+              <option value="week" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Past 7 Days</option>
+              <option value="month" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Past 30 Days</option>
+            </select>
+          </div>
+
+          {/* Media Type Filter (on All, Favorites, Trash) */}
+          {(tab === "all" || tab === "favorites" || tab === "trash") && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300 shrink-0">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as FilterMediaType)}
+                className="bg-transparent text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+              >
+                <option value="all" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Types</option>
+                <option value="images" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Images</option>
+                <option value="videos" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Videos</option>
+                <option value="audio" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Audio</option>
+              </select>
+            </div>
+          )}
+
           {activeFiles.length > 0 && (
             <button
               onClick={selectedKeys.size === activeFiles.length ? clearSelection : selectAll}
@@ -713,7 +866,7 @@ export default function VaultPage() {
             </button>
           )}
 
-          <div className="relative min-w-[220px]">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="absolute left-3.5 top-2.5 h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
             <input
               type="text"
@@ -878,7 +1031,14 @@ export default function VaultPage() {
             return (
               <div
                 key={`${file.type}-${file.filename}-${i}`}
-                onClick={() => openLightbox(file)}
+                onClick={(e) => {
+                  if (e.shiftKey || selectedKeys.size > 0) {
+                    e.stopPropagation();
+                    toggleSelect(file.type, file.filename, e.shiftKey);
+                  } else {
+                    openLightbox(file);
+                  }
+                }}
                 onMouseEnter={(e) => {
                   const v = e.currentTarget.querySelector("video");
                   if (v) {
@@ -894,8 +1054,8 @@ export default function VaultPage() {
                   }
                 }}
                 className={cn(
-                  "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer overflow-hidden border-0",
-                  isMenuOpen ? "overflow-visible z-50" : "overflow-hidden z-10",
+                  "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0",
+                  isMenuOpen ? "overflow-visible z-[100] relative" : "overflow-hidden z-10",
                   selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                 )}
               >
@@ -1110,7 +1270,7 @@ export default function VaultPage() {
               {isMenuOpen && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-11 right-3 z-50 w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none"
+                  className="absolute top-11 right-3 z-[110] w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none"
                 >
                   <button
                     type="button"
@@ -1215,7 +1375,7 @@ export default function VaultPage() {
                     </button>
 
                     {/* Submenu on Hover (Pops out to the left) */}
-                    <div className="absolute right-full -top-1 mr-1.5 w-48 bg-[#16161d] border border-white/10 rounded-2xl p-1.5 shadow-2xl space-y-0.5 z-50 text-xs font-jakarta opacity-0 invisible group-hover/download:opacity-100 group-hover/download:visible transition-all duration-150 backdrop-blur-xl">
+                    <div className="absolute right-full -top-1 mr-1.5 w-48 bg-[#16161d] border border-white/10 rounded-2xl p-1.5 shadow-2xl space-y-0.5 z-[120] text-xs font-jakarta opacity-0 invisible group-hover/download:opacity-100 group-hover/download:visible transition-all duration-150 backdrop-blur-xl">
                       <div className="px-2.5 py-1 text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-wider border-b border-white/5 mb-1 flex items-center justify-between">
                         <span>Download As</span>
                         <span className="text-[9px] text-zinc-500">FORMAT</span>
@@ -1396,13 +1556,36 @@ export default function VaultPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Download Selected (Universal Bulk Download) */}
+            <button
+              type="button"
+              onClick={handleBulkDownload}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
+              title="Download all selected files to your computer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>DOWNLOAD ({selectedKeys.size})</span>
+            </button>
+
+            {tab !== "trash" && (
+              <button
+                type="button"
+                onClick={handleBulkFavorite}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
+                title="Toggle Favorite for selected assets"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                <span>FAVORITE</span>
+              </button>
+            )}
+
             {tab === "trash" ? (
               <>
                 <button
                   type="button"
                   onClick={handleBulkRestoreClick}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white text-xs font-heading font-semibold transition-all cursor-pointer shadow-sm active:scale-[0.98] whitespace-nowrap shrink-0"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>RESTORE SELECTED</span>

@@ -739,9 +739,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(params),
     }),
-  cleanUploadedImage: (file: File, stealth_mode: boolean = false, quality: number = 95) => {
+  cleanUploadedImage: (
+    file: File,
+    stealth_mode: boolean = false,
+    quality: number = 95,
+    save_to_vault: boolean = false
+  ) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("save_to_vault", save_to_vault ? "true" : "false");
     const qs = new URLSearchParams({
       stealth_mode: stealth_mode ? "true" : "false",
       quality: String(quality),
@@ -774,9 +780,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(params),
     }),
-  cleanUploadedVideo: (file: File, stealth_mode: boolean = false) => {
+  cleanUploadedVideo: (file: File, stealth_mode: boolean = false, save_to_vault: boolean = false) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("save_to_vault", save_to_vault ? "true" : "false");
     const qs = new URLSearchParams({
       stealth_mode: stealth_mode ? "true" : "false",
     }).toString();
@@ -808,9 +815,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(params),
     }),
-  cleanUploadedAudio: (file: File, stealth_mode: boolean = false) => {
+  cleanUploadedAudio: (file: File, stealth_mode: boolean = false, save_to_vault: boolean = false) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("save_to_vault", save_to_vault ? "true" : "false");
     const qs = new URLSearchParams({
       stealth_mode: stealth_mode ? "true" : "false",
     }).toString();
@@ -843,7 +851,8 @@ export const api = {
     camera_preset: string = "sony_a7iv",
     gps_preset?: string,
     stealth_mode: boolean = false,
-    quality: number = 98
+    quality: number = 98,
+    save_to_vault: boolean = false
   ) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -851,6 +860,7 @@ export const api = {
     if (gps_preset) formData.append("gps_preset", gps_preset);
     formData.append("stealth_mode", stealth_mode ? "true" : "false");
     formData.append("quality", String(quality));
+    formData.append("save_to_vault", save_to_vault ? "true" : "false");
     return fetchApi<InjectMetadataResponse>("/api/metadata/inject-upload", {
       method: "POST",
       body: formData,

@@ -7,6 +7,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
+import PWAInstallPrompt from "@/components/ui/PWAInstallPrompt";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -24,6 +25,12 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "OmniStudio AI — High-End Generative Creative Suite",
   description: "Autonomous AI Video, Visual Diffusion, and Neural Voiceover Workstation",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "OmniStudio",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <SmoothScroll>
               <AuthGuard>{children}</AuthGuard>
+              <PWAInstallPrompt />
             </SmoothScroll>
           </AuthProvider>
         </ThemeProvider>

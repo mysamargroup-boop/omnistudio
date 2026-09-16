@@ -468,12 +468,13 @@ async def clean_metadata(req: MetadataCleanRequest, request: Request):
 
 
 @router.post("/clean-upload")
-@limiter.limit("15/minute")
+@limiter.limit("150/minute")
 async def clean_uploaded_media(
     request: Request,
     file: UploadFile = File(...),
     stealth_mode: bool = Form(False),
     quality: int = Form(99),
+    save_to_vault: bool = Form(False),
 ):
     """
     Upload an image or video file directly to clean all metadata losslessly, return download URL and comparison report.
@@ -516,16 +517,22 @@ async def clean_uploaded_media(
 
         clean_url = f"/outputs/videos/{clean_filename}"
 
-        try:
-            db_save_asset(
-                filename=clean_filename,
-                asset_type="videos",
-                url=clean_url,
-                prompt=f"Uploaded & Lossless Cleaned Video: {clean_orig}",
-                parameters={"stealth_mode": stealth_mode, "stream_copy": True},
-            )
-        except Exception:
-            pass
+        if save_to_vault:
+            try:
+                db_save_asset(
+                    filename=clean_filename,
+                    asset_type="videos",
+                    url=clean_url,
+                    prompt=f"Lossless Cleaned Video: {clean_orig}",
+                    parameters={
+                        "source_file": clean_orig,
+                        "stealth_mode": stealth_mode,
+                        "bytes_saved": clean_res.get("bytes_saved", 0),
+                        "stream_copy": True,
+                    },
+                )
+            except Exception as db_err:
+                logger.warning("Could not register cleaned video in DB: %s", db_err)
 
         return {
             "success": True,
@@ -583,16 +590,17 @@ async def clean_uploaded_media(
 
         clean_url = f"/outputs/images/{clean_filename}"
 
-        try:
-            db_save_asset(
-                filename=clean_filename,
-                asset_type="images",
-                url=clean_url,
-                prompt=f"Uploaded & Cleaned: {clean_orig}",
-                parameters={"stealth_mode": stealth_mode, "quality": quality},
-            )
-        except Exception:
-            pass
+        if save_to_vault:
+            try:
+                db_save_asset(
+                    filename=clean_filename,
+                    asset_type="images",
+                    url=clean_url,
+                    prompt=f"Uploaded & Cleaned: {clean_orig}",
+                    parameters={"stealth_mode": stealth_mode, "quality": quality},
+                )
+            except Exception:
+                pass
 
         return {
             "success": True,
@@ -713,7 +721,7 @@ async def clean_video_endpoint(req: MetadataCleanRequest, request: Request):
 
 
 @router.post("/video/clean-upload")
-@limiter.limit("15/minute")
+@limiter.limit("150/minute")
 async def clean_video_upload_endpoint(
     request: Request,
     file: UploadFile = File(...),
@@ -725,7 +733,7 @@ async def clean_video_upload_endpoint(
 
 # Dedicated Explicit Audio Endpoints
 @router.post("/audio/inspect")
-@limiter.limit("30/minute")
+@limiter.limit("60/minute")
 async def inspect_audio_endpoint(req: MetadataInspectRequest, request: Request):
     """Inspect audio file metadata directly."""
     target_path = _resolve_target_media_path(req.url, req.path, req.filename)
@@ -738,14 +746,14 @@ async def inspect_audio_endpoint(req: MetadataInspectRequest, request: Request):
 
 
 @router.post("/audio/clean")
-@limiter.limit("20/minute")
+@limiter.limit("60/minute")
 async def clean_audio_endpoint(req: MetadataCleanRequest, request: Request):
     """Clean audio file metadata losslessly with FFmpeg stream copy."""
     return await clean_metadata(req, request)
 
 
 @router.post("/audio/clean-upload")
-@limiter.limit("15/minute")
+@limiter.limit("150/minute")
 async def clean_audio_upload_endpoint(
     request: Request,
     file: UploadFile = File(...),
@@ -822,7 +830,7 @@ async def inject_metadata_endpoint(req: MetadataInjectRequest, request: Request)
 
 
 @router.post("/inject-upload")
-@limiter.limit("15/minute")
+@limiter.limit("150/minute")
 async def inject_upload_endpoint(
     request: Request,
     file: UploadFile = File(...),
@@ -830,6 +838,7 @@ async def inject_upload_endpoint(
     gps_preset: Optional[str] = Form(None),
     stealth_mode: bool = Form(False),
     quality: int = Form(98),
+    save_to_vault: bool = Form(False),
 ):
     """Upload media directly, strip AI metadata, and inject authentic camera/GPS EXIF."""
     clean_orig = sanitize_filename(file.filename or "photo.jpg")
@@ -863,6 +872,19 @@ async def inject_upload_endpoint(
             clean_url = f"/outputs/videos/{injected_filename}"
             res["url"] = clean_url
             res["clean_url"] = clean_url
+
+            if save_to_vault:
+                try:
+                    db_save_asset(
+                        filename=injected_filename,
+                        asset_type="videos",
+                        url=clean_url,
+                        prompt=f"Camera Injected Video ({camera_preset}): {clean_orig}",
+                        parameters={"source_file": clean_orig, "camera_preset": camera_preset, "gps_preset": gps_preset},
+                    )
+                except Exception as db_err:
+                    logger.warning("Could not register injected video in DB: %s", db_err)
+
             return res
         finally:
             if orig_path.exists():
@@ -896,6 +918,19 @@ async def inject_upload_endpoint(
             clean_url = f"/outputs/images/{injected_filename}"
             res["url"] = clean_url
             res["clean_url"] = clean_url
+
+            if save_to_vault:
+                try:
+                    db_save_asset(
+                        filename=injected_filename,
+                        asset_type="images",
+                        url=clean_url,
+                        prompt=f"Camera Injected Image ({camera_preset}): {clean_orig}",
+                        parameters={"source_file": clean_orig, "camera_preset": camera_preset, "gps_preset": gps_preset, "quality": quality},
+                    )
+                except Exception as db_err:
+                    logger.warning("Could not register injected image in DB: %s", db_err)
+
             return res
         finally:
             if orig_path.exists():
