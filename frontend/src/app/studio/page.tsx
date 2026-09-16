@@ -170,32 +170,10 @@ function AllInOneStudioContent() {
   return (
     <div className="min-h-screen pb-20">
       {/* ── Studio Master Switcher Bar (Sticky Top Header) ── */}
-      <div className="sticky top-[56px] z-30 bg-white/95 dark:bg-[#0c0c11]/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] py-2 px-3 sm:px-6 transition-all shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          
-          {/* Left: Studio Identity & Live Sync Pill */}
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            <div className="w-8 h-8 rounded-xl bg-zinc-950 dark:bg-white flex items-center justify-center text-white dark:text-zinc-950 shadow-xs shrink-0">
-              <Zap className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-heading font-extrabold text-zinc-900 dark:text-white tracking-tight uppercase">
-                  All-In-One Creative Studio
-                </h1>
-                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Sync
-                </span>
-              </div>
-              <p className="text-[11px] font-jakarta text-zinc-500 dark:text-zinc-400 line-clamp-1">
-                {currentTabConfig.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Center / Right: Direct Studio Mode Switcher Tabs */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] shadow-inner shrink-0 w-full sm:w-auto justify-center sm:justify-start">
+      <div className="sticky top-[56px] z-30 bg-white/95 dark:bg-[#0c0c11]/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] py-2.5 px-3 sm:px-6 transition-all shadow-xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-center">
+          {/* Direct Studio Mode Switcher Tabs */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] shadow-inner overflow-x-auto max-w-full no-scrollbar justify-start sm:justify-center">
             {STUDIO_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -205,17 +183,17 @@ function AllInOneStudioContent() {
                   type="button"
                   onClick={() => handleTabChange(tab.id)}
                   className={cn(
-                    "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-heading font-bold transition-all duration-200 cursor-pointer select-none",
+                    "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-heading font-bold transition-all duration-200 cursor-pointer select-none whitespace-nowrap shrink-0",
                     isActive
                       ? tab.activeColor
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/[0.04]"
                   )}
                 >
-                  <Icon className={cn("w-3.5 h-3.5", isActive ? "" : tab.color)} />
+                  <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? "" : tab.color)} />
                   <span>{tab.label}</span>
                   <span
                     className={cn(
-                      "hidden lg:inline-block text-[9px] font-mono font-extrabold px-1.5 py-0.2 rounded-md uppercase tracking-wider",
+                      "text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0",
                       isActive
                         ? "bg-black/15 dark:bg-white/20 text-current"
                         : "bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400"
@@ -227,7 +205,6 @@ function AllInOneStudioContent() {
               );
             })}
           </div>
-
         </div>
       </div>
 
