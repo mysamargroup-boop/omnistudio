@@ -80,6 +80,32 @@ import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
 import BrandKitModal from "@/components/brand/BrandKitModal";
 import AudioMusicLibraryModal from "@/components/audio/AudioMusicLibraryModal";
 import PromptVaultModal from "@/components/prompt/PromptVaultModal";
+import Dropdown, { DropdownOption } from "@/components/ui/Dropdown";
+
+const VIDEO_CAMERA_OPTIONS: DropdownOption[] = [
+  { value: "sony_fx3", label: "Sony FX3 Cinema Line (ILME-FX3)", badge: "Cinema" },
+  { value: "arri_alexa", label: "ARRI ALEXA Mini LF (Hollywood Prime)", badge: "Cinema" },
+  { value: "red_v_raptor", label: "RED V-RAPTOR 8K VV (8K RAW Cinema)", badge: "Cinema" },
+  { value: "canon_c70", label: "Canon Cinema EOS C70 (RF Cinema)", badge: "Cinema" },
+  { value: "blackmagic_6k", label: "Blackmagic Pocket Cinema 6K Pro", badge: "Cinema" },
+  { value: "dji_ronin_4d", label: "DJI Ronin 4D 8K (Steadicam Gimbal)", badge: "Gimbal" },
+  { value: "iphone_15_pro", label: "Apple iPhone 15 Pro Max (ProRes 4K)", badge: "Phone" },
+  { value: "sony_a7iv", label: "Sony Alpha 7 IV (ILCE-7M4)", badge: "Mirrorless" },
+  { value: "canon_eos_r5", label: "Canon EOS R5 (Full Frame)", badge: "Mirrorless" },
+  { value: "nikon_z8", label: "Nikon Z 8 (Flagship N-RAW)", badge: "Mirrorless" },
+  { value: "fujifilm_xt5", label: "Fujifilm X-T5 (Film Simulation)", badge: "Mirrorless" },
+];
+
+const VIDEO_GPS_OPTIONS: DropdownOption[] = [
+  { value: "none", label: "No Geotag (Private Location)", badge: "OFF" },
+  { value: "tokyo", label: "Tokyo, Japan" },
+  { value: "new_york", label: "New York City, USA" },
+  { value: "london", label: "London, UK" },
+  { value: "paris", label: "Paris, France" },
+  { value: "mumbai", label: "Mumbai, India" },
+  { value: "delhi", label: "New Delhi, India" },
+  { value: "dubai", label: "Dubai, UAE" },
+];
 
 type VideoMode = "first_frame" | "first_to_last_frame" | "multi_frame" | "text_to_video" | "motion_transfer" | "video_editor";
 
@@ -1802,10 +1828,7 @@ function VideoStudioContent() {
   return (
     <div className="relative h-full flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
-      <div className={cn(
-        "flex-shrink-0 sticky flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md w-full overflow-hidden transition-all",
-        isInsideStudio ? "top-[107px] z-30" : "top-[53px] z-30"
-      )}>
+      <div className="flex-shrink-0 sticky top-0 z-30 flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md w-full overflow-hidden transition-all">
         {/* Left: Mode Tabs (flex-1 scrollable, never pushes right utilities off-screen) */}
         <div className="flex-1 min-w-0 overflow-x-auto no-scrollbar flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
           <button
@@ -2332,23 +2355,13 @@ function VideoStudioContent() {
                           <label className="text-[10px] font-mono uppercase text-zinc-500 font-semibold block">
                             Camera Hardware / Cinema Line
                           </label>
-                          <select
+                          <Dropdown
+                            options={VIDEO_CAMERA_OPTIONS}
                             value={videoCameraPreset}
-                            onChange={(e) => setVideoCameraPreset(e.target.value)}
-                            className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-white dark:bg-[#121824] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
-                          >
-                            <option value="sony_fx3">Sony FX3 Cinema Line (ILME-FX3)</option>
-                            <option value="arri_alexa">ARRI ALEXA Mini LF (Hollywood Prime)</option>
-                            <option value="red_v_raptor">RED V-RAPTOR 8K VV (8K RAW Cinema)</option>
-                            <option value="canon_c70">Canon Cinema EOS C70 (RF Cinema)</option>
-                            <option value="blackmagic_6k">Blackmagic Pocket Cinema 6K Pro</option>
-                            <option value="dji_ronin_4d">DJI Ronin 4D 8K (Steadicam Gimbal)</option>
-                            <option value="iphone_15_pro">Apple iPhone 15 Pro Max (ProRes 4K)</option>
-                            <option value="sony_a7iv">Sony Alpha 7 IV (ILCE-7M4)</option>
-                            <option value="canon_eos_r5">Canon EOS R5 (Full Frame)</option>
-                            <option value="nikon_z8">Nikon Z 8 (Flagship N-RAW)</option>
-                            <option value="fujifilm_xt5">Fujifilm X-T5 (Film Simulation)</option>
-                          </select>
+                            onChange={(val) => setVideoCameraPreset(val)}
+                            size="md"
+                            triggerClassName="bg-white dark:bg-[#121824] border-zinc-200 dark:border-white/10 text-xs font-mono py-2 rounded-xl"
+                          />
                         </div>
 
                         {/* Location / GPS Dropdown */}
@@ -2356,20 +2369,13 @@ function VideoStudioContent() {
                           <label className="text-[10px] font-mono uppercase text-zinc-500 font-semibold block">
                             Location Geotag
                           </label>
-                          <select
+                          <Dropdown
+                            options={VIDEO_GPS_OPTIONS}
                             value={videoGpsPreset}
-                            onChange={(e) => setVideoGpsPreset(e.target.value)}
-                            className="w-full text-xs font-mono px-3 py-2 rounded-xl bg-white dark:bg-[#121824] border border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
-                          >
-                            <option value="none">No Geotag (Private Location)</option>
-                            <option value="tokyo">Tokyo, Japan</option>
-                            <option value="new_york">New York City, USA</option>
-                            <option value="london">London, UK</option>
-                            <option value="paris">Paris, France</option>
-                            <option value="mumbai">Mumbai, India</option>
-                            <option value="delhi">New Delhi, India</option>
-                            <option value="dubai">Dubai, UAE</option>
-                          </select>
+                            onChange={(val) => setVideoGpsPreset(val)}
+                            size="md"
+                            triggerClassName="bg-white dark:bg-[#121824] border-zinc-200 dark:border-white/10 text-xs font-mono py-2 rounded-xl"
+                          />
                         </div>
 
                         {/* Inject Button */}
@@ -2378,7 +2384,7 @@ function VideoStudioContent() {
                             type="button"
                             disabled={injectingVideoMetadata || cleaningVideoMetadata}
                             onClick={handleInjectGeneratedVideoMetadata}
-                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white font-mono font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                            className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white font-mono font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
                           >
                             {injectingVideoMetadata ? (
                               <>

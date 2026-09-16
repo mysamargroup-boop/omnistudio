@@ -1568,7 +1568,7 @@ export default function ImageStudioPage() {
       {/* Top Bar: Studio Mode Tabs & Guide Trigger (Always Sticky across all studio modes) */}
       <div className={cn(
         "sticky z-30 bg-[#fafafa]/95 dark:bg-[#06060a]/95 backdrop-blur-md shadow-xs border-b border-black/[0.08] dark:border-white/[0.08] transition-all",
-        isInsideStudio ? "top-[107px]" : "top-14 sm:top-16"
+        isInsideStudio ? "top-0" : "top-14 sm:top-16"
       )}>
         {/* Row 1: Studio Mode Tabs & Action Buttons */}
         <div className="flex items-center justify-between gap-3 sm:gap-4 py-1.5 sm:py-2 px-3 sm:px-4 w-full overflow-x-auto no-scrollbar">

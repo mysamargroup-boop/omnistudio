@@ -56,6 +56,7 @@ import {
 import { inspectMediaInBrowser } from "@/lib/browserMetadataInspector";
 import { formatBytes, cn } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
+import Dropdown from "@/components/ui/Dropdown";
 
 interface MetadataCleanerStudioProps {
   initialImageUrl?: string;
@@ -178,6 +179,26 @@ export default function MetadataCleanerStudio({
       }
     }).catch(() => {});
   }, []);
+
+  const cameraOptions = useMemo(() => {
+    const cams = presetsData?.cameras || CAMERA_PRESET_FALLBACKS;
+    return Object.entries(cams).map(([key, item]: [string, any]) => ({
+      value: key,
+      label: item.name || key,
+      badge: item.category || undefined,
+      description: item.lens ? `${item.make || ""} • ${item.lens}` : undefined,
+    }));
+  }, [presetsData]);
+
+  const gpsOptions = useMemo(() => {
+    const gps = presetsData?.gps || GPS_PRESET_FALLBACKS;
+    return Object.entries(gps).map(([key, item]: [string, any]) => ({
+      value: key,
+      label: item.name || key,
+      badge: key === "none" ? "OFF" : "GPS",
+      icon: <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />,
+    }));
+  }, [presetsData]);
 
   // UI state
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -1197,293 +1218,6 @@ export default function MetadataCleanerStudio({
             )}
           </div>
 
-          {/* Cleaner Configuration Controls */}
-          {previewUrl && (
-            <div className="p-6 rounded-3xl bg-white/95 dark:bg-[#0c121e]/95 border border-zinc-200 dark:border-white/10 space-y-5 shadow-xl dark:shadow-2xl backdrop-blur-md">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-zinc-800 dark:text-zinc-200">
-                    Cleaning Strategy & Privacy Engine
-                  </h3>
-                </div>
-                <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                  LOSSLESS MODE ACTIVE
-                </span>
-              </div>
-
-              {/* Browser-Only Mode (Zero Network Upload) */}
-              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-emerald-500" />
-                      In-Browser Mode (Zero Network Upload)
-                    </span>
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                      100% PRIVATE
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    Inspect video, audio, and images directly in browser memory without sending a single byte to the server. File is held temporarily in RAM and destroyed when tab closes.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !browserOnlyMode;
-                    setBrowserOnlyMode(next);
-                    if (selectedFile) {
-                      inspectCurrentSource(selectedFile, undefined, undefined, next);
-                    }
-                  }}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                    browserOnlyMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
-                      browserOnlyMode ? "translate-x-5" : "translate-x-0"
-                    )}
-                  />
-                </button>
-              </div>
-
-              {/* Backend Storage Option (Ephemeral RAM vs Save to Vault) */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
-                <div className="space-y-1 max-w-md">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                      Backend Storage Destination
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[9px] font-mono px-2 py-0.5 rounded border font-semibold",
-                        zeroDiskMode
-                          ? "bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
-                          : "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                      )}
-                    >
-                      {zeroDiskMode ? "ZERO-DISK (EPHEMERAL)" : "SAVE TO VAULT"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    {zeroDiskMode
-                      ? "Zero Backend Storage: Processed purely in temporary RAM and purged immediately. Never saved to server disk or database."
-                      : "Vault Library Storage: Cleaned media will be saved to your permanent Asset Vault for library browsing and future downloads."}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-200/70 dark:bg-black/40 border border-zinc-300 dark:border-white/10 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setZeroDiskMode(true)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer",
-                      zeroDiskMode
-                        ? "bg-cyan-600 text-white shadow-sm font-bold"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    )}
-                  >
-                    Zero-Disk (RAM)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setZeroDiskMode(false)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer",
-                      !zeroDiskMode
-                        ? "bg-emerald-600 text-white shadow-sm font-bold"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    )}
-                  >
-                    Save to Vault
-                  </button>
-                </div>
-              </div>
-
-              {/* Stealth Mode (Scramble SynthID) */}
-              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                      Stealth Mode (SynthID Watermark Neutralizer)
-                    </span>
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                      AI BYPASS
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                    Injects an imperceptible micro-frequency Gaussian dither into pixel matrices. Breaks SynthID neural detection classifiers while human eye perceives 100% pristine visual clarity.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStealthMode(!stealthMode)}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                    stealthMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
-                      stealthMode ? "translate-x-5" : "translate-x-0"
-                    )}
-                  />
-                </button>
-              </div>
-
-              {/* Realistic Camera & GPS Profile Spoofing */}
-              {!isAudio && (
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-cyan-500/30 dark:border-cyan-500/20 space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Camera className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                          Realistic Camera Profile Injection
-                        </span>
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                          HARDWARE SPOOF
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                        Purges AI markers and injects authentic DSLR/Smartphone hardware EXIF (Sony A7IV, Canon R5, iPhone 15 Pro) + optional GPS geotag. Fooled forensic AI detectors expect camera optics.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setInjectCameraProfile(!injectCameraProfile)}
-                      className={cn(
-                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                        injectCameraProfile ? "bg-cyan-600" : "bg-zinc-300 dark:bg-zinc-800"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
-                          injectCameraProfile ? "translate-x-5" : "translate-x-0"
-                        )}
-                      />
-                    </button>
-                  </div>
-
-                  {injectCameraProfile && (
-                    <div className="pt-2 border-t border-zinc-200 dark:border-white/5 space-y-3 animate-in fade-in">
-                      {/* Camera Selection */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-between">
-                          <span>Target Camera Hardware</span>
-                          <span className="text-cyan-600 dark:text-cyan-400 lowercase">
-                            {CAMERA_PRESET_FALLBACKS[cameraPreset]?.category || "hardware"}
-                          </span>
-                        </label>
-                        <select
-                          value={cameraPreset}
-                          onChange={(e) => setCameraPreset(e.target.value)}
-                          className="w-full text-xs font-mono p-2.5 rounded-xl bg-white dark:bg-[#0c121e] border border-zinc-300 dark:border-white/10 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
-                        >
-                          {Object.entries(presetsData?.cameras || CAMERA_PRESET_FALLBACKS).map(([key, item]: [string, any]) => (
-                            <option key={key} value={key}>
-                              {item.name || key}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Active Profile Optics Preview */}
-                      {(() => {
-                        const activeCam = (presetsData?.cameras || CAMERA_PRESET_FALLBACKS)[cameraPreset] || CAMERA_PRESET_FALLBACKS.sony_a7iv;
-                        return (
-                          <div className="p-2.5 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 text-[11px] font-mono text-zinc-700 dark:text-zinc-300 space-y-1">
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">Lens Optics:</span>
-                              <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[170px]">{activeCam.lens}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">Aperture / ISO:</span>
-                              <span className="text-zinc-800 dark:text-zinc-200">f/{activeCam.f_number} • ISO {activeCam.iso}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">Post Software:</span>
-                              <span className="text-zinc-800 dark:text-zinc-200 truncate max-w-[170px]">{activeCam.software}</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* GPS Geotag Selection */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-between">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-emerald-500" />
-                            GPS Geotag Location
-                          </span>
-                        </label>
-                        <select
-                          value={gpsPreset}
-                          onChange={(e) => setGpsPreset(e.target.value)}
-                          className="w-full text-xs font-mono p-2.5 rounded-xl bg-white dark:bg-[#0c121e] border border-zinc-300 dark:border-white/10 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
-                        >
-                          {Object.entries(presetsData?.gps || GPS_PRESET_FALLBACKS).map(([key, item]: [string, any]) => (
-                            <option key={key} value={key}>
-                              {item.name || key}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Action Button */}
-              <button
-                type="button"
-                onClick={handleCleanMetadata}
-                disabled={cleaning || inspecting}
-                className={cn(
-                  "w-full py-3.5 px-6 rounded-2xl font-bold font-heading text-sm transition shadow-lg flex items-center justify-center gap-2.5",
-                  cleaning || inspecting
-                    ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed"
-                    : injectCameraProfile && !isAudio
-                    ? "bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white shadow-cyan-600/25 cursor-pointer"
-                    : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-600/25 cursor-pointer"
-                )}
-              >
-                {cleaning ? (
-                  <>
-                    <Spinner className="w-4 h-4 text-white" />
-                    <span>
-                      {injectCameraProfile && !isAudio
-                        ? "Purging AI & Injecting Real Camera EXIF..."
-                        : "Neutralizing Watermarks & Stripping Provenance..."}
-                    </span>
-                  </>
-                ) : injectCameraProfile && !isAudio ? (
-                  <>
-                    <Camera className="w-4 h-4 text-white" />
-                    <span>Clean AI & Inject Real Camera EXIF</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4 text-white" />
-                    <span>Clean & Strip All AI Metadata</span>
-                  </>
-                )}
-              </button>
-
-              {cleanError && (
-                <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-500 dark:text-red-400" />
-                  <span>{cleanError}</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Right Column: Deep Metadata Inspector & Cleaned Result */}
@@ -2252,6 +1986,313 @@ export default function MetadataCleanerStudio({
           )}
         </div>
       </div>
+
+      {/* ── Full-Width Cleaning Strategy & Privacy Engine ── */}
+      {previewUrl && (
+        <div className="mt-8 p-6 sm:p-8 rounded-3xl bg-white/95 dark:bg-[#0c121e]/95 border border-zinc-200 dark:border-white/10 space-y-6 shadow-xl dark:shadow-2xl backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200/70 dark:border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
+                <SlidersHorizontal className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold font-mono tracking-wider uppercase text-zinc-900 dark:text-zinc-100">
+                  Cleaning Strategy & Privacy Engine
+                </h3>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
+                  Full-stack provenance sanitization, lossless C2PA purging & hardware spoofing
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30 self-start sm:self-auto">
+              LOSSLESS MODE ACTIVE
+            </span>
+          </div>
+
+          {/* 2-Column Responsive Grid for Engine Controls */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Left Column: Storage & Privacy Modes */}
+            <div className="space-y-4">
+              {/* Browser-Only Mode (Zero Network Upload) */}
+              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                      In-Browser Mode (Zero Network Upload)
+                    </span>
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      100% PRIVATE
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Inspect video, audio, and images directly in browser memory without sending a single byte to the server. File is held temporarily in RAM and destroyed when tab closes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !browserOnlyMode;
+                    setBrowserOnlyMode(next);
+                    if (selectedFile) {
+                      inspectCurrentSource(selectedFile, undefined, undefined, next);
+                    }
+                  }}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                    browserOnlyMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                      browserOnlyMode ? "translate-x-5" : "translate-x-0"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Backend Storage Option (Ephemeral RAM vs Save to Vault) */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
+                <div className="space-y-1 max-w-md">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      Backend Storage Destination
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[9px] font-mono px-2 py-0.5 rounded border font-semibold",
+                        zeroDiskMode
+                          ? "bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
+                          : "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                      )}
+                    >
+                      {zeroDiskMode ? "ZERO-DISK (EPHEMERAL)" : "SAVE TO VAULT"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    {zeroDiskMode
+                      ? "Zero Backend Storage: Processed purely in temporary RAM and purged immediately. Never saved to server disk or database."
+                      : "Vault Library Storage: Cleaned media will be saved to your permanent Asset Vault for library browsing and future downloads."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-200/70 dark:bg-black/40 border border-zinc-300 dark:border-white/10 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setZeroDiskMode(true)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer",
+                      zeroDiskMode
+                        ? "bg-cyan-600 text-white shadow-sm font-bold"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                    )}
+                  >
+                    Zero-Disk (RAM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZeroDiskMode(false)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer",
+                      !zeroDiskMode
+                        ? "bg-emerald-600 text-white shadow-sm font-bold"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                    )}
+                  >
+                    Save to Vault
+                  </button>
+                </div>
+              </div>
+
+              {/* Stealth Mode (Scramble SynthID) */}
+              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      Stealth Mode (SynthID Watermark Neutralizer)
+                    </span>
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      AI BYPASS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Injects an imperceptible micro-frequency Gaussian dither into pixel matrices. Breaks SynthID neural detection classifiers while human eye perceives 100% pristine visual clarity.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStealthMode(!stealthMode)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                    stealthMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                      stealthMode ? "translate-x-5" : "translate-x-0"
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Realistic Camera & GPS Profile Spoofing */}
+            <div>
+              {!isAudio ? (
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-cyan-500/30 dark:border-cyan-500/20 space-y-4 h-full flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                            Realistic Camera Profile Injection
+                          </span>
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                            HARDWARE SPOOF
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                          Purges AI markers and injects authentic DSLR/Smartphone hardware EXIF (Sony A7IV, Canon R5, iPhone 15 Pro) + optional GPS geotag.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setInjectCameraProfile(!injectCameraProfile)}
+                        className={cn(
+                          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                          injectCameraProfile ? "bg-cyan-600" : "bg-zinc-300 dark:bg-zinc-800"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                            injectCameraProfile ? "translate-x-5" : "translate-x-0"
+                          )}
+                        />
+                      </button>
+                    </div>
+
+                    {injectCameraProfile && (
+                      <div className="pt-3 border-t border-zinc-200 dark:border-white/5 space-y-3 animate-in fade-in">
+                        {/* Modernized Camera Dropdown */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-between">
+                            <span>Target Camera Hardware</span>
+                            <span className="text-cyan-600 dark:text-cyan-400 lowercase">
+                              {CAMERA_PRESET_FALLBACKS[cameraPreset]?.category || "hardware"}
+                            </span>
+                          </label>
+                          <Dropdown
+                            options={cameraOptions}
+                            value={cameraPreset}
+                            onChange={(val) => setCameraPreset(val)}
+                            size="md"
+                            triggerClassName="bg-white dark:bg-[#0c121e] border-zinc-300 dark:border-white/10 text-xs font-mono py-2 rounded-xl"
+                          />
+                        </div>
+
+                        {/* Active Profile Optics Preview */}
+                        {(() => {
+                          const activeCam = (presetsData?.cameras || CAMERA_PRESET_FALLBACKS)[cameraPreset] || CAMERA_PRESET_FALLBACKS.sony_a7iv;
+                          return (
+                            <div className="p-3 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 text-[11px] font-mono text-zinc-700 dark:text-zinc-300 space-y-1.5">
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">Lens Optics:</span>
+                                <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[220px]">{activeCam.lens}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">Aperture / ISO:</span>
+                                <span className="text-zinc-800 dark:text-zinc-200">f/{activeCam.f_number} • ISO {activeCam.iso}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">Post Software:</span>
+                                <span className="text-zinc-800 dark:text-zinc-200 truncate max-w-[220px]">{activeCam.software}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Modernized GPS Dropdown */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-emerald-500" />
+                              GPS Geotag Location
+                            </span>
+                          </label>
+                          <Dropdown
+                            options={gpsOptions}
+                            value={gpsPreset}
+                            onChange={(val) => setGpsPreset(val)}
+                            size="md"
+                            triggerClassName="bg-white dark:bg-[#0c121e] border-zinc-300 dark:border-white/10 text-xs font-mono py-2 rounded-xl"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200 dark:border-white/5 flex flex-col items-center justify-center text-center space-y-2 h-full">
+                  <Music className="w-8 h-8 text-emerald-500" />
+                  <div className="text-xs font-mono text-zinc-700 dark:text-zinc-300 font-semibold">
+                    Audio Bitstream Mode Active
+                  </div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 max-w-sm">
+                    Camera EXIF and GPS geolocation are omitted for pure audio files. Audio metadata chunks & tags will be sanitized losslessly.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <button
+            type="button"
+            onClick={handleCleanMetadata}
+            disabled={cleaning || inspecting}
+            className={cn(
+              "w-full py-4 px-6 rounded-2xl font-bold font-heading text-sm transition shadow-lg flex items-center justify-center gap-2.5",
+              cleaning || inspecting
+                ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed"
+                : injectCameraProfile && !isAudio
+                ? "bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white shadow-cyan-600/25 cursor-pointer"
+                : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-600/25 cursor-pointer"
+            )}
+          >
+            {cleaning ? (
+              <>
+                <Spinner className="w-4 h-4 text-white" />
+                <span>
+                  {injectCameraProfile && !isAudio
+                    ? "Purging AI & Injecting Real Camera EXIF..."
+                    : "Neutralizing Watermarks & Stripping Provenance..."}
+                </span>
+              </>
+            ) : injectCameraProfile && !isAudio ? (
+              <>
+                <Camera className="w-4 h-4 text-white" />
+                <span>Clean AI & Inject Real Camera EXIF</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-4 h-4 text-white" />
+                <span>Clean & Strip All AI Metadata</span>
+              </>
+            )}
+          </button>
+
+          {cleanError && (
+            <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-red-500 dark:text-red-400" />
+              <span>{cleanError}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Upgraded Asset Vault Selector Modal ── */}
       {showVaultSelector && (

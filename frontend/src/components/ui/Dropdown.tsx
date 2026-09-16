@@ -145,7 +145,7 @@ export default function Dropdown({
       {isOpen && (
         <div
           className={cn(
-            "absolute top-full mt-1.5 z-50 min-w-[220px] max-w-sm max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e0f17]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-zinc-800/90 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
+            "absolute top-full mt-1.5 z-50 min-w-full sm:min-w-[220px] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
             align === "right" ? "right-0" : "left-0",
             menuClassName
           )}
