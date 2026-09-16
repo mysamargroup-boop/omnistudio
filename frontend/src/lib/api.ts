@@ -852,12 +852,14 @@ export const api = {
     gps_preset?: string,
     stealth_mode: boolean = false,
     quality: number = 98,
-    save_to_vault: boolean = false
+    save_to_vault: boolean = false,
+    custom_gps?: { lat: number; lon: number; name?: string }
   ) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("camera_preset", camera_preset);
     if (gps_preset) formData.append("gps_preset", gps_preset);
+    if (custom_gps) formData.append("custom_gps", JSON.stringify(custom_gps));
     formData.append("stealth_mode", stealth_mode ? "true" : "false");
     formData.append("quality", String(quality));
     formData.append("save_to_vault", save_to_vault ? "true" : "false");

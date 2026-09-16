@@ -1121,9 +1121,9 @@ function VideoStudioContent() {
         setResult((prev: any) => ({
           ...prev,
           url: res.clean_url || res.url,
-          filename: res.output_filename || res.clean_filename || prev.filename,
+          filename: res.output_filename || prev.filename,
         }));
-        setVideoMetadata(res.remaining_metadata);
+        setVideoMetadata((res.remaining_metadata as any) || null);
         setCleanSuccessNotice(
           `Authentic camera & container metadata (${res.injected_camera?.model || videoCameraPreset}) successfully injected into video bitstream! AI signatures purged with lossless stream copy.`
         );

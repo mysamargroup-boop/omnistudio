@@ -51,6 +51,10 @@ import AgentFlowChart, { AgentNodeStatus, ALL_22_AGENTS } from "@/components/pip
 import AgentCard from "@/components/pipeline/AgentCard";
 import SceneReviewGrid from "@/components/pipeline/SceneReviewGrid";
 import PipelineActivityLog, { ActivityLogEntry } from "@/components/pipeline/PipelineActivityLog";
+import LiveProgressBar from "@/components/ui/LiveProgressBar";
+
+const DEFAULT_PIPELINE_PROMPT =
+  "Create an ultra-luxury cinematic commercial for an emerald jewelry collection featuring an elegant protagonist walking through a grand moonlit palace with flowing silks and volumetric lighting";
 
 // Curated Master Concept Presets
 const PRESETS = [
@@ -165,7 +169,8 @@ const AGENT_ORDER = [
 
 function PipelineContent() {
   const searchParams = useSearchParams();
-  const [topic, setTopic] = useState(searchParams?.get("topic") || "");
+  const [topic, setTopic] = useState(searchParams?.get("topic") || DEFAULT_PIPELINE_PROMPT);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const [scenes, setScenes] = useState(3);
   const [style, setStyle] = useState("cinematic");
   const [aspectRatio, setAspectRatio] = useState("16:9");
@@ -395,8 +400,13 @@ function PipelineContent() {
   }, []);
 
   const handleLaunchAgency = async () => {
-    if (!topic.trim()) return;
+    const effectiveTopic = topic.trim() || DEFAULT_PIPELINE_PROMPT;
+    if (!topic.trim()) {
+      setTopic(DEFAULT_PIPELINE_PROMPT);
+    }
+    setLaunchError(null);
     setRunning(true);
+    setShowDebugTelemetry(true);
     setMasterVideo(null);
     setChoreographedScenes([]);
     setActivityLogs([]);
@@ -423,7 +433,7 @@ function PipelineContent() {
     try {
       // 1. Start agent pipeline on backend
       const startRes = await api.startAgentPipeline({
-        prompt: topic.trim(),
+        prompt: effectiveTopic,
         mode: agentMode,
         num_scenes: scenes,
         style,
@@ -447,6 +457,7 @@ function PipelineContent() {
       );
     } catch (err: any) {
       if (err.name !== "AbortError") {
+        setLaunchError(err.message || "Pipeline execution failed");
         setActivityLogs((prev) => [
           ...prev,
           {
@@ -917,7 +928,7 @@ function PipelineContent() {
           <button
             type="button"
             onClick={handleLaunchAgency}
-            disabled={running || !topic.trim()}
+            disabled={running}
             className={cn(
               "px-8 py-3.5 rounded-2xl font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50 text-white",
               mode === "autonomous"
@@ -944,24 +955,77 @@ function PipelineContent() {
   );
 
   // ── Render Collapsible 22-Agent Architecture & Telemetry ──
-  const renderTelemetrySection = () => (
-    <div className="pt-2">
-      <button
-        type="button"
-        onClick={() => setShowDebugTelemetry(!showDebugTelemetry)}
-        className="w-full py-3 px-4 rounded-2xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-emerald-500" />
-          <span className="font-bold">
-            {showDebugTelemetry ? "Hide" : "Inspect"} 22 Specialized Agents Architecture & Live Telemetry Stream
-          </span>
-        </div>
-        {showDebugTelemetry ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-      </button>
+  const renderTelemetrySection = () => {
+    const agentEntries = Object.entries(agentStatuses);
+    const completedCount = agentEntries.filter(([_, s]) => s.state === "complete").length;
+    const runningAgent = agentEntries.find(([_, s]) => s.state === "running");
+    const activeAgentObj = runningAgent ? ALL_22_AGENTS.find((a) => a.id === runningAgent[0]) : null;
+    const progressPercent = Math.min(
+      99,
+      Math.max(
+        running ? 6 : 0,
+        Math.round((completedCount / 22) * 100) + (runningAgent ? 3 : 0)
+      )
+    );
+    const isTelemetryOpen = showDebugTelemetry || running;
 
-      {showDebugTelemetry && (
-        <div className="mt-4 space-y-5 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] animate-in fade-in">
+    return (
+      <div ref={studioRef} className="pt-2 space-y-4">
+        {/* Launch Error Banner */}
+        {launchError && (
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 text-xs font-mono flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{launchError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleLaunchAgency()}
+              className="px-3 py-1 bg-rose-500 text-white rounded-lg font-bold text-[10px] hover:bg-rose-600 cursor-pointer shadow"
+            >
+              Retry Launch
+            </button>
+          </div>
+        )}
+
+        {/* Real-time 22-Agent Production Progress Bar */}
+        {running && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            <LiveProgressBar
+              progress={masterVideo ? 100 : progressPercent}
+              stageTitle={
+                activeAgentObj
+                  ? `[${completedCount + 1}/22] ${activeAgentObj.departmentId.toUpperCase()} • ${activeAgentObj.name.toUpperCase()}`
+                  : "22-AGENT AUTONOMOUS PRODUCTION RUNTIME"
+              }
+              statusMessage={
+                activeAgentObj
+                  ? `${activeAgentObj.name} (${activeAgentObj.shortName}) executing production tasks...`
+                  : "Executing multi-agent choreographed film pipeline..."
+              }
+              isActive={true}
+              showTerminal={false}
+              className="border border-emerald-500/30 bg-emerald-500/[0.03] shadow-xl shadow-emerald-500/10"
+            />
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setShowDebugTelemetry(!isTelemetryOpen)}
+          className="w-full py-3 px-4 rounded-2xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-emerald-500" />
+            <span className="font-bold">
+              {isTelemetryOpen ? "Hide" : "Inspect"} 22 Specialized Agents Architecture & Live Telemetry Stream
+            </span>
+          </div>
+          {isTelemetryOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {isTelemetryOpen && (
+          <div className="mt-4 space-y-5 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] animate-in fade-in">
           {/* Formulated Project Brief Card (If Created by Director) */}
           {projectBrief && (
             <div className="p-4 rounded-2xl bg-violet-500/[0.04] border border-violet-500/20 space-y-2">
@@ -1050,7 +1114,8 @@ function PipelineContent() {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   // ── Render Master Screening Room & Omnichannel Distribution ──
   const renderPublishingHub = () => {

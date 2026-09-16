@@ -42,6 +42,7 @@ import {
   Sparkles,
   ArrowUpDown,
   SlidersHorizontal,
+  Sliders,
   Calendar,
   Zap,
   Info,
@@ -105,6 +106,158 @@ interface VaultAsset {
   has_prompt?: boolean;
 }
 
+const VaultCardMedia = React.memo(function VaultCardMedia({
+  file,
+  isVideo,
+  isImage,
+  isAudio,
+}: {
+  file: VaultAsset;
+  isVideo: boolean;
+  isImage: boolean;
+  isAudio: boolean;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [aspectLabel, setAspectLabel] = useState<string>(
+    isVideo ? "VIDEO" : isImage ? "IMAGE" : "AUDIO"
+  );
+
+  return (
+    <div className="w-full relative overflow-hidden rounded-t-2xl bg-zinc-900/90 flex items-center justify-center min-h-[160px]">
+      {/* Shimmer skeleton placeholder while image/video is loading */}
+      {!loaded && !error && !isAudio && (
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 animate-pulse flex items-center justify-center pointer-events-none">
+          <ImageIcon className="w-6 h-6 text-zinc-700 animate-pulse opacity-60" />
+        </div>
+      )}
+
+      {error ? (
+        <div className="w-full h-44 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 flex flex-col items-center justify-center gap-2.5 p-4 text-center select-none border-b border-zinc-800/60">
+          <div
+            className={cn(
+              "w-11 h-11 rounded-xl flex items-center justify-center shadow-lg border",
+              isVideo
+                ? "bg-cyan-950/50 border-cyan-500/30 text-cyan-400"
+                : "bg-emerald-950/50 border-emerald-500/30 text-emerald-400"
+            )}
+          >
+            {isVideo ? <Film className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
+          </div>
+          <div className="flex flex-col items-center max-w-[85%]">
+            <span className="text-[11px] font-medium text-zinc-300 truncate max-w-full">
+              {file.filename}
+            </span>
+            <span className="text-[9px] uppercase tracking-wider text-zinc-500 mt-0.5 font-mono">
+              {isVideo ? "Video Clip" : "Image Asset"} • {formatBytes(file.size_bytes)}
+            </span>
+          </div>
+        </div>
+      ) : isImage ? (
+        <img
+          src={getMediaUrl(file.url)}
+          alt={file.filename}
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            setError(true);
+            setLoaded(true);
+          }}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              const r = img.naturalWidth / img.naturalHeight;
+              let lbl = "IMG";
+              if (r >= 1.6) lbl = "16:9";
+              else if (r <= 0.65) lbl = "9:16";
+              else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
+              else if (r > 0.65 && r < 0.95) lbl = "4:5";
+              else lbl = `${img.naturalWidth}×${img.naturalHeight}`;
+              setAspectLabel(lbl);
+            }
+            setLoaded(true);
+          }}
+          className={cn(
+            "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-500 ease-out will-change-[opacity,transform]",
+            loaded ? "opacity-100 scale-100 filter-none" : "opacity-0 scale-[1.02] blur-xs"
+          )}
+        />
+      ) : isVideo ? (
+        <div className="relative w-full h-full flex items-center justify-center">
+          <video
+            src={`${getMediaUrl(file.url)}${file.url.includes("#") ? "" : "#t=0.5"}`}
+            playsInline
+            loop
+            muted
+            preload="none"
+            onError={() => {
+              setError(true);
+              setLoaded(true);
+            }}
+            onLoadedData={() => {
+              setLoaded(true);
+            }}
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              if (v.videoWidth && v.videoHeight) {
+                const r = v.videoWidth / v.videoHeight;
+                let lbl = "VIDEO";
+                if (r >= 1.6) lbl = "16:9";
+                else if (r <= 0.65) lbl = "9:16";
+                else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
+                else if (r > 0.65 && r < 0.95) lbl = "4:5";
+                else lbl = `${v.videoWidth}×${v.videoHeight}`;
+                setAspectLabel(lbl);
+              }
+            }}
+            className={cn(
+              "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-500 ease-out pointer-events-none will-change-[opacity,transform]",
+              loaded ? "opacity-100 scale-100" : "opacity-0 scale-[1.02]"
+            )}
+          />
+        </div>
+      ) : null}
+
+      {isAudio && (
+        <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[190px]">
+          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
+            <Mic className="w-6 h-6" />
+          </div>
+          <audio
+            src={getMediaUrl(file.url)}
+            controls
+            className="w-full max-w-[200px]"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* Subtle gradient vignette at bottom */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-80 pointer-events-none" />
+
+      {/* Type & Native Aspect Ratio Badge */}
+      <div className="absolute top-3 left-11 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 text-[9px] font-mono text-zinc-300 flex items-center gap-1 pointer-events-none z-20 shadow-sm">
+        {isVideo ? (
+          <>
+            <Film className="w-2.5 h-2.5 text-cyan-400" />
+            <span className="text-cyan-300 font-semibold">{aspectLabel}</span>
+          </>
+        ) : isImage ? (
+          <>
+            <ImageIcon className="w-2.5 h-2.5 text-emerald-400" />
+            <span className="text-zinc-200 font-semibold">{aspectLabel}</span>
+          </>
+        ) : (
+          <>
+            <Mic className="w-2.5 h-2.5 text-rose-400" />
+            <span className="text-rose-300 font-semibold">AUDIO</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+});
+
 export default function VaultPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("all");
@@ -120,6 +273,11 @@ export default function VaultPage() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [collectionFilenames, setCollectionFilenames] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(48);
+
+  useEffect(() => {
+    setVisibleCount(48);
+  }, [tab, search, filterType, filterDate, sortBy, selectedCollectionId]);
 
   // New Feature Modals state
   const [shareModalAsset, setShareModalAsset] = useState<VaultAsset | null>(null);
@@ -1525,7 +1683,7 @@ export default function VaultPage() {
           )}
 
           <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-            {activeFiles.map((file, i) => {
+            {activeFiles.slice(0, visibleCount).map((file, i) => {
               const selected = isSelected(file.type, file.filename);
               const isImage = file.type === "images";
               const isVideo = file.type === "videos" || file.type === "final";
@@ -1565,135 +1723,12 @@ export default function VaultPage() {
                     selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                   )}
                 >
-                {/* Media Display with Faded Smooth Transition & Aspect Ratio */}
-                <div className="w-full relative overflow-hidden rounded-t-2xl bg-zinc-900/90 flex items-center justify-center min-h-[160px]">
-                  {/* Shimmer skeleton placeholder while image/video is loading */}
-                  {!loadedMedia[file.filename] && !mediaErrors[file.filename] && !isAudio && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 animate-pulse flex items-center justify-center pointer-events-none">
-                      <ImageIcon className="w-6 h-6 text-zinc-700 animate-pulse opacity-60" />
-                    </div>
-                  )}
-
-                  {mediaErrors[file.filename] ? (
-                    <div className="w-full h-44 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 flex flex-col items-center justify-center gap-2.5 p-4 text-center select-none border-b border-zinc-800/60">
-                      <div className={cn(
-                        "w-11 h-11 rounded-xl flex items-center justify-center shadow-lg border",
-                        isVideo 
-                          ? "bg-cyan-950/50 border-cyan-500/30 text-cyan-400" 
-                          : "bg-emerald-950/50 border-emerald-500/30 text-emerald-400"
-                      )}>
-                        {isVideo ? <Film className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
-                      </div>
-                      <div className="flex flex-col items-center max-w-[85%]">
-                        <span className="text-[11px] font-medium text-zinc-300 truncate max-w-full">
-                          {file.filename}
-                        </span>
-                        <span className="text-[9px] uppercase tracking-wider text-zinc-500 mt-0.5 font-mono">
-                          {isVideo ? "Video Clip" : "Image Asset"} • {formatBytes(file.size_bytes)}
-                        </span>
-                      </div>
-                    </div>
-                  ) : isImage ? (
-                    <img
-                      src={getMediaUrl(file.url)}
-                      alt={file.filename}
-                      loading="lazy"
-                      decoding="async"
-                      onError={() => {
-                        setMediaErrors((prev) => ({ ...prev, [file.filename]: true }));
-                        setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
-                      }}
-                      onLoad={(e) => {
-                        const img = e.currentTarget;
-                        if (img.naturalWidth && img.naturalHeight) {
-                          const r = img.naturalWidth / img.naturalHeight;
-                          let lbl = "IMG";
-                          if (r >= 1.6) lbl = "16:9";
-                          else if (r <= 0.65) lbl = "9:16";
-                          else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
-                          else if (r > 0.65 && r < 0.95) lbl = "4:5";
-                          else lbl = `${img.naturalWidth}×${img.naturalHeight}`;
-                          setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
-                        }
-                        setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
-                      }}
-                      className={cn(
-                        "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-700 ease-out will-change-[opacity,transform]",
-                        loadedMedia[file.filename]
-                          ? "opacity-100 scale-100 filter-none"
-                          : "opacity-0 scale-[1.02] blur-xs"
-                      )}
-                    />
-                  ) : isVideo ? (
-                    <div className="relative w-full h-full flex items-center justify-center">
-                      <video
-                        src={`${getMediaUrl(file.url)}${file.url.includes("#") ? "" : "#t=0.5"}`}
-                        playsInline
-                        loop
-                        muted
-                        preload="metadata"
-                        onError={() => {
-                          setMediaErrors((prev) => ({ ...prev, [file.filename]: true }));
-                          setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
-                        }}
-                        onLoadedData={() => {
-                          setLoadedMedia((prev) => ({ ...prev, [file.filename]: true }));
-                        }}
-                        onLoadedMetadata={(e) => {
-                          const v = e.currentTarget;
-                          if (v.videoWidth && v.videoHeight) {
-                            const r = v.videoWidth / v.videoHeight;
-                            let lbl = "VIDEO";
-                            if (r >= 1.6) lbl = "16:9";
-                            else if (r <= 0.65) lbl = "9:16";
-                            else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
-                            else if (r > 0.65 && r < 0.95) lbl = "4:5";
-                            else lbl = `${v.videoWidth}×${v.videoHeight}`;
-                            setMediaAspects((prev) => ({ ...prev, [file.filename]: { ratio: r, label: lbl } }));
-                          }
-                        }}
-                        className={cn(
-                          "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-700 ease-out pointer-events-none will-change-[opacity,transform]",
-                          loadedMedia[file.filename]
-                            ? "opacity-100 scale-100"
-                            : "opacity-0 scale-[1.02]"
-                        )}
-                      />
-                    </div>
-                  ) : null}
-
-                  {isAudio && (
-                  <div className="w-full bg-zinc-900 flex flex-col items-center justify-center gap-3 p-6 min-h-[190px]">
-                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-rose-400">
-                      <Mic className="w-6 h-6" />
-                    </div>
-                    <audio src={getMediaUrl(file.url)} controls className="w-full max-w-[200px]" onClick={(e) => e.stopPropagation()} />
-                  </div>
-                )}
-
-                {/* Subtle gradient vignette at bottom */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent opacity-80 pointer-events-none" />
-
-                {/* Type & Native Aspect Ratio Badge */}
-                <div className="absolute top-3 left-11 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10 text-[9px] font-mono text-zinc-300 flex items-center gap-1 pointer-events-none z-20 shadow-sm">
-                  {isVideo ? (
-                    <>
-                      <Film className="w-2.5 h-2.5 text-cyan-400" />
-                      <span className="text-cyan-300 font-semibold">{mediaAspects[file.filename]?.label || "VIDEO"}</span>
-                    </>
-                  ) : isImage ? (
-                    <>
-                      <ImageIcon className="w-2.5 h-2.5 text-emerald-400" />
-                      <span className="text-zinc-200 font-semibold">{mediaAspects[file.filename]?.label || "IMAGE"}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-2.5 h-2.5 text-rose-400" />
-                      <span className="text-rose-300 font-semibold">AUDIO</span>
-                    </>
-                  )}
-                </div>
-              </div>
+                  <VaultCardMedia
+                    file={file}
+                    isVideo={isVideo}
+                    isImage={isImage}
+                    isAudio={isAudio}
+                  />
 
               {/* Multi-Select Trigger (Top Left) */}
               <button
@@ -2072,6 +2107,19 @@ export default function VaultPage() {
           </div>
         )}
           </div>
+        </div>
+      )}
+
+      {/* Progressive Load More Button */}
+      {activeFiles.length > visibleCount && (
+        <div className="flex justify-center pt-8 pb-16">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + 48)}
+            className="px-6 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs font-semibold shadow-lg border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95"
+          >
+            Load More Assets ({activeFiles.length - visibleCount} remaining)
+          </button>
         </div>
       )}
 

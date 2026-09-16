@@ -877,6 +877,7 @@ async def inject_upload_endpoint(
     file: UploadFile = File(...),
     camera_preset: str = Form("sony_a7iv"),
     gps_preset: Optional[str] = Form(None),
+    custom_gps: Optional[str] = Form(None),
     stealth_mode: bool = Form(False),
     quality: int = Form(98),
     save_to_vault: bool = Form(False),
@@ -884,6 +885,13 @@ async def inject_upload_endpoint(
     """Upload media directly, strip AI metadata, and inject authentic camera/GPS EXIF."""
     clean_orig = sanitize_filename(file.filename or "photo.jpg")
     ext = Path(clean_orig).suffix.lower() or ".jpg"
+
+    custom_gps_dict = None
+    if custom_gps:
+        try:
+            custom_gps_dict = json.loads(custom_gps) if isinstance(custom_gps, str) else custom_gps
+        except Exception:
+            pass
 
     content = await file.read()
     if ext in VIDEO_EXTENSIONS:
@@ -905,6 +913,7 @@ async def inject_upload_endpoint(
                 output_path=str(injected_path),
                 camera_preset=camera_preset,
                 gps_preset=gps_preset if gps_preset and gps_preset != "none" else None,
+                custom_gps=custom_gps_dict,
                 stealth_mode=stealth_mode,
             )
             if not res.get("success"):
@@ -913,6 +922,15 @@ async def inject_upload_endpoint(
             clean_url = f"/outputs/videos/{injected_filename}"
             res["url"] = clean_url
             res["clean_url"] = clean_url
+
+            if custom_gps_dict and "lat" in custom_gps_dict and "lon" in custom_gps_dict:
+                res["injected_gps"] = {
+                    "has_gps": True,
+                    "latitude": float(custom_gps_dict["lat"]),
+                    "longitude": float(custom_gps_dict["lon"]),
+                    "formatted": f"{custom_gps_dict.get('name', 'Custom Location')} ({custom_gps_dict['lat']}, {custom_gps_dict['lon']})",
+                    "google_maps_url": f"https://www.google.com/maps?q={custom_gps_dict['lat']},{custom_gps_dict['lon']}"
+                }
 
             if save_to_vault:
                 try:
@@ -950,6 +968,7 @@ async def inject_upload_endpoint(
                 output_path=str(injected_path),
                 camera_preset=camera_preset,
                 gps_preset=gps_preset if gps_preset and gps_preset != "none" else None,
+                custom_gps=custom_gps_dict,
                 stealth_mode=stealth_mode,
                 quality=quality,
             )
@@ -959,6 +978,15 @@ async def inject_upload_endpoint(
             clean_url = f"/outputs/images/{injected_filename}"
             res["url"] = clean_url
             res["clean_url"] = clean_url
+
+            if custom_gps_dict and "lat" in custom_gps_dict and "lon" in custom_gps_dict:
+                res["injected_gps"] = {
+                    "has_gps": True,
+                    "latitude": float(custom_gps_dict["lat"]),
+                    "longitude": float(custom_gps_dict["lon"]),
+                    "formatted": f"{custom_gps_dict.get('name', 'Custom Location')} ({custom_gps_dict['lat']}, {custom_gps_dict['lon']})",
+                    "google_maps_url": f"https://www.google.com/maps?q={custom_gps_dict['lat']},{custom_gps_dict['lon']}"
+                }
 
             if save_to_vault:
                 try:

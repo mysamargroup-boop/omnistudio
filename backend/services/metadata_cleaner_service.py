@@ -1302,13 +1302,32 @@ REALISTIC_CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
 }
 
 REALISTIC_GPS_PRESETS: Dict[str, Dict[str, Any]] = {
-    "mumbai": {"id": "mumbai", "name": "Mumbai, India", "lat": 19.0760, "lon": 72.8777},
-    "delhi": {"id": "delhi", "name": "New Delhi, India", "lat": 28.6139, "lon": 77.2090},
-    "new_york": {"id": "new_york", "name": "New York City, USA", "lat": 40.7128, "lon": -74.0060},
-    "london": {"id": "london", "name": "London, UK", "lat": 51.5074, "lon": -0.1278},
-    "tokyo": {"id": "tokyo", "name": "Tokyo, Japan", "lat": 35.6762, "lon": 139.6503},
-    "paris": {"id": "paris", "name": "Paris, France", "lat": 48.8566, "lon": 2.3522},
-    "dubai": {"id": "dubai", "name": "Dubai, UAE", "lat": 25.2048, "lon": 55.2708},
+    # Major Indian Cities & Production Hubs
+    "mumbai": {"id": "mumbai", "name": "Mumbai, Maharashtra, India", "lat": 19.0760, "lon": 72.8777, "country": "India"},
+    "delhi": {"id": "delhi", "name": "New Delhi, Delhi, India", "lat": 28.6139, "lon": 77.2090, "country": "India"},
+    "bengaluru": {"id": "bengaluru", "name": "Bengaluru (Bangalore), Karnataka, India", "lat": 12.9716, "lon": 77.5946, "country": "India"},
+    "hyderabad": {"id": "hyderabad", "name": "Hyderabad, Telangana, India", "lat": 17.3850, "lon": 78.4867, "country": "India"},
+    "chennai": {"id": "chennai", "name": "Chennai, Tamil Nadu, India", "lat": 13.0827, "lon": 80.2707, "country": "India"},
+    "kolkata": {"id": "kolkata", "name": "Kolkata, West Bengal, India", "lat": 22.5726, "lon": 88.3639, "country": "India"},
+    "pune": {"id": "pune", "name": "Pune, Maharashtra, India", "lat": 18.5204, "lon": 73.8567, "country": "India"},
+    "ahmedabad": {"id": "ahmedabad", "name": "Ahmedabad, Gujarat, India", "lat": 23.0225, "lon": 72.5714, "country": "India"},
+    "jaipur": {"id": "jaipur", "name": "Jaipur (Pink City), Rajasthan, India", "lat": 26.9124, "lon": 75.7873, "country": "India"},
+    "surat": {"id": "surat", "name": "Surat, Gujarat, India", "lat": 21.1702, "lon": 72.8311, "country": "India"},
+    "lucknow": {"id": "lucknow", "name": "Lucknow, Uttar Pradesh, India", "lat": 26.8467, "lon": 80.9462, "country": "India"},
+    "chandigarh": {"id": "chandigarh", "name": "Chandigarh, Punjab/Haryana, India", "lat": 30.7333, "lon": 76.7794, "country": "India"},
+    "goa": {"id": "goa", "name": "Panaji, Goa, India", "lat": 15.4909, "lon": 73.8278, "country": "India"},
+    "varanasi": {"id": "varanasi", "name": "Varanasi (Kashi), Uttar Pradesh, India", "lat": 25.3176, "lon": 82.9739, "country": "India"},
+    "kochi": {"id": "kochi", "name": "Kochi (Cochin), Kerala, India", "lat": 9.9312, "lon": 76.2673, "country": "India"},
+    "indore": {"id": "indore", "name": "Indore, Madhya Pradesh, India", "lat": 22.7196, "lon": 75.8577, "country": "India"},
+    "bhopal": {"id": "bhopal", "name": "Bhopal, Madhya Pradesh, India", "lat": 23.2599, "lon": 77.4126, "country": "India"},
+    "nagpur": {"id": "nagpur", "name": "Nagpur, Maharashtra, India", "lat": 21.1458, "lon": 79.0882, "country": "India"},
+    # International Production Capitals
+    "new_york": {"id": "new_york", "name": "New York City, USA", "lat": 40.7128, "lon": -74.0060, "country": "USA"},
+    "london": {"id": "london", "name": "London, UK", "lat": 51.5074, "lon": -0.1278, "country": "UK"},
+    "tokyo": {"id": "tokyo", "name": "Tokyo, Japan", "lat": 35.6762, "lon": 139.6503, "country": "Japan"},
+    "paris": {"id": "paris", "name": "Paris, France", "lat": 48.8566, "lon": 2.3522, "country": "France"},
+    "dubai": {"id": "dubai", "name": "Dubai, UAE", "lat": 25.2048, "lon": 55.2708, "country": "UAE"},
+    "singapore": {"id": "singapore", "name": "Singapore", "lat": 1.3521, "lon": 103.8198, "country": "Singapore"},
 }
 
 

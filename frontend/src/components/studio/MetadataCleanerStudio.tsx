@@ -42,6 +42,7 @@ import {
   Mic,
   FileAudio,
   Files,
+  Navigation,
 } from "lucide-react";
 import {
   api,
@@ -57,6 +58,7 @@ import { inspectMediaInBrowser } from "@/lib/browserMetadataInspector";
 import { formatBytes, cn } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
 import Dropdown from "@/components/ui/Dropdown";
+import LiveProgressBar from "@/components/ui/LiveProgressBar";
 
 interface MetadataCleanerStudioProps {
   initialImageUrl?: string;
@@ -95,14 +97,49 @@ const CAMERA_PRESET_FALLBACKS: Record<string, any> = {
 
 const GPS_PRESET_FALLBACKS: Record<string, any> = {
   none: { name: "No Geotag (Private / Strip GPS)" },
-  mumbai: { name: "Mumbai, India", lat: 19.076, lon: 72.8777 },
-  delhi: { name: "New Delhi, India", lat: 28.6139, lon: 77.209 },
+  mumbai: { name: "Mumbai, Maharashtra, India", lat: 18.9220, lon: 72.8347 },
+  delhi: { name: "New Delhi, NCR, India", lat: 28.6139, lon: 77.2090 },
+  bengaluru: { name: "Bengaluru (Bangalore), Karnataka, India", lat: 12.9716, lon: 77.5946 },
+  hyderabad: { name: "Hyderabad, Telangana, India", lat: 17.3850, lon: 78.4867 },
+  chennai: { name: "Chennai, Tamil Nadu, India", lat: 13.0827, lon: 80.2707 },
+  kolkata: { name: "Kolkata, West Bengal, India", lat: 22.5726, lon: 88.3639 },
+  pune: { name: "Pune, Maharashtra, India", lat: 18.5204, lon: 73.8567 },
+  ahmedabad: { name: "Ahmedabad, Gujarat, India", lat: 23.0225, lon: 72.5714 },
+  jaipur: { name: "Jaipur, Rajasthan, India", lat: 26.9124, lon: 75.7873 },
+  surat: { name: "Surat, Gujarat, India", lat: 21.1702, lon: 72.8311 },
+  lucknow: { name: "Lucknow, Uttar Pradesh, India", lat: 26.8467, lon: 80.9462 },
+  chandigarh: { name: "Chandigarh, India", lat: 30.7333, lon: 76.7794 },
+  goa: { name: "Goa (Panaji), India", lat: 15.2993, lon: 74.1240 },
+  varanasi: { name: "Varanasi, Uttar Pradesh, India", lat: 25.3176, lon: 82.9739 },
+  kochi: { name: "Kochi, Kerala, India", lat: 9.9312, lon: 76.2673 },
+  indore: { name: "Indore, Madhya Pradesh, India", lat: 22.7196, lon: 75.8577 },
+  bhopal: { name: "Bhopal, Madhya Pradesh, India", lat: 23.2599, lon: 77.4126 },
+  nagpur: { name: "Nagpur, Maharashtra, India", lat: 21.1458, lon: 79.0882 },
   new_york: { name: "New York City, USA", lat: 40.7128, lon: -74.006 },
   london: { name: "London, UK", lat: 51.5074, lon: -0.1278 },
   tokyo: { name: "Tokyo, Japan", lat: 35.6762, lon: 139.6503 },
   paris: { name: "Paris, France", lat: 48.8566, lon: 2.3522 },
   dubai: { name: "Dubai, UAE", lat: 25.2048, lon: 55.2708 },
 };
+
+export const INDIAN_CITY_QUICK_PRESETS = [
+  { name: "Jaipur, Rajasthan", lat: 26.9124, lon: 75.7873 },
+  { name: "Bengaluru, Karnataka", lat: 12.9716, lon: 77.5946 },
+  { name: "Mumbai, Maharashtra", lat: 18.9220, lon: 72.8347 },
+  { name: "New Delhi, NCR", lat: 28.6139, lon: 77.2090 },
+  { name: "Pune, Maharashtra", lat: 18.5204, lon: 73.8567 },
+  { name: "Ahmedabad, Gujarat", lat: 23.0225, lon: 72.5714 },
+  { name: "Lucknow, UP", lat: 26.8467, lon: 80.9462 },
+  { name: "Chandigarh, PB/HR", lat: 30.7333, lon: 76.7794 },
+  { name: "Goa (Panaji)", lat: 15.2993, lon: 74.1240 },
+  { name: "Varanasi, UP", lat: 25.3176, lon: 82.9739 },
+  { name: "Kochi, Kerala", lat: 9.9312, lon: 76.2673 },
+  { name: "Hyderabad, Telangana", lat: 17.3850, lon: 78.4867 },
+  { name: "Chennai, Tamil Nadu", lat: 13.0827, lon: 80.2707 },
+  { name: "Kolkata, West Bengal", lat: 22.5726, lon: 88.3639 },
+  { name: "Surat, Gujarat", lat: 21.1702, lon: 72.8311 },
+  { name: "Indore, MP", lat: 22.7196, lon: 75.8577 },
+];
 
 export default function MetadataCleanerStudio({
   initialImageUrl,
@@ -125,7 +162,7 @@ export default function MetadataCleanerStudio({
   const [browserOnlyMode, setBrowserOnlyMode] = useState(true);
 
   // Zero-Disk Privacy Mode (Ephemeral server inspection: never saved to backend disk)
-  const [zeroDiskMode, setZeroDiskMode] = useState(true);
+  const [zeroDiskMode, setZeroDiskMode] = useState(false);
 
   const isVideo = Boolean(
     selectedFile
@@ -167,6 +204,9 @@ export default function MetadataCleanerStudio({
   const [injectCameraProfile, setInjectCameraProfile] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<string>("sony_a7iv");
   const [gpsPreset, setGpsPreset] = useState<string>("none");
+  const [customCityName, setCustomCityName] = useState<string>("Jaipur, Rajasthan, India");
+  const [customLat, setCustomLat] = useState<number>(26.9124);
+  const [customLon, setCustomLon] = useState<number>(75.7873);
   const [presetsData, setPresetsData] = useState<{ cameras: Record<string, any>; gps: Record<string, any> } | null>(null);
 
   useEffect(() => {
@@ -192,12 +232,21 @@ export default function MetadataCleanerStudio({
 
   const gpsOptions = useMemo(() => {
     const gps = presetsData?.gps || GPS_PRESET_FALLBACKS;
-    return Object.entries(gps).map(([key, item]: [string, any]) => ({
+    const items = Object.entries(gps).map(([key, item]: [string, any]) => ({
       value: key,
       label: item.name || key,
       badge: key === "none" ? "OFF" : "GPS",
       icon: <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />,
     }));
+    return [
+      ...items,
+      {
+        value: "custom",
+        label: "+ Custom Indian City / Coordinates (Custom GPS)",
+        badge: "CUSTOM",
+        icon: <Navigation className="w-3.5 h-3.5 text-cyan-400 shrink-0" />,
+      },
+    ];
   }, [presetsData]);
 
   // UI state
@@ -549,10 +598,11 @@ export default function MetadataCleanerStudio({
           res = await api.injectUploadedMedia(
             item.file,
             cameraPreset,
-            gpsPreset !== "none" ? gpsPreset : undefined,
+            gpsPreset !== "none" && gpsPreset !== "custom" ? gpsPreset : undefined,
             stealthMode,
             quality,
-            !zeroDiskMode
+            !zeroDiskMode,
+            gpsPreset === "custom" ? { lat: customLat, lon: customLon, name: customCityName } : undefined
           );
         } else if (item.type === "video") {
           res = await api.cleanUploadedVideo(item.file, stealthMode, !zeroDiskMode);
@@ -651,17 +701,19 @@ export default function MetadataCleanerStudio({
           res = await api.injectUploadedMedia(
             selectedFile,
             cameraPreset,
-            gpsPreset !== "none" ? gpsPreset : undefined,
+            gpsPreset !== "none" && gpsPreset !== "custom" ? gpsPreset : undefined,
             stealthMode,
             quality,
-            !zeroDiskMode
+            !zeroDiskMode,
+            gpsPreset === "custom" ? { lat: customLat, lon: customLon, name: customCityName } : undefined
           );
         } else if (previewUrl || sourcePath) {
           res = await api.injectMetadata({
             url: previewUrl || undefined,
             path: sourcePath || undefined,
             camera_preset: cameraPreset,
-            gps_preset: gpsPreset !== "none" ? gpsPreset : undefined,
+            gps_preset: gpsPreset !== "none" && gpsPreset !== "custom" ? gpsPreset : undefined,
+            custom_gps: gpsPreset === "custom" ? { lat: customLat, lon: customLon, name: customCityName } : undefined,
             stealth_mode: stealthMode,
             quality: quality,
           });
@@ -2231,6 +2283,91 @@ export default function MetadataCleanerStudio({
                             triggerClassName="bg-white dark:bg-[#0c121e] border-zinc-300 dark:border-white/10 text-xs font-mono py-2 rounded-xl"
                           />
                         </div>
+
+                        {/* Custom Geotag & Indian Cities Builder */}
+                        {gpsPreset === "custom" && (
+                          <div className="p-3 rounded-xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/25 space-y-2.5 animate-in fade-in">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-mono uppercase text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
+                                <Navigation className="w-3 h-3 text-cyan-500" />
+                                Custom Coordinates & Indian Cities
+                              </span>
+                              <a
+                                href={`https://www.google.com/maps?q=${customLat},${customLon}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] font-mono text-cyan-500 hover:text-cyan-400 flex items-center gap-0.5 underline underline-offset-2"
+                              >
+                                View Map <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                              </a>
+                            </div>
+
+                            {/* Indian Cities Quick Chips */}
+                            <div className="space-y-1">
+                              <div className="text-[9px] font-mono text-zinc-400 uppercase tracking-wider">Quick Select Indian City:</div>
+                              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
+                                {INDIAN_CITY_QUICK_PRESETS.map((city) => {
+                                  const isSelected = customCityName.startsWith(city.name.split(",")[0]);
+                                  return (
+                                    <button
+                                      key={city.name}
+                                      type="button"
+                                      onClick={() => {
+                                        setCustomCityName(`${city.name}, India`);
+                                        setCustomLat(city.lat);
+                                        setCustomLon(city.lon);
+                                      }}
+                                      className={cn(
+                                        "px-2 py-0.5 rounded-md text-[10px] font-mono transition cursor-pointer border",
+                                        isSelected
+                                          ? "bg-cyan-500 text-black font-bold border-cyan-400 shadow-sm shadow-cyan-500/20"
+                                          : "bg-white/50 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-white/10 hover:border-cyan-500/50"
+                                      )}
+                                    >
+                                      {city.name.split(",")[0]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* City Name Input */}
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-mono text-zinc-500 uppercase">Location / City Label</label>
+                              <input
+                                type="text"
+                                value={customCityName}
+                                onChange={(e) => setCustomCityName(e.target.value)}
+                                placeholder="E.g. Jaipur, Rajasthan, India"
+                                className="w-full px-2.5 py-1.5 text-xs font-mono rounded-lg bg-white dark:bg-[#070b13] border border-zinc-300 dark:border-white/10 text-zinc-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                              />
+                            </div>
+
+                            {/* Lat & Lon Inputs */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-mono text-zinc-500 uppercase">Latitude (°N/S)</label>
+                                <input
+                                  type="number"
+                                  step="0.0001"
+                                  value={customLat}
+                                  onChange={(e) => setCustomLat(parseFloat(e.target.value) || 0)}
+                                  className="w-full px-2.5 py-1.5 text-xs font-mono rounded-lg bg-white dark:bg-[#070b13] border border-zinc-300 dark:border-white/10 text-zinc-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-mono text-zinc-500 uppercase">Longitude (°E/W)</label>
+                                <input
+                                  type="number"
+                                  step="0.0001"
+                                  value={customLon}
+                                  onChange={(e) => setCustomLon(parseFloat(e.target.value) || 0)}
+                                  className="w-full px-2.5 py-1.5 text-xs font-mono rounded-lg bg-white dark:bg-[#070b13] border border-zinc-300 dark:border-white/10 text-zinc-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2248,6 +2385,33 @@ export default function MetadataCleanerStudio({
               )}
             </div>
           </div>
+
+          {/* Real-time Progress Bar During Cleaning or Inspecting */}
+          {cleaning && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <LiveProgressBar
+                progress={cleanProgress}
+                stageTitle={injectCameraProfile && !isAudio ? "HARDWARE EXIF & OPTICS INJECTION" : "STEALTH METADATA PURGE ENGINE"}
+                statusMessage={cleanStage || "Processing media bitstream..."}
+                isActive={true}
+                showTerminal={false}
+                className="border border-emerald-500/30 bg-emerald-500/[0.03] shadow-lg shadow-emerald-500/10"
+              />
+            </div>
+          )}
+
+          {inspecting && !cleaning && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+              <LiveProgressBar
+                progress={inspectProgress}
+                stageTitle="FORENSIC MEDIA SCANNER"
+                statusMessage={inspectStage || "Scanning C2PA manifests, SynthID watermarks & container atoms..."}
+                isActive={true}
+                showTerminal={false}
+                className="border border-cyan-500/30 bg-cyan-500/[0.03] shadow-lg shadow-cyan-500/10"
+              />
+            </div>
+          )}
 
           {/* Action Button */}
           <button
