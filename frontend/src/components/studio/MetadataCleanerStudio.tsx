@@ -335,33 +335,33 @@ export default function MetadataCleanerStudio({
   }, [vaultImages, vaultTab, vaultSearch, hideSmallTestFiles]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8 p-4 md:p-6 pb-24 text-zinc-100">
+    <div className="w-full max-w-7xl mx-auto space-y-8 p-4 md:p-6 pb-24 text-zinc-900 dark:text-zinc-100">
       {/* ── Top Header Banner ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-[#0a0f18]/90 p-6 md:p-8 backdrop-blur-xl shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 dark:border-emerald-500/25 bg-white/90 dark:bg-[#0a0f18]/90 p-6 md:p-8 backdrop-blur-xl shadow-xl dark:shadow-2xl">
         <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-28 -mt-28" />
         <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 shadow-sm">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 dark:border-emerald-500/35 shadow-xs">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Lossless Sanitizer
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-[#141b2a] text-cyan-300 border border-cyan-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-cyan-50 dark:bg-[#141b2a] text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                 Deep EXIF & Optics
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                 SynthID Neutralizer
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-purple-500/15 text-purple-300 border border-purple-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono uppercase bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
                 C2PA Stripper
               </span>
             </div>
-            <h1 className="text-2xl md:text-4xl font-extrabold font-heading text-white tracking-tight">
+            <h1 className="text-2xl md:text-4xl font-extrabold font-heading text-zinc-900 dark:text-white tracking-tight">
               AI Metadata & Provenance Engine
             </h1>
-            <p className="text-sm text-zinc-300 leading-relaxed">
+            <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
               Extract complete EXIF camera optics, GPS coordinates, generation prompts, and container tags.
               Strip hidden AI watermarks and cryptographic manifests losslessly with 100% sRGB color fidelity.
             </p>
@@ -373,15 +373,15 @@ export default function MetadataCleanerStudio({
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono cursor-pointer transition select-none",
                   zeroDiskMode
-                    ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-300 shadow-sm shadow-emerald-950"
-                    : "bg-[#0f1420] border-white/10 text-zinc-400 hover:text-zinc-200"
+                    ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                    : "bg-zinc-100 dark:bg-[#0f1420] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                 )}
                 title="When enabled, files are analyzed in temporary memory and immediately deleted from server disk"
               >
                 <div
                   className={cn(
                     "w-2 h-2 rounded-full transition-all",
-                    zeroDiskMode ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-zinc-600"
+                    zeroDiskMode ? "bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-zinc-400 dark:bg-zinc-600"
                   )}
                 />
                 <span className="font-semibold">
@@ -400,9 +400,9 @@ export default function MetadataCleanerStudio({
                 setShowVaultSelector(true);
                 loadVaultImages();
               }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#111726] hover:bg-[#161f33] text-zinc-200 border border-white/10 hover:border-emerald-500/40 transition shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-[#111726] hover:bg-zinc-200 dark:hover:bg-[#161f33] text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/40 transition shadow-xs cursor-pointer"
             >
-              <FolderArchive className="w-4 h-4 text-emerald-400" />
+              <FolderArchive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Asset Vault</span>
             </button>
             <button
@@ -429,20 +429,20 @@ export default function MetadataCleanerStudio({
 
       {/* ── Stage 1: Active Progress Bar (Upload, Inspection, Cleaning) ── */}
       {(inspecting || cleaning) && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-[#0c121e]/95 p-5 shadow-2xl backdrop-blur-md animate-in fade-in space-y-3">
+        <div className="rounded-2xl border border-emerald-500/30 bg-white/95 dark:bg-[#0c121e]/95 p-5 shadow-xl dark:shadow-2xl backdrop-blur-md animate-in fade-in space-y-3">
           <div className="flex items-center justify-between text-xs font-mono">
             <div className="flex items-center gap-2">
-              <Spinner className="w-4 h-4 text-emerald-400" />
-              <span className="text-zinc-200 font-semibold uppercase tracking-wider">
+              <Spinner className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-zinc-800 dark:text-zinc-200 font-semibold uppercase tracking-wider">
                 {inspecting ? "Deep Metadata Scanner Active" : "Lossless Sanitizer Active"}
               </span>
-              <span className="text-zinc-400">• {inspecting ? inspectStage : cleanStage}</span>
+              <span className="text-zinc-500 dark:text-zinc-400">• {inspecting ? inspectStage : cleanStage}</span>
             </div>
-            <span className="text-emerald-400 font-bold text-sm">
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
               {inspecting ? `${inspectProgress}%` : `${cleanProgress}%`}
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-black/60 overflow-hidden border border-white/10 relative">
+          <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-black/60 overflow-hidden border border-zinc-200 dark:border-white/10 relative">
             <div
               className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(16,185,129,0.8)]"
               style={{ width: `${inspecting ? inspectProgress : cleanProgress}%` }}
@@ -463,17 +463,17 @@ export default function MetadataCleanerStudio({
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleFileDrop}
             className={cn(
-              "relative rounded-3xl border-2 border-dashed transition-all duration-200 overflow-hidden flex flex-col items-center justify-center min-h-[390px] p-6 text-center bg-[#080d16]/90 backdrop-blur-md shadow-xl",
+              "relative rounded-3xl border-2 border-dashed transition-all duration-200 overflow-hidden flex flex-col items-center justify-center min-h-[390px] p-6 text-center bg-white/90 dark:bg-[#080d16]/90 backdrop-blur-md shadow-xl",
               isDragging
-                ? "border-emerald-400 bg-emerald-950/25 scale-[0.99]"
+                ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/25 scale-[0.99]"
                 : previewUrl
                 ? "border-emerald-500/25 hover:border-emerald-500/50"
-                : "border-white/10 hover:border-emerald-500/40"
+                : "border-zinc-300 dark:border-white/10 hover:border-emerald-500/40"
             )}
           >
             {previewUrl ? (
               <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
-                <div className="relative max-h-[360px] max-w-full rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black/50 group">
+                <div className="relative max-h-[360px] max-w-full rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-white/10 bg-black/50 group">
                   {isVideo ? (
                     <video
                       src={previewUrl}
@@ -509,8 +509,8 @@ export default function MetadataCleanerStudio({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-zinc-300">
-                  <span className="truncate max-w-[220px] font-semibold text-emerald-400">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono text-zinc-700 dark:text-zinc-300">
+                  <span className="truncate max-w-[220px] font-semibold text-emerald-600 dark:text-emerald-400">
                     {selectedFile?.name || metadata?.filename || (isVideo ? "Selected Video" : "Selected Image")}
                   </span>
                   <span>•</span>
@@ -522,7 +522,7 @@ export default function MetadataCleanerStudio({
                     </>
                   )}
                   {zeroDiskMode && selectedFile && (
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                       Zero-Disk Mode
                     </span>
                   )}
@@ -530,21 +530,21 @@ export default function MetadataCleanerStudio({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center space-y-4 py-10">
-                <div className="w-16 h-16 rounded-2xl bg-[#101726] border border-white/10 flex items-center justify-center text-zinc-400 shadow-inner group-hover:scale-105 transition">
-                  <FileVideo className="w-8 h-8 text-emerald-400" />
+                <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-[#101726] border border-zinc-200 dark:border-white/10 flex items-center justify-center text-zinc-500 dark:text-zinc-400 shadow-inner group-hover:scale-105 transition">
+                  <FileVideo className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-zinc-200">
+                  <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                     Drag and drop your AI image or video here, or{" "}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-emerald-400 hover:text-emerald-300 underline font-medium cursor-pointer"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium cursor-pointer"
                     >
                       browse files
                     </button>
                   </p>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     Supports PNG, JPG, WEBP, and MP4, MOV, WEBM videos up to 500MB
                   </p>
                 </div>
@@ -555,9 +555,9 @@ export default function MetadataCleanerStudio({
                       setShowVaultSelector(true);
                       loadVaultImages();
                     }}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-mono bg-[#111726] hover:bg-[#182136] text-zinc-200 border border-white/10 hover:border-emerald-500/30 transition flex items-center gap-2 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-mono bg-zinc-100 dark:bg-[#111726] hover:bg-zinc-200 dark:hover:bg-[#182136] text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/30 transition flex items-center gap-2 cursor-pointer"
                   >
-                    <FolderArchive className="w-3.5 h-3.5 text-emerald-400" />
+                    <FolderArchive className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Select from Asset Vault
                   </button>
                 </div>
@@ -567,31 +567,31 @@ export default function MetadataCleanerStudio({
 
           {/* Cleaner Configuration Controls */}
           {previewUrl && (
-            <div className="p-6 rounded-3xl bg-[#0c121e]/95 border border-white/10 space-y-5 shadow-2xl backdrop-blur-md">
+            <div className="p-6 rounded-3xl bg-white/95 dark:bg-[#0c121e]/95 border border-zinc-200 dark:border-white/10 space-y-5 shadow-xl dark:shadow-2xl backdrop-blur-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-zinc-200">
+                  <SlidersHorizontal className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-zinc-800 dark:text-zinc-200">
                     Cleaning Strategy & Privacy Engine
                   </h3>
                 </div>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
                   LOSSLESS MODE ACTIVE
                 </span>
               </div>
 
               {/* Zero-Disk Storage Option Switch */}
-              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-[#070b13] border border-white/5">
+              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-200">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                       Zero-Disk Privacy Mode
                     </span>
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                       RECOMMENDED
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
                     Upload & analyze media in a memory buffer. Files are never permanently saved to server storage, guaranteeing 100% confidentiality.
                   </p>
                 </div>
@@ -600,7 +600,7 @@ export default function MetadataCleanerStudio({
                   onClick={() => setZeroDiskMode(!zeroDiskMode)}
                   className={cn(
                     "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                    zeroDiskMode ? "bg-emerald-600" : "bg-zinc-800"
+                    zeroDiskMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
                   )}
                 >
                   <span
@@ -613,17 +613,17 @@ export default function MetadataCleanerStudio({
               </div>
 
               {/* Stealth Mode (Scramble SynthID) */}
-              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-[#070b13] border border-white/5">
+              <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b13] border border-zinc-200/80 dark:border-white/5">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-200">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                       Stealth Mode (SynthID Watermark Neutralizer)
                     </span>
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                       AI BYPASS
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
                     Injects an imperceptible micro-frequency Gaussian dither into pixel matrices. Breaks SynthID neural detection classifiers while human eye perceives 100% pristine visual clarity.
                   </p>
                 </div>
@@ -632,7 +632,7 @@ export default function MetadataCleanerStudio({
                   onClick={() => setStealthMode(!stealthMode)}
                   className={cn(
                     "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                    stealthMode ? "bg-emerald-600" : "bg-zinc-800"
+                    stealthMode ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-800"
                   )}
                 >
                   <span
@@ -652,7 +652,7 @@ export default function MetadataCleanerStudio({
                 className={cn(
                   "w-full py-3.5 px-6 rounded-2xl font-bold font-heading text-sm transition shadow-lg flex items-center justify-center gap-2.5",
                   cleaning || inspecting
-                    ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                    ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed"
                     : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-600/25 cursor-pointer"
                 )}
               >
@@ -670,8 +670,8 @@ export default function MetadataCleanerStudio({
               </button>
 
               {cleanError && (
-                <div className="p-3.5 rounded-2xl bg-red-950/60 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+                <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-500 dark:text-red-400" />
                   <span>{cleanError}</span>
                 </div>
               )}
@@ -682,36 +682,36 @@ export default function MetadataCleanerStudio({
         {/* Right Column: Deep Metadata Inspector & Cleaned Result */}
         <div className="lg:col-span-6 space-y-6">
           {inspecting ? (
-            <div className="h-[430px] rounded-3xl bg-[#080d16]/90 border border-white/10 flex flex-col items-center justify-center gap-3.5 p-8 text-center backdrop-blur-md">
-              <Spinner className="w-8 h-8 text-emerald-400" />
+            <div className="h-[430px] rounded-3xl bg-white/90 dark:bg-[#080d16]/90 border border-zinc-200 dark:border-white/10 flex flex-col items-center justify-center gap-3.5 p-8 text-center backdrop-blur-md shadow-xl">
+              <Spinner className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
               <div className="space-y-1">
-                <span className="text-xs font-mono font-bold text-zinc-200 tracking-wider uppercase">
+                <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 tracking-wider uppercase">
                   DEEP SCANNING HEADERS & CRYPTOGRAPHIC CLAIMS...
                 </span>
-                <p className="text-[11px] font-mono text-zinc-400">{inspectStage}</p>
+                <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">{inspectStage}</p>
               </div>
             </div>
           ) : inspectError ? (
-            <div className="h-[430px] rounded-3xl bg-[#080d16]/90 border border-red-500/30 flex flex-col items-center justify-center gap-3 p-8 text-center">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-              <p className="text-sm text-red-300 font-semibold">{inspectError}</p>
+            <div className="h-[430px] rounded-3xl bg-red-50/50 dark:bg-[#080d16]/90 border border-red-200 dark:border-red-500/30 flex flex-col items-center justify-center gap-3 p-8 text-center">
+              <AlertTriangle className="w-8 h-8 text-red-500 dark:text-red-400" />
+              <p className="text-sm text-red-700 dark:text-red-300 font-semibold">{inspectError}</p>
             </div>
           ) : metadata ? (
-            <div className="rounded-3xl bg-[#0a0f18]/90 border border-white/10 overflow-hidden backdrop-blur-xl shadow-2xl">
+            <div className="rounded-3xl bg-white/95 dark:bg-[#0a0f18]/90 border border-zinc-200 dark:border-white/10 overflow-hidden backdrop-blur-xl shadow-xl dark:shadow-2xl">
               {/* Provenance Verdict Header */}
               <div
                 className={cn(
                   "p-4 border-b flex items-center justify-between gap-4",
                   metadata.has_ai_metadata
-                    ? "bg-amber-950/30 border-amber-500/20 text-amber-300"
-                    : "bg-emerald-950/30 border-emerald-500/20 text-emerald-300"
+                    ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-300"
+                    : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300"
                 )}
               >
                 <div className="flex items-center gap-3">
                   {metadata.has_ai_metadata ? (
-                    <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+                    <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                   ) : (
-                    <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   )}
                   <div>
                     <div className="text-xs font-bold tracking-wide uppercase font-mono">
@@ -719,7 +719,7 @@ export default function MetadataCleanerStudio({
                         ? "AI Signatures & Metadata Detected"
                         : "Clean Image / Zero AI Signatures"}
                     </div>
-                    <div className="text-[11px] text-zinc-400">
+                    <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
                       {metadata.has_ai_metadata
                         ? `${metadata.detected_generator ? `Identified Model: ${metadata.detected_generator}` : "Metadata chunks present"}`
                         : "No C2PA manifests or known AI generator tags found"}
@@ -729,12 +729,12 @@ export default function MetadataCleanerStudio({
 
                 <div className="flex items-center gap-2">
                   {metadata.c2pa_detected && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-500/30">
                       C2PA LOCKED
                     </span>
                   )}
                   {metadata.synthid_detected && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                       SYNTHID
                     </span>
                   )}
@@ -742,14 +742,14 @@ export default function MetadataCleanerStudio({
               </div>
 
               {/* Sub-navigation tabs for metadata */}
-              <div className="flex flex-wrap border-b border-white/5 bg-[#050810]/70 px-4 pt-2 gap-1">
+              <div className="flex flex-wrap border-b border-zinc-200 dark:border-white/5 bg-zinc-50/80 dark:bg-[#050810]/70 px-4 pt-2 gap-1">
                 <button
                   onClick={() => setActiveTab("overview")}
                   className={cn(
                     "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
                     activeTab === "overview"
-                      ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-zinc-400 hover:text-zinc-200"
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                   )}
                 >
                   Overview & AI
@@ -759,8 +759,8 @@ export default function MetadataCleanerStudio({
                   className={cn(
                     "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
                     activeTab === "camera"
-                      ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-zinc-400 hover:text-zinc-200"
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                   )}
                 >
                   Camera & Optics
@@ -770,8 +770,8 @@ export default function MetadataCleanerStudio({
                   className={cn(
                     "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
                     activeTab === "gps"
-                      ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-zinc-400 hover:text-zinc-200"
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                   )}
                 >
                   GPS Location
@@ -782,8 +782,8 @@ export default function MetadataCleanerStudio({
                     className={cn(
                       "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
                       activeTab === "streams"
-                        ? "border-emerald-400 text-emerald-400"
-                        : "border-transparent text-zinc-400 hover:text-zinc-200"
+                        ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                        : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                     )}
                   >
                     Streams & Codecs
@@ -794,8 +794,8 @@ export default function MetadataCleanerStudio({
                   className={cn(
                     "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
                     activeTab === "rights"
-                      ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-zinc-400 hover:text-zinc-200"
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                   )}
                 >
                   Rights & Creator
@@ -805,8 +805,8 @@ export default function MetadataCleanerStudio({
                   className={cn(
                     "px-3.5 py-2 text-xs font-mono font-semibold border-b-2 transition -mb-[1px] cursor-pointer",
                     activeTab === "raw"
-                      ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-zinc-400 hover:text-zinc-200"
+                      ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                   )}
                 >
                   Raw Tags
@@ -820,29 +820,29 @@ export default function MetadataCleanerStudio({
                   <div className="space-y-4">
                     {/* Basic Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div className="p-3 rounded-2xl bg-[#060a12] border border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-400 uppercase">Format</div>
-                        <div className="text-xs font-mono font-bold text-zinc-200">
+                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Format</div>
+                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
                           {metadata.format || (isVideo ? "MP4" : "PNG")}
                         </div>
                       </div>
-                      <div className="p-3 rounded-2xl bg-[#060a12] border border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-400 uppercase">Dimensions</div>
-                        <div className="text-xs font-mono font-bold text-zinc-200">
+                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">Dimensions</div>
+                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
                           {metadata.width} × {metadata.height}
                         </div>
                       </div>
-                      <div className="p-3 rounded-2xl bg-[#060a12] border border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-400 uppercase">
+                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">
                           {isVideo ? "FPS & Codec" : "Color Mode"}
                         </div>
-                        <div className="text-xs font-mono font-bold text-zinc-200 truncate">
+                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200 truncate">
                           {isVideo ? `${metadata.fps || 30} FPS • ${metadata.video_codec || "H.264"}` : metadata.mode || "sRGB"}
                         </div>
                       </div>
-                      <div className="p-3 rounded-2xl bg-[#060a12] border border-white/5">
-                        <div className="text-[10px] font-mono text-zinc-400 uppercase">File Size</div>
-                        <div className="text-xs font-mono font-bold text-zinc-200">
+                      <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5">
+                        <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 uppercase">File Size</div>
+                        <div className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
                           {metadata.file_size_formatted}
                         </div>
                       </div>
@@ -850,20 +850,20 @@ export default function MetadataCleanerStudio({
 
                     {/* Extracted Prompt */}
                     {metadata.embedded_prompt && (
-                      <div className="p-4 rounded-2xl bg-[#070b14] border border-emerald-500/20 space-y-2">
+                      <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-[#070b14] border border-emerald-500/30 dark:border-emerald-500/20 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono font-bold uppercase text-emerald-400 flex items-center gap-1.5">
+                          <span className="text-[11px] font-mono font-bold uppercase text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5" />
                             Extracted AI Prompt
                           </span>
                           <button
                             onClick={() => copyToClipboard(metadata.embedded_prompt || "")}
-                            className="text-[10px] font-mono flex items-center gap-1 text-zinc-400 hover:text-emerald-300 transition cursor-pointer"
+                            className="text-[10px] font-mono flex items-center gap-1 text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition cursor-pointer"
                           >
                             {copiedPrompt ? (
                               <>
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span className="text-emerald-400">Copied</span>
+                                <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
                               </>
                             ) : (
                               <>
@@ -873,7 +873,7 @@ export default function MetadataCleanerStudio({
                             )}
                           </button>
                         </div>
-                        <p className="text-xs text-zinc-200 font-sans leading-relaxed break-words bg-black/40 p-3 rounded-xl border border-white/5">
+                        <p className="text-xs text-zinc-800 dark:text-zinc-200 font-sans leading-relaxed break-words bg-white dark:bg-black/40 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                           {metadata.embedded_prompt}
                         </p>
                       </div>
@@ -881,20 +881,20 @@ export default function MetadataCleanerStudio({
 
                     {/* Extracted Negative Prompt if found */}
                     {metadata.negative_prompt && (
-                      <div className="p-4 rounded-2xl bg-[#070b14] border border-red-500/20 space-y-2">
+                      <div className="p-4 rounded-2xl bg-rose-50/40 dark:bg-[#070b14] border border-rose-500/30 dark:border-red-500/20 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono font-bold uppercase text-red-400 flex items-center gap-1.5">
+                          <span className="text-[11px] font-mono font-bold uppercase text-rose-700 dark:text-red-400 flex items-center gap-1.5">
                             <Sliders className="w-3.5 h-3.5" />
                             Negative Prompt
                           </span>
                           <button
                             onClick={() => copyToClipboard(metadata.negative_prompt || "", true)}
-                            className="text-[10px] font-mono flex items-center gap-1 text-zinc-400 hover:text-red-300 transition cursor-pointer"
+                            className="text-[10px] font-mono flex items-center gap-1 text-zinc-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-red-300 transition cursor-pointer"
                           >
                             {copiedNegPrompt ? (
                               <>
-                                <Check className="w-3 h-3 text-red-400" />
-                                <span className="text-red-400">Copied</span>
+                                <Check className="w-3 h-3 text-rose-600 dark:text-red-400" />
+                                <span className="text-rose-600 dark:text-red-400">Copied</span>
                               </>
                             ) : (
                               <>
@@ -904,7 +904,7 @@ export default function MetadataCleanerStudio({
                             )}
                           </button>
                         </div>
-                        <p className="text-xs text-zinc-300 font-sans leading-relaxed break-words bg-black/40 p-3 rounded-xl border border-white/5">
+                        <p className="text-xs text-zinc-800 dark:text-zinc-300 font-sans leading-relaxed break-words bg-white dark:bg-black/40 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                           {metadata.negative_prompt}
                         </p>
                       </div>
@@ -912,15 +912,15 @@ export default function MetadataCleanerStudio({
 
                     {/* Parameters Grid */}
                     {metadata.embedded_parameters && Object.keys(metadata.embedded_parameters).length > 0 && (
-                      <div className="p-4 rounded-2xl bg-[#070b14] border border-white/10 space-y-2.5">
-                        <span className="text-[11px] font-mono font-bold uppercase text-cyan-400">
+                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#070b14] border border-zinc-200 dark:border-white/10 space-y-2.5">
+                        <span className="text-[11px] font-mono font-bold uppercase text-cyan-700 dark:text-cyan-400">
                           Generation Parameters & Neural Seeds
                         </span>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
                           {Object.entries(metadata.embedded_parameters).map(([k, v]) => (
-                            <div key={k} className="p-2 rounded-xl bg-black/30 border border-white/5 flex flex-col justify-between">
+                            <div key={k} className="p-2 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5 flex flex-col justify-between">
                               <span className="text-[10px] text-zinc-500 uppercase truncate">{k}</span>
-                              <span className="text-zinc-200 font-semibold truncate">{String(v)}</span>
+                              <span className="text-zinc-800 dark:text-zinc-200 font-semibold truncate">{String(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -929,7 +929,7 @@ export default function MetadataCleanerStudio({
 
                     {/* AI Signatures Badges */}
                     <div className="space-y-2">
-                      <span className="text-[11px] font-mono font-bold uppercase text-zinc-400">
+                      <span className="text-[11px] font-mono font-bold uppercase text-zinc-600 dark:text-zinc-400">
                         AI Provenance & Cryptographic Badges
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -937,8 +937,8 @@ export default function MetadataCleanerStudio({
                           className={cn(
                             "p-3 rounded-2xl border flex items-center justify-between",
                             metadata.c2pa_detected
-                              ? "bg-red-950/30 border-red-500/30 text-red-300"
-                              : "bg-emerald-950/20 border-emerald-500/20 text-emerald-400"
+                              ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300"
+                              : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
                           )}
                         >
                           <span>C2PA / JUMBF Manifest</span>
@@ -950,8 +950,8 @@ export default function MetadataCleanerStudio({
                           className={cn(
                             "p-3 rounded-2xl border flex items-center justify-between",
                             metadata.synthid_detected
-                              ? "bg-amber-950/30 border-amber-500/30 text-amber-300"
-                              : "bg-emerald-950/20 border-emerald-500/20 text-emerald-400"
+                              ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300"
+                              : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
                           )}
                         >
                           <span>SynthID Watermark</span>
@@ -970,17 +970,17 @@ export default function MetadataCleanerStudio({
                     {metadata.camera_info && Object.keys(metadata.camera_info).length > 0 ? (
                       <div className="grid grid-cols-2 gap-2.5 text-xs font-mono">
                         {Object.entries(metadata.camera_info).map(([k, v]) => (
-                          <div key={k} className="p-3 rounded-2xl bg-[#060a12] border border-white/5 space-y-1">
+                          <div key={k} className="p-3 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200/80 dark:border-white/5 space-y-1">
                             <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{k.replace(/_/g, " ")}</div>
-                            <div className="text-zinc-200 font-bold break-words">{String(v)}</div>
+                            <div className="text-zinc-800 dark:text-zinc-200 font-bold break-words">{String(v)}</div>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="py-12 text-center text-zinc-500 font-mono text-xs space-y-2">
-                        <Camera className="w-8 h-8 text-zinc-600 mx-auto" />
+                        <Camera className="w-8 h-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
                         <div>NO HARDWARE CAMERA OPTICS DETECTED</div>
-                        <div className="text-[11px] text-zinc-600">
+                        <div className="text-[11px] text-zinc-400 dark:text-zinc-600">
                           (Common for direct AI synthetic generations without synthetic camera tags)
                         </div>
                       </div>
@@ -992,22 +992,22 @@ export default function MetadataCleanerStudio({
                 {activeTab === "gps" && (
                   <div className="space-y-4">
                     {metadata.gps_info?.has_gps ? (
-                      <div className="p-5 rounded-2xl bg-[#060a12] border border-emerald-500/25 space-y-4">
+                      <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-emerald-500/25 space-y-4">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-5 h-5 text-emerald-400" />
-                          <h4 className="text-xs font-bold font-mono uppercase text-emerald-400">
+                          <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                          <h4 className="text-xs font-bold font-mono uppercase text-emerald-700 dark:text-emerald-400">
                             Geographic Coordinates Found in Headers
                           </h4>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                          <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                          <div className="p-3 rounded-xl bg-white dark:bg-black/40 border border-zinc-200 dark:border-white/5">
                             <span className="text-zinc-500 block text-[10px]">COORDINATES</span>
-                            <span className="text-zinc-200 font-bold">{metadata.gps_info.formatted}</span>
+                            <span className="text-zinc-800 dark:text-zinc-200 font-bold">{metadata.gps_info.formatted}</span>
                           </div>
-                          <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                          <div className="p-3 rounded-xl bg-white dark:bg-black/40 border border-zinc-200 dark:border-white/5">
                             <span className="text-zinc-500 block text-[10px]">DECIMAL (LAT, LON)</span>
-                            <span className="text-zinc-200 font-bold">
+                            <span className="text-zinc-800 dark:text-zinc-200 font-bold">
                               {metadata.gps_info.latitude}, {metadata.gps_info.longitude}
                             </span>
                           </div>
@@ -1027,9 +1027,9 @@ export default function MetadataCleanerStudio({
                       </div>
                     ) : (
                       <div className="py-12 text-center text-zinc-500 font-mono text-xs space-y-2">
-                        <Compass className="w-8 h-8 text-zinc-600 mx-auto" />
+                        <Compass className="w-8 h-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
                         <div>ZERO GPS TAGS EMBEDDED</div>
-                        <div className="text-[11px] text-zinc-600">
+                        <div className="text-[11px] text-zinc-400 dark:text-zinc-600">
                           This media does not contain latitude/longitude tracking metadata.
                         </div>
                       </div>
@@ -1042,15 +1042,15 @@ export default function MetadataCleanerStudio({
                   <div className="space-y-4">
                     {/* Video Tech */}
                     {metadata.video_technical && Object.keys(metadata.video_technical).length > 0 && (
-                      <div className="p-4 rounded-2xl bg-[#060a12] border border-white/10 space-y-3">
-                        <span className="text-xs font-bold font-mono text-cyan-400 uppercase">
+                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 space-y-3">
+                        <span className="text-xs font-bold font-mono text-cyan-700 dark:text-cyan-400 uppercase">
                           Video Stream Metrics
                         </span>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
                           {Object.entries(metadata.video_technical).map(([k, v]) => (
-                            <div key={k} className="p-2.5 rounded-xl bg-black/30 border border-white/5">
+                            <div key={k} className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
                               <span className="text-[10px] text-zinc-500 uppercase block">{k.replace(/_/g, " ")}</span>
-                              <span className="text-zinc-200 font-semibold">{String(v)}</span>
+                              <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{String(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -1059,17 +1059,17 @@ export default function MetadataCleanerStudio({
 
                     {/* Audio Tech */}
                     {metadata.audio_technical?.has_audio && (
-                      <div className="p-4 rounded-2xl bg-[#060a12] border border-white/10 space-y-3">
-                        <span className="text-xs font-bold font-mono text-emerald-400 uppercase">
+                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 space-y-3">
+                        <span className="text-xs font-bold font-mono text-emerald-700 dark:text-emerald-400 uppercase">
                           Audio Stream Metrics
                         </span>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs font-mono">
                           {Object.entries(metadata.audio_technical).map(([k, v]) => {
                             if (k === "has_audio") return null;
                             return (
-                              <div key={k} className="p-2.5 rounded-xl bg-black/30 border border-white/5">
+                              <div key={k} className="p-2.5 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5">
                                 <span className="text-[10px] text-zinc-500 uppercase block">{k.replace(/_/g, " ")}</span>
-                                <span className="text-zinc-200 font-semibold">{String(v)}</span>
+                                <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{String(v)}</span>
                               </div>
                             );
                           })}
@@ -1083,22 +1083,22 @@ export default function MetadataCleanerStudio({
                 {activeTab === "rights" && (
                   <div className="space-y-4">
                     {metadata.rights_and_creator && Object.keys(metadata.rights_and_creator).length > 0 ? (
-                      <div className="p-4 rounded-2xl bg-[#060a12] border border-white/10 space-y-3">
-                        <span className="text-xs font-bold font-mono text-purple-400 uppercase">
+                      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 space-y-3">
+                        <span className="text-xs font-bold font-mono text-purple-700 dark:text-purple-400 uppercase">
                           Copyright & Attribution
                         </span>
                         <div className="space-y-2 text-xs font-mono">
                           {Object.entries(metadata.rights_and_creator).map(([k, v]) => (
-                            <div key={k} className="p-3 rounded-xl bg-black/30 border border-white/5 flex justify-between">
+                            <div key={k} className="p-3 rounded-xl bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/5 flex justify-between">
                               <span className="text-zinc-500 uppercase">{k}:</span>
-                              <span className="text-zinc-200 font-semibold">{String(v)}</span>
+                              <span className="text-zinc-800 dark:text-zinc-200 font-semibold">{String(v)}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
                       <div className="py-12 text-center text-zinc-500 font-mono text-xs space-y-2">
-                        <FileText className="w-8 h-8 text-zinc-600 mx-auto" />
+                        <FileText className="w-8 h-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
                         <div>NO CREATOR OR COPYRIGHT CLAIMS EMBEDDED</div>
                       </div>
                     )}
@@ -1115,11 +1115,11 @@ export default function MetadataCleanerStudio({
                         value={rawTagSearch}
                         onChange={(e) => setRawTagSearch(e.target.value)}
                         placeholder="Search raw tags, atoms, and EXIF keys..."
-                        className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#060a12] border border-white/10 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-9 pr-4 py-2 rounded-xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
-                    <div className="divide-y divide-white/5 border border-white/5 rounded-2xl overflow-hidden text-xs bg-[#060a12]/60">
+                    <div className="divide-y divide-zinc-200 dark:divide-white/5 border border-zinc-200 dark:border-white/5 rounded-2xl overflow-hidden text-xs bg-zinc-50/60 dark:bg-[#060a12]/60">
                       {Object.entries(metadata.exif_tags || metadata.tags || {})
                         .filter(([tag, val]) => {
                           if (!rawTagSearch.trim()) return true;
@@ -1127,9 +1127,9 @@ export default function MetadataCleanerStudio({
                           return tag.toLowerCase().includes(q) || String(val).toLowerCase().includes(q);
                         })
                         .map(([tag, val]) => (
-                          <div key={tag} className="p-3 flex justify-between gap-4 hover:bg-white/[0.03]">
-                            <span className="font-mono text-emerald-400 font-medium">{tag}</span>
-                            <span className="font-mono text-zinc-300 text-right truncate max-w-[300px]">
+                          <div key={tag} className="p-3 flex justify-between gap-4 hover:bg-zinc-100/50 dark:hover:bg-white/[0.03]">
+                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-medium">{tag}</span>
+                            <span className="font-mono text-zinc-700 dark:text-zinc-300 text-right truncate max-w-[300px]">
                               {typeof val === "object" ? JSON.stringify(val) : String(val)}
                             </span>
                           </div>
@@ -1140,9 +1140,9 @@ export default function MetadataCleanerStudio({
               </div>
             </div>
           ) : (
-            <div className="h-[430px] rounded-3xl bg-[#080d16]/90 border border-white/10 flex flex-col items-center justify-center gap-3 p-8 text-center shadow-xl">
-              <Shield className="w-10 h-10 text-zinc-600" />
-              <p className="text-sm text-zinc-400">
+            <div className="h-[430px] rounded-3xl bg-white/90 dark:bg-[#080d16]/90 border border-zinc-200 dark:border-white/10 flex flex-col items-center justify-center gap-3 p-8 text-center shadow-xl">
+              <Shield className="w-10 h-10 text-zinc-400 dark:text-zinc-600" />
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Upload or select an image or video to inspect its hidden metadata & AI provenance
               </p>
             </div>
@@ -1150,27 +1150,27 @@ export default function MetadataCleanerStudio({
 
           {/* Cleaned Result Presentation */}
           {cleanResult && (
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/60 via-[#0a0f18] to-black border border-emerald-500/40 space-y-5 animate-in fade-in duration-300 shadow-2xl">
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30 dark:from-emerald-950/60 dark:via-[#0a0f18] dark:to-black border border-emerald-500/30 dark:border-emerald-500/40 space-y-5 animate-in fade-in duration-300 shadow-xl dark:shadow-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
                     <Check className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold font-heading text-white">
+                    <h4 className="text-sm font-bold font-heading text-zinc-900 dark:text-white">
                       Sanitization Complete
                     </h4>
-                    <p className="text-[11px] text-emerald-400/90 font-mono">
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400/90 font-mono">
                       100% C2PA Stripped • sRGB Color Preserved • Zero Footprint
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="text-xs font-mono font-bold text-emerald-400">
+                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
                     -{cleanResult.saved_percent}% Size
                   </div>
-                  <div className="text-[10px] font-mono text-zinc-400">
+                  <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
                     Saved {formatBytes(cleanResult.saved_bytes)}
                   </div>
                 </div>
@@ -1178,7 +1178,7 @@ export default function MetadataCleanerStudio({
 
               {/* Cleaned Preview & Actions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative rounded-2xl overflow-hidden border border-white/10 max-h-48 bg-black/50 flex items-center justify-center">
+                <div className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-white/10 max-h-48 bg-black/10 dark:bg-black/50 flex items-center justify-center">
                   {isVideo ? (
                     <video
                       src={getMediaUrl(cleanResult.clean_url || cleanResult.url)}
@@ -1200,17 +1200,17 @@ export default function MetadataCleanerStudio({
 
                 <div className="flex flex-col justify-between space-y-3">
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between py-1 border-b border-white/5 font-mono">
+                    <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
                       <span className="text-zinc-500">Cleaned Size:</span>
-                      <span className="text-zinc-200">{formatBytes(cleanResult.cleaned_size_bytes)}</span>
+                      <span className="text-zinc-800 dark:text-zinc-200">{formatBytes(cleanResult.cleaned_size_bytes)}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-white/5 font-mono">
+                    <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
                       <span className="text-zinc-500">EXIF Tags:</span>
-                      <span className="text-emerald-400 font-bold">0 (Clean)</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">0 (Clean)</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-white/5 font-mono">
+                    <div className="flex justify-between py-1 border-b border-zinc-200 dark:border-white/5 font-mono">
                       <span className="text-zinc-500">Stealth Mode:</span>
-                      <span className="text-zinc-200">{cleanResult.stealth_mode ? "Enabled" : "Standard"}</span>
+                      <span className="text-zinc-800 dark:text-zinc-200">{cleanResult.stealth_mode ? "Enabled" : "Standard"}</span>
                     </div>
                   </div>
 
@@ -1227,7 +1227,7 @@ export default function MetadataCleanerStudio({
                       href={getMediaUrl(cleanResult.url || cleanResult.clean_url)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-2 px-4 rounded-xl text-xs font-mono text-zinc-300 hover:text-white bg-[#111726] hover:bg-[#182136] flex items-center justify-center gap-2 border border-white/10 transition"
+                      className="w-full py-2 px-4 rounded-xl text-xs font-mono text-zinc-700 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white bg-zinc-100 hover:bg-zinc-200 dark:bg-[#111726] dark:hover:bg-[#182136] flex items-center justify-center gap-2 border border-zinc-200 dark:border-white/10 transition"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Open Fullscreen</span>
@@ -1242,17 +1242,17 @@ export default function MetadataCleanerStudio({
 
       {/* ── Upgraded Asset Vault Selector Modal ── */}
       {showVaultSelector && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="relative w-full max-w-4xl rounded-3xl bg-[#0b101a] border border-emerald-500/30 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-4xl rounded-3xl bg-white dark:bg-[#0b101a] border border-zinc-200 dark:border-emerald-500/30 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             {/* Modal Header */}
-            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#080d16]">
+            <div className="p-5 border-b border-zinc-200 dark:border-white/10 flex items-center justify-between bg-zinc-50 dark:bg-[#080d16]">
               <div className="flex items-center gap-3">
-                <FolderArchive className="w-5 h-5 text-emerald-400" />
+                <FolderArchive className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <div>
-                  <h3 className="text-sm font-bold font-heading text-white">
+                  <h3 className="text-sm font-bold font-heading text-zinc-900 dark:text-white">
                     Select Media from Asset Vault
                   </h3>
-                  <p className="text-[11px] font-mono text-zinc-400">
+                  <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
                     Choose from generated images, videos, and studio masters
                   </p>
                 </div>
@@ -1260,14 +1260,14 @@ export default function MetadataCleanerStudio({
               <button
                 type="button"
                 onClick={() => setShowVaultSelector(false)}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-white/10 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Filter Bar */}
-            <div className="p-4 border-b border-white/5 bg-[#070b13] flex flex-wrap items-center justify-between gap-3">
+            <div className="p-4 border-b border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-[#070b13] flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -1276,7 +1276,7 @@ export default function MetadataCleanerStudio({
                     "px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition cursor-pointer",
                     vaultTab === "all"
                       ? "bg-emerald-600 text-white"
-                      : "bg-[#101726] text-zinc-400 hover:text-white"
+                      : "bg-zinc-100 dark:bg-[#101726] text-zinc-700 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                   )}
                 >
                   All ({vaultImages.length})
@@ -1288,7 +1288,7 @@ export default function MetadataCleanerStudio({
                     "px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition cursor-pointer",
                     vaultTab === "images"
                       ? "bg-emerald-600 text-white"
-                      : "bg-[#101726] text-zinc-400 hover:text-white"
+                      : "bg-zinc-100 dark:bg-[#101726] text-zinc-700 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                   )}
                 >
                   Images
@@ -1300,7 +1300,7 @@ export default function MetadataCleanerStudio({
                     "px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition cursor-pointer",
                     vaultTab === "videos"
                       ? "bg-emerald-600 text-white"
-                      : "bg-[#101726] text-zinc-400 hover:text-white"
+                      : "bg-zinc-100 dark:bg-[#101726] text-zinc-700 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                   )}
                 >
                   Videos
@@ -1309,24 +1309,24 @@ export default function MetadataCleanerStudio({
 
               {/* Search & Hide tiny files toggle */}
               <div className="flex items-center gap-3 flex-1 max-w-md justify-end">
-                <label className="flex items-center gap-2 text-xs font-mono text-zinc-400 cursor-pointer select-none">
+                <label className="flex items-center gap-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={hideSmallTestFiles}
                     onChange={(e) => setHideSmallTestFiles(e.target.checked)}
-                    className="rounded border-white/20 bg-black/40 text-emerald-500 focus:ring-0"
+                    className="rounded border-zinc-300 dark:border-white/20 bg-white dark:bg-black/40 text-emerald-500 focus:ring-0"
                   />
                   <span>Hide mock files (&lt;10KB)</span>
                 </label>
 
                 <div className="relative w-44 sm:w-56">
-                  <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-2.5" />
+                  <Search className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute left-3 top-2.5" />
                   <input
                     type="text"
                     value={vaultSearch}
                     onChange={(e) => setVaultSearch(e.target.value)}
                     placeholder="Search files..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0e1422] border border-white/10 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-[#0e1422] border border-zinc-200 dark:border-white/10 text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -1336,14 +1336,14 @@ export default function MetadataCleanerStudio({
             <div className="p-5 overflow-y-auto flex-1">
               {loadingVault ? (
                 <div className="py-20 text-center space-y-2">
-                  <Spinner className="w-8 h-8 text-emerald-400 mx-auto" />
-                  <div className="text-xs font-mono text-zinc-400">Loading Asset Vault...</div>
+                  <Spinner className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                  <div className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Loading Asset Vault...</div>
                 </div>
               ) : filteredVaultAssets.length === 0 ? (
-                <div className="py-20 text-center text-zinc-500 text-xs font-mono space-y-2">
-                  <FolderArchive className="w-10 h-10 text-zinc-700 mx-auto" />
+                <div className="py-20 text-center text-zinc-400 dark:text-zinc-500 text-xs font-mono space-y-2">
+                  <FolderArchive className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mx-auto" />
                   <div>NO MATCHING ASSETS FOUND</div>
-                  <div className="text-[11px] text-zinc-600">
+                  <div className="text-[11px] text-zinc-400 dark:text-zinc-600">
                     Try disabling &quot;Hide mock files&quot; or changing your search terms.
                   </div>
                 </div>
@@ -1356,12 +1356,12 @@ export default function MetadataCleanerStudio({
                       <div
                         key={idx}
                         onClick={() => handleSelectFromVault(asset)}
-                        className="group relative rounded-2xl border border-white/10 bg-[#070b13] overflow-hidden cursor-pointer hover:border-emerald-500/80 transition duration-200 shadow-md hover:shadow-emerald-950/40"
+                        className="group relative rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-[#070b13] overflow-hidden cursor-pointer hover:border-emerald-500/80 transition duration-200 shadow-xs hover:shadow-md"
                       >
                         {isAssetVid ? (
-                          <div className="w-full h-32 bg-[#05080f] flex flex-col items-center justify-center gap-2 group-hover:scale-105 transition duration-200">
-                            <Video className="w-8 h-8 text-emerald-400" />
-                            <span className="text-[9px] font-mono text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                          <div className="w-full h-32 bg-zinc-100 dark:bg-[#05080f] flex flex-col items-center justify-center gap-2 group-hover:scale-105 transition duration-200">
+                            <Video className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
                               VIDEO
                             </span>
                           </div>
@@ -1379,19 +1379,19 @@ export default function MetadataCleanerStudio({
 
                         {/* Badges */}
                         <div className="absolute top-2 right-2 flex items-center gap-1">
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase bg-black/70 text-zinc-300 backdrop-blur-xs border border-white/10">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase bg-black/70 text-zinc-200 backdrop-blur-xs border border-white/10">
                             {isAssetVid ? "MP4" : "IMG"}
                           </span>
                         </div>
 
-                        <div className="p-2.5 bg-[#090e18] border-t border-white/5 space-y-0.5">
-                          <div className="text-[11px] font-mono text-zinc-200 truncate group-hover:text-emerald-300 transition">
+                        <div className="p-2.5 bg-white dark:bg-[#090e18] border-t border-zinc-200 dark:border-white/5 space-y-0.5">
+                          <div className="text-[11px] font-mono text-zinc-800 dark:text-zinc-200 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition">
                             {asset.filename}
                           </div>
                           <div className="text-[10px] font-mono text-zinc-500 flex justify-between">
                             <span>{formatBytes(asset.size_bytes || 0)}</span>
                             {asset.size_bytes && asset.size_bytes < 10000 && (
-                              <span className="text-amber-400">Sample</span>
+                              <span className="text-amber-600 dark:text-amber-400">Sample</span>
                             )}
                           </div>
                         </div>

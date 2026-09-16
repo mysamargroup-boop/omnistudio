@@ -99,7 +99,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         "flex flex-col bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 transition-all duration-300 max-w-full overflow-x-clip min-h-screen"
       )}>
         <div className={cn(
-          "sticky top-0 z-40 w-full px-3 sm:px-6 bg-[var(--bg-primary)]/85 backdrop-blur-xl border-b border-transparent transition-all flex-shrink-0",
+          "sticky top-0 z-[1000] w-full px-3 sm:px-6 bg-[var(--bg-primary)]/85 backdrop-blur-xl border-b border-transparent transition-all flex-shrink-0",
           isStudioRoute ? "py-1" : "py-2"
         )}>
           <Header />

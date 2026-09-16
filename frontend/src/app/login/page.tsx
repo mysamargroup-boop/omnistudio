@@ -44,35 +44,31 @@ function playStudioUnlockSound() {
 
     const now = ctx.currentTime;
 
-    // Rich cinematic synth chord progression (C4, G4, C5, E5, B5, C6) with 2.0s acoustic decay
+    // Refined crisp acoustic studio chime (D5 -> A5 with A6 shimmer, ~0.45s fast decay)
     const notes = [
-      { freq: 261.63, delay: 0.00, gain: 0.20, type: "sine" as OscillatorType },
-      { freq: 392.00, delay: 0.06, gain: 0.18, type: "sine" as OscillatorType },
-      { freq: 523.25, delay: 0.12, gain: 0.22, type: "triangle" as OscillatorType },
-      { freq: 659.25, delay: 0.18, gain: 0.20, type: "sine" as OscillatorType },
-      { freq: 987.77, delay: 0.24, gain: 0.14, type: "sine" as OscillatorType },
-      { freq: 1046.50, delay: 0.30, gain: 0.16, type: "sine" as OscillatorType },
+      { freq: 587.33, delay: 0.00, duration: 0.38, gain: 0.18, type: "sine" as OscillatorType },
+      { freq: 880.00, delay: 0.07, duration: 0.42, gain: 0.22, type: "sine" as OscillatorType },
+      { freq: 1760.00, delay: 0.08, duration: 0.25, gain: 0.05, type: "triangle" as OscillatorType },
     ];
 
-    notes.forEach(({ freq, delay, gain, type }) => {
+    notes.forEach(({ freq, delay, duration, gain, type }) => {
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
 
       osc.type = type;
       osc.frequency.setValueAtTime(freq, now + delay);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.004, now + delay + 1.2);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.002, now + delay + duration);
 
-      // Envelope: 40ms attack, gentle sustain, 2.0s exponential decay tail
+      // Fast 12ms attack, crisp natural exponential decay
       gainNode.gain.setValueAtTime(0.0001, now + delay);
-      gainNode.gain.exponentialRampToValueAtTime(gain, now + delay + 0.04);
-      gainNode.gain.exponentialRampToValueAtTime(gain * 0.45, now + delay + 0.6);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + delay + 2.0);
+      gainNode.gain.exponentialRampToValueAtTime(gain, now + delay + 0.012);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
 
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
 
       osc.start(now + delay);
-      osc.stop(now + delay + 2.1);
+      osc.stop(now + delay + duration + 0.02);
     });
   } catch (e) {
     console.warn("Studio unlock chime error:", e);

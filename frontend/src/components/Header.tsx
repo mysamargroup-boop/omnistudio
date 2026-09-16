@@ -119,7 +119,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="mx-auto flex items-center justify-between h-12 glass-dock border border-black/[0.08] dark:border-[#2A2A2D] bg-white/90 dark:bg-[#0E0E10]/95 backdrop-blur-md rounded-xl px-2.5 sm:px-4 shadow-sm w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1440px] select-none transition-all">
+    <header className="relative z-50 mx-auto flex items-center justify-between h-12 glass-dock border border-black/[0.08] dark:border-[#2A2A2D] bg-white/90 dark:bg-[#0E0E10]/95 backdrop-blur-md rounded-xl px-2.5 sm:px-4 shadow-sm w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1440px] select-none transition-all">
       {/* Left: Mobile Trigger & Brand */}
       <div className="flex items-center gap-2 shrink-0">
         <button
@@ -218,7 +218,7 @@ export default function Header() {
 
         {/* Image Dropdown Panel */}
         {activeDropdown === 'image' && (
-          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[500px] flex gap-4 animate-scale-in z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[500px] flex gap-4 animate-scale-in z-[100000] before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
             <div className="flex-1 space-y-1">
               <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Creation Modes</div>
               {IMAGE_FEATURES.map((f) => (
@@ -251,7 +251,7 @@ export default function Header() {
 
         {/* Video Dropdown Panel */}
         {activeDropdown === 'video' && (
-          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[500px] flex gap-4 animate-scale-in z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[500px] flex gap-4 animate-scale-in z-[100000] before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
             <div className="flex-1 space-y-1">
               <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Features</div>
               {VIDEO_FEATURES.map((f) => (
@@ -284,7 +284,7 @@ export default function Header() {
 
         {/* Audio Dropdown Panel */}
         {activeDropdown === 'audio' && (
-          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[480px] flex gap-4 animate-scale-in z-50 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+          <div className="absolute top-full -mt-0.5 left-1/2 -translate-x-1/2 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-3.5 shadow-2xl w-[480px] flex gap-4 animate-scale-in z-[100000] before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
             <div className="flex-1 space-y-1">
               <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 mb-1.5">Audio Modes</div>
               {AUDIO_FEATURES.map((f) => (
@@ -317,7 +317,7 @@ export default function Header() {
 
         {/* More Tools Dropdown Panel */}
         {activeDropdown === 'more' && (
-          <div className="absolute top-full -mt-0.5 right-0 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-2.5 shadow-2xl w-72 animate-scale-in z-50 space-y-1 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
+          <div className="absolute top-full -mt-0.5 right-0 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-2.5 shadow-2xl w-72 animate-scale-in z-[100000] space-y-1 before:absolute before:-top-3 before:left-0 before:right-0 before:h-4 before:content-['']">
             <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-2.5 py-1 font-bold">
               Studio Tools & Utilities
             </div>
@@ -473,7 +473,7 @@ export default function Header() {
           </button>
 
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-60 p-1.5 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl shadow-2xl animate-scale-in z-50 space-y-1">
+            <div className="absolute right-0 top-full mt-2 w-60 p-1.5 bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl shadow-2xl animate-scale-in z-[100000] space-y-1">
               <div className="px-3 py-2 border-b border-black/[0.08] dark:border-white/[0.08]">
                 <div className="font-bold text-xs text-zinc-900 dark:text-white truncate">
                   {displayName}
