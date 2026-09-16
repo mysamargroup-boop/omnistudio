@@ -4,6 +4,7 @@ import logging
 import base64
 import asyncio
 import uuid
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any
 from config import settings
@@ -131,7 +132,8 @@ async def generate_veo_video(
         "instances": [instance],
         "parameters": {
             "aspectRatio": norm_aspect,
-            "sampleCount": 1
+            "sampleCount": 1,
+            "durationSeconds": int(duration_seconds)
         }
     }
 
@@ -249,13 +251,40 @@ async def generate_veo_video(
                 "error": f"Veo completed successfully but no video payload or URI was returned: {resp_data}"
             }
 
+        # Enforce exact requested duration: If Veo generated 8s but user selected 4s, trim it with ffmpeg
+        final_duration = float(duration_seconds)
+        try:
+            from services.ffmpeg_service import get_media_duration
+            actual_dur = await asyncio.to_thread(get_media_duration, local_path)
+            if actual_dur and actual_dur > (float(duration_seconds) + 0.3):
+                logger.info("Veo generated %.2fs; trimming to requested %.2fs with ffmpeg...", actual_dur, float(duration_seconds))
+                trimmed_path = local_path.with_name(f"trim_{local_path.name}")
+                trim_cmd = [
+                    "ffmpeg", "-y", "-i", str(local_path),
+                    "-t", str(float(duration_seconds)),
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+                    "-c:a", "aac",
+                    str(trimmed_path)
+                ]
+                proc = await asyncio.create_subprocess_exec(
+                    *trim_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                )
+                await proc.communicate()
+                if trimmed_path.exists() and trimmed_path.stat().st_size > 1000:
+                    shutil.move(str(trimmed_path), str(local_path))
+                    final_duration = float(duration_seconds)
+            elif actual_dur:
+                final_duration = round(actual_dur, 2)
+        except Exception as trim_err:
+            logger.warning("Veo post-process duration check error: %s", trim_err)
+
         return {
             "success": True,
             "filename": filename,
             "url": f"/outputs/videos/{filename}",
             "local_path": str(local_path),
             "model": "Google Veo 3.1 (DeepMind)",
-            "duration": float(duration_seconds),
+            "duration": final_duration,
             "engine": "Google DeepMind Veo 3.1 Neural Synthesizer"
         }
     except Exception as e:

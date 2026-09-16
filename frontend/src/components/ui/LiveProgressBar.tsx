@@ -14,6 +14,7 @@ interface LiveProgressBarProps {
   stageTitle?: string;
   statusMessage?: string;
   elapsedSeconds?: number;
+  expectedDurationSeconds?: number;
   logs?: LogEntry[];
   isActive?: boolean;
   className?: string;
@@ -25,6 +26,7 @@ export default function LiveProgressBar({
   stageTitle = "SYNTHESIZING MEDIA",
   statusMessage = "Processing neural latent weights...",
   elapsedSeconds = 0,
+  expectedDurationSeconds,
   logs = [],
   isActive = true,
   className,
@@ -47,12 +49,26 @@ export default function LiveProgressBar({
 
   const clampedProgress = Math.min(Math.max(Math.round(progress), 0), 100);
 
-  // Estimate remaining time based on elapsed and progress
+  // Estimate remaining time based on actual model duration or dynamic progress
   const estimatedRemaining = (() => {
-    if (clampedProgress <= 5 || clampedProgress >= 100 || elapsedSeconds < 2) return null;
+    if (clampedProgress >= 100 || !isActive) return null;
+
+    if (expectedDurationSeconds && expectedDurationSeconds > 0) {
+      const remaining = Math.round(expectedDurationSeconds - elapsedSeconds);
+      if (remaining <= 0) {
+        return "Estimated time remaining: Finalizing (~few secs)...";
+      }
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      if (m > 0) return `Estimated time remaining: ~${m}m ${s}s`;
+      return `Estimated time remaining: ~${remaining}s`;
+    }
+
+    if (elapsedSeconds < 1) return "Estimated time remaining: Calculating...";
+    if (clampedProgress <= 5) return null;
     const totalEstimated = (elapsedSeconds / clampedProgress) * 100;
     const remaining = Math.max(1, Math.round(totalEstimated - elapsedSeconds));
-    if (remaining > 600) return null; // Cap at 10 min to avoid wild estimates early on
+    if (remaining > 600) return null;
     const m = Math.floor(remaining / 60);
     const s = remaining % 60;
     if (m > 0) return `Estimated time remaining: ~${m}m ${s}s`;

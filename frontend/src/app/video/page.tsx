@@ -61,6 +61,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   FileVideo,
+  History,
 } from "lucide-react";
 import { api, getMediaUrl, VideoMetadataInspection } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -234,6 +235,135 @@ const INSPIRATION_VIDEOS = [
   },
 ];
 
+function HistoryVideoCard({
+  video,
+  onSelect,
+  onPrecisionEdit,
+}: {
+  video: any;
+  onSelect: (v: any) => void;
+  onPrecisionEdit: (v: any) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
+
+  const displayName = video.filename || "generated_video.mp4";
+  const displayPrompt = video.prompt || video.metadata?.prompt || "";
+
+  return (
+    <div
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="group relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#12131a] shadow-sm transition-all hover:border-emerald-500/50 hover:shadow-md hover:ring-1 hover:ring-emerald-500/30 flex flex-col"
+    >
+      {/* Video Container (Hover to Play) */}
+      <div
+        className="relative aspect-video w-full bg-black overflow-hidden flex items-center justify-center cursor-pointer"
+        onClick={() => onSelect(video)}
+      >
+        <video
+          ref={videoRef}
+          src={getMediaUrl(video.url)}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="w-full h-full object-cover"
+        />
+
+        {/* Center play icon overlay when not playing */}
+        {!isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors pointer-events-none">
+            <div className="w-8 h-8 rounded-full bg-black/60 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-md">
+              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+            </div>
+          </div>
+        )}
+
+        {/* Live Hover Playing Badge */}
+        {isPlaying && (
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-emerald-500 text-black text-[9px] font-mono font-bold flex items-center gap-1 shadow-md z-10">
+            <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+            <span>PLAYING</span>
+          </div>
+        )}
+
+        {/* Duration badge */}
+        {video.duration && (
+          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-xs text-white text-[10px] font-mono font-bold z-10">
+            {video.duration}s
+          </div>
+        )}
+      </div>
+
+      {/* Info & Action Controls */}
+      <div className="p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 truncate" title={displayName}>
+            {displayName}
+          </span>
+          {video.modified && (
+            <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+              {new Date(video.modified * 1000).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+
+        {displayPrompt && (
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+            {displayPrompt}
+          </p>
+        )}
+
+        <div className="flex items-center gap-1.5 pt-1">
+          <button
+            type="button"
+            onClick={() => onSelect(video)}
+            className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+          >
+            <Play className="w-3 h-3 fill-current" />
+            <span>Load</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onPrecisionEdit(video)}
+            className="flex items-center justify-center p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs transition-colors cursor-pointer shrink-0"
+            title="Open in Precision Editor"
+          >
+            <Scissors className="w-3.5 h-3.5 text-amber-500" />
+          </button>
+          <a
+            href={getMediaUrl(video.url)}
+            download
+            className="flex items-center justify-center p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs transition-colors cursor-pointer shrink-0"
+            title="Download MP4"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-500" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VideoStudioContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -301,8 +431,26 @@ function VideoStudioContent() {
   const [mentionAnchor, setMentionAnchor] = useState<{ start: number; end: number } | null>(null);
   const mentionMenuRef = useRef<HTMLDivElement>(null);
 
-  // Render Queue (Midjourney-Style Jobs)
-  const [sidebarTab, setSidebarTab] = useState<"settings" | "queue">("settings");
+  // Render Queue & Video History
+  const [sidebarTab, setSidebarTab] = useState<"settings" | "queue" | "history">("settings");
+  const [historyVideos, setHistoryVideos] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const loadHistoryVideos = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await api.getAllAssets();
+      if (res && res.videos && Array.isArray(res.videos)) {
+        setHistoryVideos(res.videos);
+      } else if (res && res.all && Array.isArray(res.all)) {
+        setHistoryVideos(res.all.filter((a: any) => a.type === "videos" || a.type === "final"));
+      }
+    } catch (e) {
+      console.error("Failed to load video history", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
   const [queueTab, setQueueTab] = useState<"rendering" | "completed" | "failed" | "cancelled">("completed");
   const [renderJobs, setRenderJobs] = useState<Array<{
     id: string;
@@ -462,6 +610,7 @@ function VideoStudioContent() {
       if (typeof draft.lockPhysique === "boolean") setLockPhysique(draft.lockPhysique);
 
       hasHydrated.current = true;
+      loadHistoryVideos();
     }
   }, [searchParams]);
 
@@ -1478,35 +1627,33 @@ function VideoStudioContent() {
     persistJobs([initialJob, ...renderJobs]);
 
     const startTimestamp = Date.now();
+    const expectedSec = model === "ffmpeg_local" ? 8 : (duration > 5 ? 45 : 35);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
-      let curProg = 10;
-      let curStage = "01 • Initializing Frame Buffer";
-      if (elapsed === 1) {
-        curProg = 28;
-        curStage = "02 • Calculating Kinematics";
-        setProgress(28);
-        setStageTitle("02 • Calculating Kinematics");
-        setStatusMessage(`Applying camera vector: ${activeMotion.label} (${resolution}, ${fps} FPS)...`);
-      } else if (elapsed === 3) {
-        curProg = 58;
-        curStage = "03 • Interpolating Frames";
-        setProgress(58);
-        setStageTitle("03 • Interpolating Frames");
-        setStatusMessage("Hardware-accelerated frame interpolation running...");
-      } else if (elapsed === 6) {
-        curProg = 82;
-        curStage = "04 • FFmpeg ProRes Encoding";
-        setProgress(82);
-        setStageTitle("04 • FFmpeg ProRes Encoding");
+      const curProg = Math.min(95, Math.round((elapsed / expectedSec) * 90) + 5);
+      setProgress(curProg);
+
+      let curStage = "01 • Initializing Latents & Scene Buffer";
+      if (curProg < 25) {
+        curStage = "01 • Initializing Latents & Camera Vectors";
+        setStageTitle(curStage);
+        setStatusMessage(`Configuring camera vector: ${activeMotion.label} (${resolution}, ${fps} FPS)...`);
+      } else if (curProg < 60) {
+        curStage = "02 • Synthesizing Diffusion Frames";
+        setStageTitle(curStage);
+        setStatusMessage(`Generating ${duration}s clip with ${activeModel.label}...`);
+      } else if (curProg < 85) {
+        curStage = "03 • Neural Interpolation & Audio Sync";
+        setStageTitle(curStage);
+        setStatusMessage("Hardware-accelerated temporal smoothing running...");
+      } else {
+        curStage = "04 • ProRes & Bitstream Finalizing";
+        setStageTitle(curStage);
         setStatusMessage(`Encoding libx264 container at ${aspectRatio}...`);
-      } else if (elapsed >= 9 && elapsed < 16) {
-        curProg = Math.min(82 + (elapsed - 6) * 2, 95);
-        curStage = "05 • Polishing Stream Container";
-        setProgress(curProg);
       }
+
       setRenderJobs((prev) =>
         prev.map((j) => (j.id === newJobId ? { ...j, progress: curProg, stage: curStage } : j))
       );
@@ -1520,6 +1667,7 @@ function VideoStudioContent() {
       const data = await api.generateVideo(payload);
       setResult(data);
       if (data && data.success) {
+        setHistoryVideos((prev) => [data, ...prev.filter((p) => p.filename !== data.filename)]);
         if (data.metadata) {
           setVideoMetadata(data.metadata);
         } else if (data.url) {
@@ -1713,14 +1861,40 @@ function VideoStudioContent() {
 
         {/* Right: Pinned Utilities (Engine, Character Lock, Guide, Settings) - NEVER overflows */}
         <div className="shrink-0 flex items-center gap-2">
-          {/* Engine & Ken Burns Indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shadow-xs shrink-0">
+          {/* Active Model & Video History Trigger Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (sidebarOpen && sidebarTab === "history") {
+                setSidebarOpen(false);
+              } else {
+                setSidebarOpen(true);
+                setSidebarTab("history");
+                loadHistoryVideos();
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap shadow-xs shrink-0 select-none",
+              sidebarOpen && sidebarTab === "history"
+                ? "bg-emerald-600 text-white border-transparent shadow-emerald-500/20 shadow-md"
+                : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+            )}
+            title="Open Video History & Generated Library"
+          >
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-            <span className="truncate max-w-[130px]">{activeModel.label}</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
+            <span className="truncate max-w-[130px] hidden sm:inline">{activeModel.label}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
               {activeModel.value === "ffmpeg_local" ? "FREE" : activeModel.active ? "ACTIVE" : "KEY"}
             </span>
-          </div>
+            <span className="w-px h-3 bg-emerald-500/30 mx-0.5" />
+            <History className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="font-semibold">History</span>
+            {historyVideos.length > 0 && (
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-extrabold">
+                {historyVideos.length}
+              </span>
+            )}
+          </button>
 
           {/* Character Lock Button */}
           <button
@@ -1844,15 +2018,20 @@ function VideoStudioContent() {
           <>
         {/* Left Workspace / Canvas */}
         <div className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 pb-[540px] sm:pb-[620px] custom-scrollbar relative min-h-0">
-          <div className="max-w-4xl w-full mx-auto space-y-6">
+          <div className="max-w-6xl w-full mx-auto space-y-6">
             {/* 1. Progress Telemetry */}
             {loading && (
-              <div className="w-full max-w-2xl mx-auto py-8 space-y-6 animate-in fade-in duration-200">
+              <div className="w-full max-w-3xl mx-auto py-8 space-y-6 animate-in fade-in duration-200">
                 <LiveProgressBar
                   progress={progress}
                   stageTitle={stageTitle}
                   statusMessage={statusMessage}
                   elapsedSeconds={elapsedSeconds}
+                  expectedDurationSeconds={
+                    model === "ffmpeg_local"
+                      ? 8
+                      : (duration > 5 ? 45 : 35) * (batchCount > 1 ? batchCount : 1)
+                  }
                   logs={telemetryLogs}
                   isActive={loading}
                   showTerminal={true}
@@ -1863,7 +2042,7 @@ function VideoStudioContent() {
             {/* 2. Render Completed Video Player */}
             {!loading && result && result.success && (
               <div className="w-full space-y-4 animate-in fade-in duration-200">
-                <div className="relative rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#111118] shadow-sm max-w-4xl mx-auto">
+                <div className="relative rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#111118] shadow-sm max-w-6xl mx-auto">
                   <video
                     src={getMediaUrl(result.url)}
                     controls
@@ -1916,7 +2095,7 @@ function VideoStudioContent() {
                   </div>
                 </div>
 
-                <div className="max-w-4xl mx-auto p-4 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="max-w-6xl w-full mx-auto p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-zinc-950 dark:text-white">
@@ -1924,12 +2103,12 @@ function VideoStudioContent() {
                       </span>
                       <span className="text-[10px] font-mono text-zinc-500">• {resolution.toUpperCase()}</span>
                     </div>
-                    <p className="text-[11px] font-mono text-zinc-500 truncate max-w-md">
+                    <p className="text-[11px] font-mono text-zinc-500 truncate max-w-lg">
                       {result.filename || "cinematic_video.mp4"}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0 overflow-x-auto">
                     <button
                       type="button"
                       onClick={() => {
@@ -1938,7 +2117,7 @@ function VideoStudioContent() {
                         setShowMetadataInspector(false);
                         setCleanSuccessNotice(null);
                       }}
-                      className="px-4 py-2 rounded-xl text-xs font-mono border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-xl text-xs font-mono border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       New Generation
                     </button>
@@ -1946,7 +2125,7 @@ function VideoStudioContent() {
                       type="button"
                       onClick={() => setShowMetadataInspector((prev) => !prev)}
                       className={cn(
-                        "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border",
+                        "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border whitespace-nowrap shrink-0",
                         showMetadataInspector
                           ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-transparent shadow-sm"
                           : videoMetadata?.has_ai_metadata
@@ -1972,7 +2151,7 @@ function VideoStudioContent() {
                         setPrecisionEditorOpen(true);
                         setSidebarOpen(false);
                       }}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-mono font-bold transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <Scissors className="w-3.5 h-3.5 text-amber-500" />
                       <span>Precision Editor</span>
@@ -1990,7 +2169,7 @@ function VideoStudioContent() {
 
                 {/* AI Video Metadata & Provenance Inspector Panel */}
                 {showMetadataInspector && (
-                  <div className="max-w-4xl mx-auto p-5 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="max-w-6xl w-full mx-auto p-5 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-black/[0.06] dark:border-white/[0.06] pb-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className={cn(
@@ -2917,170 +3096,7 @@ function VideoStudioContent() {
                 </div>
               </div>
 
-              {/* Action Icons Row: 1-Click Prompt Enhancer + Director + Negative Prompt + Character Lock */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* 1-Click Improve Prompt Button */}
-                  <button
-                    type="button"
-                    onClick={handleEnhancePrompt}
-                    disabled={enhancingPrompt}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95 select-none",
-                      enhancingPrompt
-                        ? "magic-pulse-active bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 text-white border-violet-400/80 shadow-[0_0_15px_rgba(168,85,247,0.6)]"
-                        : "bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300"
-                    )}
-                    title="1-Click AI Prompt Enhancer"
-                  >
-                    <Wand2 className={cn("h-3.5 w-3.5 transition-all duration-300", enhancingPrompt ? "scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.95)] animate-pulse text-white" : "text-purple-600 dark:text-purple-400")} />
-                    <span>{enhancingPrompt ? "Enhancing..." : "Improve Prompt"}</span>
-                  </button>
 
-                  {/* AI Director Agent */}
-                  <button
-                    type="button"
-                    onClick={runDirectorAgent}
-                    disabled={directing}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-mono cursor-pointer transition-all"
-                    title="OpenAI Visual Director"
-                  >
-                    <Sparkle className={cn("h-3 w-3 text-amber-500 transition-all", directing ? "animate-pulse scale-110 text-amber-400" : "")} />
-                    <span>Director Agent</span>
-                  </button>
-
-                  {/* Prompt Vault Drawer Button */}
-                  <button
-                    type="button"
-                    onClick={() => setPromptVaultOpen(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border shadow-xs active:scale-95 select-none bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/40"
-                    title="Open Prompt Vault & Presets"
-                  >
-                    <Bookmark className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                    <span>Prompt Vault</span>
-                  </button>
-
-                  {/* Character Lock Quick Toggle Button */}
-                  {activeCharacter?.isLocked ? (
-                    <button
-                      type="button"
-                      onClick={() => setCharacterLockActive(!characterLockActive)}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-1 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition-all active:scale-95 border select-none",
-                        characterLockActive
-                          ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                          : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-500"
-                      )}
-                      title={characterLockActive ? "Character Lock is Active (Click to turn OFF for next generation)" : "Character Lock is Disabled (Click to turn ON)"}
-                    >
-                      {characterLockActive ? (
-                        <UserCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      ) : (
-                        <UserX className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-                      )}
-                      <span className="truncate max-w-[120px]">{activeCharacter.name}</span>
-                      <div className={cn(
-                        "w-6 h-3.5 rounded-full p-0.5 transition-colors relative flex items-center shrink-0",
-                        characterLockActive ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"
-                      )}>
-                        <div className={cn(
-                          "w-2.5 h-2.5 rounded-full bg-white transition-transform transform shadow-xs",
-                          characterLockActive ? "translate-x-2.5" : "translate-x-0"
-                        )} />
-                      </div>
-                      <span className={cn("text-[10px] font-bold font-mono shrink-0", characterLockActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500")}>
-                        {characterLockActive ? "ON" : "OFF"}
-                      </span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSidebarOpen(true);
-                        setOpenSections((prev) => ({ ...prev, character: true }));
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-mono cursor-pointer transition-all active:scale-95"
-                      title="Open Character Studio to Lock Persona"
-                    >
-                      <UserPlus className="h-3.5 w-3.5 text-zinc-400" />
-                      <span>Character Lock</span>
-                    </button>
-                  )}
-
-                  {/* Attach Reference Assets Button */}
-                  <button
-                    type="button"
-                    onClick={() => refFileInputRef.current?.click()}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border shadow-xs active:scale-95",
-                      referenceAssets.length > 0
-                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold"
-                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                    )}
-                    title="Upload reference images or videos to tag with @ in prompt"
-                  >
-                    <Paperclip className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                    <span>Attach @Refs</span>
-                    {referenceAssets.length > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-black text-[9px] font-bold">
-                        {referenceAssets.length}
-                      </span>
-                    )}
-                  </button>
-                  <input
-                    ref={refFileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*,video/*"
-                    className="hidden"
-                    onChange={handleReferenceFilesUpload}
-                  />
-
-                  {/* Negative Prompt Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setShowNegativePrompt(!showNegativePrompt)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border select-none shadow-xs active:scale-95",
-                      showNegativePrompt
-                        ? "bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold"
-                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                    )}
-                    title="Toggle Negative Prompt (Exclude unwanted visuals)"
-                  >
-                    <ShieldAlert className={cn("w-3.5 h-3.5 shrink-0 transition-colors", showNegativePrompt ? "text-rose-500" : "text-zinc-400")} />
-                    <span>Negative Prompt</span>
-                  </button>
-
-                  {/* Audio & Music Library Selector */}
-                  <button
-                    type="button"
-                    onClick={() => setAudioLibraryOpen(true)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono transition-all cursor-pointer border shadow-xs active:scale-95 select-none",
-                      selectedBgmTrack
-                        ? "bg-violet-500/15 border-violet-500/30 text-violet-700 dark:text-violet-300 font-bold"
-                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                    )}
-                    title="Attach background music or SFX from royalty-free library"
-                  >
-                    <Music className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                    <span>{selectedBgmTrack ? selectedBgmTrack.title : "Audio / BGM"}</span>
-                    {selectedBgmTrack && (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedBgmTrack(null);
-                        }}
-                        className="hover:text-rose-500 text-zinc-400 p-0.5 rounded-full"
-                        title="Remove audio track"
-                      >
-                        <X className="w-3 h-3" />
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
 
               {/* Negative Prompt Drawer */}
               {showNegativePrompt && (
@@ -3618,8 +3634,159 @@ function VideoStudioContent() {
                   </div>
                 </div>
 
-                {/* Right: Batch Variation Selector + Submit Button */}
-                <div className="flex items-center gap-2 ml-auto">
+                {/* Right: Tool Tabs (Improve, Director, Vault, Character, Refs, Negative, Audio) + Batch Variation Selector + Submit Button */}
+                <div className="flex items-center gap-1.5 ml-auto flex-wrap sm:flex-nowrap">
+                  {/* 1. Improve Prompt */}
+                  <button
+                    type="button"
+                    onClick={handleEnhancePrompt}
+                    disabled={enhancingPrompt}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-semibold cursor-pointer shadow-2xs transition-all active:scale-95 select-none shrink-0",
+                      enhancingPrompt
+                        ? "magic-pulse-active bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 text-white border-violet-400/80 shadow-[0_0_12px_rgba(168,85,247,0.5)]"
+                        : "bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300"
+                    )}
+                    title="1-Click AI Prompt Enhancer"
+                  >
+                    <Wand2 className={cn("h-3 w-3 transition-all", enhancingPrompt ? "scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.9)] animate-pulse text-white" : "text-purple-600 dark:text-purple-400")} />
+                    <span>{enhancingPrompt ? "Enhancing..." : "Improve Prompt"}</span>
+                  </button>
+
+                  {/* 2. Director Agent */}
+                  <button
+                    type="button"
+                    onClick={runDirectorAgent}
+                    disabled={directing}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono cursor-pointer transition-all active:scale-95 shrink-0"
+                    title="OpenAI Visual Director"
+                  >
+                    <Sparkle className={cn("h-3 w-3 text-amber-500 transition-all", directing ? "animate-pulse scale-110 text-amber-400" : "")} />
+                    <span>Director Agent</span>
+                  </button>
+
+                  {/* 3. Prompt Vault */}
+                  <button
+                    type="button"
+                    onClick={() => setPromptVaultOpen(true)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border shadow-2xs active:scale-95 select-none bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-emerald-500/40 shrink-0"
+                    title="Open Prompt Vault & Presets"
+                  >
+                    <Bookmark className="h-3 w-3 text-emerald-500 shrink-0" />
+                    <span>Prompt Vault</span>
+                  </button>
+
+                  {/* 4. Character Lock */}
+                  {activeCharacter?.isLocked ? (
+                    <button
+                      type="button"
+                      onClick={() => setCharacterLockActive(!characterLockActive)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold cursor-pointer shadow-2xs transition-all active:scale-95 border select-none shrink-0",
+                        characterLockActive
+                          ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-500"
+                      )}
+                      title={characterLockActive ? "Character Lock is Active" : "Character Lock is Disabled"}
+                    >
+                      {characterLockActive ? (
+                        <UserCheck className="h-3 w-3 text-emerald-500 shrink-0" />
+                      ) : (
+                        <UserX className="h-3 w-3 text-zinc-400 shrink-0" />
+                      )}
+                      <span className="truncate max-w-[80px]">{activeCharacter.name}</span>
+                      <span className={cn("text-[9px] font-bold font-mono", characterLockActive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500")}>
+                        {characterLockActive ? "ON" : "OFF"}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSidebarOpen(true);
+                        setSidebarTab("settings");
+                        setOpenSections((prev) => ({ ...prev, character: true }));
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono cursor-pointer transition-all active:scale-95 shrink-0"
+                      title="Open Character Studio to Lock Persona"
+                    >
+                      <UserPlus className="h-3 w-3 text-zinc-400" />
+                      <span>Character Lock</span>
+                    </button>
+                  )}
+
+                  {/* 5. Attach @Refs */}
+                  <button
+                    type="button"
+                    onClick={() => refFileInputRef.current?.click()}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border shadow-2xs active:scale-95 shrink-0",
+                      referenceAssets.length > 0
+                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold"
+                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    )}
+                    title="Upload reference images or videos to tag with @ in prompt"
+                  >
+                    <Paperclip className="h-3 w-3 text-emerald-500 shrink-0" />
+                    <span>Attach @Refs</span>
+                    {referenceAssets.length > 0 && (
+                      <span className="px-1 py-0.2 rounded-full bg-emerald-500 text-black text-[9px] font-bold">
+                        {referenceAssets.length}
+                      </span>
+                    )}
+                  </button>
+                  <input
+                    ref={refFileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleReferenceFilesUpload}
+                  />
+
+                  {/* 6. Negative Prompt */}
+                  <button
+                    type="button"
+                    onClick={() => setShowNegativePrompt(!showNegativePrompt)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border select-none shadow-2xs active:scale-95 shrink-0",
+                      showNegativePrompt
+                        ? "bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold"
+                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    )}
+                    title="Toggle Negative Prompt (Exclude unwanted visuals)"
+                  >
+                    <ShieldAlert className={cn("w-3 h-3 shrink-0 transition-colors", showNegativePrompt ? "text-rose-500" : "text-zinc-400")} />
+                    <span>Negative Prompt</span>
+                  </button>
+
+                  {/* 7. Audio / BGM */}
+                  <button
+                    type="button"
+                    onClick={() => setAudioLibraryOpen(true)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border shadow-2xs active:scale-95 select-none shrink-0",
+                      selectedBgmTrack
+                        ? "bg-violet-500/15 border-violet-500/30 text-violet-700 dark:text-violet-300 font-bold"
+                        : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    )}
+                    title="Attach background music or SFX from royalty-free library"
+                  >
+                    <Music className="h-3 w-3 text-violet-500 shrink-0" />
+                    <span className="truncate max-w-[80px]">{selectedBgmTrack ? selectedBgmTrack.title : "Audio / BGM"}</span>
+                    {selectedBgmTrack && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBgmTrack(null);
+                        }}
+                        className="hover:text-rose-500 text-zinc-400 p-0.5 rounded-full"
+                        title="Remove audio track"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </span>
+                    )}
+                  </button>
                   {/* Batch Selector (1x, 2x, 4x) */}
                   <div className="flex items-center bg-zinc-100 dark:bg-[#16161f] p-0.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] shrink-0 shadow-xs">
                     <span className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 px-1.5 uppercase hidden sm:inline">
@@ -3717,6 +3884,27 @@ function VideoStudioContent() {
                       {renderJobs.length}
                     </span>
                   ) : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarTab("history");
+                    loadHistoryVideos();
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer",
+                    sidebarTab === "history"
+                      ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  )}
+                >
+                  <History className="w-3 h-3 text-emerald-500" />
+                  <span>History</span>
+                  {historyVideos.length > 0 && (
+                    <span className="text-[9px] px-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold">
+                      {historyVideos.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -4780,6 +4968,83 @@ function VideoStudioContent() {
                   <span>Clear Inactive</span>
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* If Video History Tab is active: Generated Videos Gallery with Hover-to-Play */}
+        {sidebarTab === "history" && (
+          <div className="flex flex-col h-full overflow-hidden">
+            {/* Header with count and refresh */}
+            <div className="flex-shrink-0 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/60">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-mono font-bold text-zinc-950 dark:text-white">
+                  Generated Video Library
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                  {historyVideos.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={loadHistoryVideos}
+                disabled={loadingHistory}
+                className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+                title="Refresh Videos"
+              >
+                <RotateCw className={cn("w-3.5 h-3.5", loadingHistory && "animate-spin text-emerald-500")} />
+              </button>
+            </div>
+
+            {/* Video List with Hover-to-Play Cards */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+              {loadingHistory && historyVideos.length === 0 ? (
+                <div className="py-16 text-center space-y-2 text-xs font-mono text-zinc-400">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto text-emerald-500" />
+                  <p>Loading video library...</p>
+                </div>
+              ) : historyVideos.length === 0 ? (
+                <div className="py-16 text-center space-y-2 text-xs font-mono text-zinc-400 px-4">
+                  <Film className="w-8 h-8 mx-auto text-zinc-300 dark:text-zinc-700 stroke-1" />
+                  <p className="font-semibold text-zinc-600 dark:text-zinc-300">No Generated Videos Yet</p>
+                  <p className="text-[11px] text-zinc-400">Videos you generate or save in the studio will appear here automatically.</p>
+                </div>
+              ) : (
+                historyVideos.map((vid, idx) => (
+                  <HistoryVideoCard
+                    key={vid.filename || vid.url || idx}
+                    video={vid}
+                    onSelect={(v) => {
+                      setResult({
+                        success: true,
+                        url: v.url,
+                        filename: v.filename,
+                        duration: v.duration,
+                        model: v.model,
+                      });
+                      if (v.url) {
+                        api.inspectVideoMetadata({ url: v.url, filename: v.filename })
+                          .then((m) => m?.success && setVideoMetadata(m))
+                          .catch(() => {});
+                      }
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    onPrecisionEdit={(v) => {
+                      setPrecisionEditorUrl(v.url);
+                      setPrecisionEditorFilename(v.filename || "video.mp4");
+                      setPrecisionEditorOpen(true);
+                      setSidebarOpen(false);
+                    }}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Bottom info bar */}
+            <div className="flex-shrink-0 p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/60 flex items-center justify-between text-[10px] font-mono text-zinc-400">
+              <span>Hover over video to preview</span>
+              <span className="text-emerald-500 font-semibold">• Ready</span>
             </div>
           </div>
         )}
