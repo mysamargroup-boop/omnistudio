@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Video,
   Loader2,
@@ -369,6 +369,8 @@ function HistoryVideoCard({
 function VideoStudioContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const isInsideStudio = pathname?.startsWith("/studio");
 
   // Mode Selection
   const [mode, setMode] = useState<VideoMode>("first_frame");
@@ -1800,7 +1802,10 @@ function VideoStudioContent() {
   return (
     <div className="relative h-full flex flex-col overflow-hidden font-jakarta bg-[#fafafa] dark:bg-[#06060a]">
       {/* Top Header: Mode Switcher Tabs + Active Engine Indicator + Sidebar Toggle */}
-      <div className="flex-shrink-0 sticky top-0 flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md z-30 w-full overflow-hidden">
+      <div className={cn(
+        "flex-shrink-0 sticky flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md w-full overflow-hidden transition-all",
+        isInsideStudio ? "top-[107px] z-30" : "top-[53px] z-30"
+      )}>
         {/* Left: Mode Tabs (flex-1 scrollable, never pushes right utilities off-screen) */}
         <div className="flex-1 min-w-0 overflow-x-auto no-scrollbar flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
           <button
@@ -1899,7 +1904,16 @@ function VideoStudioContent() {
 
         {/* Right: Pinned Utilities (Engine, Character Lock, Guide, Settings) - NEVER overflows */}
         <div className="shrink-0 flex items-center gap-2">
-          {/* Active Model & Video History Trigger Button */}
+          {/* Active Model Engine Status Indicator (Compact, Non-Tab) */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shrink-0 select-none">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+            <span className="truncate max-w-[120px] font-semibold">{activeModel.label}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-extrabold uppercase">
+              {activeModel.value === "ffmpeg_local" ? "FREE" : activeModel.active ? "ACTIVE" : "KEY"}
+            </span>
+          </div>
+
+          {/* Video History Button (Matches Queue & Settings style - only active when history sidebar is open!) */}
           <button
             type="button"
             onClick={() => {
@@ -1912,23 +1926,22 @@ function VideoStudioContent() {
               }
             }}
             className={cn(
-              "flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap shadow-xs shrink-0 select-none",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono transition-all cursor-pointer border shrink-0 select-none",
               sidebarOpen && sidebarTab === "history"
-                ? "bg-emerald-600 text-white border-transparent shadow-emerald-500/20 shadow-md"
-                : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                ? "bg-emerald-600 text-white border-transparent font-bold shadow-xs"
+                : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800"
             )}
             title="Open Video History & Generated Library"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-            <span className="truncate max-w-[130px] hidden sm:inline">{activeModel.label}</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
-              {activeModel.value === "ffmpeg_local" ? "FREE" : activeModel.active ? "ACTIVE" : "KEY"}
-            </span>
-            <span className="w-px h-3 bg-emerald-500/30 mx-0.5" />
-            <History className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <History className={cn("w-3.5 h-3.5", sidebarOpen && sidebarTab === "history" ? "text-white" : "text-emerald-500")} />
             <span className="font-semibold">History</span>
             {historyVideos.length > 0 && (
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-extrabold">
+              <span className={cn(
+                "text-[9px] px-1.5 py-0.2 rounded-full font-bold",
+                sidebarOpen && sidebarTab === "history"
+                  ? "bg-white text-emerald-700"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"
+              )}>
                 {historyVideos.length}
               </span>
             )}
@@ -4001,10 +4014,10 @@ function VideoStudioContent() {
         {sidebarOpen && !precisionEditorOpen && (
           <>
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 lg:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
-            <aside className="fixed inset-y-0 right-0 z-40 w-80 sm:w-96 lg:static lg:z-10 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-2xl lg:shadow-lg">
+            <aside className="fixed inset-y-0 right-0 z-50 w-80 sm:w-96 lg:static lg:z-20 lg:w-96 flex-shrink-0 bg-white dark:bg-[#0c0c14] border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full min-h-0 overflow-hidden transition-all duration-300 shadow-2xl lg:shadow-lg">
             {/* Sidebar Header with Stacked Close Toggle All */}
             {/* Sidebar Header with Segmented Switch: Settings vs Render Queue */}
             <div className="flex-shrink-0 p-2.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70">
@@ -5131,7 +5144,7 @@ function VideoStudioContent() {
 
         {/* If Video History Tab is active: Generated Videos Gallery with Hover-to-Play */}
         {sidebarTab === "history" && (
-          <div className="flex flex-col h-full overflow-hidden">
+          <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {/* Header with count and refresh */}
             <div className="flex-shrink-0 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/60">
               <div className="flex items-center gap-2">
@@ -5154,8 +5167,13 @@ function VideoStudioContent() {
               </button>
             </div>
 
-            {/* Video List with Hover-to-Play Cards */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+            {/* Video List with Hover-to-Play Cards (Independent Isolated Scroll) */}
+            <div
+              data-lenis-prevent="true"
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-3 custom-scrollbar"
+            >
               {loadingHistory && historyVideos.length === 0 ? (
                 <div className="py-16 text-center space-y-2 text-xs font-mono text-zinc-400">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-emerald-500" />

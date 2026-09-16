@@ -170,7 +170,7 @@ function AllInOneStudioContent() {
   return (
     <div className="min-h-screen pb-20">
       {/* ── Studio Master Switcher Bar (Sticky Top Header) ── */}
-      <div className="sticky top-[56px] z-30 bg-white/95 dark:bg-[#0c0c11]/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] py-2.5 px-3 sm:px-6 transition-all shadow-xs">
+      <div className="sticky top-[53px] z-40 bg-white/95 dark:bg-[#0c0c11]/95 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] py-2.5 px-3 sm:px-6 transition-all shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-center">
           {/* Direct Studio Mode Switcher Tabs */}
           <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] shadow-inner overflow-x-auto max-w-full no-scrollbar justify-start sm:justify-center">

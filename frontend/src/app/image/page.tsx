@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Image as ImageIcon,
   Sparkles,
@@ -175,6 +175,8 @@ const INSPIRATION_PROMPTS = [
 export default function ImageStudioPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const isInsideStudio = pathname?.startsWith("/studio");
 
   // Character Locking & Active Persona Sync
   const [activeCharacter, setActiveCharacterState] = useState<CharacterData | null>(null);
@@ -1564,7 +1566,10 @@ export default function ImageStudioPage() {
       isShiftedLeft ? "pb-28 justify-start" : "pb-72 justify-between"
     )}>
       {/* Top Bar: Studio Mode Tabs & Guide Trigger (Always Sticky across all studio modes) */}
-      <div className="sticky top-14 sm:top-16 z-30 bg-[#fafafa]/95 dark:bg-[#06060a]/95 backdrop-blur-md shadow-xs border-b border-black/[0.08] dark:border-white/[0.08] transition-all">
+      <div className={cn(
+        "sticky z-30 bg-[#fafafa]/95 dark:bg-[#06060a]/95 backdrop-blur-md shadow-xs border-b border-black/[0.08] dark:border-white/[0.08] transition-all",
+        isInsideStudio ? "top-[107px]" : "top-14 sm:top-16"
+      )}>
         {/* Row 1: Studio Mode Tabs & Action Buttons */}
         <div className="flex items-center justify-between gap-3 sm:gap-4 py-1.5 sm:py-2 px-3 sm:px-4 w-full overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-2 shrink-0">
