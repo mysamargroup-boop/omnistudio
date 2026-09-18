@@ -55,7 +55,7 @@ import {
   CleanAudioResponse,
 } from "@/lib/api";
 import { inspectMediaInBrowser } from "@/lib/browserMetadataInspector";
-import { formatBytes, cn } from "@/lib/utils";
+import { formatBytes, cn, downloadMediaFile } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
 import Dropdown from "@/components/ui/Dropdown";
 import LiveProgressBar from "@/components/ui/LiveProgressBar";
@@ -200,6 +200,7 @@ export default function MetadataCleanerStudio({
   const [cleanStage, setCleanStage] = useState("");
   const [cleanResult, setCleanResult] = useState<any>(null);
   const [cleanError, setCleanError] = useState<string | null>(null);
+  const [isDownloadingSingle, setIsDownloadingSingle] = useState(false);
 
   // Realistic Camera Profile Spoofing / Injection
   const [injectCameraProfile, setInjectCameraProfile] = useState(true);
@@ -645,13 +646,8 @@ export default function MetadataCleanerStudio({
           item.cleanedResult.output_filename ||
           item.cleanedResult.clean_filename ||
           `cleaned_${item.name}`;
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }, index * 250);
+        downloadMediaFile(url, filename);
+      }, index * 300);
     });
   };
 
@@ -1069,15 +1065,10 @@ export default function MetadataCleanerStudio({
                               item.cleanedResult.output_filename ||
                               item.cleanedResult.clean_filename ||
                               `cleaned_${item.name}`;
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = filename;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
+                            downloadMediaFile(url, filename);
                           }}
                           className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition cursor-pointer"
-                          title="Download cleaned file"
+                          title="Download cleaned file directly to system"
                         >
                           <Download className="w-3 h-3" />
                         </button>
@@ -2015,14 +2006,28 @@ export default function MetadataCleanerStudio({
                   </div>
 
                   <div className="space-y-2 pt-2">
-                    <a
-                      href={getMediaUrl(cleanResult.url || cleanResult.clean_url)}
-                      download={cleanResult.output_filename || cleanResult.clean_filename}
-                      className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition cursor-pointer"
+                    <button
+                      type="button"
+                      disabled={isDownloadingSingle}
+                      onClick={async () => {
+                        setIsDownloadingSingle(true);
+                        try {
+                          const url = getMediaUrl(cleanResult.url || cleanResult.clean_url);
+                          const filename = cleanResult.output_filename || cleanResult.clean_filename || (isVideo ? "cleaned_video.mp4" : isAudio ? "cleaned_audio.mp3" : "cleaned_image.png");
+                          await downloadMediaFile(url, filename);
+                        } finally {
+                          setIsDownloadingSingle(false);
+                        }
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition cursor-pointer"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download Cleaned Media</span>
-                    </a>
+                      {isDownloadingSingle ? (
+                        <Spinner size="xs" variant="white" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                      <span>{isDownloadingSingle ? "Downloading..." : "Download Cleaned Media"}</span>
+                    </button>
                     <a
                       href={getMediaUrl(cleanResult.url || cleanResult.clean_url)}
                       target="_blank"

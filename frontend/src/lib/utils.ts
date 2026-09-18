@@ -17,3 +17,29 @@ export function formatTime(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
   return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
 }
+
+export async function downloadMediaFile(url: string, filename: string): Promise<void> {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
+  } catch (err) {
+    console.warn("Blob download failed, falling back to direct download anchor:", err);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.target = "_self";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+

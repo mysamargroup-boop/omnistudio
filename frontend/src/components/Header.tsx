@@ -137,7 +137,7 @@ export default function Header() {
             <span className="font-heading font-extrabold text-sm tracking-tight text-zinc-900 dark:text-white">
               Omni<span className="text-emerald-500">Studio</span>
             </span>
-            <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+            <span className="hidden sm:inline-block font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
               PRO
             </span>
           </div>
@@ -408,10 +408,10 @@ export default function Header() {
       </nav>
 
       {/* Right Controls: Online Status + Theme + Auth + Create CTA */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {/* Live Engine Status */}
         <div 
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-[11px] font-medium shrink-0"
+          className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 text-[11px] font-medium shrink-0"
           title={isOnline ? 'All AI backend services running' : 'Backend offline'}
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -420,7 +420,7 @@ export default function Header() {
             )}
             <span className={cn('relative inline-flex rounded-full h-1.5 w-1.5', isOnline ? 'bg-emerald-500' : 'bg-rose-500')} />
           </span>
-          <span className="text-zinc-600 dark:text-zinc-400 font-mono">
+          <span className="hidden sm:inline text-zinc-600 dark:text-zinc-400 font-mono">
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -437,7 +437,8 @@ export default function Header() {
         {/* Primary CTA Button */}
         <button 
           onClick={() => router.push('/pipeline')}
-          className="flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-2.5 sm:px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
+          className="flex items-center gap-1 sm:gap-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl px-2 sm:px-3.5 py-1.5 text-xs font-heading font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-95"
+          title="Create with AI Pipeline"
         >
           <Sparkles className="w-3.5 h-3.5 shrink-0" />
           <span>Create</span>
@@ -448,7 +449,7 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setUserMenuOpen((prev) => !prev)}
-            className="flex items-center gap-2 px-2 sm:px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
+            className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition-colors cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
             title="User Account & Quick Navigation"
           >
             {profile?.avatar_url ? (
