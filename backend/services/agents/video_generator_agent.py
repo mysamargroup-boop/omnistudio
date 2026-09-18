@@ -64,6 +64,7 @@ class VideoGeneratorAgent(BaseAgent):
                         url=web_url,
                         filename=file_name,
                         prompt=scene.description or scene.image_prompt,
+                        model="Omni Video Model",
                         cost_usd=0.010,
                         cost_inr=0.84
                     )
@@ -72,5 +73,5 @@ class VideoGeneratorAgent(BaseAgent):
             else:
                 scene.video_path = None
 
-        context.add_log(self.name, f"Choreographed camera motion for {len(context.scenes)} scenes", cost_usd=0.020, cost_inr=1.68)
+        context.add_log(self.name, f"Omni Video Model choreographed neural motion for {len(context.scenes)} scenes", cost_usd=0.020, cost_inr=1.68)
         return AgentResult(success=True)

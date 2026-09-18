@@ -50,6 +50,13 @@ class CreativeDirectorAgent(BaseAgent):
         elif initial_model:
             context.add_log(self.name, f"Configured diffusion engine: '{initial_model}'")
 
+        # 2. Configure video engine (Auto mode defaults to Omni Video Model)
+        if not context.video_model or context.video_model in {"auto", "omni_model", "omni", ""}:
+            context.video_model = "omni_model"
+            context.add_log(self.name, "Auto Director configured video engine to 'Omni Video Model' (Neural Kinematics & Temporal Coherence)")
+        else:
+            context.add_log(self.name, f"Configured video engine: '{context.video_model}'")
+
         context.project_brief = {
             "title": f"{context.user_prompt[:25]}...",
             "genre": "Cinematic Storyboard",
@@ -58,6 +65,7 @@ class CreativeDirectorAgent(BaseAgent):
             "scene_count": context.num_scenes,
             "visual_style": context.style,
             "diffusion_model": context.image_model,
+            "video_model": "Omni Video Model (Neural Kinematics)",
             "color_palette": "Cinematic Contrast",
             "aspect_ratio": context.aspect_ratio
         }

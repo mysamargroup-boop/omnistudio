@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import uuid
 import sqlite3
 import logging
 import urllib.request
@@ -423,30 +424,43 @@ def test_db_connection(url: Optional[str] = None) -> dict:
 # ─── Data Access Helpers (Universal: Supabase PostgreSQL + SQLite) ───
 
 def db_save_asset(
-    asset_id: str,
-    asset_type: str,
-    filename: str,
-    url: str,
+    asset_id: Optional[str] = None,
+    asset_type: Optional[str] = None,
+    filename: Optional[str] = None,
+    url: Optional[str] = None,
     project_id: Optional[str] = None,
     local_path: Optional[str] = None,
     storage_provider: str = "cloudflare_r2",
     size_bytes: int = 0,
     mime_type: Optional[str] = None,
-    metadata: Optional[dict] = None
+    metadata: Optional[dict] = None,
+    **kwargs
 ):
+    # Support flexible kwargs from various router and agent callers
+    actual_id = asset_id or kwargs.get("id") or str(uuid.uuid4())
+    actual_type = asset_type or kwargs.get("type") or kwargs.get("media_type") or "image"
+    actual_filename = filename or kwargs.get("name") or f"{actual_id}.bin"
+    actual_url = url or f"/outputs/{actual_filename}"
+
+    # Merge metadata with extra caller properties
+    meta = dict(metadata) if isinstance(metadata, dict) else {}
+    for key in ["prompt", "model", "cost_usd", "cost_inr", "cost", "duration_sec", "preset", "status"]:
+        if key in kwargs and kwargs[key] is not None and key not in meta:
+            meta[key] = kwargs[key]
+
     # 1. Supabase Cloud Sync
     if is_supabase():
         payload = {
-            "id": asset_id,
+            "id": actual_id,
             "project_id": project_id,
-            "asset_type": asset_type,
-            "filename": filename,
-            "url": url,
+            "asset_type": actual_type,
+            "filename": actual_filename,
+            "url": actual_url,
             "local_path": local_path,
             "storage_provider": storage_provider,
             "size_bytes": size_bytes,
             "mime_type": mime_type,
-            "metadata": metadata or {}
+            "metadata": meta
         }
         res = supabase_rest_request("assets", method="POST", data=payload)
         if not res.get("success"):
@@ -460,7 +474,7 @@ def db_save_asset(
                 INSERT OR REPLACE INTO assets 
                 (id, project_id, asset_type, filename, url, local_path, storage_provider, size_bytes, mime_type, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (asset_id, project_id, asset_type, filename, url, local_path, storage_provider, size_bytes, mime_type, json.dumps(metadata or {})))
+            """, (actual_id, project_id, actual_type, actual_filename, actual_url, local_path, storage_provider, size_bytes, mime_type, json.dumps(meta)))
             conn.commit()
     except Exception as e:
         db_logger.error("[SQLite Error] Save asset: %s", e)

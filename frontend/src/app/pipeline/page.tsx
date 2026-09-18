@@ -525,6 +525,7 @@ function PipelineContent() {
         style,
         aspect_ratio: aspectRatio,
         image_model: imageModel,
+        video_model: "omni_model",
         voice_provider: voiceProvider,
       });
 
@@ -905,10 +906,16 @@ function PipelineContent() {
               menuClassName="bg-white/95 dark:bg-[#0c101d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/10"
             />
             {imageModel === "auto" && (
-              <div className="p-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/20 text-[10px] text-emerald-800 dark:text-emerald-300 flex items-start gap-2 leading-relaxed animate-in fade-in duration-150">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold">Auto Engine Mode:</span> Creative Director Agent analyzes prompt keywords (e.g. <i>"using flux pro"</i>, <i>"using imagen 3"</i>, <i>"using gpt image 2"</i>) or dynamically selects the optimal diffusion model based on your concept style.
+              <div className="p-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/20 text-[10px] text-emerald-800 dark:text-emerald-300 space-y-1.5 leading-relaxed animate-in fade-in duration-150">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Auto Diffusion Engine:</span> Creative Director Agent detects prompt keywords (e.g. <i>"flux pro"</i>, <i>"imagen 3"</i>, <i>"gpt image 2"</i>) or dynamically selects the optimal diffusion model based on your visual style.
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-500/20 text-[9px] font-mono text-emerald-700 dark:text-emerald-300">
+                  <Film className="w-3 h-3 text-emerald-500 shrink-0" />
+                  <span>Auto Video Engine: <strong className="text-emerald-800 dark:text-emerald-200">Omni Video Model</strong> (Neural Kinematics & Temporal Coherence)</span>
                 </div>
               </div>
             )}
@@ -1174,11 +1181,12 @@ function PipelineContent() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-                <div><span className="text-zinc-400">Title:</span> <strong className="text-zinc-900 dark:text-zinc-100">{projectBrief.title || "Untitled"}</strong></div>
-                <div><span className="text-zinc-400">Mood:</span> <strong className="text-zinc-900 dark:text-zinc-100">{projectBrief.mood || "Cinematic"}</strong></div>
-                <div><span className="text-zinc-400">Target:</span> <strong className="text-zinc-900 dark:text-zinc-100">{projectBrief.target_audience || "Global"}</strong></div>
-                <div><span className="text-zinc-400">Visuals:</span> <strong className="text-zinc-900 dark:text-zinc-100">{projectBrief.visual_style || style}</strong></div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
+                <div><span className="text-zinc-400">Title:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.title || "Untitled"}</strong></div>
+                <div><span className="text-zinc-400">Mood:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.mood || "Cinematic"}</strong></div>
+                <div><span className="text-zinc-400">Target:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.target_audience || "Global"}</strong></div>
+                <div><span className="text-zinc-400">Diffusion:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.diffusion_model || projectBrief.visual_style || style}</strong></div>
+                <div><span className="text-zinc-400">Video Engine:</span> <strong className="text-emerald-600 dark:text-emerald-400 block truncate">{projectBrief.video_model || "Omni Video Model"}</strong></div>
               </div>
             </div>
           )}

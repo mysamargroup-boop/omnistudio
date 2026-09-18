@@ -70,6 +70,7 @@ class PipelineContext(BaseModel):
     style: str = "cinematic"
     aspect_ratio: str = "16:9"
     image_model: str = "imagen-3"
+    video_model: str = "omni_model"
     voice_provider: str = "edge"
     voice_id: str = ""
     num_scenes: int = 3

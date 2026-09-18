@@ -661,6 +661,7 @@ class AgentPipelineStartRequest(BaseModel):
     style: str = 'cinematic'
     aspect_ratio: str = '16:9'
     image_model: str = 'imagen-3'
+    video_model: str = 'omni_model'
     voice_provider: str = 'edge'
     voice_id: str = ''
 
@@ -675,6 +676,7 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         style=req.style,
         aspect_ratio=req.aspect_ratio,
         image_model=req.image_model,
+        video_model=req.video_model or 'omni_model',
         voice_provider=req.voice_provider,
         voice_id=req.voice_id
     )

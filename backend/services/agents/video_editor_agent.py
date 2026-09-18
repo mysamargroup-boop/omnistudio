@@ -97,13 +97,14 @@ class VideoEditorAgent(BaseAgent):
                     url=web_url,
                     filename=file_name,
                     prompt=context.user_prompt,
+                    model="Omni Video Model (Master Compilation)",
                     cost_usd=0.025,
                     cost_inr=2.10
                 )
             except Exception as dbe:
                 logger.debug("Failed to record master video asset in DB: %s", dbe)
 
-            context.add_log(self.name, f"Compiled master video sequence: {file_name}", cost_usd=0.025, cost_inr=2.10)
+            context.add_log(self.name, f"Omni Video Model compiled master video sequence: {file_name}", cost_usd=0.025, cost_inr=2.10)
         else:
             context.add_log(self.name, "Video editor finished with fallback visual state")
 

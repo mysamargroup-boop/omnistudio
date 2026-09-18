@@ -359,6 +359,7 @@ export const api = {
     style?: string;
     aspect_ratio?: string;
     image_model?: string;
+    video_model?: string;
     voice_provider?: string;
     voice_id?: string;
   }) => fetchApi<any>("/api/pipeline/agent/start", { method: "POST", body: JSON.stringify(data) }),
