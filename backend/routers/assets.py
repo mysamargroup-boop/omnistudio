@@ -388,9 +388,24 @@ async def safe_permanent_delete(media_type: str, filename: str, from_trash: bool
         assets_logger.error("[PermanentDelete Error] %s: %s", filename, e)
         return False
 
+import time
+
+_ASSETS_CACHE: dict = {}
+_ASSETS_CACHE_TIMESTAMP: float = 0
+_CACHE_TTL_SECONDS: float = 15.0
+
+def invalidate_assets_cache():
+    global _ASSETS_CACHE_TIMESTAMP
+    _ASSETS_CACHE_TIMESTAMP = 0
+
 @router.get("/all")
 @limiter.limit("60/minute")
 async def get_all_assets(request: Request):
+    global _ASSETS_CACHE, _ASSETS_CACHE_TIMESTAMP
+    now = time.time()
+    if _ASSETS_CACHE and (now - _ASSETS_CACHE_TIMESTAMP) < _CACHE_TTL_SECONDS:
+        return _ASSETS_CACHE
+
     prompt_map = await asyncio.to_thread(get_assets_prompt_map)
     (
         images, videos, audio, final,
@@ -409,7 +424,7 @@ async def get_all_assets(request: Request):
     total_trash = len(trash_images) + len(trash_videos) + len(trash_audio) + len(trash_final)
     total_trash_bytes = sum(f["size_bytes"] for f in (trash_images + trash_videos + trash_audio + trash_final))
 
-    return {
+    result = {
         "images": images,
         "videos": videos,
         "audio": audio,
@@ -418,6 +433,10 @@ async def get_all_assets(request: Request):
         "trash_count": total_trash,
         "trash_bytes": total_trash_bytes
     }
+    _ASSETS_CACHE = result
+    _ASSETS_CACHE_TIMESTAMP = now
+    return result
+
 
 @router.get("/prompt/{filename}")
 async def get_asset_prompt(filename: str):

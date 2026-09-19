@@ -321,20 +321,21 @@ export default function StoryboardTimelineStrip({
               </div>
 
               {/* Shot Title and Version Chip */}
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-xs truncate max-w-[140px]">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <span className="font-bold text-white text-xs truncate flex-1 min-w-0" title={shot.title}>
                   {shot.title}
                 </span>
-                <span className="px-1.5 py-0.5 rounded bg-black/50 text-[9px] text-emerald-400 font-bold border border-white/10">
+                <span className="px-1.5 py-0.5 rounded bg-black/50 text-[9px] text-emerald-400 font-bold border border-white/10 shrink-0">
                   {shot.version}
                 </span>
               </div>
 
               {/* Trajectory & Model Metadata */}
-              <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                <span className="truncate">{shot.cameraTrajectory || "ORBIT 15°"}</span>
-                <span className="text-zinc-500 font-semibold">{shot.model}</span>
+              <div className="flex items-center justify-between text-[10px] text-zinc-400 gap-2 min-w-0">
+                <span className="truncate flex-1 min-w-0" title={shot.cameraTrajectory || "ORBIT 15°"}>{shot.cameraTrajectory || "ORBIT 15°"}</span>
+                <span className="text-zinc-500 font-semibold shrink-0">{shot.model}</span>
               </div>
+
 
               {/* Status Bar & Delete Button */}
               <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.06] text-[10px]">

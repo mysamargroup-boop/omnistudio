@@ -329,8 +329,17 @@ export default function DashboardPage() {
     try {
       const fav = localStorage.getItem("omnistudio_favorites");
       if (fav) setFavorites(new Set(JSON.parse(fav)));
+      const savedDurations = localStorage.getItem("omnistudio_storyboard_durations");
+      if (savedDurations) setCustomShotDurations(JSON.parse(savedDurations));
+      const savedLenses = localStorage.getItem("omnistudio_storyboard_lenses");
+      if (savedLenses) setCustomLenses(JSON.parse(savedLenses));
+      const savedMotions = localStorage.getItem("omnistudio_storyboard_motions");
+      if (savedMotions) setCustomMotions(JSON.parse(savedMotions));
+      const savedTransitions = localStorage.getItem("omnistudio_storyboard_transitions");
+      if (savedTransitions) setShotTransitions(JSON.parse(savedTransitions));
     } catch {}
   }, []);
+
 
   // Close active card menu on click outside
   useEffect(() => {
@@ -460,7 +469,9 @@ export default function DashboardPage() {
     setShotTransitions((prev) => {
       const current = prev[shotId] || "CUT";
       const nextIdx = (transitions.indexOf(current) + 1) % transitions.length;
-      return { ...prev, [shotId]: transitions[nextIdx] };
+      const updated = { ...prev, [shotId]: transitions[nextIdx] };
+      try { localStorage.setItem("omnistudio_storyboard_transitions", JSON.stringify(updated)); } catch {}
+      return updated;
     });
   };
 
@@ -469,7 +480,9 @@ export default function DashboardPage() {
     setCustomShotDurations((prev) => {
       const curr = prev[shotId] || 3.0;
       const updated = Math.max(1.0, Math.min(10.0, Number((curr + delta).toFixed(1))));
-      return { ...prev, [shotId]: updated };
+      const nextMap = { ...prev, [shotId]: updated };
+      try { localStorage.setItem("omnistudio_storyboard_durations", JSON.stringify(nextMap)); } catch {}
+      return nextMap;
     });
   };
 
@@ -483,8 +496,8 @@ export default function DashboardPage() {
       return recentAssets.slice(0, 4).map((asset, idx) => {
         const isVideo = asset.url?.endsWith(".mp4") || asset.assetCategory === "Video Scene" || asset.assetCategory === "Film Master";
         const cleanTitle = asset.filename
-          ? asset.filename.replace(/[-_]/g, " ").replace(/\.\w+$/, "")
-          : asset.prompt ? asset.prompt.slice(0, 32) + "..." : `Sequence Shot 0${idx + 1}`;
+            ? asset.filename.replace(/[-_]/g, " ").replace(/\.\w+$/, "")
+            : asset.prompt ? asset.prompt.slice(0, 32) + "..." : `Sequence Shot 0${idx + 1}`;
 
         const lensPresets = [
           "35mm Anamorphic T1.5",
@@ -493,11 +506,12 @@ export default function DashboardPage() {
           "50mm Master Prime T1.4"
         ];
         const motionPresets = [
-          "Pan R 15° • Dolly 2.2m/s",
-          "Slow Push-In • Orbit 45°",
-          "Crane Descend 12m/s",
-          "Dynamic Handheld Track"
+          "Dolly Zoom (Vertigo) • 24 FPS",
+          "Low-Angle Hero Track • 2.5m/s",
+          "Crane Pedestal Reveal • 12m/s",
+          "Steadicam 360° Orbit Arc"
         ];
+
 
         const shotId = `0${idx + 1}`;
         const dur = customShotDurations[shotId] || (isVideo ? 4.5 : 3.0);
@@ -1154,7 +1168,7 @@ export default function DashboardPage() {
                             className="w-full h-full object-cover"
                             muted
                             playsInline
-                            preload="metadata"
+                            preload="none"
                             onMouseEnter={(e) => {
                               try { e.currentTarget.play().catch(() => {}); } catch {}
                             }}
@@ -1237,16 +1251,17 @@ export default function DashboardPage() {
                       className="text-zinc-500 text-[10px] flex items-center gap-1 min-w-0"
                     >
                       <Compass className="w-3 h-3 text-emerald-500 shrink-0" />
-                      <span className="truncate">{shot.motion}</span>
+                      <span className="truncate flex-1 min-w-0">{shot.motion}</span>
                     </div>
                     <div
                       title={`Optics: ${shot.lens}`}
                       className="text-zinc-400 dark:text-zinc-500 text-[10px] flex items-center gap-1 min-w-0"
                     >
                       <Camera className="w-3 h-3 text-sky-400 shrink-0" />
-                      <span className="truncate">{shot.lens}</span>
+                      <span className="truncate flex-1 min-w-0">{shot.lens}</span>
                     </div>
                   </div>
+
 
                   {/* Transition Connector Pill at Card Bottom (if not last card) */}
                   {idx < 3 && (

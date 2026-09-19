@@ -12,7 +12,7 @@ class ScriptWriterAgent(BaseAgent):
                 context.scenes.append(SceneData(
                     index=i+1,
                     title=f"Scene {i+1}",
-                    script=f"This is the voiceover for scene {i+1} about {context.user_prompt}.",
-                    duration_seconds=5.0
+                    script=f"Scene {i+1}: cinematic visual sequence.",
+                    duration_seconds=4.0
                 ))
         return AgentResult(success=True)

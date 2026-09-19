@@ -454,9 +454,15 @@ async def upload_source_video(request: Request, file: UploadFile = File(...)):
         "local_path": str(target_path)
     }
 
-@router.post("/generate")
-@limiter.limit("5/minute")
-async def generate_video(req: VideoRequest, request: Request):
+def _handle_bg_task_error(task: asyncio.Task):
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error("Shielded background video task failed: %s", e)
+
+async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
     start_img = req.start_image_path or req.image_path
     w, h = get_resolution(req.resolution, req.aspect_ratio)
     try:
@@ -895,6 +901,17 @@ async def generate_video(req: VideoRequest, request: Request):
 
     return result
 
+@router.post("/generate")
+@limiter.limit("5/minute")
+async def generate_video(req: VideoRequest, request: Request):
+    task = asyncio.create_task(_execute_generate_video(req))
+    task.add_done_callback(_handle_bg_task_error)
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        logger.info("Client disconnected during video generation; background task continues.")
+        raise
+
 @router.post("/upload-and-generate")
 async def upload_and_generate(
     file: UploadFile = File(...),
@@ -995,15 +1012,9 @@ async def list_motion_types(request: Request):
         ]
     }
 
-@router.post("/edit")
-@limiter.limit("20/minute")
-async def edit_video_endpoint(req: EditVideoRequest, request: Request):
-    """
-    Apply pure video editing tools (trimming, speed curve, aspect ratio,
-    color grading/LUTs, audio track mixing, text overlay) to any generated or vault video.
-    """
+async def _execute_edit_video(req: EditVideoRequest):
     async with FFMPEG_SEMAPHORE:
-        res = await edit_video(
+        return await edit_video(
             video_path=req.video_path,
             start_time=req.start_time,
             end_time=req.end_time,
@@ -1028,7 +1039,21 @@ async def edit_video_endpoint(req: EditVideoRequest, request: Request):
             chroma_key_color=req.chroma_key_color,
             chroma_bg_path=req.chroma_bg_path
         )
-    return res
+
+@router.post("/edit")
+@limiter.limit("10/minute")
+async def edit_video_endpoint(req: EditVideoRequest, request: Request):
+    """
+    Apply pure video editing tools (trimming, speed curve, aspect ratio,
+    color grading/LUTs, audio track mixing, text overlay) to any generated or vault video.
+    """
+    task = asyncio.create_task(_execute_edit_video(req))
+    task.add_done_callback(_handle_bg_task_error)
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        logger.info("Client disconnected during video editing; background task continues.")
+        raise
 
 
 class ConcatVideoRequest(BaseModel):

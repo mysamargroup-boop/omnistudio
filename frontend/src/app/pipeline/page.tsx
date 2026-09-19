@@ -469,11 +469,19 @@ function PipelineContent() {
               .finally(() => {
                 if (mounted) setRunning(false);
               });
+          } else if (ctx.state === "complete") {
+            // Completed: mark all agents complete and keep scenes & screening room visible
+            const completedStatuses: Record<string, AgentNodeStatus> = {};
+            AGENT_ORDER.forEach((id) => {
+              completedStatuses[id] = { state: "complete", message: "Completed successfully" };
+            });
+            setAgentStatuses(completedStatuses);
+            completeActiveJob(activeId);
           } else {
-            // Completed
             completeActiveJob(activeId);
             try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
           }
+
         } else {
           try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
         }

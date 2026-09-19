@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 from limiter import limiter
 import os
@@ -458,9 +458,15 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
 
     return result
 
-@router.post("/generate")
-@limiter.limit("10/minute")
-async def generate_image(req: ImageRequest, request: Request):
+def _handle_bg_task_error(task: asyncio.Task):
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error("Shielded background image task failed: %s", e)
+
+async def _execute_generate_image(req: ImageRequest) -> Dict[str, Any]:
     modifiers = []
     if req.lens:
         modifiers.append(f"shot on {req.lens}")
@@ -584,6 +590,17 @@ async def generate_image(req: ImageRequest, request: Request):
         logger.warning("Failed to record image generation usage log: %s", e)
 
     return result
+
+@router.post("/generate")
+@limiter.limit("10/minute")
+async def generate_image(req: ImageRequest, request: Request):
+    task = asyncio.create_task(_execute_generate_image(req))
+    task.add_done_callback(_handle_bg_task_error)
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        logger.info("Client disconnected during image generation; background task continues.")
+        raise
 
 class PromptEnhanceRequest(BaseModel):
     prompt: Optional[str] = ""

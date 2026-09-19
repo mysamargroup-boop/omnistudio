@@ -218,8 +218,7 @@ def merge_audio_video(
             "-c:v", "copy",
             "-c:a", "aac",
             "-b:a", "192k",
-            "-t", str(audio_dur + 0.3),
-            "-shortest",
+            "-t", str(video_dur),
             str(output_path)
         ]
         

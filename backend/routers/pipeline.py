@@ -459,18 +459,30 @@ async def generate_storyboard_prompts_endpoint(req: StoryboardPromptsRequest):
     hint = (req.story_hint or "").strip()
     image_name = Path(req.image_url).stem if req.image_url else ""
     
+    cinematic_camera_motions = [
+        "dolly_zoom_vertigo", "fpv_drone_dive", "dutch_angle_tilt", "low_angle_hero_track",
+        "crane_pedestal_reveal", "steadicam_orbit_360", "whip_pan_transition", "rack_focus_shallow",
+        "handheld_cinema_verite", "overhead_gods_eye", "tracking_side_profile", "extreme_close_up_macro",
+        "slow_push_in", "reverse_pull_back", "tilt_up_skyline", "orbit_left_arc",
+        "crane_down_low", "fpv_flythrough", "whip_tilt_down", "dolly_in_rapid"
+    ]
+
     prompt_text = f"""You are a master Hollywood cinematographer and storyboard director.
 Based on the character/subject in the visual reference '{image_name or hint or 'cinematic subject'}' and the story hint '{hint or 'cinematic visual journey'}', generate exactly {num_scenes} sequential storyboard scenes that maintain consistent character appearance, clothing, and cinematic atmosphere in {style} style.
 
+CRITICAL RULE: Do NOT default to repetitive basic camera motions like simple 'push', 'pan', or 'fade in'.
+You MUST assign DISTINCT, dynamic cinematic camera motions for each scene from this list:
+{json.dumps(cinematic_camera_motions)}
+
 Return ONLY a JSON array with exactly {num_scenes} objects, each having:
 - scene_number (integer, starting from 1)
-- title (short 3-5 word scene title, e.g. 'Scene 1: Establishing Shot')
+- title (short 3-5 word scene title, e.g. 'Scene 1: Establishing Horizon')
 - prompt (detailed 25-45 word prompt for text-to-image diffusion, describing character, action, camera lens, lighting, maintaining strict visual continuity)
-- camera_motion (one of: zoom_in, pan_right, tilt_up, slow_push, orbit_left)
+- camera_motion (one of: {', '.join(cinematic_camera_motions)})
 
 Example format:
 [
-  {{"scene_number": 1, "title": "Establishing Horizon", "prompt": "Wide cinematic 35mm shot of the subject standing on a rain-slicked city balcony, neon reflections, volumetric fog, dramatic rim lighting", "camera_motion": "zoom_in"}}
+  {{"scene_number": 1, "title": "Establishing Horizon", "prompt": "Wide cinematic 35mm anamorphic shot of the subject standing on a rain-slicked city balcony, neon reflections, volumetric fog, dramatic rim lighting", "camera_motion": "crane_pedestal_reveal"}}
 ]
 """
     scenes = []
@@ -526,33 +538,33 @@ Example format:
         except Exception as e:
             logger.warning("OpenAI storyboard prompts generation failed: %s", e)
 
-    # 3. Fallback algorithmic scenes if LLM is unavailable
+    # 3. Fallback algorithmic scenes if LLM is unavailable (guaranteeing varied cinematography)
     if not scenes:
         base_subject = hint if hint else (image_name.replace("_", " ").title() if image_name else "cinematic subject")
         scenes = [
             {
                 "scene_number": 1,
-                "title": "Scene 1: Establishing Shot",
-                "prompt": f"Wide angle cinematic 35mm establishing shot of {base_subject}, ambient atmospheric lighting, shallow depth of field, 8k resolution, master color grade",
-                "camera_motion": "zoom_in"
+                "title": "Scene 1: Establishing Horizon",
+                "prompt": f"Wide angle cinematic 35mm anamorphic establishing shot of {base_subject}, ambient atmospheric lighting, shallow depth of field, 8k resolution, master color grade",
+                "camera_motion": "crane_pedestal_reveal"
             },
             {
                 "scene_number": 2,
-                "title": "Scene 2: Narrative Action",
-                "prompt": f"Medium shot tracking {base_subject} in motion, dynamic camera perspective, volumetric rim lighting, micro-textures, cinematic realism",
-                "camera_motion": "pan_right"
+                "title": "Scene 2: Narrative Tension",
+                "prompt": f"Low angle upward tracking shot of {base_subject} moving with urgency, dynamic chiaroscuro lighting, volumetric rim lighting, micro-textures, cinematic realism",
+                "camera_motion": "low_angle_hero_track"
             },
             {
                 "scene_number": 3,
-                "title": "Scene 3: Dramatic Climax",
-                "prompt": f"Intense close-up portrait of {base_subject}, dramatic chiaroscuro lighting, emotional facial expression, 85mm prime lens, ultra-sharp focus",
-                "camera_motion": "slow_push"
+                "title": "Scene 3: Climactic Revelation",
+                "prompt": f"Dramatic vertigo dolly zoom on {base_subject}, intense emotional facial expression, 85mm prime lens, ultra-sharp focus, background optical warping",
+                "camera_motion": "dolly_zoom_vertigo"
             },
             {
                 "scene_number": 4,
-                "title": "Scene 4: Cinematic Resolution",
-                "prompt": f"Wide panoramic hero shot of {base_subject} in epic twilight setting, golden hour rays, cinematic lens flare, master composition, 8k raw detail",
-                "camera_motion": "zoom_out"
+                "title": "Scene 4: Kinetic Resolution",
+                "prompt": f"Steadicam 360-degree orbit around {base_subject} in epic twilight setting, golden hour rays, cinematic lens flare, master composition, 8k raw detail",
+                "camera_motion": "steadicam_orbit_360"
             }
         ]
 
@@ -690,42 +702,48 @@ async def stream_agent_pipeline(pipeline_id: str, request: Request):
     
     async def sse_generator():
         q = asyncio.Queue()
-        
-        async def progress_callback(ctx: PipelineContext):
-            await q.put(ctx.to_dict())
+        try:
+            # Yield initial snapshot immediately so client doesn't wait
+            current_ctx = await orchestrator.load_pipeline_state(pipeline_id)
+            yield f"data: {json.dumps(current_ctx.to_dict())}\n\n"
 
-        task = asyncio.create_task(orchestrator.resume_pipeline(pipeline_id, progress_callback))
-        disconnect_count = 0
+            if current_ctx.state in [PipelineState.COMPLETE, PipelineState.FAILED]:
+                return
+        except Exception as e:
+            logger.warning(f"Initial state load for {pipeline_id}: {e}")
+
+        await orchestrator.attach_listener(pipeline_id, q)
         
-        while not task.done() or not q.empty():
-            try:
-                ctx_dict = await asyncio.wait_for(q.get(), timeout=1.0)
-                disconnect_count = 0
-                yield f"data: {json.dumps(ctx_dict)}\n\n"
-            except asyncio.TimeoutError:
-                if task.done():
-                    break
-                # Check client connection safely
+        try:
+            while True:
                 try:
-                    if await request.is_disconnected():
-                        disconnect_count += 1
-                        if disconnect_count >= 15:  # Grace period of 15 seconds before aborting
-                            logger.info(f"Client disconnected from pipeline {pipeline_id}; canceling background task")
-                            task.cancel()
-                            break
-                    else:
-                        disconnect_count = 0
-                except Exception:
-                    pass
-                # Send SSE comment heartbeat to prevent reverse-proxy and browser socket timeouts
-                yield ": keep-alive\n\n"
+                    ctx_dict = await asyncio.wait_for(q.get(), timeout=1.0)
+                    yield f"data: {json.dumps(ctx_dict)}\n\n"
+                    # If state reaches complete or failed, break stream
+                    if ctx_dict.get("state") in ["complete", "failed"]:
+                        break
+                except asyncio.TimeoutError:
+                    if not orchestrator.is_task_running(pipeline_id) and q.empty():
+                        # Final check of state
+                        try:
+                            final_ctx = await orchestrator.load_pipeline_state(pipeline_id)
+                            yield f"data: {json.dumps(final_ctx.to_dict())}\n\n"
+                        except Exception:
+                            pass
+                        break
 
-        if not task.cancelled():
-            try:
-                final_ctx = await task
-                yield f"data: {json.dumps(final_ctx.to_dict())}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                    # Check client connection safely
+                    try:
+                        if await request.is_disconnected():
+                            logger.info(f"Client disconnected from pipeline {pipeline_id}; process continues in background")
+                            break
+                    except Exception:
+                        pass
+
+                    # Send SSE comment heartbeat to prevent reverse-proxy and browser socket timeouts
+                    yield ": keep-alive\n\n"
+        finally:
+            orchestrator.detach_listener(pipeline_id, q)
 
     return StreamingResponse(
         sse_generator(),
@@ -743,13 +761,24 @@ async def approve_agent_step(pipeline_id: str):
     try:
         context = await orchestrator.load_pipeline_state(pipeline_id)
         if context.state == PipelineState.PAUSED:
-            # Set to IDLE so resume_pipeline will advance to the next agent
-            context.state = PipelineState.IDLE
             context.add_log("System", "Directorial approval granted — resuming pipeline")
             await orchestrator.save_pipeline_state(context)
         return {"success": True, "pipeline_id": pipeline_id, "message": "Approved", "state": context.state.value}
     except Exception as e:
         logger.error(f"Error approving pipeline {pipeline_id}: {e}")
+        return {"success": False, "pipeline_id": pipeline_id, "error": str(e)}
+
+@router.post("/agent/resume/{pipeline_id}")
+async def resume_agent_step(pipeline_id: str):
+    orchestrator = get_default_orchestrator()
+    try:
+        context = await orchestrator.load_pipeline_state(pipeline_id)
+        if context.state == PipelineState.PAUSED:
+            context.add_log("System", "Directorial execution resumed")
+            await orchestrator.save_pipeline_state(context)
+        return {"success": True, "pipeline_id": pipeline_id, "message": "Resumed", "state": context.state.value}
+    except Exception as e:
+        logger.error(f"Error resuming pipeline {pipeline_id}: {e}")
         return {"success": False, "pipeline_id": pipeline_id, "error": str(e)}
 
 @router.post("/agent/reject/{pipeline_id}")
@@ -783,5 +812,8 @@ async def get_agent_history():
 
 @router.delete("/agent/{pipeline_id}")
 async def cancel_agent_pipeline(pipeline_id: str):
-    return {"success": True, "pipeline_id": pipeline_id, "message": "Cancelled"}
+    orchestrator = get_default_orchestrator()
+    cancelled = orchestrator.cancel_task(pipeline_id)
+    return {"success": True, "pipeline_id": pipeline_id, "message": "Cancelled" if cancelled else "No active task to cancel"}
+
 

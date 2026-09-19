@@ -62,9 +62,9 @@ services:
     image: ghcr.io/mysamargroup-boop/omnistudio-frontend:latest
     restart: unless-stopped
     ports:
-      # Isolated Host Port 3050 -> Container Port 3000
-      # (Leaves port 80, 443, 3000 free for existing host projects)
-      - "3050:3000"
+      # Isolated Host Port 3060 -> Container Port 3000
+      # (Leaves port 80, 443, 3000, 3050 free for existing host projects)
+      - "3060:3000"
     logging:
       driver: "json-file"
       options:

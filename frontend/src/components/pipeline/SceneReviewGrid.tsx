@@ -144,22 +144,37 @@ export default function SceneReviewGrid({
 
             {/* Info */}
             {!compact && (
-              <div className="p-3 space-y-1.5">
-                <h4 className="text-xs font-heading font-bold text-zinc-900 dark:text-white truncate">
-                  {scene.title || `Scene ${(scene.index ?? i) + 1}`}
-                </h4>
-                {scene.script && (
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                    {scene.script}
-                  </p>
-                )}
-                <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono">
-                  {scene.camera_angle && <span>Angle: {scene.camera_angle}</span>}
-                  {scene.duration_seconds > 0 && <span>Duration: {scene.duration_seconds}s</span>}
-                  {scene.motion_type && <span>Motion: {scene.motion_type}</span>}
+              <div className="p-3 space-y-1.5 min-w-0 flex-1 flex flex-col justify-between">
+                <div className="space-y-1 min-w-0">
+                  <h4 className="text-xs font-heading font-bold text-zinc-900 dark:text-white truncate" title={scene.title || `Scene ${(scene.index ?? i) + 1}`}>
+                    {scene.title || `Scene ${(scene.index ?? i) + 1}`}
+                  </h4>
+                  {scene.script && (
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed break-words">
+                      {scene.script}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-400 font-mono pt-1 min-w-0">
+                  {scene.camera_angle && (
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.04] max-w-full truncate" title={scene.camera_angle}>
+                      {scene.camera_angle}
+                    </span>
+                  )}
+                  {scene.duration_seconds > 0 && (
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.04] shrink-0">
+                      {scene.duration_seconds}s
+                    </span>
+                  )}
+                  {scene.motion_type && (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 max-w-full truncate font-semibold" title={scene.motion_type}>
+                      {scene.motion_type}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
+
           </div>
         );
       })}

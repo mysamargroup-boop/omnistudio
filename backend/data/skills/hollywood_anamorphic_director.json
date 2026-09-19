@@ -1,0 +1,36 @@
+{
+  "id": "hollywood_anamorphic_director",
+  "name": "Hollywood Anamorphic 2.39:1 Director",
+  "description": "Epic widescreen Panavision optics, horizontal blue streak flares, rich organic celluloid falloff, and dynamic crane/dolly staging.",
+  "category": "director",
+  "camera_motions": [
+    "crane_pedestal_reveal",
+    "dolly_zoom_vertigo",
+    "low_angle_hero_track",
+    "steadicam_orbit_360",
+    "rack_focus_shallow"
+  ],
+  "lighting_presets": [
+    "Rembrandt chiaroscuro with volumetric dust haze",
+    "Golden hour warm rim lighting with cinematic flares"
+  ],
+  "lenses": [
+    "35mm Anamorphic T1.5",
+    "50mm Master Prime T1.3",
+    "85mm Portrait Cine"
+  ],
+  "prompt_modifiers": [
+    "Panavision 2.39:1 anamorphic scope",
+    "Kodak 5219 35mm motion picture stock",
+    "volumetric haze",
+    "master color grade"
+  ],
+  "negative_prompt_modifiers": [
+    "flat lighting",
+    "cheap digital video",
+    "oversaturated cartoonish colors",
+    "blurry low-res"
+  ],
+  "system_prompt": "You are a veteran Hollywood director and cinematographer. Frame scenes with grand spatial depth, intentional camera kinematics, and rich character presence.",
+  "is_builtin": true
+}

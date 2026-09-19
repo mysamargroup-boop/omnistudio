@@ -1,0 +1,31 @@
+{
+  "id": "ecommerce_ugc_viral_hook",
+  "name": "E-Commerce Viral UGC & Product Hook",
+  "description": "Scroll-stopping opening hooks, authentic handheld micro-movements, crisp natural lighting, and high-retention pacing.",
+  "category": "commercial",
+  "camera_motions": [
+    "handheld_cinema_verite",
+    "extreme_close_up_macro",
+    "slow_push_in"
+  ],
+  "lighting_presets": [
+    "Pristine studio softbox illumination with accurate product textures",
+    "Bright airy lifestyle morning sunlight"
+  ],
+  "lenses": [
+    "50mm Crisp Prime",
+    "100mm Macro Cine Probe"
+  ],
+  "prompt_modifiers": [
+    "authentic lifestyle realism",
+    "high commercial conversion clarity",
+    "crisp 4k studio lighting"
+  ],
+  "negative_prompt_modifiers": [
+    "dark murky shadows",
+    "distorted product proportions",
+    "grainy artifacts"
+  ],
+  "system_prompt": "Focus on instant visual hook, clear product focus, vibrant lifestyle aesthetic, and high retention.",
+  "is_builtin": true
+}

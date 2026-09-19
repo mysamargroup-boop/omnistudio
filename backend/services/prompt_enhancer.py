@@ -64,6 +64,14 @@ async def generate_storyboard(topic: str, num_scenes: int = 3) -> list[dict]:
     Break down any topic or story idea into structured scenes for the automated pipeline.
     Each scene contains visual prompt, camera direction, and voiceover narration script.
     """
+    cinematic_camera_motions = [
+        "dolly_zoom_vertigo", "fpv_drone_dive", "dutch_angle_tilt", "low_angle_hero_track",
+        "crane_pedestal_reveal", "steadicam_orbit_360", "whip_pan_transition", "rack_focus_shallow",
+        "handheld_cinema_verite", "overhead_gods_eye", "tracking_side_profile", "extreme_close_up_macro",
+        "slow_push_in", "reverse_pull_back", "tilt_up_skyline", "orbit_left_arc",
+        "crane_down_low", "fpv_flythrough", "whip_tilt_down", "dolly_in_rapid"
+    ]
+
     if settings.OPENAI_API_KEY:
         try:
             from openai import AsyncOpenAI
@@ -72,13 +80,17 @@ async def generate_storyboard(topic: str, num_scenes: int = 3) -> list[dict]:
 Break this story topic into exactly {num_scenes} sequential cinematic scenes:
 Topic: "{topic}"
 
+CRITICAL RULE: Do NOT use repetitive basic camera moves like simple 'push', 'pan', or 'fade in'.
+Choose DISTINCT, dramatic camera motions for each scene from this cinematic list:
+{json.dumps(cinematic_camera_motions)}
+
 Return ONLY a valid JSON array of objects with this schema:
 [
   {{
     "scene_number": 1,
     "title": "Hook Title",
-    "visual_prompt": "Detailed visual description of this shot for image generation, cinematic 8k",
-    "camera_motion": "zoom_in", // choose one of: zoom_in, zoom_out, pan_left, pan_right, tilt_up, tilt_down, subtle
+    "visual_prompt": "Detailed visual description of this shot for image diffusion, lens, lighting, cinematic 8k",
+    "camera_motion": "crane_pedestal_reveal",
     "narration": "Engaging voiceover script for this scene (20-30 words)",
     "duration": 4.5
   }}
@@ -91,7 +103,6 @@ Return ONLY a valid JSON array of objects with this schema:
                 temperature=0.7
             )
             text = res.choices[0].message.content.strip()
-            # Parse json
             match = re.search(r'\[.*\]', text, re.DOTALL)
             if match:
                 return json.loads(match.group(0))
@@ -103,31 +114,48 @@ Return ONLY a valid JSON array of objects with this schema:
         except Exception as e:
             logger.debug("OpenAI storyboard parse/call failed, falling back to algorithmic storyboard: %s", e)
             
-    # Intelligent Algorithmic Storyboard Fallback
-    motions = ["zoom_in", "pan_right", "subtle", "zoom_out", "tilt_up"]
+    # Intelligent Algorithmic Storyboard Fallback with Distinct Cinematography
+    diverse_motions = [
+        "crane_pedestal_reveal",
+        "low_angle_hero_track",
+        "dolly_zoom_vertigo",
+        "steadicam_orbit_360",
+        "fpv_drone_dive",
+        "dutch_angle_tilt",
+        "rack_focus_shallow",
+        "handheld_cinema_verite"
+    ]
     scenes = [
         {
             "scene_number": 1,
             "title": f"Opening: Discovering {topic[:30]}",
-            "visual_prompt": f"A sweeping cinematic establishing shot of {topic}, golden hour atmospheric lighting, 8k cinematic Arri Alexa",
-            "camera_motion": motions[0],
+            "visual_prompt": f"A sweeping cinematic establishing vista of {topic}, 35mm anamorphic lens, golden hour volumetric lighting, 8k cinematic master",
+            "camera_motion": diverse_motions[0],
             "narration": f"In a world shaped by imagination, the journey of {topic} begins here. Every legend starts with a single defining moment.",
             "duration": 5.0
         },
         {
             "scene_number": 2,
             "title": f"The Revelation",
-            "visual_prompt": f"An intense dramatic close-up showing the core mystery of {topic}, volumetric rays, hyper-detailed photorealistic",
-            "camera_motion": motions[1],
+            "visual_prompt": f"An intense dramatic low-angle tracking shot showing the core mystery of {topic}, Rembrandt chiaroscuro lighting, hyper-detailed photorealistic",
+            "camera_motion": diverse_motions[1],
             "narration": f"As secrets unravel beneath the surface, hidden truths emerge. The tension rises, shifting the balance of what we thought was possible.",
             "duration": 5.0
         },
         {
             "scene_number": 3,
             "title": f"Resolution & Legacy",
-            "visual_prompt": f"A breathtaking majestic finale scene celebrating {topic}, epic vista, sunbeams piercing through clouds, cinematic 8k masterpiece",
-            "camera_motion": motions[2],
+            "visual_prompt": f"A breathtaking majestic finale scene celebrating {topic}, Hitchcock vertigo dolly zoom, sunbeams piercing through clouds, cinematic 8k masterpiece",
+            "camera_motion": diverse_motions[2],
             "narration": f"When the dust settles, a new horizon appears. The story continues, leaving an unforgettable mark for generations to come.",
+            "duration": 5.0
+        },
+        {
+            "scene_number": 4,
+            "title": f"The Ascent",
+            "visual_prompt": f"An exhilarating 360-degree Steadicam orbit capturing {topic} reaching full transcendence, neon rim highlights, anamorphic streaks",
+            "camera_motion": diverse_motions[3],
+            "narration": f"Rising above every obstacle, the vision takes flight, carving an indelible chapter in cinematic history.",
             "duration": 5.0
         }
     ]

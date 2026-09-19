@@ -36,7 +36,7 @@ class VoiceDirectorAgent(BaseAgent):
                 )
                 if local_path.exists() and local_path.stat().st_size > 100:
                     dur = get_media_duration(local_path)
-                    if dur and dur > 1.0:
+                    if dur and dur > 1.0 and (not scene.duration_seconds or scene.duration_seconds <= 0):
                         scene.duration_seconds = round(dur, 1)
             except Exception as e:
                 logger.warning("Voice generation failed for scene %s: %s", scene.index, e)

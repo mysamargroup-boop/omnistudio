@@ -23,6 +23,13 @@ export default function PWAInstallPrompt() {
     // Only run in browser
     if (typeof window === "undefined") return;
 
+    // Register Service Worker for PWA
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .catch((err) => console.warn("[PWA] Service Worker registration failed:", err));
+    }
+
     // Check if user already dismissed or installed in this session
     const dismissed = sessionStorage.getItem("omnistudio_pwa_dismissed");
     if (dismissed === "true") return;

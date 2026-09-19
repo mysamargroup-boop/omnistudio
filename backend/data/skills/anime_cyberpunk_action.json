@@ -1,0 +1,33 @@
+{
+  "id": "anime_cyberpunk_action",
+  "name": "Anime Cyberpunk & High-Octane Action",
+  "description": "Hyper-stylized futuristic perspective, speed lines, neon-lit rainy reflections, Dutch angles, and kinetic whip pans.",
+  "category": "cinematography",
+  "camera_motions": [
+    "dutch_angle_tilt",
+    "whip_pan_transition",
+    "fpv_drone_dive",
+    "dolly_in_rapid"
+  ],
+  "lighting_presets": [
+    "Neon cyan and magenta split-lighting with wet street reflections",
+    "High-contrast strobe flash with heavy volumetric fog"
+  ],
+  "lenses": [
+    "18mm Ultra-Wide Fisheye",
+    "24mm Dynamic Action Lens"
+  ],
+  "prompt_modifiers": [
+    "Makoto Shinkai and Akira aesthetic",
+    "hyper-kinetic anime action",
+    "neon caustics",
+    "speed trails"
+  ],
+  "negative_prompt_modifiers": [
+    "washed out colors",
+    "boring static composition",
+    "dull gray tones"
+  ],
+  "system_prompt": "Choreograph high-octane kinetic energy, intense dramatic tension, neon accents, and sharp contrast.",
+  "is_builtin": true
+}

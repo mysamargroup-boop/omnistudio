@@ -48,7 +48,7 @@ class SceneData(BaseModel):
     camera_angle: str = ""
     motion_type: str = ""
     lighting: str = ""
-    duration_seconds: float = 3.0
+    duration_seconds: float = 4.0
     image_prompt: str = ""
     negative_prompt: str = ""
     image_path: Optional[str] = None
@@ -140,10 +140,55 @@ class BaseAgent:
 class AgentOrchestrator:
     def __init__(self):
         self.agents: Dict[str, BaseAgent] = {}
+        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._listeners: Dict[str, List[asyncio.Queue]] = {}
 
     def register_agent(self, agent: BaseAgent):
         self.agents[agent.name] = agent
         logger.info(f"Registered agent: {agent.name}")
+
+    async def attach_listener(self, pipeline_id: str, queue: asyncio.Queue) -> None:
+        """Attach an SSE event listener queue to an active or new pipeline execution."""
+        if pipeline_id not in self._listeners:
+            self._listeners[pipeline_id] = []
+        self._listeners[pipeline_id].append(queue)
+
+        # If no active background task is running for this pipeline, spawn one
+        current_task = self._active_tasks.get(pipeline_id)
+        if not current_task or current_task.done():
+            async def broadcast_callback(ctx: PipelineContext):
+                listeners = self._listeners.get(pipeline_id, [])
+                payload = ctx.to_dict()
+                for q in list(listeners):
+                    try:
+                        q.put_nowait(payload)
+                    except Exception:
+                        pass
+
+            task = asyncio.create_task(self.resume_pipeline(pipeline_id, broadcast_callback))
+            self._active_tasks[pipeline_id] = task
+
+    def detach_listener(self, pipeline_id: str, queue: asyncio.Queue) -> None:
+        """Detach a listener when a client disconnects, leaving the background task running."""
+        if pipeline_id in self._listeners:
+            try:
+                self._listeners[pipeline_id].remove(queue)
+                if not self._listeners[pipeline_id]:
+                    del self._listeners[pipeline_id]
+            except ValueError:
+                pass
+
+    def cancel_task(self, pipeline_id: str) -> bool:
+        """Explicitly cancel a pipeline background task upon user request."""
+        task = self._active_tasks.get(pipeline_id)
+        if task and not task.done():
+            task.cancel()
+            return True
+        return False
+
+    def is_task_running(self, pipeline_id: str) -> bool:
+        task = self._active_tasks.get(pipeline_id)
+        return bool(task and not task.done())
 
     async def save_pipeline_state(self, context: PipelineContext):
         try:
@@ -296,18 +341,22 @@ class AgentOrchestrator:
 
         if context.state == PipelineState.PAUSED:
             # Determine resume state from last completed phase
+            matched_state = None
             if context.agent_logs:
-                last_log = context.agent_logs[-1]
-                last_agent = last_log.get("agent", "")
-                matched_state = None
-                for st, ag in agent_mapping.items():
-                    if ag == last_agent:
-                        matched_state = st
+                for log in reversed(context.agent_logs):
+                    agent_str = (log.get("agent") or "").strip().lower()
+                    if not agent_str or agent_str in ("system", "user"):
+                        continue
+                    for st, ag in agent_mapping.items():
+                        ag_lower = ag.lower()
+                        if ag_lower == agent_str or ag_lower == f"{agent_str}agent" or ag_lower.replace("agent", "") == agent_str.replace("agent", ""):
+                            matched_state = st
+                            break
+                    if matched_state:
                         break
-                if matched_state and matched_state in transitions:
-                    context.state = transitions[matched_state]
-                else:
-                    context.state = PipelineState.PLANNING
+
+            if matched_state and matched_state in transitions:
+                context.state = transitions[matched_state]
             else:
                 context.state = PipelineState.PLANNING
             await self.save_pipeline_state(context)
@@ -341,8 +390,8 @@ class AgentOrchestrator:
                 await self.save_pipeline_state(context)
                 await progress_callback(context)
 
-                # If assisted mode and just completed an approval gate, pause for user review
-                if context.mode == 'assisted' and current_executing_state in approval_gates and next_state != PipelineState.COMPLETE:
+                # If assisted or agentic mode and just completed an approval gate, pause for user review
+                if context.mode in ('assisted', 'agentic') and current_executing_state in approval_gates and next_state != PipelineState.COMPLETE:
                     context.state = PipelineState.PAUSED
                     await self.save_pipeline_state(context)
                     await progress_callback(context)

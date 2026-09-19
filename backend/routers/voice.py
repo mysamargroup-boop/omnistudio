@@ -16,6 +16,7 @@ from services.translate_service import (
 )
 from config import settings
 import uuid
+import asyncio
 from pathlib import Path
 import logging
 
@@ -177,9 +178,15 @@ async def list_voice_models(request: Request):
         ]
     }
 
-@router.post("/generate")
-@limiter.limit("15/minute")
-async def generate_voice(req: VoiceRequest, request: Request):
+def _handle_bg_task_error(task: asyncio.Task):
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error("Shielded background voice task failed: %s", e)
+
+async def _execute_generate_voice(req: VoiceRequest):
     if req.provider == "elevenlabs":
         if not (settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip()):
             return {
@@ -242,6 +249,18 @@ async def generate_voice(req: VoiceRequest, request: Request):
         logger.warning("Failed to record speech generation usage log: %s", e)
 
     return res
+
+@router.post("/generate")
+@limiter.limit("15/minute")
+async def generate_voice(req: VoiceRequest, request: Request):
+    task = asyncio.create_task(_execute_generate_voice(req))
+    task.add_done_callback(_handle_bg_task_error)
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        logger.info("Client disconnected during voice generation; background task continues.")
+        raise
+
 
 # Voice Change — Upload audio file and change voice
 @router.post("/change")
