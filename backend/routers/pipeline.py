@@ -680,6 +680,8 @@ class AgentPipelineStartRequest(BaseModel):
 
 @router.post("/agent/start")
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
+    from services.geo_service import extract_client_ip, format_telemetry_log
+
     pipeline_id = f"pipeline_{uuid.uuid4().hex[:8]}"
     context = PipelineContext(
         pipeline_id=pipeline_id,
@@ -694,6 +696,12 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         voice_id=req.voice_id,
         apply_brand_kit=req.apply_brand_kit
     )
+
+    # Track Client IP and Geo-Location in Activity Logs
+    client_ip = extract_client_ip(request)
+    telemetry_log = format_telemetry_log(client_ip)
+    context.add_log("Security & Telemetry", telemetry_log)
+
     orchestrator = get_default_orchestrator()
     await orchestrator.save_pipeline_state(context)
     return {"success": True, "pipeline_id": pipeline_id}
@@ -758,11 +766,14 @@ async def stream_agent_pipeline(pipeline_id: str, request: Request):
     )
 
 @router.post("/agent/approve/{pipeline_id}")
-async def approve_agent_step(pipeline_id: str):
+async def approve_agent_step(pipeline_id: str, request: Request):
     orchestrator = get_default_orchestrator()
     try:
+        from services.geo_service import extract_client_ip
+        client_ip = extract_client_ip(request)
         context = await orchestrator.load_pipeline_state(pipeline_id)
         if context.state == PipelineState.PAUSED:
+            context.add_log("Security & Telemetry", f"Directorial approval authorized from IP: {client_ip}")
             context.add_log("System", "Directorial approval granted — resuming pipeline")
             await orchestrator.save_pipeline_state(context)
         return {"success": True, "pipeline_id": pipeline_id, "message": "Approved", "state": context.state.value}
@@ -771,11 +782,14 @@ async def approve_agent_step(pipeline_id: str):
         return {"success": False, "pipeline_id": pipeline_id, "error": str(e)}
 
 @router.post("/agent/resume/{pipeline_id}")
-async def resume_agent_step(pipeline_id: str):
+async def resume_agent_step(pipeline_id: str, request: Request):
     orchestrator = get_default_orchestrator()
     try:
+        from services.geo_service import extract_client_ip
+        client_ip = extract_client_ip(request)
         context = await orchestrator.load_pipeline_state(pipeline_id)
-        if context.state == PipelineState.PAUSED:
+        if context.state in [PipelineState.PAUSED, PipelineState.FAILED]:
+            context.add_log("Security & Telemetry", f"Pipeline resumption initiated from IP: {client_ip}")
             context.add_log("System", "Directorial execution resumed")
             await orchestrator.save_pipeline_state(context)
         return {"success": True, "pipeline_id": pipeline_id, "message": "Resumed", "state": context.state.value}

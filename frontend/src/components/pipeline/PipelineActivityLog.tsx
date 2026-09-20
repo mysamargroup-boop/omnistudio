@@ -48,6 +48,9 @@ const AGENT_COLORS: Record<string, string> = {
 
   orchestrator: "text-zinc-400",
   system: "text-zinc-500",
+  security_telemetry: "text-sky-400",
+  "security & telemetry": "text-sky-400",
+  telemetry: "text-sky-400",
 };
 
 const AGENT_LABELS: Record<string, string> = {
@@ -75,6 +78,9 @@ const AGENT_LABELS: Record<string, string> = {
   pipeline_preset_agent: "PRESET",
   orchestrator: "ORCHESTRATOR",
   system: "SYSTEM",
+  security_telemetry: "TELEMETRY",
+  "security & telemetry": "TELEMETRY",
+  telemetry: "TELEMETRY",
 };
 
 interface PipelineActivityLogProps {
@@ -135,10 +141,13 @@ export default function PipelineActivityLog({
           </div>
         ) : (
           logs.map((log, i) => {
-            const agentColor = AGENT_COLORS[log.agent] || "text-zinc-400";
-            const agentLabel = AGENT_LABELS[log.agent] || log.agent?.toUpperCase() || "UNKNOWN";
+            const agentLower = (log.agent || "").toLowerCase();
+            const isTelemetry = agentLower.includes("telemetry") || log.message?.includes("[Telemetry");
             const isCheckpoint = log.message?.includes("[CHECKPOINT");
+            const agentColor = isTelemetry ? "text-sky-400" : (AGENT_COLORS[log.agent] || AGENT_COLORS[agentLower] || "text-zinc-400");
+            const agentLabel = isTelemetry ? "TELEMETRY" : (AGENT_LABELS[log.agent] || AGENT_LABELS[agentLower] || log.agent?.toUpperCase() || "UNKNOWN");
             const typeColor =
+              isTelemetry ? "text-sky-300 font-mono bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/25" :
               isCheckpoint ? "text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20" :
               log.type === "success" ? "text-emerald-400" :
               log.type === "error" ? "text-red-400" :
@@ -149,7 +158,7 @@ export default function PipelineActivityLog({
             return (
               <div key={i} className={cn(
                 "flex items-start gap-2 text-[11px] font-mono leading-relaxed hover:bg-white/[0.02] rounded px-1 py-0.5",
-                isCheckpoint && "my-1"
+                (isCheckpoint || isTelemetry) && "my-1"
               )}>
                 {/* Timestamp */}
                 <span className="text-zinc-600 shrink-0 tabular-nums">
@@ -157,7 +166,7 @@ export default function PipelineActivityLog({
                 </span>
 
                 {/* Agent Badge */}
-                <span className={cn("shrink-0 font-bold", isCheckpoint ? "text-emerald-400" : agentColor)}>
+                <span className={cn("shrink-0 font-bold", isTelemetry ? "text-sky-400" : isCheckpoint ? "text-emerald-400" : agentColor)}>
                   [{agentLabel}]
                 </span>
 
