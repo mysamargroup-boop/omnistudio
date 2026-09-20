@@ -327,3 +327,4 @@ def apply_brand_kit_to_negative_prompt(negative_prompt: str, custom_kit: Optiona
         return negative_prompt
 
     return f"{negative_prompt.strip().rstrip(',')}, {neg_rules}"
+get_active_brand_profile = load_brand_kit

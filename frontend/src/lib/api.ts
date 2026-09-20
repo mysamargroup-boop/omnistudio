@@ -362,6 +362,7 @@ export const api = {
     video_model?: string;
     voice_provider?: string;
     voice_id?: string;
+    apply_brand_kit?: boolean;
   }) => fetchApi<any>("/api/pipeline/agent/start", { method: "POST", body: JSON.stringify(data) }),
 
   streamAgentPipeline: async (

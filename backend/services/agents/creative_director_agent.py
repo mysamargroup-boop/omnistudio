@@ -30,43 +30,105 @@ def infer_optimal_model(prompt: str, style: str) -> str:
         return "flux_pro"
     return "gemini_flash_image"
 
+def extract_prompt_parameters(prompt: str) -> dict:
+    """Extract natural language directives like 'autopilot', '4 images', '4 seconds', 'seedance' from prompt."""
+    p_lower = prompt.lower()
+    params = {}
+    
+    # 1. Autopilot detection
+    if re.search(r"\b(autopilot|auto[\s\-_]*pilot|full[\s\-_]*auto|autonomous)\b", p_lower):
+        params["mode"] = "autonomous"
+
+    # 2. Scene count detection (e.g. '4 images', '4 scenes', '4 keyframes', '4 shots')
+    scene_match = re.search(r"\b(\d+)\s*(?:images?|scenes?|keyframes?|shots?)\b", p_lower)
+    if scene_match:
+        count = int(scene_match.group(1))
+        if 1 <= count <= 8:
+            params["num_scenes"] = count
+
+    # 3. Scene duration detection (e.g. '4 sec', '4 seconds', '4s')
+    dur_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:seconds?|sec|s)\b", p_lower)
+    if dur_match:
+        params["scene_duration"] = float(dur_match.group(1))
+
+    # 4. Video model detection (e.g. 'seedance', 'omni flash', 'veo')
+    if "seedance" in p_lower:
+        params["video_model"] = "seedance"
+    elif any(k in p_lower for k in ["omni flash", "omni_flash", "veo", "google veo"]):
+        params["video_model"] = "omni_flash"
+
+    return params
+
 class CreativeDirectorAgent(BaseAgent):
     name = "CreativeDirectorAgent"
-    description = "Decomposes user prompt into a Project Brief and detects optimal diffusion model"
+    description = "Decomposes user prompt into a Project Brief, extracts natural language parameters, and selects optimal diffusion and video models"
     icon = "clapperboard"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
-        # 1. Analyze prompt to see if user requested a specific model directly in prompt text
+        # 1. Extract natural language intent parameters from prompt
+        extracted = extract_prompt_parameters(context.user_prompt)
+
+        # Apply autopilot if requested in prompt
+        if extracted.get("mode") == "autonomous":
+            context.mode = "autonomous"
+            context.add_log(self.name, "Autopilot command detected in prompt — full autonomous mode enabled (zero confirmation popups).")
+
+        # Apply scene count if requested in prompt
+        if extracted.get("num_scenes"):
+            context.num_scenes = extracted["num_scenes"]
+            context.add_log(self.name, f"Detected scene count in prompt: configured for {context.num_scenes} scenes.")
+
+        # Apply scene duration
+        duration_per_scene = extracted.get("scene_duration", 4.0)
+
+        # 2. Analyze prompt for image diffusion model
         explicit_model = detect_model_from_prompt(context.user_prompt)
         initial_model = context.image_model
 
         if explicit_model:
             context.image_model = explicit_model
-            context.add_log(self.name, f"Detected model command in prompt — switched diffusion engine to '{explicit_model}'")
+            context.add_log(self.name, f"Detected image model command in prompt — switched diffusion engine to '{explicit_model}'.")
         elif context.image_model in {"auto", "auto_agent", None, ""}:
             inferred = infer_optimal_model(context.user_prompt, context.style)
             context.image_model = inferred
-            context.add_log(self.name, f"Auto Director selected optimal diffusion engine '{inferred}' for prompt context")
+            context.add_log(self.name, f"Auto Director selected optimal diffusion engine '{inferred}' for visual context.")
         elif initial_model:
-            context.add_log(self.name, f"Configured diffusion engine: '{initial_model}'")
+            context.add_log(self.name, f"Configured diffusion engine: '{initial_model}'.")
 
-        # 2. Configure video engine (Auto mode defaults to Omni Video Model)
-        if not context.video_model or context.video_model in {"auto", "omni_model", "omni", ""}:
-            context.video_model = "omni_model"
-            context.add_log(self.name, "Auto Director configured video engine to 'Omni Video Model' (Neural Kinematics & Temporal Coherence)")
+        # 3. Configure video engine (seedance vs omni_flash vs default)
+        if extracted.get("video_model") == "seedance":
+            context.video_model = "seedance"
+            context.add_log(self.name, "Seedance video model detected in prompt — configured video engine to 'Seedance Neural Motion'.")
+        elif extracted.get("video_model") == "omni_flash" or not context.video_model or context.video_model in {"auto", "omni_model", "omni", ""}:
+            context.video_model = "omni_flash"
+            context.add_log(self.name, "Configured video engine to 'Google Omni Flash (Veo 3.1 Neural Kinematics)'.")
         else:
-            context.add_log(self.name, f"Configured video engine: '{context.video_model}'")
+            context.add_log(self.name, f"Configured video engine: '{context.video_model}'.")
+
+        # 4. Formulate Comprehensive Project Brief for transparent inspection
+        title_summary = context.user_prompt.split(",")[0].strip()
+        if len(title_summary) > 40:
+            title_summary = title_summary[:37] + "..."
 
         context.project_brief = {
-            "title": f"{context.user_prompt[:25]}...",
-            "genre": "Cinematic Storyboard",
-            "mood": "Cinematic",
-            "target_audience": "General",
+            "title": title_summary or "Cinematic Production",
+            "genre": f"{context.style.capitalize()} Cinematic Film",
+            "mood": "Cinematic & Emotional",
+            "target_audience": "Global / Social Master",
             "scene_count": context.num_scenes,
+            "scene_duration": duration_per_scene,
             "visual_style": context.style,
             "diffusion_model": context.image_model,
-            "video_model": "Omni Video Model (Neural Kinematics)",
-            "color_palette": "Cinematic Contrast",
-            "aspect_ratio": context.aspect_ratio
+            "video_model": context.video_model,
+            "color_palette": "Rich Cinematic Contrast & Warm Volumetrics",
+            "aspect_ratio": context.aspect_ratio,
+            "director_decisions": {
+                "concept": context.user_prompt,
+                "pacing": f"{context.num_scenes} scenes @ {duration_per_scene}s each (~{int(context.num_scenes * duration_per_scene)}s total)",
+                "image_engine": f"{context.image_model} (Selected for photoreal texture & composition)",
+                "video_engine": f"{context.video_model} (Temporal motion & character kinematics)",
+                "mode": context.mode,
+                "autopilot_active": context.mode == "autonomous"
+            }
         }
         return AgentResult(success=True)

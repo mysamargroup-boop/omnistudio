@@ -172,7 +172,7 @@ const AGENT_ORDER = [
 
 function PipelineContent() {
   const searchParams = useSearchParams();
-  const [topic, setTopic] = useState(searchParams?.get("topic") || DEFAULT_PIPELINE_PROMPT);
+  const [topic, setTopic] = useState(searchParams?.get("topic") || "");
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [scenes, setScenes] = useState(3);
   const [style, setStyle] = useState("cinematic");
@@ -223,6 +223,76 @@ function PipelineContent() {
   const [retentionScore, setRetentionScore] = useState<number | null>(null);
   const [abHookVariants, setAbHookVariants] = useState<string[]>([]);
   const [showDebugTelemetry, setShowDebugTelemetry] = useState(false);
+
+  // Brand Kit Intelligence Switch State
+  const [applyBrandKit, setApplyBrandKit] = useState<boolean>(true);
+
+  // Production History Drawer / Modal State
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await api.getAgentPipelineHistory();
+      if (res?.success && Array.isArray(res?.history)) {
+        setHistoryList(res.history);
+      }
+    } catch (e) {
+      console.error("Failed to load history", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleRestoreFromHistory = (item: any) => {
+    if (!item) return;
+    setPipelineId(item.id);
+    if (item.user_prompt) setTopic(item.user_prompt);
+    if (item.style) setStyle(item.style);
+    if (item.aspect_ratio) setAspectRatio(item.aspect_ratio);
+    if (item.master_video_path) setMasterVideo(item.master_video_path);
+    if (item.total_cost_usd) setTotalCostUsd(item.total_cost_usd);
+    if (item.total_cost_inr) setTotalCostInr(item.total_cost_inr);
+    if (item.project_brief) {
+      try {
+        const brief = typeof item.project_brief === "string" ? JSON.parse(item.project_brief) : item.project_brief;
+        setProjectBrief(brief);
+      } catch {}
+    }
+    if (item.scenes_data) {
+      try {
+        const scs = typeof item.scenes_data === "string" ? JSON.parse(item.scenes_data) : item.scenes_data;
+        if (Array.isArray(scs)) setChoreographedScenes(scs);
+      } catch {}
+    }
+    if (item.agent_logs) {
+      try {
+        const lgs = typeof item.agent_logs === "string" ? JSON.parse(item.agent_logs) : item.agent_logs;
+        if (Array.isArray(lgs)) {
+          setActivityLogs(
+            lgs.map((l: any) => ({
+              timestamp: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+              agent: l.agent?.toLowerCase().replace("agent", "") || "system",
+              message: l.message,
+              cost_usd: l.cost_usd,
+              cost_inr: l.cost_inr,
+              type: "info",
+            }))
+          );
+        }
+      } catch {}
+    }
+    if (item.state === "complete") {
+      const completedStatuses: Record<string, AgentNodeStatus> = {};
+      AGENT_ORDER.forEach((id) => {
+        completedStatuses[id] = { state: "complete", message: "Completed successfully" };
+      });
+      setAgentStatuses(completedStatuses);
+    }
+    setHistoryOpen(false);
+  };
 
   // Navigation refs
   const deskRef = useRef<HTMLDivElement>(null);
@@ -325,7 +395,11 @@ function PipelineContent() {
     }
 
     const currentState = event.state as string;
-    if (currentState === "paused") {
+    if (currentState === "failed") {
+      setLaunchError(event.error_message || "Agent execution encountered an error");
+      setRunning(false);
+      setApprovalModalOpen(false);
+    } else if (currentState === "paused") {
       setPausedState(currentState);
       setApprovalModalOpen(true);
     } else {
@@ -477,6 +551,10 @@ function PipelineContent() {
             });
             setAgentStatuses(completedStatuses);
             completeActiveJob(activeId);
+          } else if (ctx.state === "failed") {
+            setRunning(false);
+            setLaunchError(ctx.error_message || "Agent pipeline execution was interrupted or encountered an error.");
+            setShowDebugTelemetry(true);
           } else {
             completeActiveJob(activeId);
             try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
@@ -496,11 +574,32 @@ function PipelineContent() {
     };
   }, [handleSSEEvent, topic]);
 
-  const handleLaunchAgency = async () => {
-    const effectiveTopic = topic.trim() || DEFAULT_PIPELINE_PROMPT;
-    if (!topic.trim()) {
-      setTopic(DEFAULT_PIPELINE_PROMPT);
+  const handleResumePipeline = async () => {
+    if (!pipelineId) return;
+    setLaunchError(null);
+    setRunning(true);
+    setShowDebugTelemetry(true);
+    abortRef.current = new AbortController();
+    try {
+      await api.resumeAgentPipeline(pipelineId);
+      startActiveJob(pipelineId, "pipeline", "/pipeline", `Resuming 22-Agent Pipeline...`);
+      await api.streamAgentPipeline(pipelineId, handleSSEEvent, abortRef.current.signal);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setLaunchError(err.message || "Failed to resume pipeline");
+      }
+    } finally {
+      setRunning(false);
+      abortRef.current = null;
     }
+  };
+
+  const handleLaunchAgency = async () => {
+    if (!topic.trim()) {
+      setLaunchError("Please enter a creative concept or prompt to launch the autonomous pipeline.");
+      return;
+    }
+    const effectiveTopic = topic.trim();
     setLaunchError(null);
     setRunning(true);
     setShowDebugTelemetry(true);
@@ -535,6 +634,7 @@ function PipelineContent() {
         image_model: imageModel,
         video_model: "omni_model",
         voice_provider: voiceProvider,
+        apply_brand_kit: applyBrandKit,
       });
 
       if (!startRes?.success || !startRes?.pipeline_id) {
@@ -664,19 +764,38 @@ function PipelineContent() {
   const estimatedCostInr = Math.round(estimatedCostUsd * 83.5 * 100) / 100;
 
   // ── Render 4-Department Live Progress Bar (Clean, uncluttered) ──
-  const renderDepartmentProgress = () => (
-    <div className="p-5 rounded-3xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-4 animate-in fade-in duration-200">
-      <div className="flex items-center justify-between font-mono text-xs">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-          <span className="font-bold text-zinc-900 dark:text-white">
-            {agentMode === "autonomous" ? "Autonomous 22-Agent Flow Active" : "Directorial Review Pipeline Active"}
+  const renderDepartmentProgress = () => {
+    // Only render progress box when the pipeline is actively running, paused for review, or just completed
+    if (!running && !pausedState && !masterVideo) {
+      return null;
+    }
+
+    return (
+      <div className="p-5 rounded-3xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-4 animate-in fade-in duration-200">
+        <div className="flex items-center justify-between font-mono text-xs">
+          <div className="flex items-center gap-2">
+            {running ? (
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+            ) : pausedState ? (
+              <Pause className="w-4 h-4 text-amber-500 animate-pulse" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            )}
+            <span className="font-bold text-zinc-900 dark:text-white">
+              {agentMode === "autonomous" ? "Autonomous 22-Agent Flow Active" : "Directorial Review Pipeline Active"}
+            </span>
+          </div>
+          <span className={cn(
+            "font-bold",
+            pausedState ? "text-amber-500" : running ? "text-emerald-600 dark:text-emerald-400" : "text-emerald-500"
+          )}>
+            {pausedState
+              ? `Awaiting Sign-Off: ${pausedState.toUpperCase()}`
+              : running
+              ? "Synthesizing Pipeline"
+              : "Master Video Ready"}
           </span>
         </div>
-        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-          {pausedState ? `Awaiting Sign-Off: ${pausedState.toUpperCase()}` : "Synthesizing Pipeline"}
-        </span>
-      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
         <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06]">
@@ -698,6 +817,7 @@ function PipelineContent() {
       </div>
     </div>
   );
+};
 
   // ── Render Directive Desk Form (Prompt + Specs + Launch) ──
   const renderDirectiveForm = (mode: "autonomous" | "assisted") => (
@@ -720,6 +840,38 @@ function PipelineContent() {
           {mode === "autonomous" ? "Autonomous 22-agent execution" : "Directorial review popups enabled"}
         </span>
       </div>
+
+      {/* Prominent Error & Resume Banner */}
+      {launchError && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
+            <div>
+              <p className="font-bold text-zinc-900 dark:text-white">Pipeline Execution Status</p>
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-mono">{launchError}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {pipelineId && (
+              <button
+                type="button"
+                onClick={handleResumePipeline}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-all active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Resume Pipeline from Interrupted Agent</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setLaunchError(null)}
+              className="px-3 py-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-zinc-700 dark:text-zinc-300 rounded-xl font-mono text-xs cursor-pointer transition-all"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Master Prompt Input Box */}
       <div className="space-y-2">
@@ -964,6 +1116,58 @@ function PipelineContent() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Brand Kit Intelligence Switch */}
+      <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center border transition-all shrink-0",
+            applyBrandKit
+              ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500 shadow-xs"
+              : "bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-400"
+          )}>
+            <Shield className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold font-heading text-zinc-900 dark:text-white">
+                Brand Kit Intelligence
+              </span>
+              <span className={cn(
+                "text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border",
+                applyBrandKit
+                  ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border-zinc-300 dark:border-zinc-700"
+              )}>
+                {applyBrandKit ? "ON • ENFORCING" : "OFF • BYPASSED"}
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-500 truncate mt-0.5">
+              {applyBrandKit
+                ? "Active brand profile guidelines, color harmony, typography, and negative filters will be enforced."
+                : "Bypassed: The pipeline will use pure raw prompt aesthetics without brand constraints."}
+            </p>
+          </div>
+        </div>
+
+        {/* Toggle Switch */}
+        <button
+          type="button"
+          onClick={() => setApplyBrandKit(!applyBrandKit)}
+          className={cn(
+            "w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none shrink-0",
+            applyBrandKit ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
+          )}
+          title={`Click to turn Brand Kit ${applyBrandKit ? "OFF" : "ON"}`}
+        >
+          <span
+            className={cn(
+              "w-4 h-4 rounded-full bg-white block transition-transform absolute top-1 shadow-sm",
+              applyBrandKit ? "left-7" : "left-1"
+            )}
+          />
+        </button>
       </div>
 
       {/* Optional Advanced Director Accordion */}
@@ -1216,7 +1420,10 @@ function PipelineContent() {
               output={
                 expandedAgent === "creative_director" ? projectBrief :
                 expandedAgent === "script_writer" ? { scenes: choreographedScenes } :
+                expandedAgent === "brand_intelligence" ? projectBrief?.brand_kit :
                 expandedAgent === "image_generator" ? { scenes: choreographedScenes } :
+                expandedAgent === "video_generator" ? { scenes: choreographedScenes } :
+                expandedAgent === "voice_director" ? { scenes: choreographedScenes } :
                 undefined
               }
               expanded={true}
@@ -1534,6 +1741,18 @@ function PipelineContent() {
               {agentMode === "autonomous" ? "Autonomous Tab Active" : "Directorial Gates Active"}
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setHistoryOpen(true);
+              loadHistory();
+            }}
+            className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/[0.08] hover:border-emerald-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+            title="View Past Autonomous Runs"
+          >
+            <Clock className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-bold uppercase text-[11px]">Production History</span>
+          </button>
           {(topic || masterVideo || choreographedScenes.length > 0) && (
             <button
               type="button"
@@ -1548,174 +1767,78 @@ function PipelineContent() {
               className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
               title="Reset Workspace"
             >
-              Reset Session
+              Reset
             </button>
           )}
         </div>
       </div>
 
-      {/* ── TWO DEDICATED STUDIO TABS ("SIRF DO TABS") ── */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between font-mono text-[11px] text-zinc-500 uppercase tracking-wider font-bold">
-          <span>OPERATING MODE TABS:</span>
-          <span>Click either tab to open its dedicated studio</span>
+      {/* ── 2-MODE TAB SELECTOR (AUTONOMOUS VS DIRECTORIAL REVIEW) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card 1: Autonomous Mode */}
+        <div
+          onClick={() => setAgentMode("autonomous")}
+          className={cn(
+            "p-5 rounded-3xl border text-left transition-all cursor-pointer relative overflow-hidden group",
+            agentMode === "autonomous"
+              ? "bg-emerald-500/[0.04] border-emerald-500/40 ring-1 ring-emerald-500/30 shadow-md"
+              : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600"
+          )}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Zap className={cn("w-4 h-4", agentMode === "autonomous" ? "text-emerald-500" : "text-zinc-400")} />
+              <span className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white">
+                Autonomous Mode
+              </span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+              Autopilot (Zero Popups)
+            </span>
+          </div>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            All 22 agents execute sequentially and autonomously from creative brief to master compilation without waiting for manual confirmation.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* TAB 1: 100% Autonomous Creative Agency */}
-          <div
-            onClick={() => setAgentMode("autonomous")}
-            className={cn(
-              "p-5 rounded-3xl border-2 text-left cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between group",
-              agentMode === "autonomous"
-                ? "bg-emerald-500/[0.04] dark:bg-emerald-500/[0.06] border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20"
-                : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600 opacity-75 hover:opacity-100"
-            )}
-          >
-            <div className="space-y-3 w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn(
-                    "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors",
-                    agentMode === "autonomous"
-                      ? "bg-emerald-500 text-white shadow-xs"
-                      : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500"
-                  )}>
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
-                      Autonomous Pipeline
-                    </h3>
-                    <p className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase">
-                      One-Click Zero-Intervention Mode
-                    </p>
-                  </div>
-                </div>
-
-                <div className={cn(
-                  "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
-                  agentMode === "autonomous"
-                    ? "bg-emerald-500 border-emerald-500 text-white"
-                    : "border-zinc-300 dark:border-zinc-700"
-                )}>
-                  {agentMode === "autonomous" && <Check className="w-3.5 h-3.5" />}
-                </div>
-              </div>
-
-              <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed font-jakarta">
-                Single prompt into finished 4K cinematic video and omnichannel social distribution. All 22 AI agents coordinate autonomously without manual approval stops.
-              </p>
-            </div>
-
-            <div className="pt-4 mt-2 flex flex-wrap items-center gap-2 border-t border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono">
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                Continuous Flow
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Auto-Master & Compile
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Auto-Publish Ready
+        {/* Card 2: Assisted Mode */}
+        <div
+          onClick={() => setAgentMode("assisted")}
+          className={cn(
+            "p-5 rounded-3xl border text-left transition-all cursor-pointer relative overflow-hidden group",
+            agentMode === "assisted"
+              ? "bg-violet-500/[0.04] border-violet-500/40 ring-1 ring-violet-500/30 shadow-md"
+              : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600"
+          )}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Sliders className={cn("w-4 h-4", agentMode === "assisted" ? "text-violet-500" : "text-zinc-400")} />
+              <span className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white">
+                Directorial Review Mode
               </span>
             </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold">
+              Milestone Popups
+            </span>
           </div>
-
-          {/* TAB 2: Directorial Review Gates */}
-          <div
-            onClick={() => setAgentMode("assisted")}
-            className={cn(
-              "p-5 rounded-3xl border-2 text-left cursor-pointer transition-all relative overflow-hidden flex flex-col justify-between group",
-              agentMode === "assisted"
-                ? "bg-violet-500/[0.04] dark:bg-violet-500/[0.06] border-violet-500 shadow-md shadow-violet-500/10 ring-2 ring-violet-500/20"
-                : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600 opacity-75 hover:opacity-100"
-            )}
-          >
-            <div className="space-y-3 w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn(
-                    "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors",
-                    agentMode === "assisted"
-                      ? "bg-violet-500 text-white shadow-xs"
-                      : "bg-zinc-100 dark:bg-white/[0.05] text-zinc-500"
-                  )}>
-                    <Sliders className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white">
-                      Directorial Review Gates
-                    </h3>
-                    <p className="text-[10px] font-mono text-violet-600 dark:text-violet-400 font-bold uppercase tracking-wider">
-                      Interactive Approval Popups
-                    </p>
-                  </div>
-                </div>
-
-                <div className={cn(
-                  "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
-                  agentMode === "assisted"
-                    ? "bg-violet-500 border-violet-500 text-white"
-                    : "border-zinc-300 dark:border-zinc-700"
-                )}>
-                  {agentMode === "assisted" && <Check className="w-3.5 h-3.5" />}
-                </div>
-              </div>
-
-              <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed font-jakarta">
-                Human-in-the-loop studio. Agents pause at key milestones (Screenplay, Visual Keyframes, Master Cut) with approval popups for directorial sign-off and revisions.
-              </p>
-            </div>
-
-            <div className="pt-4 mt-2 flex flex-wrap items-center gap-2 border-t border-black/[0.04] dark:border-white/[0.04] text-[10px] font-mono">
-              <span className="px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20">
-                Approval Popups
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Directorial Feedback
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-400">
-                Revisions & Sign-Off
-              </span>
-            </div>
-          </div>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Pauses at key creative milestones (Screenplay dialogues and Keyframe images) for your directorial approval before proceeding to video generation.
+          </p>
         </div>
       </div>
 
-      {/* ── CONDITIONAL WORKSPACE: ONLY THE OPENED TAB RENDERS ── */}
+      {/* Main Directive Desk Form */}
       {agentMode === "autonomous" ? (
-        <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="space-y-6">
+          {renderDepartmentProgress()}
           {renderDirectiveForm("autonomous")}
-          {running && renderDepartmentProgress()}
-          {renderPublishingHub()}
           {renderTelemetrySection()}
+          {renderPublishingHub()}
         </div>
       ) : (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* 3 Milestone Gates Banner */}
-          <div className="p-4 rounded-2xl bg-violet-500/[0.05] border border-violet-500/20 space-y-2.5">
-            <div className="flex items-center justify-between font-mono text-[11px]">
-              <span className="font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">
-                3 DIRECTORIAL REVIEW GATES ACTIVE
-              </span>
-              <span className="text-zinc-500 text-[10px]">Popups appear at each milestone</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-violet-500/20">
-                <span className="text-[9px] font-bold text-violet-500 block uppercase">Gate 1 • Scripting</span>
-                <span className="font-bold text-zinc-900 dark:text-zinc-100">Screenplay & Brief Sign-Off</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-violet-500/20">
-                <span className="text-[9px] font-bold text-violet-500 block uppercase">Gate 2 • Visuals</span>
-                <span className="font-bold text-zinc-900 dark:text-zinc-100">Keyframe Aesthetics Approval</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-white dark:bg-[#111118] border border-violet-500/20">
-                <span className="text-[9px] font-bold text-violet-500 block uppercase">Gate 3 • Master Cut</span>
-                <span className="font-bold text-zinc-900 dark:text-zinc-100">Final Audio & Video Release</span>
-              </div>
-            </div>
-          </div>
-
+        <div className="space-y-6">
+          {renderDepartmentProgress()}
           {renderDirectiveForm("assisted")}
 
           {/* Milestone Approval Alert (when paused) */}
@@ -1728,7 +1851,9 @@ function PipelineContent() {
                     Directorial Sign-Off Required: {pausedState.toUpperCase()}
                   </p>
                   <p className="text-[10px] text-zinc-500 font-mono">
-                    Review artifacts, formulate feedback notes, and sign off to proceed.
+                    {pausedState === "generating_images" 
+                      ? "Keyframe images generated. Review visuals and approve to begin video synthesis."
+                      : "Screenplay and dialogues drafted. Review scripts and approve to begin image diffusion."}
                   </p>
                 </div>
               </div>
@@ -1742,21 +1867,7 @@ function PipelineContent() {
             </div>
           )}
 
-          {/* Choreographed Scene Review Grid */}
-          {choreographedScenes.length > 0 && (
-            <div className="space-y-3 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08]">
-              <div className="flex items-center justify-between font-mono border-b border-black/[0.06] dark:border-white/[0.06] pb-2">
-                <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
-                  CHOREOGRAPHED SCENE REVIEW ({choreographedScenes.length} SCENES)
-                </span>
-                <span className="text-[10px] text-zinc-400">
-                  {choreographedScenes.filter((s) => s.video_path || s.image_path).length} Rendered
-                </span>
-              </div>
-              <SceneReviewGrid scenes={choreographedScenes} compact={false} />
-            </div>
-          )}
-
+          {renderTelemetrySection()}
           {renderPublishingHub()}
         </div>
       )}
@@ -1764,7 +1875,7 @@ function PipelineContent() {
       {/* ── DIRECTORIAL APPROVAL MODAL POPUP (WHEN PAUSED AT AN APPROVAL GATE) ── */}
       {approvalModalOpen && (
         <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#111118] border border-black/[0.1] dark:border-white/[0.1] rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl space-y-5">
+          <div className="bg-white dark:bg-[#111118] border border-black/[0.1] dark:border-white/[0.1] rounded-3xl p-6 sm:p-7 max-w-2xl w-full shadow-2xl space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
               <div className="flex items-center gap-2.5">
@@ -1773,7 +1884,9 @@ function PipelineContent() {
                 </div>
                 <div>
                   <h3 className="text-sm font-heading font-extrabold text-zinc-950 dark:text-white">
-                    Directorial Approval Required
+                    {pausedState === "generating_images"
+                      ? "Keyframe Images Review — Approve Video Synthesis"
+                      : "Screenplay & Dialogue Review — Approve Keyframe Diffusion"}
                   </h3>
                   <p className="text-[10px] font-mono text-zinc-500">
                     Milestone Gate: {pausedState?.toUpperCase() || "REVIEW GATE"}
@@ -1789,33 +1902,51 @@ function PipelineContent() {
               </button>
             </div>
 
-            {/* Current Artifacts Preview */}
-            <div className="space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
-              {projectBrief && (
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] space-y-2">
+            {/* Current Artifacts Preview (Images or Screenplay) */}
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1">
+              {/* If paused after generating_images: Show Keyframe Images Grid */}
+              {pausedState === "generating_images" && choreographedScenes.length > 0 && (
+                <div className="space-y-2">
                   <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 block">
-                    Formulated Project Brief
+                    Generated Keyframe Visuals ({choreographedScenes.length} Images)
                   </span>
-                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div><span className="text-zinc-400">Title:</span> <strong className="text-zinc-800 dark:text-zinc-200">{projectBrief.title || "Untitled"}</strong></div>
-                    <div><span className="text-zinc-400">Mood:</span> <strong className="text-zinc-800 dark:text-zinc-200">{projectBrief.mood || "Cinematic"}</strong></div>
-                    <div><span className="text-zinc-400">Pacing:</span> <strong className="text-zinc-800 dark:text-zinc-200">{projectBrief.visual_style || style}</strong></div>
-                    <div><span className="text-zinc-400">Audience:</span> <strong className="text-zinc-800 dark:text-zinc-200">{projectBrief.target_audience || "Global"}</strong></div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {choreographedScenes.map((sc, i) => (
+                      <div key={i} className="p-2.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] space-y-1.5">
+                        <div className="aspect-video rounded-xl overflow-hidden bg-black/5 dark:bg-white/5">
+                          {sc.image_path ? (
+                            <img src={sc.image_path} alt={sc.title || `Scene ${i + 1}`} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-zinc-400 font-mono">Visual Rendering...</div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-bold text-zinc-900 dark:text-white">
+                          <span>{sc.title || `Scene ${i + 1}`}</span>
+                          <span className="text-[9px] font-mono text-emerald-500">{sc.duration_seconds || 4}s</span>
+                        </div>
+                        {sc.script && (
+                          <p className="text-[10px] text-zinc-500 line-clamp-2 italic font-serif">"{sc.script}"</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {choreographedScenes.length > 0 && (
+              {/* If paused after scripting: Show Screenplay Dialogues */}
+              {pausedState === "scripting" && choreographedScenes.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 block">
-                    Current Choreographed Scenes ({choreographedScenes.length})
+                    Screenplay & Narration Dialogues ({choreographedScenes.length} Scenes)
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
                     {choreographedScenes.map((sc, i) => (
-                      <div key={i} className="p-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] space-y-1">
-                        <span className="text-[9px] font-mono font-bold text-zinc-400">Scene {i + 1}</span>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-1">{sc.title || `Scene ${i + 1}`}</p>
-                        <p className="text-[10px] text-zinc-500 line-clamp-2">{sc.script || sc.description || sc.image_prompt}</p>
+                      <div key={i} className="p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-zinc-900 dark:text-white">{sc.title || `Scene ${i + 1}`}</span>
+                          <span className="text-[10px] font-mono text-emerald-500">{sc.duration_seconds || 4}s</span>
+                        </div>
+                        <p className="text-xs font-serif italic text-zinc-800 dark:text-zinc-200">"{sc.script}"</p>
                       </div>
                     ))}
                   </div>
@@ -1870,11 +2001,132 @@ function PipelineContent() {
                   ) : (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Approve & Continue</span>
+                      <span>{pausedState === "generating_images" ? "Approve & Synthesize Video" : "Approve & Generate Visuals"}</span>
                     </>
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PRODUCTION HISTORY MODAL ── */}
+      {historyOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in"
+          onClick={() => setHistoryOpen(false)}
+        >
+          <div
+            className="w-full max-w-5xl xl:max-w-6xl max-h-[88vh] m-auto bg-white dark:bg-[#0e0e16] border border-black/[0.1] dark:border-white/[0.1] rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col space-y-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-heading font-extrabold text-zinc-950 dark:text-white">
+                    Production History & Archives
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    Review and restore past autonomous and directorial pipeline runs from omnistudio.db
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(false)}
+                className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1 border border-rose-500/20"
+                title="Close (Esc)"
+              >
+                <X className="w-4 h-4" />
+                <span>Close</span>
+              </button>
+            </div>
+
+            {/* Modal Content / List */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
+              {loadingHistory ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3 text-zinc-500">
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                  <span className="text-xs font-mono">Fetching pipeline runs from database...</span>
+                </div>
+              ) : historyList.length === 0 ? (
+                <div className="py-12 text-center text-zinc-500 space-y-2">
+                  <Film className="w-8 h-8 mx-auto text-zinc-400" />
+                  <p className="text-sm font-bold">No past production runs found</p>
+                  <p className="text-xs text-zinc-400">Launch an autonomous or directorial run to populate this archive.</p>
+                </div>
+              ) : (
+                historyList.map((item) => {
+                  const isComp = item.state === "complete";
+                  const isRun = item.state === "running" || item.state === "generating_images" || item.state === "generating_videos";
+                  const isFail = item.state === "failed";
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] hover:border-emerald-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full font-bold uppercase",
+                            isComp ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" :
+                            isRun ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 animate-pulse" :
+                            isFail ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30" :
+                            "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          )}>
+                            {item.state}
+                          </span>
+                          <span className="text-zinc-400">
+                            {item.created_at ? new Date(item.created_at).toLocaleString() : item.id}
+                          </span>
+                          <span>•</span>
+                          <span className="text-zinc-500 font-bold uppercase">{item.mode || "autonomous"}</span>
+                          <span>•</span>
+                          <span className="text-zinc-500">{item.num_scenes || 3} scenes</span>
+                          {item.total_cost_usd > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-amber-500 font-bold">
+                                ${item.total_cost_usd.toFixed(3)} (~₹{item.total_cost_inr?.toFixed(2) || (item.total_cost_usd * 83.5).toFixed(2)})
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-xs font-semibold text-zinc-900 dark:text-white line-clamp-2 leading-relaxed">
+                          &ldquo;{item.user_prompt}&rdquo;
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.master_video_path && (
+                          <a
+                            href={getMediaUrl(item.master_video_path)}
+                            download
+                            className="px-3 py-2 rounded-xl bg-zinc-200 dark:bg-white/[0.06] hover:bg-zinc-300 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 font-mono text-xs font-bold transition-all flex items-center gap-1.5"
+                            title="Download Master Video"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">MP4</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreFromHistory(item)}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-heading font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          <span>Load in Studio</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

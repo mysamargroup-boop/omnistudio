@@ -136,7 +136,7 @@ export const ALL_22_AGENTS: AgentDef[] = [
 
 const statusIcon = (state: AgentNodeStatus["state"]) => {
   switch (state) {
-    case "running": return <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />;
+    case "running": return <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />;
     case "complete": return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
     case "failed": return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
     case "paused": return <Pause className="w-3.5 h-3.5 text-amber-500" />;
@@ -180,7 +180,7 @@ export default function AgentFlowChart({
               )}
             >
               {isAnyRunning && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500 to-cyan-500 animate-pulse" />
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 animate-pulse" />
               )}
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-zinc-400">
@@ -191,7 +191,7 @@ export default function AgentFlowChart({
                   completedCount === deptAgents.length
                     ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                     : isAnyRunning
-                    ? "bg-emerald-500/20 text-emerald-600 animate-pulse"
+                    ? "bg-gradient-to-r from-blue-600/20 to-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-blue-500/30 animate-pulse"
                     : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
                 )}>
                   {completedCount}/{deptAgents.length} Ready
@@ -237,7 +237,7 @@ export default function AgentFlowChart({
                 className={cn(
                   "flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition-all cursor-pointer relative",
                   isSelected && "ring-2 ring-emerald-500 border-emerald-500 bg-white dark:bg-zinc-900 shadow-md",
-                  isRunning && "border-emerald-500/50 bg-emerald-500/[0.06] ring-1 ring-emerald-500/30",
+                  isRunning && "border-blue-500/80 bg-gradient-to-br from-blue-600/15 via-indigo-600/15 to-cyan-500/15 ring-2 ring-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.35)] animate-pulse",
                   isDone && "border-emerald-500/30 bg-emerald-500/[0.03]",
                   isPaused && "border-amber-500/40 bg-amber-500/[0.05] animate-pulse",
                   isFailed && "border-rose-500/40 bg-rose-500/[0.05]",
@@ -246,15 +246,15 @@ export default function AgentFlowChart({
                 )}
               >
                 <div className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border mt-0.5",
+                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 transition-all",
                   isDone
                     ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/20"
                     : isRunning
-                    ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
+                    ? "bg-gradient-to-br from-blue-600 to-cyan-500 text-white border-blue-400 shadow-md shadow-blue-500/30"
                     : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-500 border-black/[0.06] dark:border-white/[0.06]"
                 )}>
                   {isRunning ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
                   ) : (
                     <Icon className="w-4 h-4" />
                   )}
@@ -262,12 +262,18 @@ export default function AgentFlowChart({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-heading font-extrabold text-zinc-900 dark:text-white truncate">
+                    <span className={cn(
+                      "text-xs font-heading font-extrabold truncate",
+                      isRunning ? "text-blue-600 dark:text-blue-400" : isDone ? "text-zinc-900 dark:text-white" : "text-zinc-800 dark:text-zinc-200"
+                    )}>
                       {agent.shortName}
                     </span>
                     {statusIcon(status.state)}
                   </div>
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                  <p className={cn(
+                    "text-[10px] truncate mt-0.5",
+                    isRunning ? "text-blue-500 dark:text-blue-300 font-medium" : "text-zinc-500 dark:text-zinc-400"
+                  )}>
                     {status.message || (isDone ? "Completed" : isRunning ? "In progress" : isPaused ? "Review required" : "Ready in queue")}
                   </p>
                   {status.cost_usd !== undefined && status.cost_usd > 0 && (

@@ -38,5 +38,26 @@ class PromptEngineerAgent(BaseAgent):
                 )
                 scene.negative_prompt = "low quality, blurry, distorted, watermark"
 
-        context.add_log(self.name, f"Engineered optimized prompts for all scenes tailored to '{model}' diffusion engine")
+        # Inject Brand Kit guidelines if enabled and active
+        brand_kit = context.project_brief.get("brand_kit") if context.project_brief else None
+        if getattr(context, "apply_brand_kit", True) and brand_kit:
+            brand_style = brand_kit.get("style_guidelines", "")
+            brand_neg = brand_kit.get("negative_guidelines", "")
+            primary_c = brand_kit.get("primary_color", "")
+            accent_c = brand_kit.get("accent_color", "")
+            brand_addons = []
+            if brand_style:
+                brand_addons.append(brand_style)
+            if primary_c or accent_c:
+                brand_addons.append(f"color harmony in {primary_c} and {accent_c}")
+            addon_str = ", ".join(brand_addons)
+            if addon_str:
+                for scene in context.scenes:
+                    scene.image_prompt = f"{scene.image_prompt.rstrip('.')}, {addon_str}."
+                    if brand_neg:
+                        scene.negative_prompt = f"{scene.negative_prompt}, {brand_neg}"
+            context.add_log(self.name, f"Engineered optimized prompts tailored to '{model}' with active Brand Kit identity injected.")
+        else:
+            context.add_log(self.name, f"Engineered optimized prompts for all scenes tailored to '{model}' diffusion engine.")
+
         return AgentResult(success=True)

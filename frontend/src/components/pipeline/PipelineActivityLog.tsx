@@ -137,7 +137,9 @@ export default function PipelineActivityLog({
           logs.map((log, i) => {
             const agentColor = AGENT_COLORS[log.agent] || "text-zinc-400";
             const agentLabel = AGENT_LABELS[log.agent] || log.agent?.toUpperCase() || "UNKNOWN";
+            const isCheckpoint = log.message?.includes("[CHECKPOINT");
             const typeColor =
+              isCheckpoint ? "text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20" :
               log.type === "success" ? "text-emerald-400" :
               log.type === "error" ? "text-red-400" :
               log.type === "warning" ? "text-amber-400" :
@@ -145,14 +147,17 @@ export default function PipelineActivityLog({
               "text-zinc-300";
 
             return (
-              <div key={i} className="flex items-start gap-2 text-[11px] font-mono leading-relaxed hover:bg-white/[0.02] rounded px-1 py-0.5">
+              <div key={i} className={cn(
+                "flex items-start gap-2 text-[11px] font-mono leading-relaxed hover:bg-white/[0.02] rounded px-1 py-0.5",
+                isCheckpoint && "my-1"
+              )}>
                 {/* Timestamp */}
                 <span className="text-zinc-600 shrink-0 tabular-nums">
                   {log.timestamp}
                 </span>
 
                 {/* Agent Badge */}
-                <span className={cn("shrink-0 font-bold", agentColor)}>
+                <span className={cn("shrink-0 font-bold", isCheckpoint ? "text-emerald-400" : agentColor)}>
                   [{agentLabel}]
                 </span>
 
@@ -163,8 +168,17 @@ export default function PipelineActivityLog({
 
                 {/* Cost */}
                 {log.cost_usd !== undefined && log.cost_usd > 0 && (
-                  <span className="text-amber-500/70 shrink-0 tabular-nums">
+                  <span className="text-amber-400/90 shrink-0 tabular-nums font-bold">
                     +${log.cost_usd.toFixed(3)}
+                    {log.cost_inr !== undefined && log.cost_inr > 0 ? (
+                      <span className="text-zinc-400 font-normal ml-1">
+                        (₹{log.cost_inr.toFixed(2)})
+                      </span>
+                    ) : (
+                      <span className="text-zinc-400 font-normal ml-1">
+                        (₹{(log.cost_usd * 83.5).toFixed(2)})
+                      </span>
+                    )}
                   </span>
                 )}
               </div>

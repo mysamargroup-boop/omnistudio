@@ -74,6 +74,7 @@ class PipelineContext(BaseModel):
     voice_provider: str = "edge"
     voice_id: str = ""
     num_scenes: int = 3
+    apply_brand_kit: bool = True
     error_message: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
@@ -328,18 +329,15 @@ class AgentOrchestrator:
         }
 
         approval_gates = [
-            PipelineState.PLANNING,
             PipelineState.SCRIPTING,
-            PipelineState.STORYBOARDING,
             PipelineState.GENERATING_IMAGES,
-            PipelineState.EDITING,
         ]
 
         if context.state == PipelineState.IDLE:
             context.state = PipelineState.PLANNING
             await self.save_pipeline_state(context)
 
-        if context.state == PipelineState.PAUSED:
+        if context.state in [PipelineState.PAUSED, PipelineState.FAILED]:
             # Determine resume state from last completed phase
             matched_state = None
             if context.agent_logs:
@@ -359,9 +357,25 @@ class AgentOrchestrator:
                 context.state = transitions[matched_state]
             else:
                 context.state = PipelineState.PLANNING
+            context.error_message = None
             await self.save_pipeline_state(context)
 
+        import re
+        is_autopilot = (context.mode == 'autonomous') or bool(
+            re.search(r'\b(autopilot|auto[\s\-_]*pilot|full[\s\-_]*auto|autonomous)\b', context.user_prompt or '', re.IGNORECASE)
+        )
+
+        department_checkpoints = {
+            PipelineState.PLANNING: "=== [CHECKPOINT 1/4: EDITORIAL & PRE-PRODUCTION INITIATED] ===",
+            PipelineState.PROMPTING: "=== [CHECKPOINT 2/4: ASSET SYNTHESIS & QC INITIATED] ===",
+            PipelineState.PLANNING_VIDEO: "=== [CHECKPOINT 3/4: CINEMATICS & AUDIO STUDIO INITIATED] ===",
+            PipelineState.EDITING: "=== [CHECKPOINT 4/4: MASTERING & DISTRIBUTION INITIATED] ===",
+        }
+
         while context.state in agent_mapping:
+            if context.state in department_checkpoints:
+                context.add_log("System", department_checkpoints[context.state])
+
             agent_name = agent_mapping.get(context.state)
             if not agent_name or agent_name not in self.agents:
                 context.state = PipelineState.FAILED
@@ -376,22 +390,26 @@ class AgentOrchestrator:
             
             try:
                 result = await agent.execute(context)
-                context.add_log(agent.name, f"Completed phase: {current_executing_state.value}", result.cost_usd, result.cost_inr)
                 
                 if not result.success:
                     context.state = PipelineState.FAILED
                     context.error_message = result.error
+                    context.add_log("System", f"Agent {agent.name} encountered an error: {result.error}")
                     await self.save_pipeline_state(context)
                     await progress_callback(context)
                     return context
+
+                context.add_log(agent.name, f"Completed phase: {current_executing_state.value}", result.cost_usd, result.cost_inr)
                 
                 next_state = transitions.get(current_executing_state, PipelineState.COMPLETE)
                 context.state = next_state
                 await self.save_pipeline_state(context)
                 await progress_callback(context)
 
-                # If assisted or agentic mode and just completed an approval gate, pause for user review
-                if context.mode in ('assisted', 'agentic') and current_executing_state in approval_gates and next_state != PipelineState.COMPLETE:
+                # If assisted or agentic mode and NOT in autopilot, pause for user review at critical gates:
+                # 1. After SCRIPTING: to review and approve scene dialogues/screenplay
+                # 2. After GENERATING_IMAGES: to review 4 keyframe images before synthesizing video clips
+                if not is_autopilot and context.mode in ('assisted', 'agentic') and current_executing_state in approval_gates and next_state != PipelineState.COMPLETE:
                     context.state = PipelineState.PAUSED
                     await self.save_pipeline_state(context)
                     await progress_callback(context)
@@ -404,6 +422,14 @@ class AgentOrchestrator:
                 await self.save_pipeline_state(context)
                 await progress_callback(context)
                 return context
+
+        if context.state == PipelineState.COMPLETE:
+            context.add_log(
+                "System",
+                f"=== [PRODUCTION COMPLETE] All 4 Departments executed successfully. Master Video ready! Total Spend: ${context.total_cost_usd:.3f} (~₹{context.total_cost_inr:.2f}) ==="
+            )
+            await self.save_pipeline_state(context)
+            await progress_callback(context)
 
         return context
 

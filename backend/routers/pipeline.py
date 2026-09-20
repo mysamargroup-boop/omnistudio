@@ -676,6 +676,7 @@ class AgentPipelineStartRequest(BaseModel):
     video_model: str = 'omni_model'
     voice_provider: str = 'edge'
     voice_id: str = ''
+    apply_brand_kit: bool = True
 
 @router.post("/agent/start")
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
@@ -690,7 +691,8 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         image_model=req.image_model,
         video_model=req.video_model or 'omni_model',
         voice_provider=req.voice_provider,
-        voice_id=req.voice_id
+        voice_id=req.voice_id,
+        apply_brand_kit=req.apply_brand_kit
     )
     orchestrator = get_default_orchestrator()
     await orchestrator.save_pipeline_state(context)

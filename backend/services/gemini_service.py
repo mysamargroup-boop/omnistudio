@@ -115,6 +115,15 @@ async def generate_veo_video(
     elif aspect_ratio in ["21:9", "2.39:1"]:
         norm_aspect = "16:9"
 
+    # Google Veo requires durationSeconds to be exactly 4, 6, or 8
+    dur_int = int(duration_seconds)
+    if dur_int <= 5:
+        norm_duration = 4
+    elif dur_int <= 7:
+        norm_duration = 6
+    else:
+        norm_duration = 8
+
     url = f"{GEMINI_API_URL}/models/{target_model}:predictLongRunning?key={key}"
     
     instance: Dict[str, Any] = {"prompt": prompt}
@@ -133,7 +142,7 @@ async def generate_veo_video(
         "parameters": {
             "aspectRatio": norm_aspect,
             "sampleCount": 1,
-            "durationSeconds": int(duration_seconds)
+            "durationSeconds": norm_duration
         }
     }
 
