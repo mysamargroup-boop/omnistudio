@@ -22,7 +22,8 @@ import {
   Sliders,
   ShieldCheck,
   ChevronRight,
-  Info
+  Info,
+  Layers
 } from 'lucide-react';
 import { api, getMediaUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ import {
   fetchActiveCharacterAsync
 } from '@/lib/characters';
 import { ARCHETYPES } from '@/components/video/CharacterStudioModal';
+import CharacterSheetModal from '@/components/character/CharacterSheetModal';
 
 export default function CharacterStudioPage() {
   const router = useRouter();
@@ -44,6 +46,10 @@ export default function CharacterStudioPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'custom' | 'archetype'>('all');
   
+  // Character Sheet Modal state
+  const [selectedSheetChar, setSelectedSheetChar] = useState<CharacterData | null>(null);
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
+
   // Creation form state
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
@@ -246,7 +252,7 @@ export default function CharacterStudioPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-center">
+          <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
             <button
               type="button"
               onClick={() => handleToggleLock(activeChar)}
@@ -254,6 +260,18 @@ export default function CharacterStudioPage() {
             >
               <Unlock className="w-3.5 h-3.5" />
               <span>Unlock Identity</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedSheetChar(activeChar);
+                setIsSheetModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm shadow-emerald-600/20"
+              title="Multi-Angle Turnaround Character Sheet"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Character Sheet</span>
             </button>
             <button
               type="button"
@@ -635,6 +653,17 @@ export default function CharacterStudioPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    setSelectedSheetChar(char);
+                    setIsSheetModalOpen(true);
+                  }}
+                  className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer"
+                  title="View / Generate Multi-Angle Character Sheet"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     setActiveCharacter(char);
                     const params = new URLSearchParams();
                     params.set("character_id", char.id);
@@ -667,6 +696,13 @@ export default function CharacterStudioPage() {
           );
         })}
       </div>
+
+      {/* Character Turnaround Multi-Angle Sheet Modal */}
+      <CharacterSheetModal
+        isOpen={isSheetModalOpen}
+        onClose={() => setIsSheetModalOpen(false)}
+        character={selectedSheetChar}
+      />
     </div>
   );
 }

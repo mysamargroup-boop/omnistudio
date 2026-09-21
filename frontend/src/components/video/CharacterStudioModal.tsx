@@ -13,11 +13,13 @@ import {
   Lock,
   Unlock,
   Sliders,
-  ChevronDown
+  ChevronDown,
+  Layers
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { saveCharacter, setActiveCharacter } from "@/lib/characters";
+import CharacterSheetModal from "@/components/character/CharacterSheetModal";
 
 export interface CharacterData {
   id: string;
@@ -107,6 +109,8 @@ export default function CharacterStudioModal({
   const [vaultImages, setVaultImages] = useState<any[]>([]);
   const [loadingVault, setLoadingVault] = useState(false);
 
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -177,6 +181,16 @@ export default function CharacterStudioModal({
         </button>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsSheetOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-mono border border-white/15 transition-all cursor-pointer shadow-sm"
+            title="View or Generate Multi-Angle Turnaround Sheet for this Character"
+          >
+            <Layers className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Character Sheet</span>
+          </button>
+
           {activeCharacter?.isLocked && (
             <button
               type="button"
@@ -427,6 +441,19 @@ export default function CharacterStudioModal({
           </div>
         </div>
       )}
+
+      {/* Turnaround Multi-Angle Character Sheet Modal */}
+      <CharacterSheetModal
+        isOpen={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+        character={{
+          id: selectedArchetype || "custom",
+          name: characterName || "Character",
+          prompt: characterPrompt,
+          imageUrl: characterImage,
+          isLocked: true,
+        }}
+      />
     </div>
   );
 }

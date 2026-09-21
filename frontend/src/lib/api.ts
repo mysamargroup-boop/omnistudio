@@ -663,6 +663,37 @@ export const api = {
     fetchApi<{ success: boolean; character: any }>("/api/characters/active"),
   setActiveCharacter: (character: any) =>
     fetchApi<{ success: boolean; character: any }>("/api/characters/active", { method: "POST", body: JSON.stringify({ character }) }),
+  generateCharacterSheet: (data: {
+    character_id?: string;
+    name: string;
+    prompt?: string;
+    imageUrl?: string;
+    image_url?: string;
+    angles?: string[];
+    use_ai?: boolean;
+  }) =>
+    fetchApi<{
+      success: boolean;
+      character_id?: string;
+      character_name: string;
+      composite_sheet_url: string;
+      angles: Array<{
+        angle_id: string;
+        label: string;
+        degrees: string;
+        description: string;
+        filename: string;
+        image_url: string;
+        size_bytes: number;
+      }>;
+      generated_at: number;
+    }>("/api/characters/sheet", { method: "POST", body: JSON.stringify(data) }),
+  getCharacterSheet: (characterId: string) =>
+    fetchApi<{
+      success: boolean;
+      exists: boolean;
+      sheet: any;
+    }>(`/api/characters/${characterId}/sheet`),
 
   // Apify Scraper & AI Screenplay Studio Endpoints
   getApifyActors: () =>

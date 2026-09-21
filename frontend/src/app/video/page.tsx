@@ -73,6 +73,7 @@ import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
 import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
 import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/video/CharacterStudioModal";
+import CharacterSheetModal from "@/components/character/CharacterSheetModal";
 import { getActiveCharacter, getStoredCharacters, setActiveCharacter as setStoredActiveCharacter, fetchActiveCharacterAsync } from "@/lib/characters";
 import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
 import VideoEditorModal from "@/components/video/VideoEditorModal";
@@ -431,6 +432,7 @@ function VideoStudioContent() {
   const [characterModalOpen, setCharacterModalOpen] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<CharacterData | null>(null);
   const [characterLockActive, setCharacterLockActive] = useState<boolean>(true);
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
   const [customCharName, setCustomCharName] = useState("");
   const [customCharPrompt, setCustomCharPrompt] = useState("");
   const [customCharImage, setCustomCharImage] = useState("");
@@ -3183,6 +3185,15 @@ function VideoStudioContent() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setIsSheetModalOpen(true)}
+                      className="text-[11px] font-mono px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 transition-colors cursor-pointer border border-emerald-500/40 flex items-center gap-1 font-semibold"
+                      title="View Multi-Angle Turnaround Sheet for this Character"
+                    >
+                      <Layers className="w-3 h-3" />
+                      <span>Sheet</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => {
                         setSidebarOpen(true);
                         setOpenSections((prev) => ({ ...prev, character: true }));
@@ -4178,6 +4189,15 @@ function VideoStudioContent() {
                                     )} />
                                   </div>
                                   <span>{characterLockActive ? "ON" : "OFF"}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsSheetModalOpen(true)}
+                                  className="text-[10px] font-mono px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 transition-colors cursor-pointer border border-emerald-500/40 flex items-center gap-1 font-semibold"
+                                  title="View Multi-Angle Turnaround Sheet for this Character"
+                                >
+                                  <Layers className="w-3 h-3" />
+                                  <span>Sheet</span>
                                 </button>
                                 <button
                                   type="button"
@@ -5473,6 +5493,13 @@ function VideoStudioContent() {
         currentPrompt={prompt}
         currentNegativePrompt={negativePrompt}
         studioType="video"
+      />
+
+      {/* Character Turnaround Multi-Angle Sheet Modal */}
+      <CharacterSheetModal
+        isOpen={isSheetModalOpen}
+        onClose={() => setIsSheetModalOpen(false)}
+        character={activeCharacter}
       />
     </div>
   );

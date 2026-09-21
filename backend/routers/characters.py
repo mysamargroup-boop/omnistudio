@@ -294,3 +294,55 @@ async def set_active_character(payload: ActiveCharacterPayload):
             cur.execute("DELETE FROM studio_settings WHERE setting_key = 'active_character'")
 
     return {"success": True, "character": char_dict}
+
+
+class CharacterSheetRequest(BaseModel):
+    character_id: Optional[str] = None
+    name: str = Field(..., max_length=255)
+    prompt: Optional[str] = Field(default="", max_length=5000)
+    imageUrl: Optional[str] = None
+    image_url: Optional[str] = None
+    angles: Optional[List[str]] = None
+    use_ai: Optional[bool] = True
+
+
+@router.post("/sheet")
+async def create_character_sheet(payload: CharacterSheetRequest):
+    """Generates a turnaround multi-angle character sheet with individual angles and composite grid."""
+    from services.character_sheet_service import generate_character_sheet
+    img = payload.imageUrl or payload.image_url or ""
+    res = await generate_character_sheet(
+        character_id=payload.character_id,
+        name=payload.name,
+        prompt=payload.prompt or "",
+        image_url=img,
+        angles_to_generate=payload.angles,
+        use_ai=payload.use_ai if payload.use_ai is not None else True
+    )
+    return res
+
+
+@router.get("/{char_id}/sheet")
+async def get_character_sheet(char_id: str):
+    """Retrieves an existing turnaround sheet for a character if generated."""
+    with get_db_cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS character_sheets (
+                character_id TEXT PRIMARY KEY,
+                sheet_data TEXT NOT NULL,
+                composite_url TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("SELECT sheet_data FROM character_sheets WHERE character_id = ?", (char_id,))
+        row = cur.fetchone()
+
+    if row and row[0]:
+        try:
+            data = json.loads(row[0])
+            return {"success": True, "exists": True, "sheet": data}
+        except Exception:
+            pass
+
+    return {"success": True, "exists": False, "sheet": None}
+
