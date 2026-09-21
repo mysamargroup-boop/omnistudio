@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -13,158 +12,56 @@ import {
   Film,
   Camera,
   Layers,
-  ArrowRight,
-  Filter,
-  Play,
-  Share2,
   Sliders,
-  ExternalLink,
-  ChevronRight,
   CheckCircle2,
   Cpu,
   Video,
   Image as ImageIcon,
+  ShieldCheck,
+  Flame,
+  Lightbulb,
+  ChevronDown,
+  ChevronUp,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { JEWELLERY_ITEMS, JEWELLERY_PRESETS, JewelleryPreset } from "@/components/studio/JewelleryPromptSuite";
+import { JEWELLERY_ITEMS, JEWELLERY_PRESETS } from "@/components/studio/JewelleryPromptSuite";
+import {
+  PromptItem,
+  PROMPT_LIBRARY_DATA,
+  UNIVERSAL_REALISM_TAG,
+  MASTER_NEGATIVE_PROMPT,
+  VIDEO_CONSISTENCY_NEGATIVE_PROMPT,
+} from "@/lib/promptLibraryData";
 
-interface PromptItem {
-  id: string;
-  category: "jewellery" | "bridal" | "fashion" | "commercial" | "cinematic" | "macro" | "scifi" | "portrait";
-  title: string;
-  badge: string;
-  recommendedRatio: "9:16" | "16:9" | "1:1" | "4:5";
-  description: string;
-  prompt: string;
-  negativePrompt?: string;
-  tags: string[];
-  isCustomizableJewellery?: boolean;
-}
-
-const MASTER_PROMPT_CATALOG: PromptItem[] = [
-  // 1. Jewellery & Bridal Collection (From JewelleryPromptSuite)
+// Combine the jewellery presets with our PDF prompt items
+const FULL_CATALOG: PromptItem[] = [
+  ...PROMPT_LIBRARY_DATA,
   ...JEWELLERY_PRESETS.map((p) => ({
     id: p.id,
-    category: (p.category === "bridal" ? "bridal" : p.category === "macro" ? "macro" : "jewellery") as PromptItem["category"],
+    category: (p.category === "bridal" ? "bridal" : p.category === "macro" ? "jewellery" : "jewellery") as PromptItem["category"],
+    subCategory: "Customizable Suite",
     title: p.title,
     badge: p.badge,
     recommendedRatio: p.recommendedRatio,
     description: p.summary,
     prompt: p.promptTemplate("Necklace / Choker"),
-    negativePrompt: "blurry, low quality, distorted metal, extra fingers, cartoon, plastic",
+    negativePrompt: MASTER_NEGATIVE_PROMPT,
     tags: ["jewellery", p.category, "luxury", "8k"],
     isCustomizableJewellery: true,
   })),
-
-  // 2. High-Fashion & Editorial
-  {
-    id: "fashion_haute_couture",
-    category: "fashion",
-    title: "Vogue Haute Couture Silk Editorial",
-    badge: "HAUTE COUTURE",
-    recommendedRatio: "9:16",
-    description: "Striking high-fashion model wearing champagne raw silk in minimalist architectural lighting.",
-    prompt: "High-fashion editorial model in champagne haute couture pleated silk garment, dramatic studio key lighting, soft natural shadows, Hasselblad 85mm f/1.2, Vogue magazine cover aesthetic, delicate skin textures, ultra-realistic, 8k.",
-    negativePrompt: "bad anatomy, cartoon, drawing, plastic skin, flat lighting",
-    tags: ["fashion", "editorial", "portrait", "vogue"],
-  },
-  {
-    id: "fashion_paris_runway",
-    category: "fashion",
-    title: "Paris Fashion Week Runway Motion",
-    badge: "RUNWAY 4K",
-    recommendedRatio: "9:16",
-    description: "Dynamic low-angle runway walk with flash photography and flowing haute couture textiles.",
-    prompt: "Ultra-luxury Paris Fashion Week runway show, elegant female model striding forward in flowing crimson chiffon gown, dynamic fabric motion flutter, front camera flash with dark background, 85mm f/1.4 lens, 60fps cinematic runway walk, 8k resolution.",
-    negativePrompt: "blurry, jerky motion, deformed limbs, CGI, render",
-    tags: ["runway", "fashion", "model", "motion"],
-  },
-
-  // 3. Cinematic & Video Studio
-  {
-    id: "cinema_cyberpunk_rain",
-    category: "cinematic",
-    title: "Cinematic Cyberpunk Neon Rain",
-    badge: "ANAMORPHIC",
-    recommendedRatio: "16:9",
-    description: "Atmospheric neon rain reflections on wet asphalt with anamorphic flares and volumetric steam.",
-    prompt: "Cinematic cyberpunk cityscape in heavy neon rain, reflections on wet asphalt, volumetric blue and amber steam, anamorphic horizontal lens flare, Arri Alexa LF 35mm, Blade Runner 2049 aesthetic, shallow depth of field, 8k cinematic masterpiece.",
-    negativePrompt: "oversaturated, flat, lowres, cartoon, noisy",
-    tags: ["cyberpunk", "rain", "neon", "cinematic"],
-  },
-  {
-    id: "cinema_rajasthan_royal",
-    category: "bridal",
-    title: "Royal Indian Palace Courtyard Entrance",
-    badge: "HERITAGE 4K",
-    recommendedRatio: "9:16",
-    description: "Opulent royal bride walking through sun-drenched Jodhpur palace corridor with gold zardozi lehenga.",
-    prompt: "Cinematic tracking shot of an Indian royal bride walking through an antique sandstone palace corridor in Jaipur, draped in a crimson velvet lehenga adorned with authentic gold zardozi embroidery and heirloom polki jewellery, soft warm sunlight streaming through carved jharokha arches, 85mm f/1.2 lens, 24fps motion, 8k photorealistic.",
-    negativePrompt: "western style, modern clothing, cartoon, blurry, distorted face, plastic",
-    tags: ["bridal", "palace", "indian", "heritage", "reel"],
-  },
-
-  // 4. Commercial & Luxury Products
-  {
-    id: "commercial_swiss_chronometer",
-    category: "commercial",
-    title: "Swiss Luxury Chronometer on Obsidian",
-    badge: "COMMERCIAL AD",
-    recommendedRatio: "1:1",
-    description: "Macro advertising shot of a gold chronograph watch on volcanic black stone with water caustics.",
-    prompt: "Ultra-luxury commercial product photograph of a gold Swiss chronograph watch on polished volcanic black obsidian slate, crystal-clear water caustics reflecting shimmering rays, 100mm macro lens, pristine reflections, Rolex and Patek Philippe advertising grade, 8k.",
-    negativePrompt: "scratches, dust, fingerprint smudges, low contrast, cartoon",
-    tags: ["watch", "luxury", "product", "commercial"],
-  },
-  {
-    id: "commercial_perfume_water",
-    category: "commercial",
-    title: "Crystal Perfume Flacon & Liquid Waves",
-    badge: "COSMETICS 8K",
-    recommendedRatio: "9:16",
-    description: "Artisanal glass perfume bottle rising through turquoise water ripples with sunlit caustics.",
-    prompt: "High-end luxury beauty advertisement of an amber glass perfume bottle emerging from crystalline turquoise water ripples. Golden sunset caustics, floating droplets frozen in air, soft pastel coral background, ultra-sharp macro clarity, high-speed photography, 8k.",
-    negativePrompt: "murky water, bubbles, blurry bottle, distorted logo",
-    tags: ["perfume", "cosmetics", "commercial", "macro"],
-  },
-
-  // 5. Sci-Fi & Unreal Worlds
-  {
-    id: "scifi_interstellar_horizon",
-    category: "scifi",
-    title: "Planetary Twin-Moon Horizon",
-    badge: "SCI-FI EPIC",
-    recommendedRatio: "16:9",
-    description: "Lone astronaut standing on alien red sand dune beneath dual crescent celestial bodies.",
-    prompt: "Cinematic sci-fi still of an astronaut standing on a sweeping red sand dune on an alien world, looking up at two giant crescent moons rising over a glowing atmospheric horizon, dramatic golden rim lighting, epic scale, Interstellar cinematic color grading, 70mm IMAX format.",
-    negativePrompt: "cartoon, flat lighting, CGI look, blurry",
-    tags: ["scifi", "space", "astronaut", "imax"],
-  },
-
-  // 6. Realistic Portraiture
-  {
-    id: "portrait_documentary_leica",
-    category: "portrait",
-    title: "Authentic Leica M11 Documentary Portrait",
-    badge: "LEICA REALISM",
-    recommendedRatio: "4:5",
-    description: "National Geographic grade documentary portrait with authentic skin texture and natural overcast light.",
-    prompt: "Intimate documentary portrait of a weathered artisan craftsman in his workshop, natural soft window light, deep authentic eye reflections, natural skin pores and textures, Leica M11 with 50mm Summilux f/1.4 lens, National Geographic award-winning photography, rich black and white or muted film tones, 8k.",
-    negativePrompt: "airbrushed skin, plastic, doll, CGI, render, blurry eyes",
-    tags: ["portrait", "leica", "documentary", "realism"],
-  },
 ];
 
 const CATEGORIES = [
-  { id: "all", label: "All Prompts" },
-  { id: "jewellery", label: "Jewellery" },
-  { id: "bridal", label: "Bridal & Heritage" },
-  { id: "fashion", label: "Haute Couture" },
-  { id: "commercial", label: "Commercial" },
-  { id: "cinematic", label: "Cinematic" },
-  { id: "macro", label: "Macro 8K" },
-  { id: "scifi", label: "Sci-Fi" },
-  { id: "portrait", label: "Portraiture" },
+  { id: "all", label: "All Prompts", count: FULL_CATALOG.length },
+  { id: "jewellery", label: "Jewellery & Hero", count: FULL_CATALOG.filter((p) => p.category === "jewellery").length },
+  { id: "bridal", label: "Bridal & Heritage", count: FULL_CATALOG.filter((p) => p.category === "bridal").length },
+  { id: "poses", label: "Model Poses (30+)", count: FULL_CATALOG.filter((p) => p.category === "poses").length },
+  { id: "consistent_video", label: "AI Video Consistency", count: FULL_CATALOG.filter((p) => p.category === "consistent_video").length },
+  { id: "realism", label: "Anti-AI & Realism", count: FULL_CATALOG.filter((p) => p.category === "realism").length },
+  { id: "fashion", label: "Haute Couture", count: FULL_CATALOG.filter((p) => p.category === "fashion").length },
+  { id: "commercial", label: "Commercial Luxury", count: FULL_CATALOG.filter((p) => p.category === "commercial").length },
+  { id: "cinematic", label: "Cinematic & Film", count: FULL_CATALOG.filter((p) => p.category === "cinematic").length },
 ];
 
 export default function PromptLibraryPage() {
@@ -173,9 +70,27 @@ export default function PromptLibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJewelleryItem, setSelectedJewelleryItem] = useState("Necklace / Choker");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedNegativeId, setExpandedNegativeId] = useState<string | null>(null);
+
+  // Interactive Prompt Builder State
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [builderOutfit, setBuilderOutfit] = useState("royal wine-purple silk saree with gold zari motifs");
+  const [builderPose, setBuilderPose] = useState("one hand gently holding saree pallu near collarbone, neck elongated");
+  const [builderLighting, setBuilderLighting] = useState("soft morning daylight entering through carved sandstone palace window");
+  const [builderJewellery, setBuilderJewellery] = useState("heirloom uncut polki choker and matching jhumka earrings");
+  const [builderCamera, setBuilderCamera] = useState("Sony A7R V, 85mm GM lens, f/2.0 aperture, RAW photo");
+  const [includeRealismTag, setIncludeRealismTag] = useState(true);
+
+  const builtCustomPrompt = useMemo(() => {
+    let text = `Ultra-realistic luxury Indian fashion editorial photoshoot. Stunning Indian woman wearing a ${builderOutfit}, adorned with ${builderJewellery}. Pose: ${builderPose}. Lighting: ${builderLighting}. Shot on ${builderCamera}.`;
+    if (includeRealismTag) {
+      text += ` ${UNIVERSAL_REALISM_TAG}`;
+    }
+    return text;
+  }, [builderOutfit, builderPose, builderLighting, builderJewellery, builderCamera, includeRealismTag]);
 
   const filteredPrompts = useMemo(() => {
-    return MASTER_PROMPT_CATALOG.filter((p) => {
+    return FULL_CATALOG.filter((p) => {
       const matchesCat = activeCategory === "all" || p.category === activeCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -198,29 +113,25 @@ export default function PromptLibraryPage() {
     return item.prompt;
   };
 
-  const handleCopy = (item: PromptItem) => {
-    const text = getResolvedPrompt(item);
+  const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedId(item.id);
+    setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleSendToPipeline = (item: PromptItem) => {
-    const text = getResolvedPrompt(item);
-    const encoded = encodeURIComponent(text);
-    router.push(`/pipeline?prompt=${encoded}&aspect=${item.recommendedRatio}`);
+  const handleSendToPipeline = (promptText: string, ratio: string) => {
+    const encoded = encodeURIComponent(promptText);
+    router.push(`/pipeline?prompt=${encoded}&aspect=${ratio}`);
   };
 
-  const handleSendToVideo = (item: PromptItem) => {
-    const text = getResolvedPrompt(item);
-    const encoded = encodeURIComponent(text);
-    router.push(`/video?prompt=${encoded}&aspect=${item.recommendedRatio}`);
+  const handleSendToVideo = (promptText: string, ratio: string) => {
+    const encoded = encodeURIComponent(promptText);
+    router.push(`/video?prompt=${encoded}&aspect=${ratio}`);
   };
 
-  const handleSendToImage = (item: PromptItem) => {
-    const text = getResolvedPrompt(item);
-    const encoded = encodeURIComponent(text);
-    router.push(`/image?prompt=${encoded}&aspect=${item.recommendedRatio}`);
+  const handleSendToImage = (promptText: string, ratio: string) => {
+    const encoded = encodeURIComponent(promptText);
+    router.push(`/image?prompt=${encoded}&aspect=${ratio}`);
   };
 
   return (
@@ -228,16 +139,16 @@ export default function PromptLibraryPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-500 shadow-sm">
-            <BookOpen className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-500 shadow-sm">
+            <BookOpen className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono tracking-widest uppercase text-amber-500 font-bold">
-                CURATED PROMPT REPOSITORY
+                HIGH-END PRODUCTION SUITE
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                {MASTER_PROMPT_CATALOG.length} PRESETS
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold">
+                {FULL_CATALOG.length} PRESETS
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-heading font-extrabold tracking-tight text-zinc-950 dark:text-white">
@@ -246,36 +157,249 @@ export default function PromptLibraryPage() {
           </div>
         </div>
 
-        {/* Global Item Customizer for Jewellery */}
-        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-white/[0.05] p-1.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
-          <span className="text-[11px] font-mono text-zinc-500 pl-2">Piece:</span>
-          <select
-            value={selectedJewelleryItem}
-            onChange={(e) => setSelectedJewelleryItem(e.target.value)}
-            className="bg-white dark:bg-[#181820] text-xs font-heading font-bold rounded-xl px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.1] text-zinc-800 dark:text-zinc-200 outline-hidden cursor-pointer"
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Toggle Interactive Prompt Builder */}
+          <button
+            type="button"
+            onClick={() => setShowBuilder(!showBuilder)}
+            className={cn(
+              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-heading font-bold border transition-all cursor-pointer shadow-xs",
+              showBuilder
+                ? "bg-amber-500 text-zinc-950 border-amber-500"
+                : "bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 border-black/[0.08] dark:border-white/[0.08]"
+            )}
           >
-            {JEWELLERY_ITEMS.map((item) => (
-              <option key={item.id} value={item.label}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+            <Sliders className="w-4 h-4 text-amber-500" />
+            <span>{showBuilder ? "Close Builder" : "Mix & Match Builder"}</span>
+          </button>
+
+          {/* Jewellery Piece Selector */}
+          <div className="flex items-center gap-2 bg-zinc-100 dark:bg-white/[0.05] p-1.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
+            <span className="text-[11px] font-mono text-zinc-500 pl-2">Piece:</span>
+            <select
+              value={selectedJewelleryItem}
+              onChange={(e) => setSelectedJewelleryItem(e.target.value)}
+              className="bg-white dark:bg-[#181820] text-xs font-heading font-bold rounded-xl px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.1] text-zinc-800 dark:text-zinc-200 outline-hidden cursor-pointer"
+            >
+              {JEWELLERY_ITEMS.map((item) => (
+                <option key={item.id} value={item.label}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+      </div>
+
+      {/* Interactive Mix & Match Prompt Builder (Collapsible) */}
+      {showBuilder && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.03] p-5 sm:p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              <h2 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
+                Interactive Studio Prompt Builder
+              </h2>
+            </div>
+            <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">
+              Assemble & Launch
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            {/* Outfit */}
+            <div className="space-y-1">
+              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                Outfit & Fabric
+              </label>
+              <select
+                value={builderOutfit}
+                onChange={(e) => setBuilderOutfit(e.target.value)}
+                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
+              >
+                <option value="royal wine-purple silk saree with gold zari motifs">Wine-Purple Silk Saree (Gold Zari)</option>
+                <option value="trending blush pink embroidered lehenga with zardozi details">Blush Pink Lehenga (Zardozi)</option>
+                <option value="couture crimson velvet lehenga with royal antique embroidery">Crimson Velvet Lehenga (Royal Antique)</option>
+                <option value="pastel sky blue organza saree with sleeveless embroidered blouse">Pastel Sky Blue Organza Saree</option>
+                <option value="ivory and gold tissue silk saree with delicate border">Ivory & Gold Tissue Silk Saree</option>
+                <option value="emerald green designer lehenga with heavy border">Emerald Green Designer Lehenga</option>
+              </select>
+            </div>
+
+            {/* Pose */}
+            <div className="space-y-1">
+              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                Pose & Posture
+              </label>
+              <select
+                value={builderPose}
+                onChange={(e) => setBuilderPose(e.target.value)}
+                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
+              >
+                <option value="one hand gently holding saree pallu near collarbone, neck elongated">Hand Holding Pallu Near Collarbone</option>
+                <option value="body turned 45 degrees, face looking back over shoulder with soft smile">Looking Over Shoulder (45° Turn)</option>
+                <option value="fingers gently touching earring, head tilted slightly sideways">Touching Earring Beauty Close-Up</option>
+                <option value="both hands softly framing necklace, looking at camera, macro jewellery focus">Both Hands Framing Necklace</option>
+                <option value="standing on grand marble staircase, one hand on railing, looking directly at camera">Royal Staircase Pose</option>
+                <option value="sheer embroidered dupatta covering half face, eyes visible with intense gaze">Dupatta Covering Half Face (Eyes Visible)</option>
+                <option value="seated gracefully on sofa, elbow resting on armrest, chin lightly supported">Seated Chin Rest Pose</option>
+                <option value="walking slowly toward camera, saree flowing naturally, confident expression">Slow Walking Toward Camera</option>
+              </select>
+            </div>
+
+            {/* Lighting */}
+            <div className="space-y-1">
+              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                Lighting & Atmosphere
+              </label>
+              <select
+                value={builderLighting}
+                onChange={(e) => setBuilderLighting(e.target.value)}
+                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
+              >
+                <option value="soft morning daylight entering through carved sandstone palace window">Window Daylight (Palace Sandstone)</option>
+                <option value="golden hour warm sunlight creating rim light around hair, cinematic shadows">Golden Hour Rim Lighting</option>
+                <option value="surrounded by candles and warm palace decor, cinematic low-light glow">Candlelight Low-Light Glow</option>
+                <option value="standing beneath crystal chandelier, dramatic luxury lighting reflections">Crystal Chandelier Reflections</option>
+                <option value="cool blue moonlight on luxury terrace, subtle cinematic rim light">Moonlight Cool Blue Terrace</option>
+                <option value="large octabox key light, soft directional studio lighting, gentle shadow transitions">Large Octabox Studio Key Light</option>
+              </select>
+            </div>
+
+            {/* Jewellery */}
+            <div className="space-y-1">
+              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                Jewellery Style
+              </label>
+              <select
+                value={builderJewellery}
+                onChange={(e) => setBuilderJewellery(e.target.value)}
+                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
+              >
+                <option value="heirloom uncut polki choker and matching jhumka earrings">Uncut Polki Choker & Jhumkas</option>
+                <option value="statement royal kundan necklace set with green emerald drops">Royal Kundan Set (Emerald Drops)</option>
+                <option value="solitaire diamond earrings and matching delicate diamond necklace">Solitaire Diamond Set</option>
+                <option value="rose gold bridal necklace set with intricate filigree work">Rose Gold Filigree Bridal Set</option>
+                <option value="authentic South Indian temple jewellery necklace with goddess motifs">South Indian Temple Jewellery</option>
+              </select>
+            </div>
+
+            {/* Camera / Lens */}
+            <div className="space-y-1">
+              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                Camera & Lens
+              </label>
+              <select
+                value={builderCamera}
+                onChange={(e) => setBuilderCamera(e.target.value)}
+                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
+              >
+                <option value="Sony A7R V, 85mm GM lens, f/2.0 aperture, RAW photo, shallow depth of field">Sony A7R V (85mm GM f/2.0)</option>
+                <option value="Canon R5, 135mm lens, f/2.0, telephoto compression, creamy bokeh">Canon R5 (135mm f/2.0 Telephoto)</option>
+                <option value="Hasselblad H6D-100c, 85mm f/1.4, medium format clarity, unedited RAW">Hasselblad H6D-100c (Medium Format)</option>
+                <option value="Leica M11, 35mm Summilux f/1.4, natural daylight, authentic film grain">Leica M11 (35mm Documentary)</option>
+                <option value="Sony A7R V, 90mm macro lens, f/2.8, extreme jewellery detail">Sony 90mm Macro (Extreme Detail)</option>
+              </select>
+            </div>
+
+            {/* Universal Realism Checkbox */}
+            <div className="flex items-center gap-2 pt-5">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-mono font-medium text-zinc-800 dark:text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={includeRealismTag}
+                  onChange={(e) => setIncludeRealismTag(e.target.checked)}
+                  className="rounded border-amber-500 text-amber-500 focus:ring-amber-500 cursor-pointer w-4 h-4"
+                />
+                <span>Include Universal Realism Tag (No-AI look)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Generated Result Box */}
+          <div className="p-3.5 rounded-xl bg-black/5 dark:bg-black/50 border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono text-zinc-800 dark:text-zinc-200 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar">
+            {builtCustomPrompt}
+          </div>
+
+          {/* Builder Action Buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => handleCopy(builtCustomPrompt, "custom_builder")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-amber-500 hover:bg-amber-400 text-zinc-950 transition-all cursor-pointer font-bold shadow-xs"
+            >
+              {copiedId === "custom_builder" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedId === "custom_builder" ? "Copied!" : "Copy Custom Prompt"}</span>
+            </button>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleSendToPipeline(builtCustomPrompt, "9:16")}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-mono bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold transition-all cursor-pointer"
+              >
+                <Cpu className="w-3.5 h-3.5" />
+                <span>Launch in Pipeline</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendToVideo(builtCustomPrompt, "9:16")}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-mono bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-bold transition-all cursor-pointer"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Video Studio</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendToImage(builtCustomPrompt, "9:16")}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-mono bg-violet-500/15 hover:bg-violet-500/25 text-violet-600 dark:text-violet-400 border border-violet-500/30 font-bold transition-all cursor-pointer"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Image Studio</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Realism & Anti-AI Pro Tips Banner */}
+      <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-zinc-50 dark:bg-[#14141c] p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span className="text-xs font-heading font-bold text-zinc-950 dark:text-white">
+              Studio Realism Formula (No-AI Look)
+            </span>
+          </div>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-2xl">
+            Never use words like <code className="text-red-500">masterpiece, 8k, award winning</code>. Instead, use camera lenses (
+            <code className="text-emerald-500">Sony A7R V, 85mm GM, f/2</code>) and organic tags (
+            <code className="text-emerald-500">visible pores, natural asymmetry, RAW photo, unretouched skin</code>).
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => handleCopy(UNIVERSAL_REALISM_TAG, "universal_realism_tag")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all cursor-pointer shrink-0 font-medium"
+        >
+          {copiedId === "universal_realism_tag" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          <span>{copiedId === "universal_realism_tag" ? "Copied Realism Tag!" : "Copy Realism Tag"}</span>
+        </button>
       </div>
 
       {/* Search & Category Filter Pills */}
       <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search prompts by title, style, jewellery piece, or keywords (e.g. bridal, lehenga, macro)..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-mono bg-zinc-100 dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-hidden focus:border-amber-500/50"
-            />
-          </div>
+        <div className="relative">
+          <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search prompts by title, pose, jewellery type, lighting (e.g. chandelier, kundan, staircase, leica)..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-mono bg-zinc-100 dark:bg-white/[0.05] border border-black/[0.08] dark:border-white/[0.08] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-hidden focus:border-amber-500/50"
+          />
         </div>
 
         {/* Category Filter Tabs */}
@@ -288,13 +412,23 @@ export default function PromptLibraryPage() {
                 type="button"
                 onClick={() => setActiveCategory(cat.id)}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-xl text-xs font-heading shrink-0 transition-all cursor-pointer font-medium",
+                  "px-3.5 py-1.5 rounded-xl text-xs font-heading shrink-0 transition-all cursor-pointer flex items-center gap-1.5 font-medium",
                   isActive
                     ? "bg-amber-500 text-zinc-950 font-bold shadow-xs scale-[1.02]"
                     : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/[0.08] border border-black/[0.04] dark:border-white/[0.06]"
                 )}
               >
-                {cat.label}
+                <span>{cat.label}</span>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-md font-mono",
+                    isActive
+                      ? "bg-zinc-950/20 text-zinc-950 font-bold"
+                      : "bg-black/[0.04] dark:bg-white/[0.06] text-zinc-500"
+                  )}
+                >
+                  {cat.count}
+                </span>
               </button>
             );
           })}
@@ -306,20 +440,28 @@ export default function PromptLibraryPage() {
         {filteredPrompts.map((item) => {
           const resolvedPrompt = getResolvedPrompt(item);
           const isCopied = copiedId === item.id;
+          const isNegativeExpanded = expandedNegativeId === item.id;
 
           return (
             <div
               key={item.id}
-              className="group rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#121218] p-4 sm:p-5 flex flex-col justify-between hover:border-amber-500/40 hover:shadow-lg transition-all space-y-4"
+              className="group rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#121218] p-4 sm:p-5 flex flex-col justify-between hover:border-amber-500/40 hover:shadow-lg transition-all space-y-3.5"
             >
               <div className="space-y-3">
                 {/* Card Top: Badges & Aspect Ratio */}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 uppercase">
-                    {item.badge}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md text-[9px] font-mono bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06]">
-                    Ratio: {item.recommendedRatio}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 uppercase">
+                      {item.badge}
+                    </span>
+                    {item.subCategory && (
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-mono bg-zinc-100 dark:bg-white/[0.04] text-zinc-500 dark:text-zinc-400 border border-black/[0.04] dark:border-white/[0.06]">
+                        {item.subCategory}
+                      </span>
+                    )}
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-mono bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 border border-black/[0.06] dark:border-white/[0.06] shrink-0">
+                    {item.recommendedRatio}
                   </span>
                 </div>
 
@@ -333,10 +475,39 @@ export default function PromptLibraryPage() {
                   </p>
                 </div>
 
+                {/* Camera / Lens Tag if provided */}
+                {item.cameraDetails && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-white/[0.03] px-2 py-1 rounded-lg border border-black/[0.04] dark:border-white/[0.05]">
+                    <Camera className="w-3 h-3 text-amber-500 shrink-0" />
+                    <span className="truncate">{item.cameraDetails}</span>
+                  </div>
+                )}
+
                 {/* Prompt Preview Box */}
                 <div className="p-3 rounded-xl bg-zinc-50 dark:bg-black/40 border border-black/[0.04] dark:border-white/[0.06] text-[11px] font-mono text-zinc-800 dark:text-zinc-300 max-h-28 overflow-y-auto custom-scrollbar leading-relaxed">
                   {resolvedPrompt}
                 </div>
+
+                {/* Negative Prompt Collapsible if present */}
+                {item.negativePrompt && (
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedNegativeId(isNegativeExpanded ? null : item.id)}
+                      className="flex items-center justify-between w-full text-[10px] font-mono text-zinc-400 hover:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1 text-red-400/80">
+                        <span>Negative Prompt</span>
+                      </span>
+                      {isNegativeExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                    {isNegativeExpanded && (
+                      <div className="p-2.5 rounded-lg bg-red-500/[0.03] border border-red-500/20 text-[10px] font-mono text-red-300/90 leading-relaxed animate-in fade-in duration-150">
+                        {item.negativePrompt}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1">
@@ -355,7 +526,7 @@ export default function PromptLibraryPage() {
               <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => handleCopy(item)}
+                  onClick={() => handleCopy(resolvedPrompt, item.id)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all cursor-pointer border",
                     isCopied
@@ -370,7 +541,7 @@ export default function PromptLibraryPage() {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleSendToPipeline(item)}
+                    onClick={() => handleSendToPipeline(resolvedPrompt, item.recommendedRatio)}
                     title="Run in Auto Pipeline"
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-mono bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all cursor-pointer"
                   >
@@ -379,7 +550,7 @@ export default function PromptLibraryPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleSendToVideo(item)}
+                    onClick={() => handleSendToVideo(resolvedPrompt, item.recommendedRatio)}
                     title="Open in Video Studio"
                     className="p-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 transition-all cursor-pointer"
                   >
@@ -387,7 +558,7 @@ export default function PromptLibraryPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleSendToImage(item)}
+                    onClick={() => handleSendToImage(resolvedPrompt, item.recommendedRatio)}
                     title="Open in Image Studio"
                     className="p-1.5 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30 transition-all cursor-pointer"
                   >
