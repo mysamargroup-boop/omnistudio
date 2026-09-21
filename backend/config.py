@@ -98,6 +98,10 @@ class Settings(BaseSettings):
             "http://31.97.231.218:3050",
             "http://31.97.231.218:3060",
             "http://31.97.231.218",
+            "https://vid.flairloop.com",
+            "http://vid.flairloop.com",
+            "https://31-97-231-218.sslip.io",
+            "http://31-97-231-218.sslip.io",
         ]
         origins = list(defaults)
         raw = (self.CORS_ORIGINS or "").strip()

@@ -109,7 +109,7 @@ SAFE_CORS_HEADERS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins(),
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|31\.97\.231\.218)(:\d+)?",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|31\.97\.231\.218|.*\.flairloop\.com|.*\.sslip\.io)(:\d+)?",
     allow_credentials=True,
     allow_methods=SAFE_CORS_METHODS,
     allow_headers=SAFE_CORS_HEADERS,
