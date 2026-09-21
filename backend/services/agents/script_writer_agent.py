@@ -38,79 +38,82 @@ CRITICAL RULES:
 """
         generated_scenes = []
 
+        def _clean_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
+            if not text:
+                return None
+            cleaned = re.sub(r'^```(?:json)?\s*', '', text.strip(), flags=re.MULTILINE)
+            cleaned = re.sub(r'\s*```$', '', cleaned.strip(), flags=re.MULTILINE)
+            match = re.search(r'\[.*\]', cleaned, re.DOTALL)
+            if not match:
+                return None
+            raw_json = match.group(0)
+            raw_json = re.sub(r',\s*([\]}])', r'\1', raw_json)
+            try:
+                parsed = json.loads(raw_json)
+                if isinstance(parsed, list) and len(parsed) >= 1:
+                    return parsed
+            except Exception:
+                pass
+            return None
+
         # 1. Try Gemini
         if get_gemini_key():
             try:
                 res = await generate_gemini_text(prompt_instruction, model="gemini-2.5-flash")
                 if res.get("success") and res.get("text"):
-                    match = re.search(r'\[.*\]', res["text"], re.DOTALL)
-                    if match:
-                        parsed = json.loads(match.group(0))
-                        if isinstance(parsed, list) and len(parsed) >= num_scenes:
-                            generated_scenes = parsed[:num_scenes]
+                    parsed = _clean_json_array(res["text"])
+                    if parsed and len(parsed) >= num_scenes:
+                        generated_scenes = parsed[:num_scenes]
             except Exception as e:
                 logger.warning("Gemini script generation error: %s", e)
 
-        # 2. Try OpenAI
-        if not generated_scenes and settings.OPENAI_API_KEY:
+        # 2. Try OpenAI (from settings or database)
+        openai_key = settings.OPENAI_API_KEY
+        if not openai_key:
+            try:
+                from database import db_get_all_settings
+                st = db_get_all_settings()
+                openai_key = st.get("openai_api_key") or st.get("OPENAI_API_KEY") or ""
+            except Exception:
+                pass
+
+        if not generated_scenes and openai_key:
             try:
                 from openai import AsyncOpenAI
-                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                client = AsyncOpenAI(api_key=openai_key)
                 completion = await client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[{"role": "user", "content": prompt_instruction}],
                     temperature=0.7
                 )
                 raw = completion.choices[0].message.content.strip()
-                match = re.search(r'\[.*\]', raw, re.DOTALL)
-                if match:
-                    parsed = json.loads(match.group(0))
-                    if isinstance(parsed, list) and len(parsed) >= num_scenes:
-                        generated_scenes = parsed[:num_scenes]
+                parsed = _clean_json_array(raw)
+                if parsed and len(parsed) >= num_scenes:
+                    generated_scenes = parsed[:num_scenes]
             except Exception as e:
                 logger.warning("OpenAI script generation error: %s", e)
 
-        # 3. Context-Aware Fallback (Culturally authentic based on prompt keywords)
+        # 3. Dynamic Context-Aware Fallback (Synthesized from the user's actual prompt)
         if not generated_scenes:
-            is_wedding = any(k in context.user_prompt.lower() for k in ["wedding", "bridal", "bride", "dance", "indian", "lehenga"])
-            if is_wedding:
-                generated_scenes = [
-                    {
-                        "scene_number": 1,
-                        "title": "Scene 1: The Royal Procession",
-                        "description": "The radiant bride steps into the grand courtyard, her crimson red lehenga shimmering in the golden candlelight.",
-                        "script": "Beneath the palace arches, every heartbeat echoes with anticipation as the golden night unfolds."
-                    },
-                    {
-                        "scene_number": 2,
-                        "title": "Scene 2: Rhythm of Celebration",
-                        "description": "She begins the traditional wedding dance, her ghunghroos chiming in rhythm with the dholak.",
-                        "script": "With graceful steps and shimmering silk, she turns tradition into pure poetry and joy."
-                    },
-                    {
-                        "scene_number": 3,
-                        "title": "Scene 3: Glance of Timeless Love",
-                        "description": "A radiant close-up smiling with emotion, her maang tikka catching the warm volumetric amber light.",
-                        "script": "A single glance carries centuries of heritage and the silent promise of a lifelong love."
-                    },
-                    {
-                        "scene_number": 4,
-                        "title": "Scene 4: Grand Climactic Finale",
-                        "description": "A dynamic 360-degree orbit as flower petals shower down around her spinning figure.",
-                        "script": "Surrounded by warm lanterns and starlight, the celebration reaches its unforgettable crescendo."
-                    }
-                ]
-            else:
-                base_concept = context.user_prompt.split(",")[0].strip()
-                generated_scenes = [
-                    {
-                        "scene_number": i + 1,
-                        "title": f"Scene {i + 1}: Act {i + 1} Movement",
-                        "description": f"Cinematic progression of {base_concept} with volumetric lighting and atmospheric depth.",
-                        "script": f"In this chapter of the journey, the world awakens with dramatic clarity and purpose."
-                    }
-                    for i in range(num_scenes)
-                ]
+            clean_prompt = context.user_prompt.strip()
+            lead_phrase = clean_prompt.split(",")[0].strip() or "The journey unfolds"
+            theme_moods = [
+                ("The Initial Spark", f"Across the atmosphere of {lead_phrase}, a compelling visual presence commands the screen.", f"In the first breath of {lead_phrase}, every detail whispers anticipation."),
+                ("Deepening Resonance", f"Focus tightens into the texture and movement of {lead_phrase} with cinematic depth.", f"With every deliberate rhythm, the world of {lead_phrase} reveals its unspoken elegance."),
+                ("The Climax", f"A dramatic peak of lighting and motion as {lead_phrase} reaches full expressive power.", f"Here, amidst striking light and shadow, {lead_phrase} transcends into unforgettable art."),
+                ("The Resolution", f"A lingering, luminous frame capturing the enduring aura of {lead_phrase}.", f"As the final cadence settles, the memory of {lead_phrase} echoes with timeless beauty.")
+            ]
+
+            generated_scenes = []
+            for i in range(num_scenes):
+                idx_mod = i % len(theme_moods)
+                m_title, m_desc, m_script = theme_moods[idx_mod]
+                generated_scenes.append({
+                    "scene_number": i + 1,
+                    "title": f"Scene {i + 1}: {m_title}",
+                    "description": m_desc,
+                    "script": m_script
+                })
 
         # Populate context.scenes strictly with 1-based indexing
         context.scenes = []

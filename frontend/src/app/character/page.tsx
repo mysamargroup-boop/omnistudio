@@ -268,7 +268,7 @@ export default function CharacterStudioPage() {
                 setIsSheetModalOpen(true);
               }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm shadow-emerald-600/20"
-              title="Multi-Angle Turnaround Character Sheet"
+              title="Multi-Angle Turnaround Character Sheet (Upload Custom Sheet or Generate with AI)"
             >
               <Layers className="w-3.5 h-3.5" />
               <span>Character Sheet</span>
@@ -657,7 +657,7 @@ export default function CharacterStudioPage() {
                     setIsSheetModalOpen(true);
                   }}
                   className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer"
-                  title="View / Generate Multi-Angle Character Sheet"
+                  title="View, Upload, or Generate Multi-Angle Character Sheet"
                 >
                   <Layers className="w-3.5 h-3.5" />
                 </button>

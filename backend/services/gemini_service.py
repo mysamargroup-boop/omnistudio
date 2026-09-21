@@ -24,7 +24,15 @@ def _safe_gemini_post(url: str, json_payload: dict, timeout: int):
     return requests.post(url, json=json_payload, timeout=timeout)
 
 def get_gemini_key() -> str:
-    return settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
+    key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        try:
+            from database import db_get_all_settings
+            st = db_get_all_settings()
+            key = st.get("gemini_api_key") or st.get("GEMINI_API_KEY") or ""
+        except Exception:
+            pass
+    return key
 
 async def generate_gemini_text(prompt: str, model: str = "gemini-2.5-flash") -> Dict[str, Any]:
     key = get_gemini_key()

@@ -324,19 +324,22 @@ export default function VaultPage() {
   // In-Browser Memory (RAM) Ephemeral Assets state
   const [browserMemoryAssets, setBrowserMemoryAssets] = useState<VaultAsset[]>([]);
 
-  // Marquee Drag-to-Select state
+  // Marquee Drag-to-Select state (Document Coordinates for scroll-aware multi-select)
   const [marquee, setMarquee] = useState<{
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
+    docStartX: number;
+    docStartY: number;
+    docCurrentX: number;
+    docCurrentY: number;
     active: boolean;
   } | null>(null);
   const marqueeRef = React.useRef<{
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
+    docStartX: number;
+    docStartY: number;
+    docCurrentX: number;
+    docCurrentY: number;
+    clientStartX: number;
+    clientStartY: number;
+    lastClientY: number;
     active: boolean;
     initialKeys: Set<string>;
     shiftKey: boolean;
@@ -369,61 +372,108 @@ export default function VaultPage() {
     };
   }, []);
 
-  // Marquee mouse drag listener on window
+  // Marquee mouse drag + scroll listener on window
   useEffect(() => {
+    const updateMarqueeSelection = () => {
+      const m = marqueeRef.current;
+      if (!m || !m.active) return;
+
+      setMarquee({
+        docStartX: m.docStartX,
+        docStartY: m.docStartY,
+        docCurrentX: m.docCurrentX,
+        docCurrentY: m.docCurrentY,
+        active: true,
+      });
+
+      const boxLeft = Math.min(m.docStartX, m.docCurrentX);
+      const boxRight = Math.max(m.docStartX, m.docCurrentX);
+      const boxTop = Math.min(m.docStartY, m.docCurrentY);
+      const boxBottom = Math.max(m.docStartY, m.docCurrentY);
+
+      const cardEls = document.querySelectorAll("[data-asset-card='true']");
+      const intersectedKeys = new Set<string>(m.initialKeys);
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+
+      cardEls.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const elLeft = rect.left + scrollX;
+        const elRight = rect.right + scrollX;
+        const elTop = rect.top + scrollY;
+        const elBottom = rect.bottom + scrollY;
+
+        const intersects = !(
+          elRight < boxLeft ||
+          elLeft > boxRight ||
+          elBottom < boxTop ||
+          elTop > boxBottom
+        );
+
+        const key = el.getAttribute("data-asset-key");
+        if (key && intersects) {
+          intersectedKeys.add(key);
+        }
+      });
+
+      setSelectedKeys(intersectedKeys);
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!marqueeRef.current) return;
       const m = marqueeRef.current;
 
-      const dx = e.clientX - m.startX;
-      const dy = e.clientY - m.startY;
+      const dx = e.clientX - m.clientStartX;
+      const dy = e.clientY - m.clientStartY;
 
       // 5px distance threshold to distinguish deliberate drag from click
-      if (!m.active && Math.sqrt(dx * dx + dy * dy) > 5) {
+      if (!m.active && Math.hypot(dx, dy) > 5) {
         m.active = true;
         document.body.style.userSelect = "none";
       }
 
-      m.currentX = e.clientX;
-      m.currentY = e.clientY;
+      m.docCurrentX = e.clientX + window.scrollX;
+      m.docCurrentY = e.clientY + window.scrollY;
+      m.lastClientY = e.clientY;
 
       if (m.active) {
-        setMarquee({
-          startX: m.startX,
-          startY: m.startY,
-          currentX: m.currentX,
-          currentY: m.currentY,
-          active: true,
-        });
-
-        const boxLeft = Math.min(m.startX, m.currentX);
-        const boxRight = Math.max(m.startX, m.currentX);
-        const boxTop = Math.min(m.startY, m.currentY);
-        const boxBottom = Math.max(m.startY, m.currentY);
-
-        const cardEls = document.querySelectorAll("[data-asset-card='true']");
-        const intersectedKeys = new Set<string>(m.initialKeys);
-
-        cardEls.forEach((el) => {
-          const rect = el.getBoundingClientRect();
-          const intersects = !(
-            rect.right < boxLeft ||
-            rect.left > boxRight ||
-            rect.bottom < boxTop ||
-            rect.top > boxBottom
-          );
-
-          const key = el.getAttribute("data-asset-key");
-          if (key && intersects) {
-            intersectedKeys.add(key);
-          }
-        });
-
-        setSelectedKeys(intersectedKeys);
+        updateMarqueeSelection();
       }
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
+    // Auto-scroll loop when dragging near viewport top/bottom edges
+    let animId: number;
+    const autoScrollLoop = () => {
+      const m = marqueeRef.current;
+      if (m && m.active) {
+        const threshold = 90;
+        let speed = 0;
+        if (m.lastClientY < threshold) {
+          speed = -Math.min(22, Math.max(4, Math.round((threshold - m.lastClientY) / 3)));
+        } else if (m.lastClientY > window.innerHeight - threshold) {
+          speed = Math.min(22, Math.max(4, Math.round((m.lastClientY - (window.innerHeight - threshold)) / 3)));
+        }
+
+        if (speed !== 0) {
+          window.scrollBy(0, speed);
+          m.docCurrentY = m.lastClientY + window.scrollY;
+          updateMarqueeSelection();
+        }
+      }
+      animId = requestAnimationFrame(autoScrollLoop);
+    };
+    animId = requestAnimationFrame(autoScrollLoop);
+
+    // Keep marquee synchronized if the user scrolls with mouse wheel during selection
+    const handleWindowScroll = () => {
+      const m = marqueeRef.current;
+      if (m && m.active) {
+        m.docCurrentY = m.lastClientY + window.scrollY;
+        updateMarqueeSelection();
+      }
+    };
+
+    const handleMouseUp = () => {
       if (!marqueeRef.current) return;
       const m = marqueeRef.current;
 
@@ -442,9 +492,13 @@ export default function VaultPage() {
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
+
     return () => {
+      cancelAnimationFrame(animId);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("scroll", handleWindowScroll);
       document.body.style.userSelect = "";
     };
   }, []);
@@ -465,11 +519,17 @@ export default function VaultPage() {
     const isShift = e.shiftKey;
     const initialKeys = isShift ? new Set(selectedKeys) : new Set<string>();
 
+    const docX = e.clientX + window.scrollX;
+    const docY = e.clientY + window.scrollY;
+
     marqueeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      currentX: e.clientX,
-      currentY: e.clientY,
+      docStartX: docX,
+      docStartY: docY,
+      docCurrentX: docX,
+      docCurrentY: docY,
+      clientStartX: e.clientX,
+      clientStartY: e.clientY,
+      lastClientY: e.clientY,
       active: false,
       initialKeys,
       shiftKey: isShift,
@@ -1151,6 +1211,55 @@ export default function VaultPage() {
     }
   };
 
+  // Keyboard Shortcut: Delete / Backspace key triggers deletion of selected assets or active lightbox asset
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (
+        activeTag === "input" ||
+        activeTag === "textarea" ||
+        activeTag === "select" ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+      if (modalOpen || renameModalAsset || shareModalAsset || createCollectionOpen) {
+        return;
+      }
+
+      if (lightboxAsset) {
+        e.preventDefault();
+        if (tab === "trash") {
+          handleSinglePermanentDeleteClick(lightboxAsset);
+        } else {
+          handleSingleTrashClick(lightboxAsset);
+        }
+        return;
+      }
+
+      if (selectedKeys.size > 0) {
+        e.preventDefault();
+        if (tab === "trash") {
+          handleBulkPermanentDeleteClick();
+        } else {
+          handleBulkTrashClick();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    selectedKeys,
+    tab,
+    lightboxAsset,
+    modalOpen,
+    renameModalAsset,
+    shareModalAsset,
+    createCollectionOpen,
+  ]);
+
   const totalBytes = assets
     ? [
         ...(assets.images || []),
@@ -1675,10 +1784,10 @@ export default function VaultPage() {
             <div
               className="fixed pointer-events-none z-[99999] border-2 border-emerald-500 bg-emerald-500/15 backdrop-blur-[0.5px] rounded-lg shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-none"
               style={{
-                left: Math.min(marquee.startX, marquee.currentX),
-                top: Math.min(marquee.startY, marquee.currentY),
-                width: Math.abs(marquee.currentX - marquee.startX),
-                height: Math.abs(marquee.currentY - marquee.startY),
+                left: Math.min(marquee.docStartX, marquee.docCurrentX) - (typeof window !== "undefined" ? window.scrollX : 0),
+                top: Math.min(marquee.docStartY, marquee.docCurrentY) - (typeof window !== "undefined" ? window.scrollY : 0),
+                width: Math.abs(marquee.docCurrentX - marquee.docStartX),
+                height: Math.abs(marquee.docCurrentY - marquee.docStartY),
               }}
             />
           )}
@@ -1722,7 +1831,7 @@ export default function VaultPage() {
                     }
                   }}
                   className={cn(
-                    "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0",
+                    "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0 [content-visibility:auto] [contain-intrinsic-size:280px]",
                     isMenuOpen ? "overflow-visible z-[100] relative" : "overflow-hidden z-10",
                     selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                   )}

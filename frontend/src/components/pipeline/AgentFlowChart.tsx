@@ -180,7 +180,9 @@ export default function AgentFlowChart({
               )}
             >
               {isAnyRunning && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 animate-pulse" />
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 overflow-hidden">
+                  <div className="w-full h-full bg-white/70 animate-flash-sweep" />
+                </div>
               )}
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-zinc-400">
@@ -191,7 +193,7 @@ export default function AgentFlowChart({
                   completedCount === deptAgents.length
                     ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                     : isAnyRunning
-                    ? "bg-gradient-to-r from-blue-600/20 to-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-blue-500/30 animate-pulse"
+                    ? "bg-gradient-to-r from-blue-600/20 to-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-blue-500/30"
                     : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
                 )}>
                   {completedCount}/{deptAgents.length} Ready
@@ -235,9 +237,9 @@ export default function AgentFlowChart({
                 type="button"
                 onClick={() => onAgentClick?.(agent.id)}
                 className={cn(
-                  "flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition-all cursor-pointer relative",
+                  "flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden",
                   isSelected && "ring-2 ring-emerald-500 border-emerald-500 bg-white dark:bg-zinc-900 shadow-md",
-                  isRunning && "border-blue-500/80 bg-gradient-to-br from-blue-600/15 via-indigo-600/15 to-cyan-500/15 ring-2 ring-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.35)] animate-pulse",
+                  isRunning && "border-blue-500/90 bg-gradient-to-br from-blue-600/20 via-indigo-600/20 to-cyan-500/20 ring-2 ring-blue-500/60 shadow-[0_0_24px_rgba(59,130,246,0.4)]",
                   isDone && "border-emerald-500/30 bg-emerald-500/[0.03]",
                   isPaused && "border-amber-500/40 bg-amber-500/[0.05] animate-pulse",
                   isFailed && "border-rose-500/40 bg-rose-500/[0.05]",
@@ -245,6 +247,12 @@ export default function AgentFlowChart({
                     "bg-white dark:bg-[#11111a] border-black/[0.06] dark:border-white/[0.06] hover:border-zinc-300 dark:hover:border-zinc-700"
                 )}
               >
+                {/* Specular Flash Style Reflection Beam */}
+                {isRunning && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-10">
+                    <div className="absolute inset-y-0 w-2/3 bg-gradient-to-r from-transparent via-white/35 dark:via-cyan-300/40 to-transparent animate-flash-sweep" />
+                  </div>
+                )}
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 transition-all",
                   isDone

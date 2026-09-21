@@ -20,7 +20,8 @@ import {
   Maximize2,
   ZoomIn,
   Camera,
-  Compass
+  Compass,
+  Upload
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ export default function CharacterSheetModal({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [sheetData, setSheetData] = useState<CharacterSheetData | null>(null);
   const [activeTab, setActiveTab] = useState<"grid" | "angles">("grid");
   const [selectedAngle, setSelectedAngle] = useState<AngleItem | null>(null);
@@ -84,7 +86,7 @@ export default function CharacterSheetModal({
       setLoading(true);
       try {
         const res = await api.getCharacterSheet(character!.id);
-        if (res && res.success && res.sheet && res.sheet.angles?.length > 0) {
+        if (res && res.success && res.sheet && (res.sheet.composite_sheet_url || res.sheet.angles?.length > 0)) {
           setSheetData(res.sheet);
           if (res.sheet.angles?.length > 0) {
             setSelectedAngle(res.sheet.angles[0]);
@@ -105,6 +107,33 @@ export default function CharacterSheetModal({
   if (!isOpen || !character) return null;
 
   const charImg = character.imageUrl || character.image_url || "";
+
+  const handleUploadSheet = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const upRes = await api.uploadReferenceImage(file);
+      if (upRes && upRes.url) {
+        const saveRes = await api.saveCharacterSheet(character.id, {
+          composite_sheet_url: upRes.url,
+          character_name: character.name,
+          angles: sheetData?.angles || [],
+        });
+        if (saveRes && saveRes.success) {
+          setSheetData(saveRes.sheet);
+          setActiveTab("grid");
+        }
+      } else {
+        alert("Upload failed: No image URL returned from server.");
+      }
+    } catch (err: any) {
+      alert("Failed to upload character sheet: " + (err?.message || "Unknown error"));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleGenerateSheet = async () => {
     setGenerating(true);
@@ -197,6 +226,18 @@ export default function CharacterSheetModal({
           </div>
 
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-mono transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50">
+              <Upload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload Sheet"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={handleUploadSheet}
+              />
+            </label>
+
             {sheetData && (
               <button
                 type="button"
@@ -266,10 +307,10 @@ export default function CharacterSheetModal({
               </div>
               <div className="space-y-2">
                 <h3 className="text-xl font-heading font-bold text-white">
-                  No Turnaround Sheet Generated Yet
+                  No Turnaround Sheet Attached Yet
                 </h3>
                 <p className="text-xs sm:text-sm text-zinc-400 font-sans max-w-lg mx-auto">
-                  A Character Sheet generates 5 high-precision camera angles (Frontal 0°, 3/4 View 45°, Profile 90°, Over-The-Shoulder 135°, and Emotive Close-Up) along with an all-in-one turnaround model sheet.
+                  Upload your pre-existing multi-angle turnaround model sheet (Midjourney, Photoshop, 3D render) or let OmniStudio synthesize a 5-axis turnaround sheet using AI.
                 </p>
               </div>
 
@@ -285,7 +326,19 @@ export default function CharacterSheetModal({
                 ))}
               </div>
 
-              <div className="pt-4">
+              <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+                <label className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold shadow-lg shadow-violet-600/25 transition-all cursor-pointer active:scale-95">
+                  <Upload className="w-4 h-4" />
+                  <span>{uploading ? "Uploading Sheet..." : "Upload Turnaround Sheet"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={handleUploadSheet}
+                  />
+                </label>
+
                 <button
                   type="button"
                   onClick={handleGenerateSheet}
@@ -300,7 +353,7 @@ export default function CharacterSheetModal({
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Generate 5-Axis Character Sheet</span>
+                      <span>Generate with AI</span>
                     </>
                   )}
                 </button>
@@ -318,6 +371,16 @@ export default function CharacterSheetModal({
                       className="w-full h-auto object-contain max-h-[62vh] mx-auto transition-transform duration-300"
                     />
                     <div className="absolute top-3 right-3 flex items-center gap-2">
+                      <label className="p-2 rounded-xl bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-mono transition-colors cursor-pointer" title="Upload Replacement Turnaround Sheet">
+                        <Upload className="w-3.5 h-3.5 text-violet-400" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploading}
+                          onChange={handleUploadSheet}
+                        />
+                      </label>
                       <button
                         type="button"
                         onClick={() => handleDownload(sheetData.composite_sheet_url!, `${character.name}_turnaround_sheet.png`)}

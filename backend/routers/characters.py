@@ -346,3 +346,45 @@ async def get_character_sheet(char_id: str):
 
     return {"success": True, "exists": False, "sheet": None}
 
+
+class SaveCustomSheetRequest(BaseModel):
+    composite_sheet_url: str
+    character_name: Optional[str] = ""
+    angles: Optional[List[dict]] = None
+
+
+@router.post("/{char_id}/sheet")
+async def save_character_sheet(char_id: str, payload: SaveCustomSheetRequest):
+    """Saves or updates a custom uploaded turnaround sheet for a character."""
+    import time
+    now_ts = int(time.time())
+    sheet_obj = {
+        "success": True,
+        "character_id": char_id,
+        "character_name": payload.character_name or "",
+        "composite_sheet_url": payload.composite_sheet_url,
+        "angles": payload.angles or [],
+        "generated_at": now_ts,
+        "is_uploaded": True,
+    }
+    sheet_json = json.dumps(sheet_obj)
+    with get_db_cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS character_sheets (
+                character_id TEXT PRIMARY KEY,
+                sheet_data TEXT NOT NULL,
+                composite_url TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            INSERT INTO character_sheets (character_id, sheet_data, composite_url, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(character_id) DO UPDATE SET
+                sheet_data = excluded.sheet_data,
+                composite_url = excluded.composite_url,
+                updated_at = CURRENT_TIMESTAMP
+        """, (char_id, sheet_json, payload.composite_sheet_url))
+
+    return {"success": True, "message": "Turnaround sheet saved successfully", "sheet": sheet_obj}
+

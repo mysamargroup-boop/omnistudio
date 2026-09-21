@@ -2015,9 +2015,26 @@ function PipelineContent() {
                   <div className="grid grid-cols-2 gap-2.5">
                     {choreographedScenes.map((sc, i) => (
                       <div key={i} className="p-2.5 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] space-y-1.5">
-                        <div className="aspect-video rounded-xl overflow-hidden bg-black/5 dark:bg-white/5">
+                        <div className="aspect-video rounded-xl overflow-hidden bg-black/10 dark:bg-zinc-900 relative">
                           {sc.image_path ? (
-                            <img src={sc.image_path} alt={sc.title || `Scene ${i + 1}`} className="w-full h-full object-cover" />
+                            <img
+                              src={getMediaUrl(sc.image_path)}
+                              alt={sc.title || `Scene ${i + 1}`}
+                              className="w-full h-full object-cover"
+                              loading="eager"
+                              onError={(e) => {
+                                // Fallback if image failed to load
+                                const target = e.currentTarget;
+                                target.style.display = "none";
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector(".img-fallback")) {
+                                  const fallback = document.createElement("div");
+                                  fallback.className = "img-fallback w-full h-full flex flex-col items-center justify-center p-2 text-center text-[10px] font-mono text-zinc-400 bg-zinc-900";
+                                  fallback.innerText = "Keyframe Ready (Click to inspect)";
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-xs text-zinc-400 font-mono">Visual Rendering...</div>
                           )}
@@ -2175,12 +2192,17 @@ function PipelineContent() {
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
                           <span className={cn(
-                            "px-2 py-0.5 rounded-full font-bold uppercase",
+                            "px-2.5 py-0.5 rounded-full font-bold uppercase relative overflow-hidden",
                             isComp ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" :
-                            isRun ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 animate-pulse" :
+                            isRun ? "bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-cyan-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/40 shadow-sm" :
                             isFail ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30" :
                             "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
                           )}>
+                            {isRun && (
+                              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                                <div className="absolute inset-y-0 w-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-flash-sweep" />
+                              </div>
+                            )}
                             {item.state}
                           </span>
                           <span className="text-zinc-400">

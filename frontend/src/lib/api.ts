@@ -694,6 +694,15 @@ export const api = {
       exists: boolean;
       sheet: any;
     }>(`/api/characters/${characterId}/sheet`),
+  saveCharacterSheet: (characterId: string, data: { composite_sheet_url: string; character_name?: string; angles?: any[] }) =>
+    fetchApi<{
+      success: boolean;
+      message: string;
+      sheet: any;
+    }>(`/api/characters/${characterId}/sheet`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   // Apify Scraper & AI Screenplay Studio Endpoints
   getApifyActors: () =>

@@ -210,6 +210,30 @@ code, pre, kbd, .font-mono {
   animation: shimmer 2s infinite;
 }
 
+@keyframes flash-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(300%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+.animate-flash-sweep {
+  animation: flash-sweep 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
