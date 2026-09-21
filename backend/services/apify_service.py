@@ -72,9 +72,115 @@ FEATURED_ACTORS: List[Dict[str, Any]] = [
 ]
 
 def get_apify_token() -> str:
-    """Returns configured Apify API Token from environment or system settings."""
+    """Returns configured Apify API Token from environment, system settings, or database."""
     token = os.environ.get("APIFY_API_TOKEN") or getattr(settings, "APIFY_API_TOKEN", "") or ""
+    if not token:
+        try:
+            from database import db_get_all_settings
+            st = db_get_all_settings()
+            token = st.get("apify_api_token") or st.get("APIFY_API_TOKEN") or st.get("apify_token") or ""
+        except Exception as e:
+            logger.debug(f"Could not read apify token from DB: {e}")
     return token.strip()
+
+def init_apify_db():
+    """Initializes local SQLite table for tracking Apify runs and dataset history."""
+    try:
+        from database import db_session
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS apify_runs (
+                    id TEXT PRIMARY KEY,
+                    actor_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    default_dataset_id TEXT,
+                    input_summary TEXT,
+                    items_count INTEGER DEFAULT 0,
+                    started_at TEXT,
+                    completed_at TEXT,
+                    mode TEXT DEFAULT 'live_apify'
+                )
+            """)
+            conn.commit()
+    except Exception as e:
+        logger.debug(f"Failed to init apify_runs table: {e}")
+
+def record_apify_run(run_data: Dict[str, Any], input_summary: str = ""):
+    """Records an Apify scrape run in the database."""
+    try:
+        init_apify_db()
+        from database import db_session
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT OR REPLACE INTO apify_runs 
+                (id, actor_id, status, default_dataset_id, input_summary, items_count, started_at, completed_at, mode)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                run_data.get("run_id"),
+                run_data.get("actor_id"),
+                run_data.get("status", "RUNNING"),
+                run_data.get("default_dataset_id"),
+                input_summary or "",
+                run_data.get("items_count", 0),
+                run_data.get("started_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                run_data.get("completed_at"),
+                run_data.get("mode", "live_apify")
+            ))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Failed to record apify run: {e}")
+
+def update_apify_run(run_id: str, updates: Dict[str, Any]):
+    """Updates fields of a recorded Apify run."""
+    try:
+        init_apify_db()
+        from database import db_session
+        with db_session() as conn:
+            cur = conn.cursor()
+            sets = []
+            vals = []
+            for k, v in updates.items():
+                sets.append(f"{k} = ?")
+                vals.append(v)
+            vals.append(run_id)
+            cur.execute(f"UPDATE apify_runs SET {', '.join(sets)} WHERE id = ?", tuple(vals))
+            conn.commit()
+    except Exception as e:
+        logger.debug(f"Failed to update apify run {run_id}: {e}")
+
+def get_apify_history(limit: int = 50) -> List[Dict[str, Any]]:
+    """Fetches list of past Apify scraping runs."""
+    try:
+        init_apify_db()
+        from database import db_session
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, actor_id, status, default_dataset_id, input_summary, items_count, started_at, completed_at, mode
+                FROM apify_runs
+                ORDER BY started_at DESC
+                LIMIT ?
+            """, (limit,))
+            rows = cur.fetchall()
+            return [
+                {
+                    "run_id": r[0],
+                    "actor_id": r[1],
+                    "status": r[2],
+                    "default_dataset_id": r[3],
+                    "input_summary": r[4],
+                    "items_count": r[5],
+                    "started_at": r[6],
+                    "completed_at": r[7],
+                    "mode": r[8]
+                }
+                for r in rows
+            ]
+    except Exception as e:
+        logger.warning(f"Failed to get apify history: {e}")
+        return []
 
 def list_featured_actors() -> List[Dict[str, Any]]:
     """Returns curated actors catalog."""
@@ -88,6 +194,7 @@ async def run_actor(actor_id: str, run_input: Dict[str, Any]) -> Dict[str, Any]:
     """
     token = get_apify_token()
     clean_id = actor_id.replace("/", "~")
+    summary = str(run_input)[:200]
     
     if token:
         try:
@@ -96,7 +203,7 @@ async def run_actor(actor_id: str, run_input: Dict[str, Any]) -> Dict[str, Any]:
                 resp = await client.post(url, json=run_input)
                 if resp.status_code in (200, 201):
                     data = resp.json().get("data", {})
-                    return {
+                    out = {
                         "success": True,
                         "run_id": data.get("id"),
                         "actor_id": actor_id,
@@ -105,6 +212,8 @@ async def run_actor(actor_id: str, run_input: Dict[str, Any]) -> Dict[str, Any]:
                         "started_at": data.get("startedAt"),
                         "mode": "live_apify"
                     }
+                    record_apify_run(out, input_summary=summary)
+                    return out
         except Exception as e:
             logger.warning(f"Apify API run error ({e}), falling back to simulated pipeline")
 
@@ -112,16 +221,20 @@ async def run_actor(actor_id: str, run_input: Dict[str, Any]) -> Dict[str, Any]:
     simulated_run_id = f"run_sim_{uuid.uuid4().hex[:8]}"
     simulated_dataset_id = f"ds_sim_{uuid.uuid4().hex[:8]}"
     
-    return {
+    sim_out = {
         "success": True,
         "run_id": simulated_run_id,
         "actor_id": actor_id,
         "status": "SUCCEEDED",
         "default_dataset_id": simulated_dataset_id,
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "items_count": 5,
         "mode": "simulated_apify",
         "message": "Scraper run completed successfully. Dataset items extracted."
     }
+    record_apify_run(sim_out, input_summary=summary)
+    return sim_out
 
 async def get_dataset_items(dataset_id: str, limit: int = 25) -> List[Dict[str, Any]]:
     """Fetches scraped items from an Apify dataset."""
@@ -320,13 +433,16 @@ async def get_run_status(run_id: str) -> Dict[str, Any]:
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     data = resp.json().get("data", {})
-                    return {
+                    st = data.get("status")
+                    res = {
                         "run_id": data.get("id"),
-                        "status": data.get("status"),
+                        "status": st,
                         "default_dataset_id": data.get("defaultDatasetId"),
                         "finished_at": data.get("finishedAt"),
                         "usage": data.get("usage")
                     }
+                    update_apify_run(run_id, {"status": st, "completed_at": data.get("finishedAt")})
+                    return res
         except Exception as e:
             logger.warning(f"Error fetching Apify run status: {e}")
 

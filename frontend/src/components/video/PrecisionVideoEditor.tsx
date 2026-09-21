@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import ModernSelect from "@/components/ui/ModernSelect";
 import Dropdown from "@/components/ui/Dropdown";
 import AudioMusicLibraryModal, { CURATED_AUDIO_LIBRARY, AudioTrack } from "@/components/audio/AudioMusicLibraryModal";
 
@@ -2468,75 +2469,69 @@ export default function PrecisionVideoEditor({
                       {/* Model Selector */}
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-zinc-400 uppercase">2. AI Model</label>
-                        <select
+                        <ModernSelect
                           value={aiVoiceModel}
-                          onChange={(e) => setAiVoiceModel(e.target.value)}
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-hidden focus:border-teal-500"
-                        >
-                          {aiVoiceProvider === "edge" && (
-                            <>
-                              <option value="seed_audio">Seed Audio 1.0 (HD Neural)</option>
-                              <option value="minimax">MiniMax Speech 2.8 HD</option>
-                              <option value="qwen_audio">Qwen Audio 3.0</option>
-                              <option value="edge_standard">Edge Neural Standard</option>
-                            </>
-                          )}
-                          {aiVoiceProvider === "elevenlabs" && (
-                            <>
-                              <option value="eleven_v3">Eleven v3 Multilingual</option>
-                              <option value="eleven_turbo">Eleven Turbo v2.5 (Fast)</option>
-                              <option value="eleven_multilingual_v2">Eleven Multilingual v2</option>
-                            </>
-                          )}
-                          {aiVoiceProvider === "openai" && (
-                            <>
-                              <option value="tts-1-hd">TTS-1-HD (Studio High Definition)</option>
-                              <option value="tts-1">TTS-1 (Standard Fast)</option>
-                            </>
-                          )}
-                        </select>
+                          onChange={(val) => setAiVoiceModel(val)}
+                          options={
+                            aiVoiceProvider === "edge"
+                              ? [
+                                  { value: "seed_audio", label: "Seed Audio 1.0 (HD Neural)" },
+                                  { value: "minimax", label: "MiniMax Speech 2.8 HD" },
+                                  { value: "qwen_audio", label: "Qwen Audio 3.0" },
+                                  { value: "edge_standard", label: "Edge Neural Standard" },
+                                ]
+                              : aiVoiceProvider === "elevenlabs"
+                              ? [
+                                  { value: "eleven_v3", label: "Eleven v3 Multilingual" },
+                                  { value: "eleven_turbo", label: "Eleven Turbo v2.5 (Fast)" },
+                                  { value: "eleven_multilingual_v2", label: "Eleven Multilingual v2" },
+                                ]
+                              : [
+                                  { value: "tts-1-hd", label: "TTS-1-HD (Studio High Definition)" },
+                                  { value: "tts-1", label: "TTS-1 (Standard Fast)" },
+                                ]
+                          }
+                          size="sm"
+                        />
                       </div>
 
                       {/* Voice Persona Selector */}
                       <div className="space-y-1">
                         <label className="text-[10px] font-mono text-zinc-400 uppercase">3. Voice Persona</label>
-                        <select
+                        <ModernSelect
                           value={aiVoiceId}
-                          onChange={(e) => setAiVoiceId(e.target.value)}
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-hidden focus:border-teal-500"
-                        >
-                          {aiVoiceProvider === "edge" && (
-                            <>
-                              <option value="en-US-GuyNeural">Guy (Male - Deep & Narrative)</option>
-                              <option value="en-US-JennyNeural">Jenny (Female - Expressive & Warm)</option>
-                              <option value="en-US-ChristopherNeural">Christopher (Male - Authoritative)</option>
-                              <option value="en-US-AriaNeural">Aria (Female - Crisp Professional)</option>
-                              <option value="en-GB-SoniaNeural">Sonia (British Female - Elegant)</option>
-                              <option value="en-GB-RyanNeural">Ryan (British Male - Dynamic)</option>
-                              <option value="hi-IN-MadhurNeural">Madhur (Hindi Male - Studio)</option>
-                              <option value="hi-IN-SwaraNeural">Swara (Hindi Female - Clear)</option>
-                            </>
-                          )}
-                          {aiVoiceProvider === "elevenlabs" && (
-                            <>
-                              <option value="pNInz6obpgDQGcFmaJgB">Adam (Deep Cinema & Narrative)</option>
-                              <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Calm Professional)</option>
-                              <option value="ErXwobaYiN019PkySvjV">Antoni (Smooth Storyteller)</option>
-                              <option value="EXAVITQu4vr4xnSDxMaL">Bella (Soft & Intimate)</option>
-                              <option value="TxGEqnHWrfWFTfGW9XjX">Josh (Young & Energetic)</option>
-                            </>
-                          )}
-                          {aiVoiceProvider === "openai" && (
-                            <>
-                              <option value="alloy">Alloy (Balanced & Neutral)</option>
-                              <option value="echo">Echo (Warm & Dynamic)</option>
-                              <option value="fable">Fable (British & Expressive)</option>
-                              <option value="onyx">Onyx (Deep Cinema)</option>
-                              <option value="nova">Nova (Bright & Energetic)</option>
-                              <option value="shimmer">Shimmer (Gentle & Smooth)</option>
-                            </>
-                          )}
-                        </select>
+                          onChange={(val) => setAiVoiceId(val)}
+                          options={
+                            aiVoiceProvider === "edge"
+                              ? [
+                                  { value: "en-US-GuyNeural", label: "Guy (Male - Deep & Narrative)" },
+                                  { value: "en-US-JennyNeural", label: "Jenny (Female - Expressive)" },
+                                  { value: "en-US-ChristopherNeural", label: "Christopher (Male - Authoritative)" },
+                                  { value: "en-US-AriaNeural", label: "Aria (Female - Crisp Professional)" },
+                                  { value: "en-GB-SoniaNeural", label: "Sonia (British Female - Elegant)" },
+                                  { value: "en-GB-RyanNeural", label: "Ryan (British Male - Dynamic)" },
+                                  { value: "hi-IN-MadhurNeural", label: "Madhur (Hindi Male - Studio)" },
+                                  { value: "hi-IN-SwaraNeural", label: "Swara (Hindi Female - Clear)" },
+                                ]
+                              : aiVoiceProvider === "elevenlabs"
+                              ? [
+                                  { value: "pNInz6obpgDQGcFmaJgB", label: "Adam (Deep Cinema)" },
+                                  { value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel (Calm Professional)" },
+                                  { value: "ErXwobaYiN019PkySvjV", label: "Antoni (Smooth Storyteller)" },
+                                  { value: "EXAVITQu4vr4xnSDxMaL", label: "Bella (Soft & Intimate)" },
+                                  { value: "TxGEqnHWrfWFTfGW9XjX", label: "Josh (Young & Energetic)" },
+                                ]
+                              : [
+                                  { value: "alloy", label: "Alloy (Balanced & Neutral)" },
+                                  { value: "echo", label: "Echo (Warm & Dynamic)" },
+                                  { value: "fable", label: "Fable (British & Expressive)" },
+                                  { value: "onyx", label: "Onyx (Deep Cinema)" },
+                                  { value: "nova", label: "Nova (Bright & Energetic)" },
+                                  { value: "shimmer", label: "Shimmer (Gentle & Smooth)" },
+                                ]
+                          }
+                          size="sm"
+                        />
                       </div>
                     </div>
 

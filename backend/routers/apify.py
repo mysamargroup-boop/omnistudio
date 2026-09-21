@@ -97,3 +97,38 @@ async def web_fetch(payload: WebFetchRequest):
     except Exception as e:
         logger.error(f"Error fetching web content from {payload.url}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+class SetTokenRequest(BaseModel):
+    token: str
+
+@router.get("/history")
+async def get_apify_history(limit: int = Query(default=50, ge=1, le=100)):
+    """Retrieves list of past Apify scraping runs."""
+    try:
+        history = apify_service.get_apify_history(limit=limit)
+        return {
+            "success": True,
+            "count": len(history),
+            "history": history
+        }
+    except Exception as e:
+        logger.error(f"Error fetching Apify history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/token")
+async def set_apify_token(payload: SetTokenRequest):
+    """Saves Apify API Token into studio settings with transparent encryption."""
+    import os
+    try:
+        from database import db_save_setting
+        tok = (payload.token or "").strip()
+        db_save_setting("apify_api_token", tok)
+        os.environ["APIFY_API_TOKEN"] = tok
+        return {
+            "success": True,
+            "message": "Apify token saved successfully",
+            "token_configured": bool(tok)
+        }
+    except Exception as e:
+        logger.error(f"Error saving Apify token: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

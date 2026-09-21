@@ -59,6 +59,8 @@ class VideoRequest(BaseModel):
     start_image_path: Optional[str] = None
     end_image_path: Optional[str] = None  # Last Frame / End Frame
     image_paths: Optional[list[str]] = None  # Multi-frame sequence (2-8 keyframes)
+    keyframe_images: Optional[list[str]] = None  # Alias for image_paths
+    reference_images: Optional[list[str]] = None  # Multi-reference conditioning images
     source_video_path: Optional[str] = None  # For motion transfer — source motion video
     prompt: Optional[str] = ""
     negative_prompt: Optional[str] = ""
@@ -463,6 +465,8 @@ def _handle_bg_task_error(task: asyncio.Task):
         logger.error("Shielded background video task failed: %s", e)
 
 async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
+    if not req.image_paths and req.keyframe_images:
+        req.image_paths = req.keyframe_images
     start_img = req.start_image_path or req.image_path
     w, h = get_resolution(req.resolution, req.aspect_ratio)
     try:

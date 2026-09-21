@@ -30,8 +30,8 @@ export default function PWAInstallPrompt() {
         .catch((err) => console.warn("[PWA] Service Worker registration failed:", err));
     }
 
-    // Check if user already dismissed or installed in this session
-    const dismissed = sessionStorage.getItem("omnistudio_pwa_dismissed");
+    // Check if user already dismissed or installed in this browser
+    const dismissed = localStorage.getItem("omnistudio_pwa_dismissed");
     if (dismissed === "true") return;
 
     // Check if app is already running in standalone mode (installed PWA)
@@ -49,7 +49,7 @@ export default function PWAInstallPrompt() {
     const handleAppInstalled = () => {
       setShowPrompt(false);
       setDeferredPrompt(null);
-      sessionStorage.setItem("omnistudio_pwa_dismissed", "true");
+      localStorage.setItem("omnistudio_pwa_dismissed", "true");
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
@@ -74,8 +74,8 @@ export default function PWAInstallPrompt() {
       console.warn("PWA install error:", err);
     } finally {
       setIsInstalling(false);
-      // Ensure it never asks again in this session
-      sessionStorage.setItem("omnistudio_pwa_dismissed", "true");
+      // Ensure it never asks again
+      localStorage.setItem("omnistudio_pwa_dismissed", "true");
       setShowPrompt(false);
       setDeferredPrompt(null);
     }
@@ -83,7 +83,7 @@ export default function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    sessionStorage.setItem("omnistudio_pwa_dismissed", "true");
+    localStorage.setItem("omnistudio_pwa_dismissed", "true");
   };
 
   if (!showPrompt || !deferredPrompt) return null;

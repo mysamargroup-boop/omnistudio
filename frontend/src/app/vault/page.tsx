@@ -185,11 +185,11 @@ const VaultCardMedia = React.memo(function VaultCardMedia({
       ) : isVideo ? (
         <div className="relative w-full h-full flex items-center justify-center">
           <video
-            src={`${getMediaUrl(file.url)}${file.url.includes("#") ? "" : "#t=0.5"}`}
+            src={getMediaUrl(file.url).includes("#") ? getMediaUrl(file.url) : `${getMediaUrl(file.url)}#t=0.1`}
             playsInline
             loop
             muted
-            preload="none"
+            preload="metadata"
             onError={() => {
               setError(true);
               setLoaded(true);
@@ -198,6 +198,7 @@ const VaultCardMedia = React.memo(function VaultCardMedia({
               setLoaded(true);
             }}
             onLoadedMetadata={(e) => {
+              setLoaded(true);
               const v = e.currentTarget;
               if (v.videoWidth && v.videoHeight) {
                 const r = v.videoWidth / v.videoHeight;
@@ -1707,14 +1708,17 @@ export default function VaultPage() {
                     const v = e.currentTarget.querySelector("video");
                     if (v) {
                       v.muted = true;
-                      v.play().catch(() => {});
+                      const p = v.play();
+                      if (p !== undefined) p.catch(() => {});
                     }
                   }}
                   onMouseLeave={(e) => {
                     const v = e.currentTarget.querySelector("video");
                     if (v) {
                       v.pause();
-                      v.currentTime = 0;
+                      try {
+                        v.currentTime = 0;
+                      } catch (_) {}
                     }
                   }}
                   className={cn(

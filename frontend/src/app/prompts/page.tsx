@@ -25,6 +25,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ModernSelect from "@/components/ui/ModernSelect";
 import { JEWELLERY_ITEMS, JEWELLERY_PRESETS } from "@/components/studio/JewelleryPromptSuite";
 import {
   PromptItem,
@@ -33,6 +34,51 @@ import {
   MASTER_NEGATIVE_PROMPT,
   VIDEO_CONSISTENCY_NEGATIVE_PROMPT,
 } from "@/lib/promptLibraryData";
+
+const BUILDER_OUTFIT_OPTIONS = [
+  { value: "royal wine-purple silk saree with gold zari motifs", label: "Wine-Purple Silk Saree (Gold Zari)" },
+  { value: "trending blush pink embroidered lehenga with zardozi details", label: "Blush Pink Lehenga (Zardozi)" },
+  { value: "couture crimson velvet lehenga with royal antique embroidery", label: "Crimson Velvet Lehenga (Royal Antique)" },
+  { value: "pastel sky blue organza saree with sleeveless embroidered blouse", label: "Pastel Sky Blue Organza Saree" },
+  { value: "ivory and gold tissue silk saree with delicate border", label: "Ivory & Gold Tissue Silk Saree" },
+  { value: "emerald green designer lehenga with heavy border", label: "Emerald Green Designer Lehenga" },
+];
+
+const BUILDER_POSE_OPTIONS = [
+  { value: "one hand gently holding saree pallu near collarbone, neck elongated", label: "Hand Holding Pallu Near Collarbone" },
+  { value: "body turned 45 degrees, face looking back over shoulder with soft smile", label: "Looking Over Shoulder (45° Turn)" },
+  { value: "fingers gently touching earring, head tilted slightly sideways", label: "Touching Earring Beauty Close-Up" },
+  { value: "both hands softly framing necklace, looking at camera, macro jewellery focus", label: "Both Hands Framing Necklace" },
+  { value: "standing on grand marble staircase, one hand on railing, looking directly at camera", label: "Royal Staircase Pose" },
+  { value: "sheer embroidered dupatta covering half face, eyes visible with intense gaze", label: "Dupatta Covering Half Face (Eyes Visible)" },
+  { value: "seated gracefully on sofa, elbow resting on armrest, chin lightly supported", label: "Seated Chin Rest Pose" },
+  { value: "walking slowly toward camera, saree flowing naturally, confident expression", label: "Slow Walking Toward Camera" },
+];
+
+const BUILDER_LIGHTING_OPTIONS = [
+  { value: "soft morning daylight entering through carved sandstone palace window", label: "Window Daylight (Palace Sandstone)" },
+  { value: "golden hour warm sunlight creating rim light around hair, cinematic shadows", label: "Golden Hour Rim Lighting" },
+  { value: "surrounded by candles and warm palace decor, cinematic low-light glow", label: "Candlelight Low-Light Glow" },
+  { value: "standing beneath crystal chandelier, dramatic luxury lighting reflections", label: "Crystal Chandelier Reflections" },
+  { value: "cool blue moonlight on luxury terrace, subtle cinematic rim light", label: "Moonlight Cool Blue Terrace" },
+  { value: "large octabox key light, soft directional studio lighting, gentle shadow transitions", label: "Large Octabox Studio Key Light" },
+];
+
+const BUILDER_JEWELLERY_OPTIONS = [
+  { value: "heirloom uncut polki choker and matching jhumka earrings", label: "Uncut Polki Choker & Jhumkas" },
+  { value: "statement royal kundan necklace set with green emerald drops", label: "Royal Kundan Set (Emerald Drops)" },
+  { value: "solitaire diamond earrings and matching delicate diamond necklace", label: "Solitaire Diamond Set" },
+  { value: "rose gold bridal necklace set with intricate filigree work", label: "Rose Gold Filigree Bridal Set" },
+  { value: "authentic South Indian temple jewellery necklace with goddess motifs", label: "South Indian Temple Jewellery" },
+];
+
+const BUILDER_CAMERA_OPTIONS = [
+  { value: "Sony A7R V, 85mm GM lens, f/2.0 aperture, RAW photo, shallow depth of field", label: "Sony A7R V (85mm GM f/2.0)" },
+  { value: "Canon R5, 135mm lens, f/2.0, telephoto compression, creamy bokeh", label: "Canon R5 (135mm f/2.0 Telephoto)" },
+  { value: "Hasselblad H6D-100c, 85mm f/1.4, medium format clarity, unedited RAW", label: "Hasselblad H6D-100c (Medium Format)" },
+  { value: "Leica M11, 35mm Summilux f/1.4, natural daylight, authentic film grain", label: "Leica M11 (35mm Documentary)" },
+  { value: "Sony A7R V, 90mm macro lens, f/2.8, extreme jewellery detail", label: "Sony 90mm Macro (Extreme Detail)" },
+];
 
 // Combine the jewellery presets with our PDF prompt items
 const FULL_CATALOG: PromptItem[] = [
@@ -175,19 +221,17 @@ export default function PromptLibraryPage() {
           </button>
 
           {/* Jewellery Piece Selector */}
-          <div className="flex items-center gap-2 bg-zinc-100 dark:bg-white/[0.05] p-1.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
+          <div className="flex items-center gap-2 bg-zinc-100 dark:bg-white/[0.05] p-1.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] min-w-[200px]">
             <span className="text-[11px] font-mono text-zinc-500 pl-2">Piece:</span>
-            <select
-              value={selectedJewelleryItem}
-              onChange={(e) => setSelectedJewelleryItem(e.target.value)}
-              className="bg-white dark:bg-[#181820] text-xs font-heading font-bold rounded-xl px-3 py-1.5 border border-black/[0.08] dark:border-white/[0.1] text-zinc-800 dark:text-zinc-200 outline-hidden cursor-pointer"
-            >
-              {JEWELLERY_ITEMS.map((item) => (
-                <option key={item.id} value={item.label}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <ModernSelect
+                value={selectedJewelleryItem}
+                onChange={(val) => setSelectedJewelleryItem(val)}
+                options={JEWELLERY_ITEMS.map((item) => ({ value: item.label, label: item.label }))}
+                size="sm"
+                triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#181820]"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -210,97 +254,57 @@ export default function PromptLibraryPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             {/* Outfit */}
             <div className="space-y-1">
-              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
-                Outfit & Fabric
-              </label>
-              <select
+              <ModernSelect
+                label="Outfit & Fabric"
                 value={builderOutfit}
-                onChange={(e) => setBuilderOutfit(e.target.value)}
-                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
-              >
-                <option value="royal wine-purple silk saree with gold zari motifs">Wine-Purple Silk Saree (Gold Zari)</option>
-                <option value="trending blush pink embroidered lehenga with zardozi details">Blush Pink Lehenga (Zardozi)</option>
-                <option value="couture crimson velvet lehenga with royal antique embroidery">Crimson Velvet Lehenga (Royal Antique)</option>
-                <option value="pastel sky blue organza saree with sleeveless embroidered blouse">Pastel Sky Blue Organza Saree</option>
-                <option value="ivory and gold tissue silk saree with delicate border">Ivory & Gold Tissue Silk Saree</option>
-                <option value="emerald green designer lehenga with heavy border">Emerald Green Designer Lehenga</option>
-              </select>
+                onChange={(val) => setBuilderOutfit(val)}
+                options={BUILDER_OUTFIT_OPTIONS}
+                searchable
+              />
             </div>
 
             {/* Pose */}
             <div className="space-y-1">
-              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
-                Pose & Posture
-              </label>
-              <select
+              <ModernSelect
+                label="Pose & Posture"
                 value={builderPose}
-                onChange={(e) => setBuilderPose(e.target.value)}
-                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
-              >
-                <option value="one hand gently holding saree pallu near collarbone, neck elongated">Hand Holding Pallu Near Collarbone</option>
-                <option value="body turned 45 degrees, face looking back over shoulder with soft smile">Looking Over Shoulder (45° Turn)</option>
-                <option value="fingers gently touching earring, head tilted slightly sideways">Touching Earring Beauty Close-Up</option>
-                <option value="both hands softly framing necklace, looking at camera, macro jewellery focus">Both Hands Framing Necklace</option>
-                <option value="standing on grand marble staircase, one hand on railing, looking directly at camera">Royal Staircase Pose</option>
-                <option value="sheer embroidered dupatta covering half face, eyes visible with intense gaze">Dupatta Covering Half Face (Eyes Visible)</option>
-                <option value="seated gracefully on sofa, elbow resting on armrest, chin lightly supported">Seated Chin Rest Pose</option>
-                <option value="walking slowly toward camera, saree flowing naturally, confident expression">Slow Walking Toward Camera</option>
-              </select>
+                onChange={(val) => setBuilderPose(val)}
+                options={BUILDER_POSE_OPTIONS}
+                searchable
+              />
             </div>
 
             {/* Lighting */}
             <div className="space-y-1">
-              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
-                Lighting & Atmosphere
-              </label>
-              <select
+              <ModernSelect
+                label="Lighting & Atmosphere"
                 value={builderLighting}
-                onChange={(e) => setBuilderLighting(e.target.value)}
-                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
-              >
-                <option value="soft morning daylight entering through carved sandstone palace window">Window Daylight (Palace Sandstone)</option>
-                <option value="golden hour warm sunlight creating rim light around hair, cinematic shadows">Golden Hour Rim Lighting</option>
-                <option value="surrounded by candles and warm palace decor, cinematic low-light glow">Candlelight Low-Light Glow</option>
-                <option value="standing beneath crystal chandelier, dramatic luxury lighting reflections">Crystal Chandelier Reflections</option>
-                <option value="cool blue moonlight on luxury terrace, subtle cinematic rim light">Moonlight Cool Blue Terrace</option>
-                <option value="large octabox key light, soft directional studio lighting, gentle shadow transitions">Large Octabox Studio Key Light</option>
-              </select>
+                onChange={(val) => setBuilderLighting(val)}
+                options={BUILDER_LIGHTING_OPTIONS}
+                searchable
+              />
             </div>
 
             {/* Jewellery */}
             <div className="space-y-1">
-              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
-                Jewellery Style
-              </label>
-              <select
+              <ModernSelect
+                label="Jewellery Style"
                 value={builderJewellery}
-                onChange={(e) => setBuilderJewellery(e.target.value)}
-                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
-              >
-                <option value="heirloom uncut polki choker and matching jhumka earrings">Uncut Polki Choker & Jhumkas</option>
-                <option value="statement royal kundan necklace set with green emerald drops">Royal Kundan Set (Emerald Drops)</option>
-                <option value="solitaire diamond earrings and matching delicate diamond necklace">Solitaire Diamond Set</option>
-                <option value="rose gold bridal necklace set with intricate filigree work">Rose Gold Filigree Bridal Set</option>
-                <option value="authentic South Indian temple jewellery necklace with goddess motifs">South Indian Temple Jewellery</option>
-              </select>
+                onChange={(val) => setBuilderJewellery(val)}
+                options={BUILDER_JEWELLERY_OPTIONS}
+                searchable
+              />
             </div>
 
             {/* Camera / Lens */}
             <div className="space-y-1">
-              <label className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
-                Camera & Lens
-              </label>
-              <select
+              <ModernSelect
+                label="Camera & Lens"
                 value={builderCamera}
-                onChange={(e) => setBuilderCamera(e.target.value)}
-                className="w-full bg-white dark:bg-[#15151c] rounded-xl p-2 border border-black/[0.08] dark:border-white/[0.08] font-mono text-zinc-800 dark:text-zinc-200"
-              >
-                <option value="Sony A7R V, 85mm GM lens, f/2.0 aperture, RAW photo, shallow depth of field">Sony A7R V (85mm GM f/2.0)</option>
-                <option value="Canon R5, 135mm lens, f/2.0, telephoto compression, creamy bokeh">Canon R5 (135mm f/2.0 Telephoto)</option>
-                <option value="Hasselblad H6D-100c, 85mm f/1.4, medium format clarity, unedited RAW">Hasselblad H6D-100c (Medium Format)</option>
-                <option value="Leica M11, 35mm Summilux f/1.4, natural daylight, authentic film grain">Leica M11 (35mm Documentary)</option>
-                <option value="Sony A7R V, 90mm macro lens, f/2.8, extreme jewellery detail">Sony 90mm Macro (Extreme Detail)</option>
-              </select>
+                onChange={(val) => setBuilderCamera(val)}
+                options={BUILDER_CAMERA_OPTIONS}
+                searchable
+              />
             </div>
 
             {/* Universal Realism Checkbox */}

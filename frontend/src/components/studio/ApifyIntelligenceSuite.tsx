@@ -37,6 +37,9 @@ import {
   Search,
   Hash,
   Link2,
+  History,
+  Key,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -130,7 +133,7 @@ const STYLE_PRESETS = [
 
 export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyIntelligenceSuiteProps) {
   // Navigation tabs within Apify Suite
-  const [activeSubtab, setActiveSubtab] = useState<"scrapers" | "instant_url" | "direct_text">("scrapers");
+  const [activeSubtab, setActiveSubtab] = useState<"scrapers" | "instant_url" | "direct_text" | "history">("scrapers");
 
   // Actors state
   const [actors, setActors] = useState<ActorConfig[]>([]);
@@ -139,6 +142,14 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
   const [isCustomActor, setIsCustomActor] = useState<boolean>(false);
   const [customActorId, setCustomActorId] = useState<string>("");
   const [customJsonInput, setCustomJsonInput] = useState<string>("{\n  \"maxResults\": 5\n}");
+
+  // Run History & Quick Token Configuration State
+  const [runHistory, setRunHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const [tokenModalOpen, setTokenModalOpen] = useState<boolean>(false);
+  const [tokenInput, setTokenInput] = useState<string>("");
+  const [savingToken, setSavingToken] = useState<boolean>(false);
+  const [tokenSaveMsg, setTokenSaveMsg] = useState<string>("");
 
   // Form input parameters
   const [targetUrl, setTargetUrl] = useState<string>("https://www.youtube.com/watch?v=sample-filmmaking");
@@ -167,9 +178,43 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
   const [screenplay, setScreenplay] = useState<ScreenplayOutput | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Load curated actors on mount
+  const loadApifyHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await api.getApifyHistory();
+      if (res.success && Array.isArray(res.history)) {
+        setRunHistory(res.history);
+      }
+    } catch (err) {
+      console.warn("Failed to load apify history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleSaveToken = async () => {
+    if (!tokenInput.trim()) return;
+    setSavingToken(true);
+    try {
+      const res = await api.setApifyToken(tokenInput.trim());
+      if (res.success) {
+        setTokenConfigured(true);
+        setTokenSaveMsg("Token successfully saved and validated!");
+        setTimeout(() => {
+          setTokenModalOpen(false);
+          setTokenSaveMsg("");
+        }, 1200);
+      }
+    } catch (err: any) {
+      setTokenSaveMsg(err?.message || "Failed to save Apify token");
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  // Load curated actors and history on mount
   useEffect(() => {
-    async function loadActors() {
+    async function loadInitial() {
       try {
         const res = await api.getApifyActors();
         if (res.success && res.actors?.length) {
@@ -179,8 +224,9 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
       } catch (err) {
         console.warn("Apify actors fetch fallback", err);
       }
+      loadApifyHistory();
     }
-    loadActors();
+    loadInitial();
   }, []);
 
   const currentActor = actors.find((a) => a.id === selectedActorId);
@@ -374,22 +420,28 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
 
           {/* Status Indicators Pill */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.08] shadow-sm">
+            <button
+              type="button"
+              onClick={() => setTokenModalOpen(true)}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.08] hover:border-amber-500/40 shadow-sm cursor-pointer transition-all group text-left"
+              title="Click to configure or update Apify API Token"
+            >
               <div
                 className={cn(
-                  "w-2.5 h-2.5 rounded-full animate-ping",
-                  tokenConfigured ? "bg-emerald-500" : "bg-amber-500"
+                  "w-2.5 h-2.5 rounded-full shrink-0",
+                  tokenConfigured ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-amber-500 animate-ping"
                 )}
               />
-              <div className="text-left">
-                <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400">
-                  Apify Engine
+              <div className="text-left min-w-0">
+                <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                  <span>Apify Engine</span>
+                  <Key className="w-2.5 h-2.5 text-zinc-400 group-hover:text-amber-500 transition-colors" />
                 </div>
-                <div className="text-xs font-heading font-bold text-zinc-900 dark:text-white">
-                  {tokenConfigured ? "Live Apify API Connected" : "Autonomous Simulator Ready"}
+                <div className="text-xs font-heading font-bold text-zinc-900 dark:text-white truncate">
+                  {tokenConfigured ? "Live Apify Cloud Active" : "Simulator Mode (Click to Add Key)"}
                 </div>
               </div>
-            </div>
+            </button>
 
             <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-black/[0.08] dark:border-white/[0.08] shadow-sm">
               <Bot className="w-4 h-4 text-emerald-500" />
@@ -406,8 +458,8 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
         </div>
       </div>
 
-      {/* ── Sub-navigation: Scrapers vs Instant URL vs Direct Text ── */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] w-fit">
+      {/* ── Sub-navigation: Scrapers vs Instant URL vs Direct Text vs History ── */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] w-fit">
         <button
           type="button"
           onClick={() => setActiveSubtab("scrapers")}
@@ -448,6 +500,28 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
         >
           <FileText className="w-3.5 h-3.5" />
           <span>Direct Transcript / Text</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSubtab("history");
+            loadApifyHistory();
+          }}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-heading font-bold transition-all cursor-pointer",
+            activeSubtab === "history"
+              ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+          )}
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Run History</span>
+          {runHistory.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 dark:bg-white/20 text-[10px] font-bold">
+              {runHistory.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -884,6 +958,136 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
         </div>
       )}
 
+      {/* ── SUBTAB 4: SCRAPING RUN HISTORY & INTEL ARCHIVE ── */}
+      {activeSubtab === "history" && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#121218] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-sm font-heading font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider">
+                    Apify Scraping History & Dataset Registry
+                  </h3>
+                </div>
+                <p className="text-xs font-jakarta text-zinc-500 dark:text-zinc-400">
+                  Audit past scraping runs, inspection datasets, and quickly re-load extracted competitor transcripts into AI Screenplay Generator.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadApifyHistory}
+                disabled={loadingHistory}
+                className="px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", loadingHistory && "animate-spin text-amber-500")} />
+                <span>Refresh History</span>
+              </button>
+            </div>
+
+            {loadingHistory ? (
+              <div className="py-16 text-center space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-500 mx-auto" />
+                <p className="text-xs font-mono text-zinc-400">Loading scraping run records...</p>
+              </div>
+            ) : runHistory.length === 0 ? (
+              <div className="py-16 text-center space-y-3 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
+                  <Database className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-heading font-bold text-zinc-900 dark:text-white">
+                  No Scraping Runs Yet
+                </h4>
+                <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                  Execute any YouTube, Instagram, or TikTok scraper from the Scrapers tab to record runs in SQLite.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {runHistory.map((run: any) => {
+                  const isLive = run.mode === "live_apify";
+                  const isSuccess = run.status === "SUCCEEDED";
+                  const isRunningStatus = run.status === "RUNNING";
+
+                  return (
+                    <div
+                      key={run.run_id}
+                      className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-black/[0.06] dark:border-white/[0.06] hover:border-amber-500/30 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-heading font-bold text-xs text-zinc-900 dark:text-white">
+                            {run.actor_id}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
+                              isSuccess
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                : isRunningStatus
+                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse"
+                                : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                            )}
+                          >
+                            {run.status}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                            {isLive ? "Live Apify Cloud" : "Simulator Mode"}
+                          </span>
+                        </div>
+
+                        {run.input_summary && (
+                          <p className="text-xs font-mono text-zinc-500 dark:text-zinc-400 truncate max-w-xl">
+                            {run.input_summary}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-4 text-[11px] font-mono text-zinc-400">
+                          <span>ID: {run.run_id}</span>
+                          <span>•</span>
+                          <span>Started: {run.started_at ? new Date(run.started_at).toLocaleString() : "Recently"}</span>
+                          {run.default_dataset_id && (
+                            <>
+                              <span>•</span>
+                              <span>Dataset: {run.default_dataset_id}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {run.default_dataset_id && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const res = await api.getApifyDatasetItems(run.default_dataset_id);
+                                if (res.items?.length) {
+                                  setDatasetItems(res.items);
+                                  setSelectedItemIndex(0);
+                                  setActiveSubtab("scrapers");
+                                }
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Load Intel</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── CINEMATIC STYLE SELECTOR BAR ── */}
       <div className="p-5 rounded-3xl bg-white dark:bg-[#121218] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-4">
         <div className="flex items-center justify-between">
@@ -1135,6 +1339,91 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
                 <strong className="text-zinc-200">Recommended Model:</strong>{" "}
                 {screenplay.recommended_model}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Token Configuration Modal ── */}
+      {tokenModalOpen && (
+        <div 
+          className="fixed inset-0 z-[100000] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setTokenModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-[#121218] border border-black/[0.08] dark:border-white/[0.08] rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-base text-zinc-900 dark:text-white">
+                    Apify API Token Setup
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Encrypted at rest in database & settings
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTokenModalOpen(false)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-jakarta">
+              Enter your Apify Personal API token to unlock live cloud scrapers for YouTube transcripts, Instagram Reels, and TikTok trends. If no token is entered, OmniStudio runs high-fidelity simulator mode.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-mono text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                <span>APIFY_API_TOKEN</span>
+                <a
+                  href="https://console.apify.com/account/integrations"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-amber-500 hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Get Token</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </label>
+              <input
+                type="password"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="apify_api_..."
+                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 font-mono text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            {tokenSaveMsg && (
+              <p className="text-xs font-mono text-amber-500">{tokenSaveMsg}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setTokenModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveToken}
+                disabled={savingToken || !tokenInput.trim()}
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-heading font-bold text-xs shadow-md shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {savingToken && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Save Token</span>
+              </button>
             </div>
           </div>
         </div>

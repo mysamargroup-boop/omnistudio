@@ -53,6 +53,7 @@ import SceneReviewGrid from "@/components/pipeline/SceneReviewGrid";
 import PipelineActivityLog, { ActivityLogEntry } from "@/components/pipeline/PipelineActivityLog";
 import LiveProgressBar from "@/components/ui/LiveProgressBar";
 import Dropdown, { DropdownOption } from "@/components/ui/Dropdown";
+import ModernSelect from "@/components/ui/ModernSelect";
 import { startActiveJob, completeActiveJob, updateActiveJob } from "@/lib/generationTracker";
 
 const DEFAULT_PIPELINE_PROMPT =
@@ -1153,18 +1154,20 @@ function PipelineContent() {
                 </button>
               </div>
             </div>
-            <select
+            <ModernSelect
               value={selectedSkill}
-              onChange={(e) => setSelectedSkill(e.target.value)}
-              className="w-full bg-white dark:bg-[#101420] text-xs font-heading font-medium rounded-xl px-3 py-2 border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200 outline-hidden cursor-pointer shadow-xs"
-            >
-              <option value="none">None (Pure Prompt Directives)</option>
-              {availableSkills.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {s.is_builtin ? "★" : "•"}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedSkill(val)}
+              options={[
+                { value: "none", label: "None (Pure Prompt Directives)" },
+                ...availableSkills.map((s) => ({
+                  value: s.id,
+                  label: s.name,
+                  description: s.description,
+                  badge: s.is_builtin ? "BUILTIN" : s.category?.toUpperCase(),
+                })),
+              ]}
+              searchable
+            />
             {selectedSkill !== "none" && (
               <div className="p-2.5 rounded-xl bg-amber-500/[0.05] border border-amber-500/20 text-[10px] space-y-1 text-zinc-700 dark:text-zinc-300 animate-in fade-in duration-150">
                 <div className="font-bold text-amber-600 dark:text-amber-400 flex items-center justify-between">

@@ -728,6 +728,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ url }),
     }),
+  getApifyHistory: (limit: number = 50) =>
+    fetchApi<{ success: boolean; count: number; history: any[] }>(`/api/apify/history?limit=${limit}`),
+  setApifyToken: (token: string) =>
+    fetchApi<{ success: boolean; message: string; token_configured: boolean }>("/api/apify/token", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
 
   // Prompt Vault / Prompt Maker Collection
   getPrompts: (params?: { search?: string; category?: string; studio_type?: string; favorite_only?: boolean }) => {

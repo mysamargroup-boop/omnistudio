@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import ModernSelect from "@/components/ui/ModernSelect";
 
 interface VideoEditorModalProps {
   isOpen: boolean;
@@ -1080,71 +1081,65 @@ export default function VideoEditorModal({
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono text-zinc-400 uppercase">Model</label>
-                          <select
+                          <ModernSelect
                             value={aiVoiceModel}
-                            onChange={(e) => setAiVoiceModel(e.target.value)}
-                            className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-teal-500"
-                          >
-                            {aiVoiceProvider === "edge" && (
-                              <>
-                                <option value="seed_audio">Seed Audio 1.0 (HD)</option>
-                                <option value="minimax">MiniMax Speech 2.8 HD</option>
-                                <option value="qwen_audio">Qwen Audio 3.0</option>
-                                <option value="edge_standard">Edge Standard</option>
-                              </>
-                            )}
-                            {aiVoiceProvider === "elevenlabs" && (
-                              <>
-                                <option value="eleven_v3">Eleven v3 Multilingual</option>
-                                <option value="eleven_turbo">Eleven Turbo v2.5</option>
-                                <option value="eleven_multilingual_v2">Eleven Multilingual v2</option>
-                              </>
-                            )}
-                            {aiVoiceProvider === "openai" && (
-                              <>
-                                <option value="tts-1-hd">TTS-1-HD (Studio HD)</option>
-                                <option value="tts-1">TTS-1 (Standard)</option>
-                              </>
-                            )}
-                          </select>
+                            onChange={(val) => setAiVoiceModel(val)}
+                            options={
+                              aiVoiceProvider === "edge"
+                                ? [
+                                    { value: "seed_audio", label: "Seed Audio 1.0 (HD)" },
+                                    { value: "minimax", label: "MiniMax Speech 2.8 HD" },
+                                    { value: "qwen_audio", label: "Qwen Audio 3.0" },
+                                    { value: "edge_standard", label: "Edge Standard" },
+                                  ]
+                                : aiVoiceProvider === "elevenlabs"
+                                ? [
+                                    { value: "eleven_v3", label: "Eleven v3 Multilingual" },
+                                    { value: "eleven_turbo", label: "Eleven Turbo v2.5" },
+                                    { value: "eleven_multilingual_v2", label: "Eleven Multilingual v2" },
+                                  ]
+                                : [
+                                    { value: "tts-1-hd", label: "TTS-1-HD (Studio HD)" },
+                                    { value: "tts-1", label: "TTS-1 (Standard)" },
+                                  ]
+                            }
+                            size="sm"
+                          />
                         </div>
 
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono text-zinc-400 uppercase">Voice Persona</label>
-                          <select
+                          <ModernSelect
                             value={aiVoiceId}
-                            onChange={(e) => setAiVoiceId(e.target.value)}
-                            className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-teal-500"
-                          >
-                            {aiVoiceProvider === "edge" && (
-                              <>
-                                <option value="en-US-GuyNeural">Guy (Male - Deep & Narrative)</option>
-                                <option value="en-US-JennyNeural">Jenny (Female - Expressive)</option>
-                                <option value="en-US-ChristopherNeural">Christopher (Male - Authority)</option>
-                                <option value="en-GB-SoniaNeural">Sonia (British Female)</option>
-                                <option value="hi-IN-MadhurNeural">Madhur (Hindi Male)</option>
-                                <option value="hi-IN-SwaraNeural">Swara (Hindi Female)</option>
-                              </>
-                            )}
-                            {aiVoiceProvider === "elevenlabs" && (
-                              <>
-                                <option value="pNInz6obpgDQGcFmaJgB">Adam (Deep Cinema)</option>
-                                <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Calm Professional)</option>
-                                <option value="ErXwobaYiN019PkySvjV">Antoni (Storyteller)</option>
-                                <option value="EXAVITQu4vr4xnSDxMaL">Bella (Soft Expressive)</option>
-                              </>
-                            )}
-                            {aiVoiceProvider === "openai" && (
-                              <>
-                                <option value="alloy">Alloy (Neutral)</option>
-                                <option value="echo">Echo (Warm)</option>
-                                <option value="fable">Fable (British)</option>
-                                <option value="onyx">Onyx (Deep Cinema)</option>
-                                <option value="nova">Nova (Energetic)</option>
-                                <option value="shimmer">Shimmer (Gentle)</option>
-                              </>
-                            )}
-                          </select>
+                            onChange={(val) => setAiVoiceId(val)}
+                            options={
+                              aiVoiceProvider === "edge"
+                                ? [
+                                    { value: "en-US-GuyNeural", label: "Guy (Male - Deep)" },
+                                    { value: "en-US-JennyNeural", label: "Jenny (Female - Expressive)" },
+                                    { value: "en-US-ChristopherNeural", label: "Christopher (Male - Authority)" },
+                                    { value: "en-GB-SoniaNeural", label: "Sonia (British Female)" },
+                                    { value: "hi-IN-MadhurNeural", label: "Madhur (Hindi Male)" },
+                                    { value: "hi-IN-SwaraNeural", label: "Swara (Hindi Female)" },
+                                  ]
+                                : aiVoiceProvider === "elevenlabs"
+                                ? [
+                                    { value: "pNInz6obpgDQGcFmaJgB", label: "Adam (Deep Cinema)" },
+                                    { value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel (Calm Professional)" },
+                                    { value: "ErXwobaYiN019PkySvjV", label: "Antoni (Storyteller)" },
+                                    { value: "EXAVITQu4vr4xnSDxMaL", label: "Bella (Soft Expressive)" },
+                                  ]
+                                : [
+                                    { value: "alloy", label: "Alloy (Neutral)" },
+                                    { value: "echo", label: "Echo (Warm)" },
+                                    { value: "fable", label: "Fable (British)" },
+                                    { value: "onyx", label: "Onyx (Deep Cinema)" },
+                                    { value: "nova", label: "Nova (Energetic)" },
+                                    { value: "shimmer", label: "Shimmer (Gentle)" },
+                                  ]
+                            }
+                            size="sm"
+                          />
                         </div>
                       </div>
 
