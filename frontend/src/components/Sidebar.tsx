@@ -25,6 +25,7 @@ import {
   Palette,
   UserCheck,
   ShieldCheck,
+  BookOpen,
   PanelLeftClose,
   PanelLeftOpen,
   Loader2,
@@ -165,6 +166,7 @@ export default function Sidebar() {
     {
       label: "CREATIVE ENGINES",
       items: [
+        { href: "/prompts", label: "Prompt Library", icon: BookOpen, badge: "PROMPTS" },
         { href: "/image", label: "Image Studio", icon: ImageIcon, badge: "DIFFUSION" },
         { href: "/video", label: "Video Studio", icon: Video, badge: "MOTION" },
         { href: "/voice", label: "Voice Studio", icon: Mic, badge: "NEURAL" },
