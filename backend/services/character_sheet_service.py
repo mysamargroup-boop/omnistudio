@@ -293,9 +293,7 @@ async def generate_character_sheet(
         if not angles_to_generate or a["id"] in angles_to_generate
     ]
 
-    angle_results = []
-
-    for a in selected_angles:
+    async def _render_angle(a: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         angle_id = a["id"]
         out_filename = f"char_sheet_{char_slug}_{angle_id}_{sheet_uuid}.png"
         out_path = settings.IMAGES_PATH / out_filename
@@ -318,7 +316,7 @@ async def generate_character_sheet(
                         filename_hint=f"sheet_{char_slug}_{angle_id}",
                         reference_image_path=str(ref_path) if ref_path else None
                     ),
-                    timeout=18.0
+                    timeout=25.0
                 )
                 if res and res.get("success") and res.get("local_path"):
                     generated_path = Path(res["local_path"])
@@ -372,7 +370,7 @@ async def generate_character_sheet(
             except Exception as dbe:
                 logger.warning("Failed to save angle asset to DB: %s", dbe)
 
-            angle_results.append({
+            return {
                 "angle_id": angle_id,
                 "label": a["label"],
                 "degrees": a["degrees"],
@@ -381,7 +379,11 @@ async def generate_character_sheet(
                 "image_url": angle_url,
                 "local_path": str(out_path),
                 "size_bytes": stat.st_size
-            })
+            }
+        return None
+
+    raw_results = await asyncio.gather(*[_render_angle(a) for a in selected_angles])
+    angle_results = [r for r in raw_results if r is not None]
 
     # Mode 3: Build the Composite Turnaround Grid
     grid_filename = f"char_sheet_{char_slug}_turnaround_grid_{sheet_uuid}.png"

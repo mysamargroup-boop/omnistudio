@@ -32,6 +32,8 @@ LONG_TIMEOUT_ROUTES = (
     "/api/pipeline/run-stream",
     "/api/pipeline/agent",
     "/api/voice/change",
+    "/api/characters/sheet",
+    "/api/characters",
     "/api/metadata/inject-upload",
     "/api/metadata/inject_upload",
     "/api/metadata/clean-upload",
