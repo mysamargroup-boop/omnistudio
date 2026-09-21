@@ -75,6 +75,7 @@ class PipelineContext(BaseModel):
     voice_id: str = ""
     num_scenes: int = 3
     apply_brand_kit: bool = True
+    skill_id: Optional[str] = None
     error_message: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 

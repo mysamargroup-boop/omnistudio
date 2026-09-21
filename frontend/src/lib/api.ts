@@ -363,6 +363,7 @@ export const api = {
     voice_provider?: string;
     voice_id?: string;
     apply_brand_kit?: boolean;
+    skill_id?: string;
   }) => fetchApi<any>("/api/pipeline/agent/start", { method: "POST", body: JSON.stringify(data) }),
 
   streamAgentPipeline: async (
@@ -434,6 +435,21 @@ export const api = {
 
   cancelAgentPipeline: (pipelineId: string) =>
     fetchApi<any>(`/api/pipeline/agent/${pipelineId}`, { method: "DELETE" }),
+
+  // Skills & Directorial Plugins
+  getSkills: () => fetchApi<any[]>("/api/skills"),
+  uploadSkill: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchApi<any>("/api/skills/upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
+  deleteSkill: (skillId: string) =>
+    fetchApi<{ success: boolean; message: string }>(`/api/skills/${skillId}`, {
+      method: "DELETE",
+    }),
 
   // Assets
   getAllAssets: () => fetchApi<any>("/api/assets/all"),

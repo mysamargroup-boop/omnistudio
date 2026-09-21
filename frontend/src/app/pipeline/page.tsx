@@ -189,6 +189,12 @@ function PipelineContent() {
   const [uploadingRef, setUploadingRef] = useState(false);
   const refFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Directorial Skills State
+  const [availableSkills, setAvailableSkills] = useState<any[]>([]);
+  const [selectedSkill, setSelectedSkill] = useState<string>("none");
+  const [uploadingSkill, setUploadingSkill] = useState(false);
+  const skillFileInputRef = useRef<HTMLInputElement>(null);
+
   // Runtime Pipeline Telemetry
   const [running, setRunning] = useState(false);
   const [pipelineId, setPipelineId] = useState<string | null>(null);
@@ -574,6 +580,33 @@ function PipelineContent() {
     };
   }, [handleSSEEvent, topic]);
 
+  // Load available directorial skills on mount
+  useEffect(() => {
+    api.getSkills().then((res) => {
+      if (Array.isArray(res)) {
+        setAvailableSkills(res);
+      }
+    }).catch((err) => console.warn("Failed to fetch skills", err));
+  }, []);
+
+  const handleUploadSkill = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSkill(true);
+    try {
+      const res = await api.uploadSkill(file);
+      if (res?.id) {
+        setAvailableSkills((prev) => [...prev.filter((s) => s.id !== res.id), res]);
+        setSelectedSkill(res.id);
+      }
+    } catch (err: any) {
+      alert("Failed to upload skill: " + (err.message || "Invalid file format"));
+    } finally {
+      setUploadingSkill(false);
+      if (skillFileInputRef.current) skillFileInputRef.current.value = "";
+    }
+  };
+
   const handleResumePipeline = async () => {
     if (!pipelineId) return;
     setLaunchError(null);
@@ -635,6 +668,7 @@ function PipelineContent() {
         video_model: "omni_model",
         voice_provider: voiceProvider,
         apply_brand_kit: applyBrandKit,
+        skill_id: selectedSkill !== "none" ? selectedSkill : undefined,
       });
 
       if (!startRes?.success || !startRes?.pipeline_id) {
@@ -1076,6 +1110,59 @@ function PipelineContent() {
                 <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-500/20 text-[9px] font-mono text-emerald-700 dark:text-emerald-300">
                   <Film className="w-3 h-3 text-emerald-500 shrink-0" />
                   <span>Auto Video Engine: <strong className="text-emerald-800 dark:text-emerald-200">Omni Video Model</strong> (Neural Kinematics & Temporal Coherence)</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3b. Directorial Skill & Cinematic Style Pack */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <div className="flex items-center justify-between font-mono">
+              <label className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold block">
+                DIRECTORIAL SKILL
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="file"
+                  ref={skillFileInputRef}
+                  onChange={handleUploadSkill}
+                  accept=".json,.yaml,.yml"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => skillFileInputRef.current?.click()}
+                  disabled={uploadingSkill}
+                  title="Upload custom .json or .yaml skill configuration"
+                  className="text-[9px] font-mono text-amber-500 hover:text-amber-400 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/25 cursor-pointer transition-all"
+                >
+                  <Upload className="w-2.5 h-2.5" />
+                  <span>{uploadingSkill ? "Uploading..." : "+ Upload Skill"}</span>
+                </button>
+              </div>
+            </div>
+            <select
+              value={selectedSkill}
+              onChange={(e) => setSelectedSkill(e.target.value)}
+              className="w-full bg-white dark:bg-[#101420] text-xs font-heading font-medium rounded-xl px-3 py-2 border border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200 outline-hidden cursor-pointer shadow-xs"
+            >
+              <option value="none">None (Pure Prompt Directives)</option>
+              {availableSkills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} {s.is_builtin ? "★" : "•"}
+                </option>
+              ))}
+            </select>
+            {selectedSkill !== "none" && (
+              <div className="p-2.5 rounded-xl bg-amber-500/[0.05] border border-amber-500/20 text-[10px] space-y-1 text-zinc-700 dark:text-zinc-300 animate-in fade-in duration-150">
+                <div className="font-bold text-amber-600 dark:text-amber-400 flex items-center justify-between">
+                  <span>{availableSkills.find((s) => s.id === selectedSkill)?.name}</span>
+                  <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-300">
+                    {availableSkills.find((s) => s.id === selectedSkill)?.category?.toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-[9px] text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                  {availableSkills.find((s) => s.id === selectedSkill)?.description}
                 </div>
               </div>
             )}

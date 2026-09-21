@@ -677,6 +677,7 @@ class AgentPipelineStartRequest(BaseModel):
     voice_provider: str = 'edge'
     voice_id: str = ''
     apply_brand_kit: bool = True
+    skill_id: Optional[str] = None
 
 @router.post("/agent/start")
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
@@ -694,7 +695,8 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         video_model=req.video_model or 'omni_model',
         voice_provider=req.voice_provider,
         voice_id=req.voice_id,
-        apply_brand_kit=req.apply_brand_kit
+        apply_brand_kit=req.apply_brand_kit,
+        skill_id=req.skill_id
     )
 
     # Track Client IP and Geo-Location in Activity Logs

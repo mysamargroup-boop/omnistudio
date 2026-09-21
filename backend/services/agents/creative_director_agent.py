@@ -105,7 +105,19 @@ class CreativeDirectorAgent(BaseAgent):
         else:
             context.add_log(self.name, f"Configured video engine: '{context.video_model}'.")
 
-        # 4. Formulate Comprehensive Project Brief for transparent inspection
+        # 4. Directorial Skill Integration
+        active_skill_data = None
+        if context.skill_id and context.skill_id != "none":
+            from services.skills_service import skill_manager
+            skill = skill_manager.get_skill(context.skill_id)
+            if skill:
+                active_skill_data = skill.model_dump()
+                context.add_log(
+                    self.name,
+                    f"Directorial Skill Active: [{skill.name}] — Injected custom cinematography presets, optics & style."
+                )
+
+        # 5. Formulate Comprehensive Project Brief for transparent inspection
         title_summary = context.user_prompt.split(",")[0].strip()
         if len(title_summary) > 40:
             title_summary = title_summary[:37] + "..."
@@ -120,6 +132,7 @@ class CreativeDirectorAgent(BaseAgent):
             "visual_style": context.style,
             "diffusion_model": context.image_model,
             "video_model": context.video_model,
+            "skill": active_skill_data,
             "color_palette": "Rich Cinematic Contrast & Warm Volumetrics",
             "aspect_ratio": context.aspect_ratio,
             "director_decisions": {
@@ -127,6 +140,7 @@ class CreativeDirectorAgent(BaseAgent):
                 "pacing": f"{context.num_scenes} scenes @ {duration_per_scene}s each (~{int(context.num_scenes * duration_per_scene)}s total)",
                 "image_engine": f"{context.image_model} (Selected for photoreal texture & composition)",
                 "video_engine": f"{context.video_model} (Temporal motion & character kinematics)",
+                "skill_applied": active_skill_data["name"] if active_skill_data else "None (Pure Prompt)",
                 "mode": context.mode,
                 "autopilot_active": context.mode == "autonomous"
             }
