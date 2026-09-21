@@ -58,6 +58,7 @@ export default function SettingsPage() {
     ELEVENLABS_API_KEY: "",
     REPLICATE_API_TOKEN: "",
     GEMINI_API_KEY: "",
+    ANTHROPIC_API_KEY: "",
     DATABASE_URL: "",
     R2_ACCOUNT_ID: "",
     R2_ACCESS_KEY_ID: "",
@@ -738,8 +739,14 @@ export default function SettingsPage() {
     {
       key: "REPLICATE_API_TOKEN",
       label: "Replicate API Token (Optional)",
-      desc: "Black Forest Labs Flux Schnell diffusion and cloud video choreographers (Kling, Luma, Minimax).",
+      desc: "Black Forest Labs Flux diffusion and cloud video choreographers (Kling, Luma, Minimax).",
       statusKey: "replicate",
+    },
+    {
+      key: "ANTHROPIC_API_KEY",
+      label: "Anthropic Claude API Key (Optional)",
+      desc: "Powers Claude 4 Opus / Claude 4 Sonnet for advanced script writing, storyboard planning, and multi-modal creative direction.",
+      statusKey: "anthropic",
     },
   ];
 
@@ -2364,10 +2371,13 @@ export default function SettingsPage() {
                       onChange={(val: any) => savePreferences({ ...preferences, defaultImageModel: val })}
                       options={[
                         { value: "gpt-image-2", label: "GPT Image 2 (OpenAI Flagship)", badge: "FLAGSHIP" },
-                        { value: "imagen_3", label: "Imagen 3 (Google DeepMind)", badge: "GOOGLE" },
+                        { value: "imagen_3", label: "Google Imagen 4 (DeepMind)", badge: "GOOGLE" },
+                        { value: "flux_2_ultra", label: "Flux 2 Ultra (BFL Next-Gen)", badge: "SOTA" },
                         { value: "flux_pro", label: "Flux.1 Pro (BFL Studio)", badge: "BFL" },
+                        { value: "midjourney_v7", label: "Midjourney v7 (Artistic)", badge: "NEW" },
+                        { value: "seedance_2_5", label: "Seedance 2.5 (ByteDance)", badge: "AI" },
                         { value: "dall-e-3", label: "DALL-E 3 HD", badge: "OPENAI" },
-                        { value: "flux-schnell", label: "Flux Schnell (Speed)", badge: "FAST" },
+                        { value: "gemini_flash_image", label: "Gemini 2.5 Flash Image", badge: "FAST" },
                       ]}
                     />
                   </div>
@@ -2384,9 +2394,11 @@ export default function SettingsPage() {
                       options={[
                         { value: "ffmpeg_local", label: "FFmpeg Local Hardware (Free • Zero API Cost)", badge: "LOCAL" },
                         { value: "google_veo", label: "Google Veo 3.1 (Cloud Video)", badge: "CLOUD" },
-                        { value: "kling_v15", label: "Kling AI v1.5 (Pro Cinematic)", badge: "PRO" },
-                        { value: "luma_dream", label: "Luma Dream Machine (Dynamic)", badge: "DYNAMIC" },
-                        { value: "runway_gen3", label: "Runway Gen-3 Alpha", badge: "ALPHA" },
+                        { value: "kling_3_omni", label: "Kling 3.0 Omni (Kuaishou)", badge: "NEW" },
+                        { value: "seedance_2_5_video", label: "Seedance 2.5 Video (ByteDance)", badge: "SOTA" },
+                        { value: "luma_dream", label: "Luma Dream Machine 2.0 (Dynamic)", badge: "DYNAMIC" },
+                        { value: "runway_gen4", label: "Runway Gen-4 Turbo", badge: "TURBO" },
+                        { value: "minimax_video", label: "MiniMax Hailuo Video", badge: "AI" },
                       ]}
                     />
                   </div>

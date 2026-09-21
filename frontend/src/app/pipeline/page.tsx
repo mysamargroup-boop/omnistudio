@@ -98,9 +98,12 @@ interface PipelineModelOption {
 const DIFFUSION_MODELS: PipelineModelOption[] = [
   { id: "auto", name: "Auto (AI Agent Selected)", badge: "SMART", provider: "Director Agent", description: "Agent analyzes prompt & switches to optimal diffusion model dynamically", active: true },
   { id: "gemini_flash_image", name: "Google Gemini 2.5 Flash", badge: "FAST", provider: "Google DeepMind", description: "Ultra-fast high fidelity image diffusion", active: true },
-  { id: "imagen_3", name: "Google Imagen 3", badge: "PRO", provider: "Google Cloud AI", description: "Flagship photoreal lighting & textures", active: true },
+  { id: "imagen_3", name: "Google Imagen 4", badge: "PRO", provider: "Google Cloud AI", description: "Flagship photoreal lighting & textures", active: true },
   { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "Composition precision & realistic skin", active: true },
-  { id: "flux_pro", name: "Flux.1 Pro", badge: "SOTA", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: true },
+  { id: "flux_2_ultra", name: "Flux 2 Ultra", badge: "SOTA", provider: "Black Forest Labs", description: "Next-gen photorealism, 4K studio-grade output", active: true },
+  { id: "flux_pro", name: "Flux.1 Pro", badge: "PRO", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: true },
+  { id: "midjourney_v7", name: "Midjourney v7", badge: "NEW", provider: "Midjourney", description: "Artistic hyperrealism with cinematic aesthetics", active: true },
+  { id: "seedance_2_5", name: "Seedance 2.5", badge: "AI", provider: "ByteDance", description: "Ultra-consistent character & scene generation", active: true },
 ];
 
 const STYLES = [
@@ -401,18 +404,21 @@ function PipelineContent() {
     }
 
     const currentState = event.state as string;
+    const pausedAfter = event.paused_after_state || (currentState === "paused" ? (choreographedScenes.some((s: any) => s.image_path) ? "generating_images" : "scripting") : null);
+
     if (currentState === "failed") {
       setLaunchError(event.error_message || "Agent execution encountered an error");
       setRunning(false);
       setApprovalModalOpen(false);
     } else if (currentState === "paused") {
-      setPausedState(currentState);
+      setPausedState(pausedAfter || "scripting");
       setApprovalModalOpen(true);
     } else {
       setApprovalModalOpen(false);
     }
 
-    const currentAgentId = STATE_TO_AGENT_ID[currentState];
+    const effectiveState = currentState === "paused" && pausedAfter ? pausedAfter : currentState;
+    const currentAgentId = STATE_TO_AGENT_ID[effectiveState];
     const currentIndex = currentAgentId ? AGENT_ORDER.indexOf(currentAgentId) : -1;
 
     setAgentStatuses((prev) => {
@@ -428,7 +434,7 @@ function PipelineContent() {
         }
       } else if (currentState === "paused") {
         if (currentAgentId) {
-          updated[currentAgentId] = { state: "paused", message: "Awaiting your directorial approval popup" };
+          updated[currentAgentId] = { state: "paused", message: `Awaiting directorial approval (${pausedAfter?.toUpperCase() || "GATE"})` };
         }
       } else if (currentState === "failed") {
         if (currentAgentId) {
@@ -669,6 +675,7 @@ function PipelineContent() {
         voice_provider: voiceProvider,
         apply_brand_kit: applyBrandKit,
         skill_id: selectedSkill !== "none" ? selectedSkill : undefined,
+        reference_image: referenceImage || undefined,
       });
 
       if (!startRes?.success || !startRes?.pipeline_id) {
@@ -732,10 +739,15 @@ function PipelineContent() {
     if (!pipelineId) return;
     try {
       const feedback = directorialNotes.trim() || "Directorial revision: enhance camera movement, contrast and detail";
-      await api.rejectAgentStep(pipelineId, feedback);
       setApprovalModalOpen(false);
+      setRunning(true);
+      await api.rejectAgentStep(pipelineId, feedback);
+      startActiveJob(pipelineId, "pipeline", "/pipeline", `22-Agent Pipeline: ${topic.slice(0, 32)}...`);
+      await api.streamAgentPipeline(pipelineId, handleSSEEvent);
     } catch (e: any) {
       console.error("Failed to reject step:", e);
+    } finally {
+      setRunning(false);
     }
   };
 

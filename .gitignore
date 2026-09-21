@@ -59,6 +59,8 @@ backend/*.db
 Thumbs.db
 *.log
 backend/security_audit.ndjson
+backend/*.mp4
+*.mp4
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

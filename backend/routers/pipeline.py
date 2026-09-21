@@ -663,7 +663,7 @@ import uuid
 import json
 import asyncio
 from fastapi.responses import StreamingResponse
-from services.agent_orchestrator import PipelineContext, PipelineState
+from services.agent_orchestrator import PipelineContext, PipelineState, PIPELINE_TRANSITIONS
 from services.agents import get_default_orchestrator
 
 class AgentPipelineStartRequest(BaseModel):
@@ -678,6 +678,7 @@ class AgentPipelineStartRequest(BaseModel):
     voice_id: str = ''
     apply_brand_kit: bool = True
     skill_id: Optional[str] = None
+    reference_image: Optional[str] = None
 
 @router.post("/agent/start")
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
@@ -696,7 +697,8 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         voice_provider=req.voice_provider,
         voice_id=req.voice_id,
         apply_brand_kit=req.apply_brand_kit,
-        skill_id=req.skill_id
+        skill_id=req.skill_id,
+        reference_image=req.reference_image
     )
 
     # Track Client IP and Geo-Location in Activity Logs
@@ -776,8 +778,37 @@ async def approve_agent_step(pipeline_id: str, request: Request):
         context = await orchestrator.load_pipeline_state(pipeline_id)
         if context.state == PipelineState.PAUSED:
             context.add_log("Security & Telemetry", f"Directorial approval authorized from IP: {client_ip}")
-            context.add_log("System", "Directorial approval granted — resuming pipeline")
+            context.add_log("System", "Directorial approval granted — resuming pipeline execution")
+            
+            # Determine correct next state using transition mapping
+            if context.paused_after_state:
+                try:
+                    prior_st = PipelineState(context.paused_after_state)
+                    context.state = PIPELINE_TRANSITIONS.get(prior_st, PipelineState.PLANNING)
+                except Exception:
+                    context.state = PipelineState.PLANNING
+                context.paused_after_state = None
+            elif not context.scenes or not any(s.image_path for s in context.scenes):
+                context.state = PipelineState.PROMPTING
+            else:
+                context.state = PipelineState.QUALITY_CONTROL
+
             await orchestrator.save_pipeline_state(context)
+
+            # Re-spawn or ensure background task is actively running the remaining pipeline
+            orchestrator.cancel_task(pipeline_id)
+            async def broadcast_callback(ctx: PipelineContext):
+                listeners = orchestrator._listeners.get(pipeline_id, [])
+                payload = ctx.to_dict()
+                for q in list(listeners):
+                    try:
+                        q.put_nowait(payload)
+                    except Exception:
+                        pass
+
+            task = asyncio.create_task(orchestrator.run_pipeline(context, broadcast_callback))
+            orchestrator._active_tasks[pipeline_id] = task
+
         return {"success": True, "pipeline_id": pipeline_id, "message": "Approved", "state": context.state.value}
     except Exception as e:
         logger.error(f"Error approving pipeline {pipeline_id}: {e}")
@@ -793,7 +824,32 @@ async def resume_agent_step(pipeline_id: str, request: Request):
         if context.state in [PipelineState.PAUSED, PipelineState.FAILED]:
             context.add_log("Security & Telemetry", f"Pipeline resumption initiated from IP: {client_ip}")
             context.add_log("System", "Directorial execution resumed")
+            if context.paused_after_state:
+                try:
+                    prior_st = PipelineState(context.paused_after_state)
+                    context.state = PIPELINE_TRANSITIONS.get(prior_st, PipelineState.PLANNING)
+                except Exception:
+                    context.state = PipelineState.PLANNING
+                context.paused_after_state = None
+            elif not context.scenes or not any(s.image_path for s in context.scenes):
+                context.state = PipelineState.PROMPTING
+            else:
+                context.state = PipelineState.QUALITY_CONTROL
             await orchestrator.save_pipeline_state(context)
+
+            orchestrator.cancel_task(pipeline_id)
+            async def broadcast_callback(ctx: PipelineContext):
+                listeners = orchestrator._listeners.get(pipeline_id, [])
+                payload = ctx.to_dict()
+                for q in list(listeners):
+                    try:
+                        q.put_nowait(payload)
+                    except Exception:
+                        pass
+
+            task = asyncio.create_task(orchestrator.run_pipeline(context, broadcast_callback))
+            orchestrator._active_tasks[pipeline_id] = task
+
         return {"success": True, "pipeline_id": pipeline_id, "message": "Resumed", "state": context.state.value}
     except Exception as e:
         logger.error(f"Error resuming pipeline {pipeline_id}: {e}")
@@ -806,9 +862,43 @@ async def reject_agent_step(pipeline_id: str, feedback: str = ''):
         context = await orchestrator.load_pipeline_state(pipeline_id)
         rejection_note = feedback.strip() or "Directorial revision requested"
         context.add_log("System", f"Directorial rejection: {rejection_note}")
-        # Keep state PAUSED — user can re-approve after giving feedback
-        await orchestrator.save_pipeline_state(context)
-        return {"success": True, "pipeline_id": pipeline_id, "message": "Rejected", "feedback": rejection_note}
+        
+        # If paused at a specific gate, roll back to that gate so it re-executes with feedback
+        redo_state = None
+        if context.paused_after_state:
+            try:
+                redo_state = PipelineState(context.paused_after_state)
+            except Exception:
+                pass
+        elif context.scenes and any(s.image_path for s in context.scenes):
+            redo_state = PipelineState.GENERATING_IMAGES
+        else:
+            redo_state = PipelineState.SCRIPTING
+
+        if redo_state:
+            context.state = redo_state
+            context.paused_after_state = None
+            context.user_prompt = f"{context.user_prompt} [Director Revision Note: {rejection_note}]"
+            context.add_log("System", f"Re-executing phase [{redo_state.value}] with directorial revision feedback")
+            await orchestrator.save_pipeline_state(context)
+
+            orchestrator.cancel_task(pipeline_id)
+            async def broadcast_callback(ctx: PipelineContext):
+                listeners = orchestrator._listeners.get(pipeline_id, [])
+                payload = ctx.to_dict()
+                for q in list(listeners):
+                    try:
+                        q.put_nowait(payload)
+                    except Exception:
+                        pass
+
+            task = asyncio.create_task(orchestrator.run_pipeline(context, broadcast_callback))
+            orchestrator._active_tasks[pipeline_id] = task
+
+            return {"success": True, "pipeline_id": pipeline_id, "message": "Rejected and regenerating", "state": context.state.value, "feedback": rejection_note}
+        else:
+            await orchestrator.save_pipeline_state(context)
+            return {"success": True, "pipeline_id": pipeline_id, "message": "Rejected", "feedback": rejection_note}
     except Exception as e:
         logger.error(f"Error rejecting pipeline {pipeline_id}: {e}")
         return {"success": False, "pipeline_id": pipeline_id, "error": str(e)}

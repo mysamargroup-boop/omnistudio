@@ -66,28 +66,31 @@ async def test_agentic_mode_approval_gate(mock_orchestrator):
     )
 
     with patch.object(mock_orchestrator, "save_pipeline_state", new=AsyncMock()):
-        # First execution should pause at the first approval gate (PLANNING)
+        # First execution halts at the first approval gate: SCRIPTING
         paused_ctx = await mock_orchestrator.run_pipeline(ctx, AsyncMock())
         assert paused_ctx.state == PipelineState.PAUSED
-        assert len(paused_ctx.agent_logs) == 1
-        assert "CreativeDirectorAgent" in paused_ctx.agent_logs[0]["agent"]
+        assert paused_ctx.paused_after_state == "scripting"
+        # Verify agents executed up to SCRIPTING
+        logged_agents = [log["agent"] for log in paused_ctx.agent_logs]
+        assert "ScriptWriterAgent" in logged_agents
 
-        # Simulate user approval
+        # Simulate user approval (transition to STORYBOARDING)
         paused_ctx.add_log("System", "Directorial approval granted — resuming pipeline")
+        paused_ctx.state = PipelineState.STORYBOARDING
+        paused_ctx.paused_after_state = None
         
-        # Resume pipeline — should transition to RESEARCHING, not reset to PLANNING
+        # Resume pipeline — should continue from STORYBOARDING and pause at GENERATING_IMAGES
         with patch.object(mock_orchestrator, "load_pipeline_state", new=AsyncMock(return_value=paused_ctx)):
-            # Mock progress callback to capture states
             states_seen = []
             async def track_progress(c):
                 states_seen.append(c.state)
 
             await mock_orchestrator.run_pipeline(paused_ctx, track_progress)
-            # Second approval gate is SCRIPTING, so it should run through RESEARCHING, BRANDING, SCRIPTING, then pause
+            # Second approval gate is GENERATING_IMAGES
             assert paused_ctx.state == PipelineState.PAUSED
-            # Ensure it did not restart at PLANNING and progressed through BRANDING and SCRIPTING
-            assert PipelineState.BRANDING in states_seen
-            assert PipelineState.SCRIPTING in states_seen
+            assert paused_ctx.paused_after_state == "generating_images"
+            assert PipelineState.PROMPTING in states_seen
+            assert PipelineState.GENERATING_IMAGES in states_seen
             assert PipelineState.PLANNING not in states_seen
 
 @pytest.mark.asyncio

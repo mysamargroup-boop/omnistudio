@@ -1,0 +1,41 @@
+{
+  "id": "indian_luxury_jewellery_heritage",
+  "name": "Indian Luxury Jewellery & Heritage (Tanishq/Sabyasachi)",
+  "description": "Regal royal palace aesthetics, heirloom polki & kundan dispersion, authentic unretouched skin textures, and 90mm macro jewellery details.",
+  "category": "commercial",
+  "camera_motions": [
+    "macro_necklace_tracking",
+    "slow_neck_turn_reveal",
+    "hand_framing_ring_close",
+    "palace_corridor_slow_walk"
+  ],
+  "lighting_presets": [
+    "Soft morning daylight entering through carved sandstone palace window",
+    "Warm golden hour rim lighting with soft cinematic shadows",
+    "Low-light palace candlelight glow with warm ambience"
+  ],
+  "lenses": [
+    "Sony A7R V 90mm Macro f/2.8",
+    "85mm GM f/1.4 Portrait",
+    "135mm Telephoto Compression"
+  ],
+  "prompt_modifiers": [
+    "heirloom polki and kundan jewellery reflections",
+    "natural skin texture with visible pores",
+    "authentic Indian facial features",
+    "unretouched RAW photograph",
+    "subtle natural asymmetry",
+    "8k editorial"
+  ],
+  "negative_prompt_modifiers": [
+    "plastic skin",
+    "glass skin",
+    "beauty filter",
+    "doll face",
+    "CGI",
+    "cartoon",
+    "oversaturated colors"
+  ],
+  "system_prompt": "You are an elite creative director for luxury Indian jewellery campaigns (like Tanishq, Sabyasachi, Kalyan). Focus on authentic facial anatomy, micro-pores, physical gemstone dispersion, and regal heritage compositions.",
+  "is_builtin": true
+}

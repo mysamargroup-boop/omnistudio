@@ -40,6 +40,33 @@ class PipelineState(str, Enum):
     FAILED = "failed"
     PAUSED = "paused"
 
+PIPELINE_TRANSITIONS: Dict[PipelineState, PipelineState] = {
+    PipelineState.IDLE: PipelineState.PLANNING,
+    PipelineState.PLANNING: PipelineState.RESEARCHING,
+    PipelineState.RESEARCHING: PipelineState.BRANDING,
+    PipelineState.BRANDING: PipelineState.SCRIPTING,
+    PipelineState.SCRIPTING: PipelineState.STORYBOARDING,
+    PipelineState.STORYBOARDING: PipelineState.PROMPTING,
+    PipelineState.PROMPTING: PipelineState.GENERATING_IMAGES,
+    PipelineState.GENERATING_IMAGES: PipelineState.QUALITY_CONTROL,
+    PipelineState.QUALITY_CONTROL: PipelineState.DESIGNING_THUMBNAIL,
+    PipelineState.DESIGNING_THUMBNAIL: PipelineState.PLANNING_VIDEO,
+    PipelineState.PLANNING_VIDEO: PipelineState.GENERATING_VIDEOS,
+    PipelineState.GENERATING_VIDEOS: PipelineState.CHECKING_VIDEO_QA,
+    PipelineState.CHECKING_VIDEO_QA: PipelineState.GENERATING_VOICE,
+    PipelineState.GENERATING_VOICE: PipelineState.SOUNDTRACKING,
+    PipelineState.SOUNDTRACKING: PipelineState.EDITING,
+    PipelineState.EDITING: PipelineState.SUBTITLING,
+    PipelineState.SUBTITLING: PipelineState.REPURPOSING,
+    PipelineState.REPURPOSING: PipelineState.GENERATING_SOCIAL_COPY,
+    PipelineState.GENERATING_SOCIAL_COPY: PipelineState.PUBLISHING,
+    PipelineState.PUBLISHING: PipelineState.ANALYZING,
+    PipelineState.ANALYZING: PipelineState.AB_TESTING,
+    PipelineState.AB_TESTING: PipelineState.SAVING_PRESET,
+    PipelineState.SAVING_PRESET: PipelineState.COMPLETE,
+    PipelineState.PAUSED: PipelineState.PAUSED,
+}
+
 class SceneData(BaseModel):
     index: int
     title: str = ""
@@ -60,6 +87,7 @@ class PipelineContext(BaseModel):
     user_prompt: str
     mode: str = "autonomous"
     state: PipelineState = PipelineState.IDLE
+    paused_after_state: Optional[str] = None
     department: Optional[str] = None
     project_brief: Optional[dict] = None
     scenes: List[SceneData] = Field(default_factory=list)
@@ -76,6 +104,7 @@ class PipelineContext(BaseModel):
     num_scenes: int = 3
     apply_brand_kit: bool = True
     skill_id: Optional[str] = None
+    reference_image: Optional[str] = None
     error_message: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
@@ -194,6 +223,12 @@ class AgentOrchestrator:
 
     async def save_pipeline_state(self, context: PipelineContext):
         try:
+            brief_dict = dict(context.project_brief or {})
+            if context.paused_after_state:
+                brief_dict["_paused_after_state"] = context.paused_after_state
+            elif "_paused_after_state" in brief_dict:
+                brief_dict.pop("_paused_after_state", None)
+
             with get_db_cursor() as cur:
                 cur.execute("""
                     INSERT OR REPLACE INTO agent_pipelines 
@@ -206,7 +241,7 @@ class AgentOrchestrator:
                     context.user_prompt,
                     context.mode,
                     context.state.value,
-                    json.dumps(context.project_brief or {}),
+                    json.dumps(brief_dict),
                     json.dumps([s.dict() for s in context.scenes]),
                     json.dumps(context.agent_logs),
                     context.total_cost_usd,
@@ -232,12 +267,16 @@ class AgentOrchestrator:
                 if not row:
                     raise ValueError(f"Pipeline {pipeline_id} not found")
                 
+                brief = json.loads(row['project_brief']) if row['project_brief'] else {}
+                paused_after_st = brief.get("_paused_after_state")
+
                 return PipelineContext(
                     pipeline_id=row['id'],
                     user_prompt=row['user_prompt'],
                     mode=row['mode'],
                     state=PipelineState(row['state']),
-                    project_brief=json.loads(row['project_brief']),
+                    paused_after_state=paused_after_st,
+                    project_brief=brief,
                     scenes=[SceneData(**s) for s in json.loads(row['scenes_data'])],
                     agent_logs=json.loads(row['agent_logs']),
                     total_cost_usd=row['total_cost_usd'],
@@ -259,7 +298,18 @@ class AgentOrchestrator:
     async def resume_pipeline(self, pipeline_id: str, progress_callback: Callable) -> PipelineContext:
         context = await self.load_pipeline_state(pipeline_id)
         if context.state == PipelineState.PAUSED:
-            pass
+            if context.paused_after_state:
+                try:
+                    prior_st = PipelineState(context.paused_after_state)
+                    context.state = PIPELINE_TRANSITIONS.get(prior_st, PipelineState.PLANNING)
+                except Exception:
+                    context.state = PipelineState.PLANNING
+                context.paused_after_state = None
+            elif not context.scenes or not any(s.image_path for s in context.scenes):
+                context.state = PipelineState.PROMPTING
+            else:
+                context.state = PipelineState.QUALITY_CONTROL
+            await self.save_pipeline_state(context)
         return await self.run_pipeline(context, progress_callback)
 
     async def get_pipeline_history(self, limit: int = 20) -> list:
@@ -401,20 +451,26 @@ class AgentOrchestrator:
                     return context
 
                 context.add_log(agent.name, f"Completed phase: {current_executing_state.value}", result.cost_usd, result.cost_inr)
-                
-                next_state = transitions.get(current_executing_state, PipelineState.COMPLETE)
-                context.state = next_state
-                await self.save_pipeline_state(context)
-                await progress_callback(context)
+
+                next_state = PIPELINE_TRANSITIONS.get(current_executing_state, PipelineState.COMPLETE)
 
                 # If assisted or agentic mode and NOT in autopilot, pause for user review at critical gates:
                 # 1. After SCRIPTING: to review and approve scene dialogues/screenplay
                 # 2. After GENERATING_IMAGES: to review 4 keyframe images before synthesizing video clips
                 if not is_autopilot and context.mode in ('assisted', 'agentic') and current_executing_state in approval_gates and next_state != PipelineState.COMPLETE:
+                    context.paused_after_state = current_executing_state.value
                     context.state = PipelineState.PAUSED
+                    context.add_log(
+                        "System",
+                        f"Directorial Gate Triggered: [{current_executing_state.value.upper()}] completed. Pausing for human review and sign-off."
+                    )
                     await self.save_pipeline_state(context)
                     await progress_callback(context)
                     return context
+
+                context.state = next_state
+                await self.save_pipeline_state(context)
+                await progress_callback(context)
 
             except Exception as e:
                 logger.error(f"Error executing agent {agent.name}: {e}")

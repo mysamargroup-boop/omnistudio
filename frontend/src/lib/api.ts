@@ -364,6 +364,7 @@ export const api = {
     voice_id?: string;
     apply_brand_kit?: boolean;
     skill_id?: string;
+    reference_image?: string;
   }) => fetchApi<any>("/api/pipeline/agent/start", { method: "POST", body: JSON.stringify(data) }),
 
   streamAgentPipeline: async (
