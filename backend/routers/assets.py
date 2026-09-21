@@ -197,21 +197,27 @@ def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prom
         prompt_map = get_assets_prompt_map()
     for f in sorted(dir_path.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
         if f.is_file() and not f.name.startswith("."):
-            stat = f.stat()
-            url_prefix = f"/outputs/trash/{media_type}" if is_trash else f"/outputs/{media_type}"
-            prompt_val = prompt_map.get(f.name)
-            files.append({
-                "filename": f.name,
-                "url": f"{url_prefix}/{f.name}",
-                "local_path": str(f),
-                "size_bytes": stat.st_size,
-                "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                "modified": stat.st_mtime,
-                "type": media_type,
-                "is_trash": is_trash,
-                "prompt": prompt_val,
-                "has_prompt": bool(prompt_val)
-            })
+            try:
+                stat = f.stat()
+                # Skip 0-byte dummy files or corrupt files smaller than 100 bytes
+                if stat.st_size <= 100:
+                    continue
+                url_prefix = f"/outputs/trash/{media_type}" if is_trash else f"/outputs/{media_type}"
+                prompt_val = prompt_map.get(f.name)
+                files.append({
+                    "filename": f.name,
+                    "url": f"{url_prefix}/{f.name}",
+                    "local_path": str(f),
+                    "size_bytes": stat.st_size,
+                    "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                    "modified": stat.st_mtime,
+                    "type": media_type,
+                    "is_trash": is_trash,
+                    "prompt": prompt_val,
+                    "has_prompt": bool(prompt_val)
+                })
+            except (OSError, FileNotFoundError):
+                continue
     return files
 
 from services.security_service import sanitize_filename

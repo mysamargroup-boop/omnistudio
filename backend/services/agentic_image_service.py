@@ -337,7 +337,7 @@ async def generate_agentic_poses(
                 pose_idx=idx,
                 pose=pose
             )
-            if ok and out_path.exists():
+            if ok and out_path.exists() and out_path.stat().st_size > 100:
                 try:
                     db_save_asset(
                         asset_id=f"agentic_{uuid.uuid4().hex[:12]}",
@@ -345,11 +345,17 @@ async def generate_agentic_poses(
                         filename=filename,
                         url=img_url,
                         local_path=str(out_path),
+                        size_bytes=out_path.stat().st_size,
                         metadata={"prompt": prompt, "model": "local_studio_agentic", "title": pose.get("title", "")}
                     )
                 except Exception as dbe:
                     logger.warning("Failed to save pose asset to DB: %s", dbe)
                 return True
+            elif out_path.exists() and out_path.stat().st_size <= 100:
+                try:
+                    out_path.unlink()
+                except Exception:
+                    pass
             return False
 
         img_generated = await asyncio.to_thread(_synth_worker)

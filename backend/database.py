@@ -442,6 +442,22 @@ def db_save_asset(
     actual_filename = filename or kwargs.get("name") or f"{actual_id}.bin"
     actual_url = url or f"/outputs/{actual_filename}"
 
+    # Auto-calculate real size from local_path or output directory if size_bytes <= 0
+    if size_bytes <= 0:
+        candidate_paths = []
+        if local_path:
+            candidate_paths.append(Path(local_path))
+        if filename:
+            for sub in ("images", "videos", "audio", "final"):
+                candidate_paths.append(Path(settings.BASE_DIR) / "outputs" / sub / filename)
+        for cp in candidate_paths:
+            try:
+                if cp.exists() and cp.is_file() and cp.stat().st_size > 0:
+                    size_bytes = cp.stat().st_size
+                    break
+            except Exception:
+                continue
+
     # Merge metadata with extra caller properties
     meta = dict(metadata) if isinstance(metadata, dict) else {}
     for key in ["prompt", "model", "cost_usd", "cost_inr", "cost", "duration_sec", "preset", "status"]:

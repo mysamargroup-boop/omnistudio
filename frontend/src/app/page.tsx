@@ -279,7 +279,9 @@ export default function DashboardPage() {
             ...(res.final || []).map((item: any) => ({ ...item, assetCategory: "Film Master" })),
             ...(res.videos || []).map((item: any) => ({ ...item, assetCategory: "Video Scene" })),
             ...(res.images || []).map((item: any) => ({ ...item, assetCategory: "Image Render" }))
-          ].sort((a, b) => (b.modified || 0) - (a.modified || 0));
+          ]
+            .filter((item: any) => (item.size_bytes || 0) > 100)
+            .sort((a, b) => (b.modified || 0) - (a.modified || 0));
           setRecentAssets(combined.slice(0, 8));
         }
       } catch (err) {
