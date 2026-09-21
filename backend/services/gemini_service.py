@@ -133,7 +133,11 @@ async def generate_veo_video(
             try:
                 with open(img_p, "rb") as f:
                     img_b64 = base64.b64encode(f.read()).decode("utf-8")
-                instance["image"] = {"bytesBase64Encoded": img_b64}
+                mime = "image/png" if img_p.suffix.lower() == ".png" else "image/jpeg"
+                instance["image"] = {
+                    "bytesBase64Encoded": img_b64,
+                    "mimeType": mime
+                }
             except Exception as ie:
                 logger.warning("Failed to encode keyframe image for Veo: %s", ie)
 
