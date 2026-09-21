@@ -449,7 +449,7 @@ def db_save_asset(
             candidate_paths.append(Path(local_path))
         if filename:
             for sub in ("images", "videos", "audio", "final"):
-                candidate_paths.append(Path(settings.BASE_DIR) / "outputs" / sub / filename)
+                candidate_paths.append(Path(settings.OUTPUTS_PATH) / sub / filename)
         for cp in candidate_paths:
             try:
                 if cp.exists() and cp.is_file() and cp.stat().st_size > 0:

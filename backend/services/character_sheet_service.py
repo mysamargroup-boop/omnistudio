@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import time
 import uuid
 import base64
@@ -70,7 +71,7 @@ def _resolve_reference_file(image_url: Optional[str]) -> Optional[Path]:
     clean = image_url.split("?")[0].strip()
     if clean.startswith("/outputs/"):
         rel = clean[len("/outputs/"):].lstrip("/\\")
-        p = Path(settings.BASE_DIR) / "outputs" / rel
+        p = Path(settings.OUTPUTS_PATH) / rel
         if p.exists() and p.is_file() and p.stat().st_size > 100:
             return p
 
@@ -78,7 +79,7 @@ def _resolve_reference_file(image_url: Optional[str]) -> Optional[Path]:
     fname = Path(clean).name
     if fname:
         for folder in ("images", "videos", "trash", "final"):
-            cand = Path(settings.BASE_DIR) / "outputs" / folder / fname
+            cand = Path(settings.OUTPUTS_PATH) / folder / fname
             if cand.exists() and cand.is_file() and cand.stat().st_size > 100:
                 return cand
 

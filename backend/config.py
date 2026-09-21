@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     R2_PUBLIC_DOMAIN: str = ""
     
     # Paths
+    BASE_DIR: Path = BASE_DIR
     OUTPUTS_PATH: Path = OUTPUT_DIR
     IMAGES_PATH: Path = OUTPUT_DIR / "images"
     VIDEOS_PATH: Path = OUTPUT_DIR / "videos"
