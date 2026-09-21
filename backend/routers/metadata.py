@@ -468,6 +468,7 @@ async def clean_metadata(req: MetadataCleanRequest, request: Request):
 
 
 @router.post("/clean-upload")
+@router.post("/clean_upload")
 @limiter.limit("150/minute")
 async def clean_uploaded_media(
     request: Request,
@@ -481,6 +482,10 @@ async def clean_uploaded_media(
     """
     clean_orig = sanitize_filename(file.filename or "media.png")
     ext = Path(clean_orig).suffix.lower() or ".png"
+
+    settings.VIDEOS_PATH.mkdir(parents=True, exist_ok=True)
+    settings.IMAGES_PATH.mkdir(parents=True, exist_ok=True)
+    settings.AUDIO_PATH.mkdir(parents=True, exist_ok=True)
 
     if ext in VIDEO_EXTENSIONS:
         content = await file.read()
@@ -871,6 +876,7 @@ async def inject_metadata_endpoint(req: MetadataInjectRequest, request: Request)
 
 
 @router.post("/inject-upload")
+@router.post("/inject_upload")
 @limiter.limit("150/minute")
 async def inject_upload_endpoint(
     request: Request,
@@ -885,6 +891,10 @@ async def inject_upload_endpoint(
     """Upload media directly, strip AI metadata, and inject authentic camera/GPS EXIF."""
     clean_orig = sanitize_filename(file.filename or "photo.jpg")
     ext = Path(clean_orig).suffix.lower() or ".jpg"
+
+    settings.VIDEOS_PATH.mkdir(parents=True, exist_ok=True)
+    settings.IMAGES_PATH.mkdir(parents=True, exist_ok=True)
+    settings.AUDIO_PATH.mkdir(parents=True, exist_ok=True)
 
     custom_gps_dict = None
     if custom_gps:
@@ -917,7 +927,9 @@ async def inject_upload_endpoint(
                 stealth_mode=stealth_mode,
             )
             if not res.get("success"):
-                raise HTTPException(status_code=500, detail=res.get("error", "Video injection failed."))
+                err_detail = res.get("error", "Video injection failed.")
+                logger.error("Video metadata injection failed for %s: %s", clean_orig, err_detail)
+                raise HTTPException(status_code=500, detail=err_detail)
 
             clean_url = f"/outputs/videos/{injected_filename}"
             res["url"] = clean_url

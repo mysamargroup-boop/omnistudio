@@ -12,8 +12,8 @@ export function getApiBase(): string {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:8000";
     }
-    // When running on VPS port 3050, backend is exposed on port 8050
-    if (port === "3050") {
+    // When running on VPS port 3050 or 3060, backend is exposed on port 8050
+    if (port === "3050" || port === "3060") {
       return `${protocol}//${hostname}:8050`;
     }
     // In production on VPS / domain behind Nginx or Traefik reverse proxy (port 80 or 443), use relative path ""

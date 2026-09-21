@@ -32,6 +32,12 @@ LONG_TIMEOUT_ROUTES = (
     "/api/pipeline/run-stream",
     "/api/pipeline/agent",
     "/api/voice/change",
+    "/api/metadata/inject-upload",
+    "/api/metadata/inject_upload",
+    "/api/metadata/clean-upload",
+    "/api/metadata/clean_upload",
+    "/api/metadata/inject",
+    "/api/metadata/clean",
 )
 
 UPLOAD_TIMEOUT_ROUTES = (
@@ -39,6 +45,10 @@ UPLOAD_TIMEOUT_ROUTES = (
     "/upload-reference",
     "/upload-keyframe",
     "/upload-source-video",
+    "/inject-upload",
+    "/inject_upload",
+    "/clean-upload",
+    "/clean_upload",
 )
 
 DEFAULT_TIMEOUT_SECONDS = 60.0

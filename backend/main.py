@@ -191,7 +191,14 @@ async def serve_output(media_type: str, filename: str):
                 raise e
         else:
             raise e
-    return FileResponse(path, headers={"Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer"})
+
+    # Allow browser caching for media assets (1 day, stale-while-revalidate 7 days) and byte-range streaming for videos
+    headers = {
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Accept-Ranges": "bytes",
+        "Referrer-Policy": "no-referrer",
+    }
+    return FileResponse(path, headers=headers)
 
 class PinVerificationRequest(BaseModel):
     pin: str
