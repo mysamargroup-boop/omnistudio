@@ -8,8 +8,20 @@ class PromptEngineerAgent(BaseAgent):
     async def execute(self, context: PipelineContext) -> AgentResult:
         model = context.image_model or "gemini_flash_image"
 
+        # Detect character intent to enforce facial & outfit continuity
+        user_p_lower = context.user_prompt.lower()
+        has_character = any(w in user_p_lower for w in ["woman", "girl", "model", "bride", "man", "person", "lady", "protagonist", "actress"])
+        character_anchor = ""
+        if has_character:
+            character_anchor = f"Featuring the exact same protagonist: {context.user_prompt}. 100% facial identity and outfit continuity"
+
+        consistency_neg = ", changing face, different person, identity morphing, altered clothes, extra people" if has_character else ""
+
         for scene in context.scenes:
             desc = scene.description or context.user_prompt
+            if character_anchor and scene.index > 1:
+                desc = f"{character_anchor}. {desc}"
+
             angle = scene.camera_angle or "Cinematic wide angle"
             light = scene.lighting or "Dramatic volumetric lighting"
 
@@ -18,25 +30,25 @@ class PromptEngineerAgent(BaseAgent):
                     f"A master cinematic photograph depicting {desc}. {angle}, {light}. "
                     f"Authentic {context.style} aesthetic, natural film grain, rich subsurface scattering, 8k raw detail."
                 )
-                scene.negative_prompt = "lowres, plastic skin, distorted hands, oversaturated, watermark"
+                scene.negative_prompt = f"lowres, plastic skin, distorted hands, oversaturated, watermark{consistency_neg}"
             elif "imagen" in model.lower():
                 scene.image_prompt = (
                     f"Photorealistic 8K photograph of {desc}, {angle}, {light}. "
                     f"Captured on 35mm Prime lens f/1.4, cinematic depth of field, {context.style} color grading."
                 )
-                scene.negative_prompt = "cartoon, blurry, low resolution, extra limbs, bad anatomy"
+                scene.negative_prompt = f"cartoon, blurry, low resolution, extra limbs, bad anatomy{consistency_neg}"
             elif "gpt" in model.lower() or "dall" in model.lower():
                 scene.image_prompt = (
                     f"High-fidelity cinema frame of {desc}, {angle}, {light}, "
                     f"award-winning {context.style} cinematography, razor-sharp details, volumetric atmospheric haze."
                 )
-                scene.negative_prompt = "blurry, low quality, artifacts, watermark"
+                scene.negative_prompt = f"blurry, low quality, artifacts, watermark{consistency_neg}"
             else:
                 scene.image_prompt = (
                     f"Cinematic shot, {desc}, {angle}, {light}, "
                     f"{context.style} style, 8k, highly detailed, photorealistic."
                 )
-                scene.negative_prompt = "low quality, blurry, distorted, watermark"
+                scene.negative_prompt = f"low quality, blurry, distorted, watermark{consistency_neg}"
 
         # Inject Brand Kit guidelines if enabled and active
         brand_kit = context.project_brief.get("brand_kit") if context.project_brief else None

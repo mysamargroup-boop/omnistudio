@@ -23,14 +23,15 @@ Visual Style: "{context.style}"
 Total Scenes: {num_scenes}
 
 CRITICAL RULES:
-1. If the user prompt does NOT contain explicit dialogues, compose evocative, culturally authentic and poetic narration or character dialogue that fits the scene perfectly (e.g., celebratory wedding poetry/narration for an Indian bridal dance).
-2. Never output placeholder text like 'Scene 1: cinematic sequence'. Write real, compelling spoken narration/dialogue for the voice actor.
-3. Return ONLY a JSON array with exactly {num_scenes} objects, matching this structure:
+1. CHARACTER & OUTFIT CONTINUITY: If a character/protagonist is present (e.g. woman, model, bride, man, actor), the EXACT SAME character, same facial identity, same outfit, and same styling MUST be maintained across ALL scenes. Do not change the protagonist between scenes or replace them with random standalone objects.
+2. If the user prompt does NOT contain explicit dialogues, compose evocative, culturally authentic and poetic narration or character dialogue that fits the scene perfectly (e.g., celebratory wedding poetry/narration for an Indian bridal dance).
+3. Never output placeholder text like 'Scene 1: cinematic sequence'. Write real, compelling spoken narration/dialogue for the voice actor.
+4. Return ONLY a JSON array with exactly {num_scenes} objects, matching this structure:
 [
   {{
     "scene_number": 1,
     "title": "Scene 1: The Royal Entrance",
-    "description": "Visual action description of what is visible on camera...",
+    "description": "Visual action description of what is visible on camera featuring the protagonist...",
     "script": "Poetic, immersive spoken dialogue or voiceover narration (20-30 words)..."
   }}
 ]
