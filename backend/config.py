@@ -91,11 +91,15 @@ class Settings(BaseSettings):
         defaults = [
             "http://localhost:3000",
             "http://localhost:3050",
+            "http://localhost:3060",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3050",
+            "http://127.0.0.1:3060",
             "http://31.97.231.218:3050",
+            "http://31.97.231.218:3060",
+            "http://31.97.231.218",
         ]
-        origins = [] if self.ENVIRONMENT.lower() == "production" else list(defaults)
+        origins = list(defaults)
         raw = (self.CORS_ORIGINS or "").strip()
         if raw:
             if raw.startswith("[") and raw.endswith("]"):
