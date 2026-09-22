@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from typing import Optional, List, Dict, Any
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult, SceneData
 from services.gemini_service import get_gemini_key, generate_gemini_text
 from config import settings
