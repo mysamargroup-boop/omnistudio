@@ -58,6 +58,7 @@ export default function SettingsPage() {
     ELEVENLABS_API_KEY: "",
     REPLICATE_API_TOKEN: "",
     GEMINI_API_KEY: "",
+    SARVAM_API_KEY: "",
     ANTHROPIC_API_KEY: "",
     DATABASE_URL: "",
     R2_ACCOUNT_ID: "",
@@ -747,6 +748,12 @@ export default function SettingsPage() {
       label: "Anthropic Claude API Key (Optional)",
       desc: "Powers Claude 4 Opus / Claude 4 Sonnet for advanced script writing, storyboard planning, and multi-modal creative direction.",
       statusKey: "anthropic",
+    },
+    {
+      key: "SARVAM_API_KEY",
+      label: "Sarvam AI API Key (Indic & Hindi Voices)",
+      desc: "Authentic Indian languages & accents (Bulbul V3 TTS) across Hindi, Hinglish, Marathi, Bengali, Tamil, etc. Free ₹100 credits on signup at sarvam.ai.",
+      statusKey: "sarvam",
     },
   ];
 

@@ -16,6 +16,7 @@ class KeysUpdateRequest(BaseModel):
     ELEVENLABS_API_KEY: Optional[str] = None
     REPLICATE_API_TOKEN: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
+    SARVAM_API_KEY: Optional[str] = None
     DATABASE_URL: Optional[str] = None
     R2_ACCOUNT_ID: Optional[str] = None
     R2_ACCESS_KEY_ID: Optional[str] = None

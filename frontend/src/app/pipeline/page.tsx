@@ -1188,7 +1188,20 @@ function PipelineContent() {
             <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
               NEURAL SPEECH DUB
             </label>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => setVoiceProvider("sarvam")}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
+                  voiceProvider === "sarvam"
+                    ? "bg-violet-600 text-white dark:bg-violet-500 font-bold shadow-xs"
+                    : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
+                )}
+              >
+                <span className="text-[11px] block font-bold">Sarvam Indic</span>
+                <span className="text-[8px] font-mono text-violet-400 dark:text-violet-300 block">Hindi & Indic</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setVoiceProvider("edge")}

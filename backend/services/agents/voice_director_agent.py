@@ -6,6 +6,7 @@ from pathlib import Path
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
 from services.edgetts_service import generate_edge_speech
 from services.elevenlabs_service import generate_elevenlabs_speech
+from services.sarvam_service import generate_sarvam_speech, SARVAM_DEFAULT_VOICES
 from services.ffmpeg_service import get_media_duration
 from database import db_save_asset
 from config import settings
@@ -14,17 +15,31 @@ logger = logging.getLogger("omnistudio.agents.voice")
 
 class VoiceDirectorAgent(BaseAgent):
     name = "VoiceDirectorAgent"
-    description = "Generates neural narration and dubbing for each scene using ElevenLabs Studio Voice or Microsoft Edge Neural"
+    description = "Generates neural narration and dubbing for each scene using Sarvam AI Indic Speech, ElevenLabs Studio Voice, or Microsoft Edge Neural"
     icon = "mic"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
         audio_dir = settings.OUTPUTS_PATH / 'audio'
         audio_dir.mkdir(parents=True, exist_ok=True)
 
-        use_elevenlabs = (context.voice_provider == "elevenlabs") or bool(settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip())
+        use_sarvam = (context.voice_provider == "sarvam") or bool(
+            (settings.SARVAM_API_KEY and str(settings.SARVAM_API_KEY).strip()) and 
+            (context.voice_provider != "elevenlabs")
+        )
+        use_elevenlabs = (context.voice_provider == "elevenlabs") or bool(
+            settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip() and not use_sarvam
+        )
+        
+        sarvam_speaker = context.voice_id if (context.voice_id and context.voice_id in [v["id"] for v in SARVAM_DEFAULT_VOICES]) else "shubh"
         eleven_voice = context.voice_id or "pNInz6obpgDQGcFmaJgB"
         edge_voice = context.voice_id if (context.voice_id and "Neural" in context.voice_id) else "en-US-ChristopherNeural"
-        voice_label = f"ElevenLabs ({eleven_voice[:8]}...)" if use_elevenlabs else f"Edge Neural ({edge_voice})"
+        
+        if use_sarvam:
+            voice_label = f"Sarvam AI Bulbul ({sarvam_speaker})"
+        elif use_elevenlabs:
+            voice_label = f"ElevenLabs ({eleven_voice[:8]}...)"
+        else:
+            voice_label = f"Edge Neural ({edge_voice})"
 
         for scene in context.scenes:
             file_name = f"scene_{scene.index}_{uuid.uuid4().hex[:8]}.mp3"
@@ -34,8 +49,22 @@ class VoiceDirectorAgent(BaseAgent):
             narration_text = (scene.script or scene.description or f"Scene {scene.index}: {context.user_prompt}").strip()
             audio_generated = False
 
-            # 1. Try ElevenLabs if selected or key is present
-            if use_elevenlabs and settings.ELEVENLABS_API_KEY:
+            # 1. Try Sarvam AI (Indic / Hindi / Hinglish Speech) if selected or key is present
+            if use_sarvam and settings.SARVAM_API_KEY:
+                try:
+                    s_res = await generate_sarvam_speech(
+                        text=narration_text,
+                        speaker=sarvam_speaker,
+                        output_path=local_path
+                    )
+                    if s_res.get("success") and local_path.exists() and local_path.stat().st_size > 100:
+                        audio_generated = True
+                        voice_label = f"Sarvam AI Bulbul V3 ({sarvam_speaker})"
+                except Exception as se:
+                    logger.warning("Sarvam AI voice generation attempt failed: %s", se)
+
+            # 2. Try ElevenLabs if selected or key is present
+            if not audio_generated and use_elevenlabs and settings.ELEVENLABS_API_KEY:
                 try:
                     el_res = await generate_elevenlabs_speech(
                         text=narration_text,
@@ -50,7 +79,7 @@ class VoiceDirectorAgent(BaseAgent):
                 except Exception as e:
                     logger.warning("ElevenLabs voice generation attempt failed: %s", e)
 
-            # 2. Free High-Fidelity Fallback: Microsoft Edge Neural TTS
+            # 3. Free High-Fidelity Fallback: Microsoft Edge Neural TTS
             if not audio_generated:
                 try:
                     await generate_edge_speech(
@@ -60,7 +89,9 @@ class VoiceDirectorAgent(BaseAgent):
                     )
                     if local_path.exists() and local_path.stat().st_size > 100:
                         audio_generated = True
-                        if use_elevenlabs:
+                        if use_sarvam:
+                            voice_label = "Edge Neural Voice (Sarvam Fallback)"
+                        elif use_elevenlabs:
                             voice_label = "Edge Neural Voice (ElevenLabs Fallback)"
                 except Exception as ee:
                     logger.warning("Edge TTS voice generation failed for scene %s: %s", scene.index, ee)

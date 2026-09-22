@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: str = ""
     REPLICATE_API_TOKEN: str = ""
     GEMINI_API_KEY: str = ""
+    SARVAM_API_KEY: str = ""
     
     # Database (Supabase PostgreSQL / Neon / SQLite fallback)
     DATABASE_URL: str = ""
@@ -151,7 +152,7 @@ import threading
 _env_lock = threading.Lock()
 
 ALLOWED_CONFIG_KEYS = {
-    "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
+    "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY", "SARVAM_API_KEY",
     "DATABASE_URL", "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
     "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "BACKEND_API_TOKEN", "JWT_SECRET",
     "SUPABASE_JWT_SECRET", "ACCESS_PIN", "STUDIO_PASSCODE", "ENABLE_LOCAL_AUTH", "ENVIRONMENT",
@@ -201,6 +202,7 @@ def get_key_status():
         "elevenlabs": bool(settings.ELEVENLABS_API_KEY),
         "replicate": bool(settings.REPLICATE_API_TOKEN),
         "gemini": bool(settings.GEMINI_API_KEY),
+        "sarvam": bool(settings.SARVAM_API_KEY),
         "database": bool(settings.DATABASE_URL),
         "r2_storage": bool(settings.R2_ACCESS_KEY_ID and settings.R2_SECRET_ACCESS_KEY),
         "studio_auth": bool(settings.BACKEND_API_TOKEN or settings.JWT_SECRET or settings.SUPABASE_JWT_SECRET),
