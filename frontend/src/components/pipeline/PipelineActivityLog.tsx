@@ -91,7 +91,7 @@ interface PipelineActivityLogProps {
   autoScroll?: boolean;
 }
 
-export default function PipelineActivityLog({
+function PipelineActivityLogComponent({
   logs,
   totalCostUsd = 0,
   totalCostInr = 0,
@@ -199,4 +199,6 @@ export default function PipelineActivityLog({
   );
 }
 
+const PipelineActivityLog = React.memo(PipelineActivityLogComponent);
+export default PipelineActivityLog;
 export type { ActivityLogEntry };

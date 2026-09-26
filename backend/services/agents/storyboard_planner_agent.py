@@ -39,14 +39,53 @@ CINEMATIC_LENSES = [
     "18mm Extreme Wide Fisheye (Distorted Hyper-Dynamic Perspective)"
 ]
 
-LIGHTING_SETUPS = [
-    "High-contrast Rembrandt chiaroscuro with deep atmospheric shadows",
-    "Golden hour directional rim lighting with volumetric dust motes",
-    "Neon cyberpunk split-lighting with cyan key and magenta fill",
-    "Bioluminescent ambient caustics with cool-toned volumetric fog",
-    "Overcast softbox diffusion with pristine color fidelity",
-    "Hard tungsten spotlight piercing darkness with heavy lens flare"
-]
+LIGHTING_BY_STYLE = {
+    "photoreal": [
+        "Warm golden hour natural sunlight with soft atmospheric haze",
+        "Overcast softbox diffusion with pristine color fidelity and natural skin tones",
+        "Open shade ambient daylight with subtle fill bounce and clean highlights",
+        "Window-lit Vermeer chiaroscuro with gentle directional warmth",
+        "Blue hour twilight ambiance with cool natural tones and long shadows",
+        "High-noon directional sunlight with crisp hard shadows and vivid color"
+    ],
+    "cinematic": [
+        "High-contrast Rembrandt chiaroscuro with deep atmospheric shadows",
+        "Golden hour directional rim lighting with volumetric dust motes",
+        "Dramatic backlit silhouette with warm amber flare and smoke haze",
+        "Tungsten practical lighting with motivated pools of warm contrast",
+        "Overcast softbox diffusion with pristine color fidelity",
+        "Hard tungsten spotlight piercing darkness with heavy lens flare"
+    ],
+    "cyberpunk": [
+        "Neon cyberpunk split-lighting with cyan key and magenta fill",
+        "Bioluminescent ambient caustics with cool-toned volumetric fog",
+        "Rain-soaked neon reflections with wet asphalt specular highlights",
+        "Holographic LED strip wash with deep purple and electric blue glow",
+        "Foggy back-alley sodium vapor with fluorescent flicker accents",
+        "Laser grid matrix with prismatic lens flare and smoke trails"
+    ],
+    "anime": [
+        "Vibrant painterly sunset with luminous cloud edges and warm glow",
+        "Soft pastel ambient light with dreamy bloom and color diffusion",
+        "Dramatic backlit character silhouette with radiant sky gradient",
+        "Moonlit night with gentle blue fill and sparkling particle effects",
+        "Cherry blossom dappled sunlight with warm pink-tinted atmosphere",
+        "Stormy dramatic sky with contrast lightning flash illumination"
+    ],
+    "3d_pixar": [
+        "Soft warm studio three-point lighting with subsurface glow",
+        "Vibrant key light with colorful bounce fill and subtle rim",
+        "Warm sunset environmental lighting with long expressive shadows",
+        "Cool moonlit night with stylized blue tones and warm lamp practicals",
+        "Bright cheerful overcast with even diffusion and saturated colors",
+        "Dramatic spot with deep shadow and playful colored rim highlights"
+    ],
+}
+
+def get_lighting_for_style(style: str, index: int) -> str:
+    """Get style-appropriate lighting setup, never cross-contaminating styles."""
+    setups = LIGHTING_BY_STYLE.get(style, LIGHTING_BY_STYLE["cinematic"])
+    return setups[index % len(setups)]
 
 class StoryboardPlannerAgent(BaseAgent):
     name = "StoryboardPlannerAgent"
@@ -58,6 +97,7 @@ class StoryboardPlannerAgent(BaseAgent):
             return AgentResult(success=True)
 
         num_scenes = len(context.scenes)
+        style_lighting = LIGHTING_BY_STYLE.get(context.style, LIGHTING_BY_STYLE["cinematic"])
         prompt_text = f"""You are a master Hollywood director of photography (DP) and visual storyboard artist.
 Analyze this film project:
 Prompt: "{context.user_prompt}"
@@ -68,6 +108,16 @@ Assign a DISTINCT, highly cinematic camera angle, lens, lighting, and camera mot
 STRICT RULE: Do NOT use boring, repetitive camera motions like simple 'push' or 'pan' or 'zoom' for all scenes.
 You MUST choose from these advanced cinematography motions:
 {json.dumps([m['name'] + ' (' + m['desc'] + ')' for m in CINEMATIC_CAMERA_MOTIONS])}
+
+CRITICAL STYLE ENFORCEMENT — The selected visual style is "{context.style}".
+You MUST keep ALL lighting, color grading, and atmosphere STRICTLY consistent with "{context.style}" aesthetic.
+Approved lighting options for "{context.style}" style:
+{json.dumps(style_lighting)}
+ABSOLUTELY DO NOT use lighting from other styles. For example:
+- If style is "photoreal", NEVER use neon, cyberpunk, bioluminescent, or sci-fi lighting.
+- If style is "cinematic", keep it grounded with practical film lighting, no neon or anime tones.
+- If style is "cyberpunk", use neon and futuristic lighting only.
+Choose ONLY from the approved lighting options listed above.
 
 Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema:
 [
@@ -116,24 +166,30 @@ Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema
             except Exception as e:
                 logger.warning("OpenAI storyboard planner call failed: %s", e)
 
-        # Apply generated or rich algorithmic progression
+        # Apply generated or rich algorithmic progression (style-aware lighting)
         for i, scene in enumerate(context.scenes):
+            base_action = scene.description or context.user_prompt
             if generated_scenes and i < len(generated_scenes):
                 plan = generated_scenes[i]
                 scene.camera_angle = plan.get("camera_angle") or CINEMATIC_CAMERA_MOTIONS[i % len(CINEMATIC_CAMERA_MOTIONS)]["name"]
                 scene.motion_type = plan.get("motion_type") or CINEMATIC_CAMERA_MOTIONS[i % len(CINEMATIC_CAMERA_MOTIONS)]["name"]
-                scene.lighting = plan.get("lighting") or LIGHTING_SETUPS[i % len(LIGHTING_SETUPS)]
-                if plan.get("description"):
-                    scene.description = plan["description"]
+                scene.lighting = plan.get("lighting") or get_lighting_for_style(context.style, i)
+                plan_desc = plan.get("description", "").strip()
+                if plan_desc and plan_desc.lower() not in base_action.lower():
+                    scene.description = f"{base_action}. Visual framing: {plan_desc}"
+                else:
+                    scene.description = base_action
             else:
                 # Algorithmic diverse assignment guaranteeing NO repeated motions
                 motion_info = CINEMATIC_CAMERA_MOTIONS[i % len(CINEMATIC_CAMERA_MOTIONS)]
                 lens_info = CINEMATIC_LENSES[i % len(CINEMATIC_LENSES)]
-                lighting_info = LIGHTING_SETUPS[i % len(LIGHTING_SETUPS)]
+                lighting_info = get_lighting_for_style(context.style, i)
 
                 scene.motion_type = motion_info["name"]
                 scene.camera_angle = motion_info["desc"].split(",")[0]
                 scene.lighting = lighting_info
-                scene.description = f"{scene.camera_angle} using {lens_info}, {lighting_info}. High-end cinematic fidelity."
+                # Preserve the core action and subject! Do not overwrite with just camera metadata
+                scene.description = f"{base_action}. Shot framing: {scene.camera_angle} with {lens_info}."
 
         return AgentResult(success=True)
+

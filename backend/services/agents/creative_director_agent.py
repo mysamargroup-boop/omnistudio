@@ -122,10 +122,33 @@ class CreativeDirectorAgent(BaseAgent):
         if len(title_summary) > 40:
             title_summary = title_summary[:37] + "..."
 
+        # Style-aware genre label and color palette
+        _GENRE_LABELS = {
+            "photoreal": "Photoreal Cinematic Film",
+            "cinematic": "Cinematic 35mm Film",
+            "cyberpunk": "Cyberpunk Noir Film",
+            "anime": "Anime Ghibli Feature",
+            "3d_pixar": "3D Animated Short",
+        }
+        _MOOD_LABELS = {
+            "photoreal": "Natural & Authentic",
+            "cinematic": "Cinematic & Emotional",
+            "cyberpunk": "Moody & Futuristic",
+            "anime": "Dreamlike & Vibrant",
+            "3d_pixar": "Playful & Expressive",
+        }
+        _PALETTE_LABELS = {
+            "photoreal": "Natural Tones, Warm Sunlight & True-to-Life Color",
+            "cinematic": "Rich Cinematic Contrast & Warm Volumetrics",
+            "cyberpunk": "Neon Cyan & Magenta, Deep Urban Shadows",
+            "anime": "Luminous Pastels, Vivid Sky Gradients & Bloom",
+            "3d_pixar": "Saturated Primaries, Soft Subsurface Glow",
+        }
+
         context.project_brief = {
             "title": title_summary or "Cinematic Production",
-            "genre": f"{context.style.capitalize()} Cinematic Film",
-            "mood": "Cinematic & Emotional",
+            "genre": _GENRE_LABELS.get(context.style, f"{context.style.capitalize()} Cinematic Film"),
+            "mood": _MOOD_LABELS.get(context.style, "Cinematic & Emotional"),
             "target_audience": "Global / Social Master",
             "scene_count": context.num_scenes,
             "scene_duration": duration_per_scene,
@@ -133,7 +156,7 @@ class CreativeDirectorAgent(BaseAgent):
             "diffusion_model": context.image_model,
             "video_model": context.video_model,
             "skill": active_skill_data,
-            "color_palette": "Rich Cinematic Contrast & Warm Volumetrics",
+            "color_palette": _PALETTE_LABELS.get(context.style, "Rich Cinematic Contrast & Warm Volumetrics"),
             "aspect_ratio": context.aspect_ratio,
             "director_decisions": {
                 "concept": context.user_prompt,

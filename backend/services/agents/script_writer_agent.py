@@ -97,12 +97,11 @@ CRITICAL RULES:
         # 3. Dynamic Context-Aware Fallback (Synthesized from the user's actual prompt)
         if not generated_scenes:
             clean_prompt = context.user_prompt.strip()
-            lead_phrase = clean_prompt.split(",")[0].strip() or "The journey unfolds"
             theme_moods = [
-                ("The Initial Spark", f"Across the atmosphere of {lead_phrase}, a compelling visual presence commands the screen.", f"In the first breath of {lead_phrase}, every detail whispers anticipation."),
-                ("Deepening Resonance", f"Focus tightens into the texture and movement of {lead_phrase} with cinematic depth.", f"With every deliberate rhythm, the world of {lead_phrase} reveals its unspoken elegance."),
-                ("The Climax", f"A dramatic peak of lighting and motion as {lead_phrase} reaches full expressive power.", f"Here, amidst striking light and shadow, {lead_phrase} transcends into unforgettable art."),
-                ("The Resolution", f"A lingering, luminous frame capturing the enduring aura of {lead_phrase}.", f"As the final cadence settles, the memory of {lead_phrase} echoes with timeless beauty.")
+                ("The Establishing Vision", clean_prompt, f"In this serene moment: {clean_prompt[:120]}..."),
+                ("Deepening Focus", f"Detailed close-up and atmospheric texture: {clean_prompt}", f"Every deliberate detail tells an authentic story."),
+                ("The Expressive Peak", f"Dynamic cinematic motion and emotional crescendo: {clean_prompt}", f"Amidst striking light and natural grace, the moment transcends into art."),
+                ("The Lasting Aura", f"A lingering, luminous frame capturing: {clean_prompt}", f"The echoes of this moment leave a timeless, unforgettable impression.")
             ]
 
             generated_scenes = []

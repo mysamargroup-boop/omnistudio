@@ -183,35 +183,12 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
             raise RuntimeError(f"Scene {scene_num} visual failed: {err_detail}. Please check your API keys in Settings.")
         scene_data["image"] = img_result
 
-        # ── Camera Motion Generation ──
-        motion = scene.get("camera_motion", "zoom_in")
-        duration = scene.get("duration", 5.0)
-
-        await notify(
-            "scene_motion",
-            base_progress + int(0.50 * (58 / total_scenes)),
-            2,
-            f"Scene {scene_num}/{total_scenes}: Calculating camera kinematics ({motion}, {duration}s)...",
-            {"scene": scene_num, "total_scenes": total_scenes}
-        )
-
-        vid_result = await generate_video_from_image(
-            image_path=img_result.get("local_path", ""), motion_type=motion, duration=duration
-        )
-        if not vid_result.get("success") or not vid_result.get("local_path"):
-            vid_result = {
-                "success": True,
-                "local_path": img_result.get("local_path"),
-                "url": img_result.get("url")
-            }
-        scene_data["video"] = vid_result
-
-        # ── Voiceover Generation ──
+        # ── Voiceover Generation (First, to know exact spoken timing) ──
         narration = scene.get("narration", f"Scene {scene_num} of our story about {req.topic}.")
         await notify(
             "scene_voice",
-            base_progress + int(0.75 * (58 / total_scenes)),
-            3,
+            base_progress + int(0.40 * (58 / total_scenes)),
+            2,
             f"Scene {scene_num}/{total_scenes}: Dubbing neural narration ({req.voice_provider.upper()})...",
             {"scene": scene_num, "total_scenes": total_scenes}
         )
@@ -243,7 +220,39 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
                 }
         scene_data["voice"] = voice_result
 
-        # ── Audio-Video Merge for this Scene ──
+        # Measure actual voice duration so video motion is rendered for full duration
+        actual_audio_dur = 5.0
+        try:
+            from services.ffmpeg_service import get_media_duration
+            if voice_result.get("local_path") and Path(voice_result["local_path"]).exists():
+                actual_audio_dur = get_media_duration(voice_result["local_path"])
+        except Exception:
+            actual_audio_dur = 5.0
+
+        # ── Camera Motion Generation (Exact duration match to voice, preventing repeating loop) ──
+        motion = scene.get("camera_motion", "zoom_in")
+        duration = max(float(scene.get("duration", 5.0)), actual_audio_dur, 2.0)
+
+        await notify(
+            "scene_motion",
+            base_progress + int(0.70 * (58 / total_scenes)),
+            3,
+            f"Scene {scene_num}/{total_scenes}: Calculating camera kinematics ({motion}, {duration:.1f}s continuous take)...",
+            {"scene": scene_num, "total_scenes": total_scenes}
+        )
+
+        vid_result = await generate_video_from_image(
+            image_path=img_result.get("local_path", ""), motion_type=motion, duration=duration
+        )
+        if not vid_result.get("success") or not vid_result.get("local_path"):
+            vid_result = {
+                "success": True,
+                "local_path": img_result.get("local_path"),
+                "url": img_result.get("url")
+            }
+        scene_data["video"] = vid_result
+
+        # ── Audio-Video Merge for this Scene (No looping!) ──
         merged_filename = f"scene_{job_id}_{scene_num}.mp4"
         merged_path = settings.FINAL_PATH / merged_filename
         try:
@@ -251,7 +260,8 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
                 merge_video_audio,
                 video_path=vid_result["local_path"],
                 audio_path=voice_result["local_path"],
-                output_path=merged_path
+                output_path=merged_path,
+                loop_video_to_match_audio=False
             )
         except Exception as e:
             logger.warning("[Pipeline Merge Warning] Scene %s: %s", scene_num, e)

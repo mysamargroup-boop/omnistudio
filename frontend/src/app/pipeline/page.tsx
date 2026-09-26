@@ -806,8 +806,12 @@ function PipelineContent() {
     }
   };
 
-  const costPerScene = voiceProvider === "edge" ? 0.04 : 0.06;
-  const estimatedCostUsd = costPerScene * scenes;
+  // More accurate cost estimation: image gen + video motion + voice per scene
+  const voiceCostPerScene = voiceProvider === "edge" ? 0.005 : 0.025;
+  const imageCostPerScene = imageModel === "gpt-image-2" ? 0.04 : imageModel === "flux_2_ultra" ? 0.06 : 0.02;
+  const videoCostPerScene = 0.01;
+  const costPerScene = voiceCostPerScene + imageCostPerScene + videoCostPerScene;
+  const estimatedCostUsd = Math.round(costPerScene * scenes * 1000) / 1000;
   const estimatedCostInr = Math.round(estimatedCostUsd * 83.5 * 100) / 100;
 
   // ── Render 4-Department Live Progress Bar (Clean, uncluttered) ──
@@ -1321,6 +1325,17 @@ function PipelineContent() {
               ) : (
                 <div
                   onClick={() => refFileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add("border-emerald-500", "bg-emerald-500/5"); }}
+                  onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("border-emerald-500", "bg-emerald-500/5"); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.currentTarget.classList.remove("border-emerald-500", "bg-emerald-500/5");
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && file.type.startsWith("image/")) {
+                      handleRefUpload(file);
+                    }
+                  }}
                   className="rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 bg-white dark:bg-zinc-900/50 p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1"
                 >
                   <input
@@ -1338,6 +1353,24 @@ function PipelineContent() {
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
                     {uploadingRef ? "Uploading..." : "Upload Character or Style Reference"}
                   </span>
+                  <span className="text-[9px] font-mono text-zinc-400 mt-0.5">
+                    Drop image here, click to browse, or paste URL below
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Paste image URL (https://...)"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const url = (e.target as HTMLInputElement).value.trim();
+                        if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+                          setReferenceImage(url);
+                          (e.target as HTMLInputElement).value = "";
+                        }
+                      }
+                    }}
+                    className="mt-1.5 w-full px-2 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  />
                 </div>
               )}
             </div>
@@ -1494,7 +1527,10 @@ function PipelineContent() {
         </button>
 
         {isTelemetryOpen && (
-          <div className="mt-4 space-y-5 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] animate-in fade-in">
+          <div
+            className="mt-4 space-y-5 p-5 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] animate-in fade-in"
+            style={{ contentVisibility: "auto", containIntrinsicSize: "1px 500px" }}
+          >
           {/* Formulated Project Brief Card (If Created by Director) */}
           {projectBrief && (
             <div className="p-4 rounded-2xl bg-violet-500/[0.04] border border-violet-500/20 space-y-2">
@@ -1596,7 +1632,11 @@ function PipelineContent() {
       return null;
     }
     return (
-      <div ref={screeningRef} className="scroll-mt-6 space-y-6 animate-in fade-in duration-300">
+      <div
+        ref={screeningRef}
+        className="scroll-mt-6 space-y-6 animate-in fade-in duration-300"
+        style={{ contentVisibility: "auto", containIntrinsicSize: "1px 600px" }}
+      >
         <div className="bg-white dark:bg-[#0d0d14] border border-emerald-500/20 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
           {/* Section Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">

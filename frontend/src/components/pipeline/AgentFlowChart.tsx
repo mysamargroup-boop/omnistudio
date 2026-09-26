@@ -150,7 +150,7 @@ interface AgentFlowChartProps {
   selectedAgentId?: string | null;
 }
 
-export default function AgentFlowChart({
+function AgentFlowChartComponent({
   agentStatuses,
   onAgentClick,
   selectedAgentId,
@@ -299,4 +299,6 @@ export default function AgentFlowChart({
   );
 }
 
+const AgentFlowChart = React.memo(AgentFlowChartComponent);
+export default AgentFlowChart;
 export { ALL_22_AGENTS as AGENT_NODES };

@@ -27,6 +27,22 @@ class VideoEditorAgent(BaseAgent):
         scene_video_paths = []
 
         for scene in context.scenes:
+            # Check audio duration if audio exists
+            aud_cand = None
+            aud_dur = 0.0
+            if scene.audio_path:
+                aud_name = Path(scene.audio_path).name
+                cand_a = settings.OUTPUTS_PATH / 'audio' / aud_name
+                if cand_a.exists():
+                    aud_cand = cand_a
+                    try:
+                        from services.ffmpeg_service import get_media_duration
+                        aud_dur = get_media_duration(cand_a)
+                    except Exception:
+                        aud_dur = 0.0
+
+            target_duration = max(float(scene.duration_seconds or 4.0), aud_dur, 2.0)
+
             scene_vid_path = None
             if scene.video_path:
                 v_name = Path(scene.video_path).name
@@ -36,8 +52,20 @@ class VideoEditorAgent(BaseAgent):
                 elif Path(scene.video_path).exists():
                     scene_vid_path = Path(scene.video_path)
 
-            # If scene doesn't have a video yet, try synthesizing from image
-            if not scene_vid_path and scene.image_path:
+            # Check if existing video is too short compared to audio (which would cause repeating loop)
+            needs_motion_synth = False
+            if scene_vid_path and aud_dur > 0:
+                try:
+                    from services.ffmpeg_service import get_media_duration
+                    vid_dur = get_media_duration(scene_vid_path)
+                    if vid_dur < (aud_dur - 0.5):
+                        needs_motion_synth = True
+                except Exception:
+                    pass
+
+            # If scene doesn't have video OR video duration is too short for speech,
+            # synthesize continuous cinematic motion from image matching speech length!
+            if (not scene_vid_path or needs_motion_synth) and scene.image_path:
                 img_name = Path(scene.image_path).name
                 img_cand = settings.OUTPUTS_PATH / 'images' / img_name
                 if img_cand.exists():
@@ -46,33 +74,30 @@ class VideoEditorAgent(BaseAgent):
                         image_to_video_motion(
                             image_path=img_cand,
                             output_path=tmp_scene_vid,
-                            duration=max(float(scene.duration_seconds or 4.0), 2.0),
+                            duration=target_duration,
                             motion_type=scene.motion_type or "zoom_in"
                         )
-                        if tmp_scene_vid.exists():
+                        if tmp_scene_vid.exists() and tmp_scene_vid.stat().st_size > 1000:
                             scene_vid_path = tmp_scene_vid
                             scene.video_path = f"/outputs/videos/{tmp_scene_vid.name}"
                     except Exception as ve:
                         logger.warning("Failed to synthesize video for scene %s: %s", scene.index, ve)
 
-            # If scene has audio, merge it into the scene video
-            if scene_vid_path and scene.audio_path:
-                aud_name = Path(scene.audio_path).name
-                aud_cand = settings.OUTPUTS_PATH / 'audio' / aud_name
-                if aud_cand.exists():
-                    merged_scene_vid = settings.OUTPUTS_PATH / 'videos' / f"aud_{scene_vid_path.name}"
-                    try:
-                        merge_audio_video(
-                            video_path=scene_vid_path,
-                            audio_path=aud_cand,
-                            output_path=merged_scene_vid,
-                            loop_video_to_match_audio=True
-                        )
-                        if merged_scene_vid.exists() and merged_scene_vid.stat().st_size > 1000:
-                            scene_vid_path = merged_scene_vid
-                            scene.video_path = f"/outputs/videos/{merged_scene_vid.name}"
-                    except Exception as me:
-                        logger.warning("Failed to merge audio for scene %s: %s", scene.index, me)
+            # If scene has audio, merge it into the scene video (NEVER looping)
+            if scene_vid_path and aud_cand:
+                merged_scene_vid = settings.OUTPUTS_PATH / 'videos' / f"aud_{scene_vid_path.name}"
+                try:
+                    merge_audio_video(
+                        video_path=scene_vid_path,
+                        audio_path=aud_cand,
+                        output_path=merged_scene_vid,
+                        loop_video_to_match_audio=False
+                    )
+                    if merged_scene_vid.exists() and merged_scene_vid.stat().st_size > 1000:
+                        scene_vid_path = merged_scene_vid
+                        scene.video_path = f"/outputs/videos/{merged_scene_vid.name}"
+                except Exception as me:
+                    logger.warning("Failed to merge audio for scene %s: %s", scene.index, me)
 
             if scene_vid_path and scene_vid_path.exists():
                 scene_video_paths.append(scene_vid_path)

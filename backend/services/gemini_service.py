@@ -160,6 +160,11 @@ async def generate_veo_video(
 
     try:
         r = _safe_gemini_post(url, payload, timeout=30)
+        if r.status_code == 404 and target_model == "veo-3.1-fast-generate-preview":
+            fallback_url = f"{GEMINI_API_URL}/models/veo-2.0-generate-001:predictLongRunning?key={key}"
+            logger.info("Veo 3.1 preview returned 404; retrying with official endpoint veo-2.0-generate-001...")
+            r = _safe_gemini_post(fallback_url, payload, timeout=30)
+
         if r.status_code == 429:
             return {
                 "success": False,
