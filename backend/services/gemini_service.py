@@ -123,9 +123,9 @@ async def generate_veo_video(
     elif aspect_ratio in ["21:9", "2.39:1"]:
         norm_aspect = "16:9"
 
-    # Google Veo requires durationSeconds to be exactly 4, 6, or 8
+    # Google Veo / Omni Flash requires durationSeconds to be exactly 4, 6, or 8 (5s snaps to 6s)
     dur_int = int(duration_seconds)
-    if dur_int <= 5:
+    if dur_int <= 4:
         norm_duration = 4
     elif dur_int <= 7:
         norm_duration = 6

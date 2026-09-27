@@ -607,11 +607,11 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
     # ─── Mode: Text-to-Video ───
     is_text_to_video = (req.mode == "text_to_video") or (not start_img and base_p)
     if is_text_to_video:
-        # Check if direct generative video model like Google Veo is selected
-        if "veo" in req.model.lower() or "google" in req.model.lower():
+        # Check if direct generative video model like Google Veo or Omni Flash is selected
+        if any(k in req.model.lower() for k in ["veo", "google", "omni_flash", "omni"]):
             from services.gemini_service import get_gemini_key, generate_veo_video
             if not get_gemini_key():
-                return record_failure("Google Gemini API key not configured. Please add GEMINI_API_KEY in Settings to use Google Veo.")
+                return record_failure("Google Gemini API key not configured. Please add GEMINI_API_KEY in Settings to use Google Omni Flash / Veo.")
             
             veo_res = await generate_veo_video(
                 prompt=effective_prompt,
@@ -981,21 +981,22 @@ async def list_motion_types(request: Request):
             {"id": "directional_wipe", "name": "Directional Sweep", "description": "High-velocity kinetic wipe between keyframes"}
         ],
         "models": [
-            {"id": "ffmpeg_local", "name": "Local Ken Burns / Morph Engine", "active": True, "desc": "Hardware Accelerated FFmpeg 8.1 (Free / Instant)"},
-            {"id": "kling_2.0", "name": "Kling AI 2.0 Pro", "active": replicate_active, "desc": "Photorealistic Physics & High Dynamic Kinematics"},
-            {"id": "kling_v1.5", "name": "Kling AI v1.5", "active": replicate_active, "desc": "High Frame Consistency & Camera Simulation"},
+            {"id": "omni_flash", "name": "Google Omni Flash (Veo 3.1)", "active": google_active, "desc": "High-Speed Multimodal Video & Expressive Kinematics"},
+            {"id": "google_veo", "name": "Google Veo 3.1 Cinema Master", "active": google_active, "desc": "High Definition 4K Multimodal Cinematic Video Generation"},
             {"id": "seedance_v1", "name": "Seedance (ByteDance Magic)", "active": replicate_active, "desc": "High-Fidelity Character & Dance Choreography"},
             {"id": "seedvideo_1.0", "name": "SeedVideo 1.0 (ByteDance)", "active": replicate_active, "desc": "Fluid Multi-Subject Motion Dynamics"},
+            {"id": "kling_2.0", "name": "Kling AI 2.0 Pro", "active": replicate_active, "desc": "Photorealistic Physics & High Dynamic Kinematics"},
+            {"id": "kling_v1.5", "name": "Kling AI v1.5", "active": replicate_active, "desc": "High Frame Consistency & Camera Simulation"},
             {"id": "omni_video_v3", "name": "OmniMotion 3.0 (Native Neural)", "active": True, "desc": "3D Spatial Camera Trajectory & Physics Control"},
             {"id": "omni_human_pro", "name": "OmniHuman Pro", "active": replicate_active, "desc": "Photorealistic Human Expression & Expressive Movement"},
             {"id": "runway_gen3", "name": "Runway Gen-3 Alpha Turbo", "active": replicate_active, "desc": "Ultra-Realistic Cinema Motion Coherence"},
             {"id": "openai_sora", "name": "OpenAI Sora", "active": openai_active, "desc": "World Simulator & Complex Multi-Shot Kinematics"},
             {"id": "luma_dream", "name": "Luma Dream Machine 1.5", "active": replicate_active, "desc": "Consistent 3D Camera Parallax & Fluid Dynamics"},
             {"id": "minimax_video", "name": "Minimax Video-01 (Hailuo)", "active": replicate_active, "desc": "Cinematic Resolution & Natural Human Kinetics"},
-            {"id": "google_veo", "name": "Google Veo 2", "active": google_active, "desc": "High Definition 4K Multimodal Video Generation"},
             {"id": "pika_v2", "name": "Pika 2.0", "active": replicate_active, "desc": "Creative Stylized Motion & Kinetic Lens Effects"},
             {"id": "hunyuan_video", "name": "HunyuanVideo (Tencent)", "active": replicate_active, "desc": "Open-Weights High Definition Video Diffusion"},
-            {"id": "cogvideox_5b", "name": "CogVideoX-5B", "active": replicate_active, "desc": "Deep Expert 3D VAE Latent Video Synthesis"}
+            {"id": "cogvideox_5b", "name": "CogVideoX-5B", "active": replicate_active, "desc": "Deep Expert 3D VAE Latent Video Synthesis"},
+            {"id": "ffmpeg_local", "name": "Local Ken Burns / Morph Engine", "active": True, "desc": "Hardware Accelerated FFmpeg 8.1 (Free / Instant)"}
         ],
         "resolutions": [
             {"id": "720p", "name": "720p HD", "desc": "Fast preview quality"},
