@@ -49,12 +49,24 @@ class VideoGeneratorAgent(BaseAgent):
             if is_single_video:
                 dur = 6.0  # 6 seconds for single combined video
 
-            # Call Google Omni Flash (Veo 3.1)
-            if not get_gemini_key():
-                return AgentResult(
-                    success=False,
-                    error="GEMINI_API_KEY is not configured in studio settings. Please configure GEMINI_API_KEY to generate video."
-                )
+            if "seedance" in target_model:
+                if not settings.REPLICATE_API_TOKEN:
+                    return AgentResult(
+                        success=False,
+                        error="REPLICATE_API_TOKEN is not configured in studio settings. Please configure REPLICATE_API_TOKEN in Settings to generate videos with ByteDance Seedance."
+                    )
+                # Seedance via Replicate
+                cost_per_sec_usd = 0.15  # ByteDance Seedance standard rate (~$0.15/sec)
+                model_display_name = "ByteDance Seedance (Neural Motion)"
+            else:
+                # Call Google Omni Flash (Veo 3.1)
+                if not get_gemini_key():
+                    return AgentResult(
+                        success=False,
+                        error="GEMINI_API_KEY is not configured in studio settings. Please configure GEMINI_API_KEY to generate video."
+                    )
+                cost_per_sec_usd = 0.20  # Google Omni Flash / Veo Fast tier (~$0.20/sec)
+                model_display_name = "Google Omni Flash (Veo 3.1)"
 
             prompt_for_video = (
                 f"{context.user_prompt}. {scene.description or scene.image_prompt}"
@@ -62,7 +74,7 @@ class VideoGeneratorAgent(BaseAgent):
                 else (scene.description or scene.image_prompt or context.user_prompt)
             )
 
-            logger.info("Calling Google Omni Flash (Veo 3.1) for scene %s (duration: %ss)...", scene.index, dur)
+            logger.info("Calling %s for scene %s (duration: %ss)...", model_display_name, scene.index, dur)
             veo_res = await generate_veo_video(
                 prompt=prompt_for_video,
                 aspect_ratio=context.aspect_ratio,
@@ -71,12 +83,11 @@ class VideoGeneratorAgent(BaseAgent):
             )
 
             if not veo_res.get("success"):
-                err_msg = veo_res.get("error") or "Unknown Veo API error"
-                logger.error("Google Omni Flash (Veo 3.1) failed: %s", err_msg)
-                # Per user directive: Do NOT silently fall back to neural kinematics! Show the real error so user can resume from this checkpoint.
+                err_msg = veo_res.get("error") or f"Unknown {model_display_name} API error"
+                logger.error("%s failed: %s", model_display_name, err_msg)
                 return AgentResult(
                     success=False,
-                    error=f"Google Omni (Veo 3.1) Video Generation Error on Scene {scene.index}: {err_msg}"
+                    error=f"{model_display_name} Video Generation Error on Scene {scene.index}: {err_msg}"
                 )
 
             if veo_res.get("local_path") and Path(veo_res["local_path"]).exists():
@@ -86,15 +97,18 @@ class VideoGeneratorAgent(BaseAgent):
             else:
                 return AgentResult(
                     success=False,
-                    error=f"Google Omni (Veo 3.1) did not produce a valid video file for Scene {scene.index}."
+                    error=f"{model_display_name} did not produce a valid video file for Scene {scene.index}."
                 )
 
             scene.video_path = web_url
             if is_single_video:
                 context.master_video_path = web_url
-                # Also set on all scenes for review
                 for sc in context.scenes:
                     sc.video_path = web_url
+
+            # Compute official cost based on video duration
+            scene_cost_usd = round(dur * cost_per_sec_usd, 3)
+            scene_cost_inr = round(scene_cost_usd * 85.0, 2)
 
             # Register in Vault DB
             try:
@@ -103,27 +117,27 @@ class VideoGeneratorAgent(BaseAgent):
                     url=web_url,
                     filename=file_name,
                     prompt=prompt_for_video,
-                    model="Google Omni Flash (Veo 3.1)",
-                    cost_usd=0.035,
-                    cost_inr=2.92
+                    model=model_display_name,
+                    cost_usd=scene_cost_usd,
+                    cost_inr=scene_cost_inr
                 )
             except Exception as dbe:
                 logger.debug("Failed to record video asset in DB: %s", dbe)
 
-            total_cost_usd += 0.035
-            total_cost_inr += 2.92
+            total_cost_usd += scene_cost_usd
+            total_cost_inr += scene_cost_inr
 
         if is_single_video:
             context.add_log(
                 self.name,
-                "Google Omni Flash (Veo 3.1) generated single unified video incorporating all scenes.",
+                f"{model_display_name} generated single unified video ({int(dur)}s).",
                 cost_usd=total_cost_usd,
                 cost_inr=total_cost_inr
             )
         else:
             context.add_log(
                 self.name,
-                f"Google Omni Flash (Veo 3.1) synthesized dynamic video clips for all {len(context.scenes)} scenes.",
+                f"{model_display_name} synthesized dynamic video clips for all {len(context.scenes)} scenes.",
                 cost_usd=total_cost_usd,
                 cost_inr=total_cost_inr
             )

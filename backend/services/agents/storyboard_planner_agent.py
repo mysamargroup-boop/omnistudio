@@ -113,15 +113,10 @@ CRITICAL STYLE ENFORCEMENT — The selected visual style is "{context.style}".
 You MUST keep ALL lighting, color grading, and atmosphere STRICTLY consistent with "{context.style}" aesthetic.
 Approved lighting options for "{context.style}" style:
 {json.dumps(style_lighting)}
-ABSOLUTELY DO NOT use lighting from other styles. For example:
-- If style is "photoreal", NEVER use neon, cyberpunk, bioluminescent, or sci-fi lighting.
-- If style is "cinematic", keep it grounded with practical film lighting, no neon or anime tones.
-- If style is "cyberpunk", use neon and futuristic lighting only.
-Choose ONLY from the approved lighting options listed above.
+Choose ONLY from the approved lighting options listed above for the "{context.style}" style.
 
-PROMPT FIDELITY — ABSOLUTE RULE: The scene descriptions MUST faithfully reflect the user's concept.
-Do NOT introduce cyberpunk, neon, sci-fi, noir, futuristic, dystopian, or robotic elements unless the user's prompt explicitly mentions them.
-The "description" field should elaborate on the user's concept with camera framing details, NOT replace it with unrelated imagery.
+STAY FAITHFUL: The scene descriptions MUST accurately reflect the user's concept. Do not add or replace the subject, setting, or atmosphere with anything the user did not write.
+The "description" field should elaborate on the user's concept with camera framing details, not replace it.
 
 Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema:
 [

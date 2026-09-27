@@ -79,23 +79,65 @@ class CreativeDirectorAgent(BaseAgent):
             context.num_scenes = extracted["num_scenes"]
             context.add_log(self.name, f"Detected scene count in prompt: configured for {context.num_scenes} scenes.")
 
-        # Apply duration — total_duration is the entire video length requested by user
-        # Divide by num_scenes to get per-scene duration, then snap to model-supported values
+        # 2. Configure video engine (seedance vs omni_flash vs default) first for model-aware duration logic
+        if extracted.get("video_model") == "seedance":
+            context.video_model = "seedance"
+            context.add_log(self.name, "Seedance video model detected in prompt — configured video engine to 'Seedance Neural Motion'.")
+        elif extracted.get("video_model") == "omni_flash" or not context.video_model or context.video_model in {"auto", "omni_model", "omni", ""}:
+            context.video_model = "omni_flash"
+            context.add_log(self.name, "Configured video engine to 'Google Omni Flash (Veo 3.1 Neural Kinematics)'.")
+        else:
+            context.add_log(self.name, f"Configured video engine: '{context.video_model}'.")
+
+        is_seedance = "seedance" in (context.video_model or "").lower()
+
+        # 3. Model-aware duration configuration
         total_dur = extracted.get("total_duration")
+        scene_durations = []
         if total_dur:
-            raw_per_scene = total_dur / context.num_scenes
-            # Snap per-scene to Veo-supported values: 4, 6, or 8 seconds
-            if raw_per_scene <= 5:
-                duration_per_scene = 4.0
-            elif raw_per_scene <= 7:
-                duration_per_scene = 6.0
+            if is_seedance:
+                # ByteDance Seedance officially supports flexible durations (2s to 12s on v1.x, up to 30s on v2.5)
+                # Seedance natively supports 5 seconds!
+                raw_per_scene = total_dur / context.num_scenes
+                clamped_dur = max(2.0, min(12.0, round(raw_per_scene, 1)))
+                duration_per_scene = clamped_dur
+                scene_durations = [clamped_dur] * context.num_scenes
+                context.add_log(self.name, f"Total duration requested: {total_dur}s -> Seedance configured {context.num_scenes} scenes @ {clamped_dur}s each (~{int(sum(scene_durations))}s total).")
             else:
-                duration_per_scene = 8.0
-            context.add_log(self.name, f"Total duration requested: {total_dur}s -> {context.num_scenes} scenes @ {duration_per_scene}s each (~{int(context.num_scenes * duration_per_scene)}s total).")
+                # Google Omni Flash (Veo 3.1): Officially supports 4s, 6s, 8s per clip (does NOT support 5s)
+                if abs(total_dur - 14.0) < 0.5:
+                    # 14s total duration distribution across scenes
+                    if context.num_scenes == 3:
+                        # 4s + 6s + 4s = 14s exact!
+                        scene_durations = [4.0, 6.0, 4.0]
+                        duration_per_scene = 4.7
+                    elif context.num_scenes == 2:
+                        # 6s + 8s = 14s exact!
+                        scene_durations = [6.0, 8.0]
+                        duration_per_scene = 7.0
+                    else:
+                        scene_durations = [6.0] * context.num_scenes
+                        duration_per_scene = 6.0
+                elif total_dur <= 5.5:
+                    # If prompt asks for 5s: Omni doesn't support 5s, snap to 6s!
+                    duration_per_scene = 6.0 if total_dur > 4.0 else 4.0
+                    scene_durations = [duration_per_scene] * context.num_scenes
+                else:
+                    raw_per_scene = total_dur / context.num_scenes
+                    if raw_per_scene <= 4.5:
+                        duration_per_scene = 4.0
+                    elif raw_per_scene <= 7.0:
+                        duration_per_scene = 6.0
+                    else:
+                        duration_per_scene = 8.0
+                    scene_durations = [duration_per_scene] * context.num_scenes
+
+                context.add_log(self.name, f"Total duration requested: {total_dur}s -> Omni Flash (Veo 3.1) configured {context.num_scenes} scenes with durations {scene_durations} (~{int(sum(scene_durations))}s total).")
         else:
             duration_per_scene = 4.0
+            scene_durations = [4.0] * context.num_scenes
 
-        # 2. Analyze prompt for image diffusion model
+        # 4. Analyze prompt for image diffusion model
         explicit_model = detect_model_from_prompt(context.user_prompt)
         initial_model = context.image_model
 
@@ -108,16 +150,6 @@ class CreativeDirectorAgent(BaseAgent):
             context.add_log(self.name, f"Auto Director selected optimal diffusion engine '{inferred}' for visual context.")
         elif initial_model:
             context.add_log(self.name, f"Configured diffusion engine: '{initial_model}'.")
-
-        # 3. Configure video engine (seedance vs omni_flash vs default)
-        if extracted.get("video_model") == "seedance":
-            context.video_model = "seedance"
-            context.add_log(self.name, "Seedance video model detected in prompt — configured video engine to 'Seedance Neural Motion'.")
-        elif extracted.get("video_model") == "omni_flash" or not context.video_model or context.video_model in {"auto", "omni_model", "omni", ""}:
-            context.video_model = "omni_flash"
-            context.add_log(self.name, "Configured video engine to 'Google Omni Flash (Veo 3.1 Neural Kinematics)'.")
-        else:
-            context.add_log(self.name, f"Configured video engine: '{context.video_model}'.")
 
         # 4. Directorial Skill Integration
         active_skill_data = None
@@ -166,7 +198,8 @@ class CreativeDirectorAgent(BaseAgent):
             "target_audience": "Global / Social Master",
             "scene_count": context.num_scenes,
             "scene_duration": duration_per_scene,
-            "total_duration": total_dur if total_dur else (context.num_scenes * duration_per_scene),
+            "scene_durations": scene_durations,
+            "total_duration": sum(scene_durations) if scene_durations else (total_dur if total_dur else (context.num_scenes * duration_per_scene)),
             "visual_style": context.style,
             "diffusion_model": context.image_model,
             "video_model": context.video_model,

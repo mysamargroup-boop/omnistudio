@@ -27,8 +27,8 @@ CRITICAL RULES:
 1. CHARACTER & OUTFIT CONTINUITY: If a character/protagonist is present (e.g. woman, model, bride, man, actor), the EXACT SAME character, same facial identity, same outfit, and same styling MUST be maintained across ALL scenes. Do not change the protagonist between scenes or replace them with random standalone objects.
 2. If the user prompt does NOT contain explicit dialogues, compose evocative, culturally authentic and poetic narration or character dialogue that fits the scene perfectly (e.g., celebratory wedding poetry/narration for an Indian bridal dance).
 3. Never output placeholder text like 'Scene 1: cinematic sequence'. Write real, compelling spoken narration/dialogue for the voice actor.
-4. PROMPT FIDELITY — ABSOLUTE RULE: Your scene descriptions and scripts MUST stay 100% faithful to what the user described. Do NOT inject cyberpunk, neon, sci-fi, noir, futuristic, dystopian, holographic, or robotic elements UNLESS the user's original concept explicitly mentions them. If the concept describes a chai cafe in Jaipur, ALL scenes must show a chai cafe in Jaipur — not a neon nightclub or cyberpunk alley.
-5. The visual style "{context.style}" controls ONLY cinematography (camera, lighting, grading) — it must NEVER change the subject matter, setting, or atmosphere described in the user's concept.
+4. STAY FAITHFUL: Scene descriptions and scripts MUST accurately reflect ONLY what the user described in their concept. Do not add, change, or replace the subject, setting, or atmosphere with anything the user did not write.
+5. The visual style "{context.style}" controls ONLY cinematography (camera, lighting, grading) — it must NEVER change the subject matter or setting.
 6. Return ONLY a JSON array with exactly {num_scenes} objects, matching this structure:
 [
   {{
@@ -118,18 +118,21 @@ CRITICAL RULES:
                 })
 
         # Populate context.scenes strictly with 1-based indexing
+        scene_durations = (context.project_brief or {}).get("scene_durations", [])
         context.scenes = []
         for idx, sc in enumerate(generated_scenes[:num_scenes]):
+            sc_dur = scene_durations[idx] if idx < len(scene_durations) else dur
             context.scenes.append(SceneData(
                 index=idx + 1,
                 title=sc.get("title", f"Scene {idx + 1}"),
                 script=sc.get("script", f"Scene {idx + 1}: narrative movement."),
                 description=sc.get("description", context.user_prompt),
-                duration_seconds=dur
+                duration_seconds=sc_dur
             ))
 
+        total_sc_dur = sum(s.duration_seconds for s in context.scenes)
         context.add_log(
             self.name,
-            f"Screenplay formulated with authentic scene narrations across {len(context.scenes)} scenes (@ {dur}s each)."
+            f"Screenplay formulated with authentic scene narrations across {len(context.scenes)} scenes (total: ~{int(total_sc_dur)}s)."
         )
         return AgentResult(success=True, data={"scene_count": len(context.scenes)})
