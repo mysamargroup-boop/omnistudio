@@ -27,7 +27,9 @@ CRITICAL RULES:
 1. CHARACTER & OUTFIT CONTINUITY: If a character/protagonist is present (e.g. woman, model, bride, man, actor), the EXACT SAME character, same facial identity, same outfit, and same styling MUST be maintained across ALL scenes. Do not change the protagonist between scenes or replace them with random standalone objects.
 2. If the user prompt does NOT contain explicit dialogues, compose evocative, culturally authentic and poetic narration or character dialogue that fits the scene perfectly (e.g., celebratory wedding poetry/narration for an Indian bridal dance).
 3. Never output placeholder text like 'Scene 1: cinematic sequence'. Write real, compelling spoken narration/dialogue for the voice actor.
-4. Return ONLY a JSON array with exactly {num_scenes} objects, matching this structure:
+4. PROMPT FIDELITY — ABSOLUTE RULE: Your scene descriptions and scripts MUST stay 100% faithful to what the user described. Do NOT inject cyberpunk, neon, sci-fi, noir, futuristic, dystopian, holographic, or robotic elements UNLESS the user's original concept explicitly mentions them. If the concept describes a chai cafe in Jaipur, ALL scenes must show a chai cafe in Jaipur — not a neon nightclub or cyberpunk alley.
+5. The visual style "{context.style}" controls ONLY cinematography (camera, lighting, grading) — it must NEVER change the subject matter, setting, or atmosphere described in the user's concept.
+6. Return ONLY a JSON array with exactly {num_scenes} objects, matching this structure:
 [
   {{
     "scene_number": 1,

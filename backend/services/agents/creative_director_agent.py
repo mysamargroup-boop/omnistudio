@@ -46,15 +46,16 @@ def extract_prompt_parameters(prompt: str) -> dict:
         if 1 <= count <= 8:
             params["num_scenes"] = count
 
-    # 3. Scene duration detection (e.g. '4 sec', '4 seconds', '4s')
+    # 3. Duration detection — treat as TOTAL video duration, not per-scene
+    # Matches: '14 sec', '14 seconds', '14s', '14 sec ka video', '14 second video'
     dur_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:seconds?|sec|s)\b", p_lower)
     if dur_match:
-        params["scene_duration"] = float(dur_match.group(1))
+        params["total_duration"] = float(dur_match.group(1))
 
-    # 4. Video model detection (e.g. 'seedance', 'omni flash', 'veo')
+    # 4. Video model detection (e.g. 'seedance', 'omni flash', 'veo', 'omni')
     if "seedance" in p_lower:
         params["video_model"] = "seedance"
-    elif any(k in p_lower for k in ["omni flash", "omni_flash", "veo", "google veo"]):
+    elif any(k in p_lower for k in ["omni flash", "omni_flash", "omni model", "omni_model", "veo", "google veo"]):
         params["video_model"] = "omni_flash"
 
     return params
@@ -78,8 +79,21 @@ class CreativeDirectorAgent(BaseAgent):
             context.num_scenes = extracted["num_scenes"]
             context.add_log(self.name, f"Detected scene count in prompt: configured for {context.num_scenes} scenes.")
 
-        # Apply scene duration
-        duration_per_scene = extracted.get("scene_duration", 4.0)
+        # Apply duration — total_duration is the entire video length requested by user
+        # Divide by num_scenes to get per-scene duration, then snap to model-supported values
+        total_dur = extracted.get("total_duration")
+        if total_dur:
+            raw_per_scene = total_dur / context.num_scenes
+            # Snap per-scene to Veo-supported values: 4, 6, or 8 seconds
+            if raw_per_scene <= 5:
+                duration_per_scene = 4.0
+            elif raw_per_scene <= 7:
+                duration_per_scene = 6.0
+            else:
+                duration_per_scene = 8.0
+            context.add_log(self.name, f"Total duration requested: {total_dur}s -> {context.num_scenes} scenes @ {duration_per_scene}s each (~{int(context.num_scenes * duration_per_scene)}s total).")
+        else:
+            duration_per_scene = 4.0
 
         # 2. Analyze prompt for image diffusion model
         explicit_model = detect_model_from_prompt(context.user_prompt)
@@ -152,6 +166,7 @@ class CreativeDirectorAgent(BaseAgent):
             "target_audience": "Global / Social Master",
             "scene_count": context.num_scenes,
             "scene_duration": duration_per_scene,
+            "total_duration": total_dur if total_dur else (context.num_scenes * duration_per_scene),
             "visual_style": context.style,
             "diffusion_model": context.image_model,
             "video_model": context.video_model,

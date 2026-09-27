@@ -119,6 +119,10 @@ ABSOLUTELY DO NOT use lighting from other styles. For example:
 - If style is "cyberpunk", use neon and futuristic lighting only.
 Choose ONLY from the approved lighting options listed above.
 
+PROMPT FIDELITY — ABSOLUTE RULE: The scene descriptions MUST faithfully reflect the user's concept.
+Do NOT introduce cyberpunk, neon, sci-fi, noir, futuristic, dystopian, or robotic elements unless the user's prompt explicitly mentions them.
+The "description" field should elaborate on the user's concept with camera framing details, NOT replace it with unrelated imagery.
+
 Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema:
 [
   {{

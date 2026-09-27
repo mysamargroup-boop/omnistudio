@@ -28,6 +28,11 @@ Generation Mode: {generation_mode} (text_to_video, first_frame, or first_to_last
 Style: {style}
 Aspect Ratio: {aspect_ratio}
 
+CRITICAL FIDELITY RULE: Your enhanced_prompt MUST stay 100% faithful to the creator's original concept.
+Do NOT change the subject, setting, or atmosphere. If the creator describes a chai cafe in Jaipur, output must be about a chai cafe in Jaipur.
+NEVER inject cyberpunk, neon, sci-fi, noir, futuristic, dystopian, holographic, or robotic elements unless the creator explicitly mentioned them.
+Only enhance cinematography: camera angles, motion dynamics, lighting quality, lens details, and texture.
+
 Respond ONLY with a valid JSON object matching this schema:
 {{
   "enhanced_prompt": "Ultra-detailed visual prompt describing the scene, motion dynamics, subject velocity, micro-movements, environmental particles, and cinematic texture (under 75 words)",
@@ -81,6 +86,10 @@ Generation Mode: {generation_mode}
 Style: {style}
 Aspect Ratio: {aspect_ratio}
 Creator's Scene Concept: "{idea}"
+
+CRITICAL FIDELITY RULE: Your enhanced_prompt MUST stay 100% faithful to the creator's original concept.
+Do NOT change the subject, setting, or atmosphere. NEVER inject cyberpunk, neon, sci-fi, noir, futuristic, or robotic elements unless the creator explicitly mentioned them.
+Only enhance cinematography: camera angles, motion dynamics, lighting quality, lens details, and texture.
 
 Respond ONLY with a valid JSON object matching this schema:
 {{

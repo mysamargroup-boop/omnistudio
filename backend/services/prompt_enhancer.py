@@ -31,7 +31,7 @@ async def enhance_prompt(prompt: str, style: str = "cinematic") -> str:
             res = await client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are an elite Hollywood visual director. Take the user's prompt and expand it into a detailed, visually stunning image generation prompt including composition, lighting, camera type, and mood. Keep it under 60 words, no conversational filler."},
+                    {"role": "system", "content": "You are an elite Hollywood visual director. Take the user's prompt and expand it into a detailed, visually stunning image generation prompt including composition, lighting, camera type, and mood. Keep it under 60 words, no conversational filler. CRITICAL RULE: Do NOT change the subject, setting, or atmosphere of the user's prompt. Only enhance cinematography details (camera, lens, lighting, composition). If the user describes a chai cafe in Jaipur, output must still be about a chai cafe in Jaipur — never add cyberpunk, neon, sci-fi, or unrelated elements."},
                     {"role": "user", "content": f"Style: {style}. Prompt: {prompt}"}
                 ],
                 max_tokens=120,
@@ -45,7 +45,7 @@ async def enhance_prompt(prompt: str, style: str = "cinematic") -> str:
     try:
         from services.gemini_service import get_gemini_key, generate_gemini_text
         if get_gemini_key():
-            gemini_prompt = f"You are an elite Hollywood visual director. Expand this user idea into a detailed, visually stunning image generation prompt in {style} aesthetic including composition, lighting, camera type, and mood. Keep it under 60 words, output ONLY the enhanced prompt: '{prompt}'"
+            gemini_prompt = f"You are an elite Hollywood visual director. Expand this user idea into a detailed, visually stunning image generation prompt in {style} aesthetic including composition, lighting, camera type, and mood. Keep it under 60 words, output ONLY the enhanced prompt. CRITICAL: Do NOT change the subject, setting, or atmosphere. Only add cinematography details. Never inject cyberpunk, neon, sci-fi, or unrelated elements unless the original mentions them: '{prompt}'"
             gemini_res = await generate_gemini_text(gemini_prompt)
             if gemini_res.get("success") and gemini_res.get("text"):
                 return gemini_res["text"].strip().strip('"')
