@@ -114,8 +114,8 @@ const VIDEO_MODELS: PipelineModelOption[] = [
 ];
 
 const VIDEO_DURATIONS: Record<string, number[]> = {
-  "omni_flash": [4, 6, 8],
-  "seedance": [2, 4, 5, 8, 12]
+  "omni_flash": [4, 6, 8, 10],
+  "seedance": [4, 5, 8, 10, 12, 15, 20, 30]
 };
 
 const STYLES = [
