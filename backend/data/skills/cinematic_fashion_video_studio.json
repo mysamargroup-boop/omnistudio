@@ -1,0 +1,54 @@
+﻿{
+  "id": "cinematic_fashion_video_studio",
+  "name": "Cinematic Fashion Video Studio",
+  "description": "Create cinematic-style fashion videos & premium images with hyper-realistic Indian facial features, luxury Vogue India editorial styling, and authentic skin textures.",
+  "category": "director",
+  "camera_motions": [
+    "slow_graceful_walking_motion",
+    "dramatic_slow_zoom_in",
+    "steadicam_tracking_profile",
+    "smooth_cinematic_turn",
+    "macro_detail_pan"
+  ],
+  "lighting_presets": [
+    "Golden Hour warm rim light with soft back glow",
+    "Soft directional studio light with silver reflector fill",
+    "Rembrandt dramatic side light",
+    "Warm ambient chandelier light"
+  ],
+  "lenses": [
+    "Sony A7R V 85mm GM f/2.0",
+    "Sony A7R V 105mm GM f/2.2",
+    "Sony A7R V 50mm GM f/1.4",
+    "Sony A7R V 135mm GM f/2.8"
+  ],
+  "prompt_modifiers": [
+    "authentic Indian facial features",
+    "visible real skin micro-pores",
+    "fine vellus hair along jawline",
+    "authentic lip texture",
+    "real corneal eye catchlights",
+    "matte non-waxy skin finish",
+    "unretouched RAW photograph",
+    "Vogue India style",
+    "shallow depth of field"
+  ],
+  "negative_prompt_modifiers": [
+    "cgi",
+    "cartoon",
+    "anime",
+    "waxy face",
+    "plastic skin",
+    "glass skin",
+    "beauty filter",
+    "airbrushed",
+    "over-smooth skin",
+    "perfect symmetry",
+    "ai generated",
+    "doll face",
+    "fake eyelashes",
+    "distorted face"
+  ],
+  "system_prompt": "You are a master fashion photographer and cinematographer for Vogue India. Frame scenes emphasizing luxurious fabrics, intricate jewellery, and hyper-realistic authentic South Asian facial features.",
+  "is_builtin": true
+}

@@ -65,7 +65,7 @@ import {
   Camera,
   MapPin,
 } from "lucide-react";
-import { api, getMediaUrl, VideoMetadataInspection } from "@/lib/api";
+import { api, getMediaUrl, getDownloadUrl, VideoMetadataInspection } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
 import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
@@ -380,8 +380,8 @@ function HistoryVideoCard({
             <Scissors className="w-3.5 h-3.5 text-amber-500" />
           </button>
           <a
-            href={getMediaUrl(video.url)}
-            download
+            href={getDownloadUrl(video.url)}
+            download={displayName}
             className="flex items-center justify-center p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs transition-colors cursor-pointer shrink-0"
             title="Download MP4"
           >
@@ -2256,8 +2256,8 @@ function VideoStudioContent() {
                       <span>Precision Editor</span>
                     </button>
                     <a
-                      href={getMediaUrl(result.url)}
-                      download
+                      href={getDownloadUrl(result.url)}
+                      download={result.filename || "video.mp4"}
                       className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0 cursor-pointer"
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -5090,7 +5090,7 @@ function VideoStudioContent() {
                             <div className="flex items-center gap-1">
                               {job.videoUrl && (
                                 <a
-                                  href={getMediaUrl(job.videoUrl)}
+                                  href={getDownloadUrl(job.videoUrl)}
                                   download={job.videoUrl.split("/").pop() || "render.mp4"}
                                   className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:text-emerald-500 flex items-center gap-1 transition-colors"
                                   title="Download MP4"
@@ -5237,8 +5237,6 @@ function VideoStudioContent() {
             {/* Video List with Hover-to-Play Cards (Independent Isolated Scroll) */}
             <div
               data-lenis-prevent="true"
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
               className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-3 custom-scrollbar"
             >
               {loadingHistory && historyVideos.length === 0 ? (

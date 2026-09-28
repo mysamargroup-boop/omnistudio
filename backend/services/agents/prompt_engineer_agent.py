@@ -1,88 +1,65 @@
+import logging
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
-from services.prompt_enhancer import CINEMATIC_MODIFIERS
+from services.unified_prompt_builder import UnifiedPromptBuilder
+from services.skills_service import skill_manager
+
+logger = logging.getLogger("omnistudio.agents.prompt_engineer")
+
 
 class PromptEngineerAgent(BaseAgent):
     name = "PromptEngineerAgent"
-    description = "Converts storyboard frames into optimized prompts tailored for the active diffusion model"
+    description = "Converts storyboard frames into optimized prompts tailored for the active diffusion and video models"
     icon = "sparkles"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
-        model = context.image_model or "gemini_flash_image"
-        style_modifier = CINEMATIC_MODIFIERS.get(context.style, CINEMATIC_MODIFIERS["cinematic"])
+        # ── Load active skill (if selected) ──
+        skill = None
+        skill_name = "None"
+        if context.skill_id:
+            skill = skill_manager.get_skill(context.skill_id)
+            if skill:
+                skill_name = skill.name
+                logger.info("Loaded directorial skill: %s (%s)", skill.name, skill.id)
 
-        # Detect character intent to enforce facial & outfit continuity
-        user_p_lower = context.user_prompt.lower()
-        has_character = any(w in user_p_lower for w in ["woman", "girl", "model", "bride", "man", "person", "lady", "protagonist", "actress"])
-        character_anchor = ""
-        if has_character:
-            character_anchor = f"Featuring the exact same protagonist: {context.user_prompt}. 100% facial identity and outfit continuity"
-
-        consistency_neg = ", changing face, different person, identity morphing, altered clothes, extra people" if has_character else ""
-
-        # Build style-appropriate negative prompts to prevent cross-contamination
-        style_negatives = {
-            "photoreal": "neon glow, cyberpunk, anime, cartoon, 3d render, fantasy, sci-fi",
-            "cinematic": "anime, cartoon, neon signs, cyberpunk HUD, 3d render, fantasy magic",
-            "cyberpunk": "pastoral, countryside, natural sunlight, warm tones, soft focus",
-            "anime": "photorealistic skin, film grain, documentary, cyberpunk neon",
-            "3d_pixar": "photorealistic, film grain, live action, cyberpunk neon",
-        }
-        anti_contamination = style_negatives.get(context.style, "")
-
-        for scene in context.scenes:
-            desc = scene.description or context.user_prompt
-            if character_anchor and character_anchor not in desc:
-                desc = f"{character_anchor}. {desc}"
-
-            angle = scene.camera_angle or "Cinematic wide angle"
-            light = scene.lighting or "Dramatic volumetric lighting"
-
-            if "flux" in model.lower():
-                scene.image_prompt = (
-                    f"A master photograph depicting {desc}. {angle}, {light}. "
-                    f"Authentic {context.style} aesthetic, {style_modifier}."
-                )
-                scene.negative_prompt = f"lowres, plastic skin, distorted hands, oversaturated, watermark, {anti_contamination}{consistency_neg}"
-            elif "imagen" in model.lower():
-                scene.image_prompt = (
-                    f"Photorealistic 8K photograph of {desc}, {angle}, {light}. "
-                    f"{style_modifier}, {context.style} color grading."
-                )
-                scene.negative_prompt = f"cartoon, blurry, low resolution, extra limbs, bad anatomy, {anti_contamination}{consistency_neg}"
-            elif "gpt" in model.lower() or "dall" in model.lower():
-                scene.image_prompt = (
-                    f"High-fidelity frame of {desc}, {angle}, {light}, "
-                    f"award-winning {context.style} cinematography, {style_modifier}."
-                )
-                scene.negative_prompt = f"blurry, low quality, artifacts, watermark, {anti_contamination}{consistency_neg}"
-            else:
-                scene.image_prompt = (
-                    f"{context.style.capitalize()} shot, {desc}, {angle}, {light}, "
-                    f"{style_modifier}."
-                )
-                scene.negative_prompt = f"low quality, blurry, distorted, watermark, {anti_contamination}{consistency_neg}"
-
-        # Inject Brand Kit guidelines if enabled and active
+        # ── Load brand kit (if enabled) ──
         brand_kit = context.project_brief.get("brand_kit") if context.project_brief else None
-        if getattr(context, "apply_brand_kit", True) and brand_kit:
-            brand_style = brand_kit.get("style_guidelines", "")
-            brand_neg = brand_kit.get("negative_guidelines", "")
-            primary_c = brand_kit.get("primary_color", "")
-            accent_c = brand_kit.get("accent_color", "")
-            brand_addons = []
-            if brand_style:
-                brand_addons.append(brand_style)
-            if primary_c or accent_c:
-                brand_addons.append(f"color harmony in {primary_c} and {accent_c}")
-            addon_str = ", ".join(brand_addons)
-            if addon_str:
-                for scene in context.scenes:
-                    scene.image_prompt = f"{scene.image_prompt.rstrip('.')}, {addon_str}."
-                    if brand_neg:
-                        scene.negative_prompt = f"{scene.negative_prompt}, {brand_neg}"
-            context.add_log(self.name, f"Engineered optimized {context.style} prompts tailored to '{model}' with active Brand Kit identity injected.")
-        else:
-            context.add_log(self.name, f"Engineered optimized {context.style} prompts for all scenes tailored to '{model}' diffusion engine.")
+
+        # ── Initialize Unified Prompt Builder ──
+        builder = UnifiedPromptBuilder(
+            user_prompt=context.user_prompt,
+            style=context.style,
+            image_model=context.image_model or "gemini_flash_image",
+            video_model=context.video_model or "omni_flash",
+            skill=skill,
+            brand_kit=brand_kit,
+            apply_brand_kit=getattr(context, "apply_brand_kit", False)
+        )
+
+        # ── Generate prompts for each scene ──
+        for scene in context.scenes:
+            scene.image_prompt = builder.build_image_prompt(
+                scene_desc=scene.description or context.user_prompt,
+                scene_index=scene.index,
+                camera_angle=scene.camera_angle,
+                lighting=scene.lighting
+            )
+            scene.negative_prompt = builder.build_negative_prompt(scene.index)
+            scene.video_prompt = builder.build_video_prompt(
+                scene_desc=scene.description or context.user_prompt,
+                scene_index=scene.index,
+                camera_angle=scene.camera_angle,
+                lighting=scene.lighting,
+                motion_type=scene.motion_type
+            )
+
+        # ── Logging ──
+        model = context.image_model or "gemini_flash_image"
+        skill_msg = f" with Skill '{skill_name}'" if skill else ""
+        brand_msg = " + Brand Kit" if brand_kit and getattr(context, "apply_brand_kit", False) else ""
+        context.add_log(
+            self.name,
+            f"Engineered unified prompts (image + video) for {len(context.scenes)} scenes "
+            f"tailored to '{model}' + '{context.video_model or 'omni_flash'}'{skill_msg}{brand_msg}."
+        )
 
         return AgentResult(success=True)
-

@@ -44,6 +44,7 @@ import {
   X,
   Calendar,
   Zap,
+  ImagePlus,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -108,6 +109,7 @@ const DIFFUSION_MODELS: PipelineModelOption[] = [
 ];
 
 const STYLES = [
+  { id: "none", label: "None", desc: "Pure Prompt Directives" },
   { id: "cinematic", label: "Cinematic 35mm", desc: "Arri Alexa, Volumetric Lighting" },
   { id: "cyberpunk", label: "Cyberpunk Noir", desc: "Vibrant Neon, Rainy Reflections" },
   { id: "photoreal", label: "Photoreal 8K", desc: "Hasselblad Sharp, Natural Sunlight" },
@@ -179,7 +181,7 @@ function PipelineContent() {
   const [topic, setTopic] = useState(searchParams?.get("topic") || "");
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [scenes, setScenes] = useState(3);
-  const [style, setStyle] = useState("cinematic");
+  const [style, setStyle] = useState("none");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [voiceProvider, setVoiceProvider] = useState("edge");
   const [imageModel, setImageModel] = useState("auto");
@@ -234,8 +236,8 @@ function PipelineContent() {
   const [abHookVariants, setAbHookVariants] = useState<string[]>([]);
   const [showDebugTelemetry, setShowDebugTelemetry] = useState(false);
 
-  // Brand Kit Intelligence Switch State
-  const [applyBrandKit, setApplyBrandKit] = useState<boolean>(true);
+  // Brand Kit Intelligence Switch State (Default OFF)
+  const [applyBrandKit, setApplyBrandKit] = useState<boolean>(false);
 
   // Production History Drawer / Modal State
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -806,10 +808,20 @@ function PipelineContent() {
     }
   };
 
-  // More accurate cost estimation: image gen + video motion + voice per scene
-  const voiceCostPerScene = voiceProvider === "edge" ? 0.005 : 0.025;
-  const imageCostPerScene = imageModel === "gpt-image-2" ? 0.04 : imageModel === "flux_2_ultra" ? 0.06 : 0.02;
-  const videoCostPerScene = 0.01;
+  // Accurate cost estimation: image gen + video motion + voice per scene
+  const voiceCostPerScene = voiceProvider === "edge" ? 0.0 : voiceProvider === "sarvam" ? 0.002 : 0.02;
+  const imageModelRates: Record<string, number> = {
+    auto: 0.005,
+    gemini_flash_image: 0.005,
+    imagen_3: 0.02,
+    "gpt-image-2": 0.04,
+    flux_pro: 0.05,
+    flux_2_ultra: 0.06,
+    midjourney_v7: 0.04,
+    seedance_2_5: 0.03,
+  };
+  const imageCostPerScene = imageModelRates[imageModel] ?? 0.02;
+  const videoCostPerScene = 0.0; // Local FFmpeg Ken Burns & Motion synthesis is free
   const costPerScene = voiceCostPerScene + imageCostPerScene + videoCostPerScene;
   const estimatedCostUsd = Math.round(costPerScene * scenes * 1000) / 1000;
   const estimatedCostInr = Math.round(estimatedCostUsd * 83.5 * 100) / 100;
@@ -979,6 +991,33 @@ function PipelineContent() {
             running && "ring-2 ring-emerald-500/30 border-emerald-500/50"
           )}
         />
+
+        {/* Quick Reference Image Upload — Always Visible */}
+        <div className="flex items-center gap-2 mt-1.5">
+          {referenceImage ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono">
+              <img src={getMediaUrl(referenceImage)} alt="Ref" className="w-7 h-7 rounded-lg object-cover" />
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">Reference Active</span>
+              <button
+                type="button"
+                onClick={() => setReferenceImage("")}
+                className="ml-1 text-zinc-400 hover:text-rose-500 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => refFileInputRef.current?.click()}
+              disabled={uploadingRef}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-500 transition-all cursor-pointer"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              <span>{uploadingRef ? "Uploading..." : "+ Reference Image"}</span>
+            </button>
+          )}
+        </div>
 
         {/* Model Directives in Prompt */}
         <div className="pt-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px]">

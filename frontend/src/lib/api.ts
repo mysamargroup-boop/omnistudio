@@ -186,6 +186,13 @@ export function getMediaUrl(path: string): string {
     : `${base}${cleanPath}`;
 }
 
+export function getDownloadUrl(path: string): string {
+  const url = getMediaUrl(path);
+  if (!url) return "";
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}download=1`;
+}
+
 export const api = {
   health: () => fetchApi<any>("/api/health"),
 

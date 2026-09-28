@@ -676,6 +676,97 @@ from fastapi.responses import StreamingResponse
 from services.agent_orchestrator import PipelineContext, PipelineState, PIPELINE_TRANSITIONS
 from services.agents import get_default_orchestrator
 
+import re
+
+def extract_prompt_parameters(prompt: str) -> dict:
+    p_lower = prompt.lower()
+    params = {}
+    
+    if re.search(r"\b(autopilot|auto[\s\-_]*pilot|full[\s\-_]*auto|autonomous)\b", p_lower):
+        params["mode"] = "autonomous"
+    
+    scene_match = re.search(r"\b(\d+)\s*(?:images?|scenes?|keyframes?|shots?)\b", p_lower)
+    if scene_match:
+        count = int(scene_match.group(1))
+        if 1 <= count <= 15:
+            params["num_scenes"] = count
+    
+    dur_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:seconds?|sec|s)\b", p_lower)
+    if dur_match:
+        params["total_duration"] = float(dur_match.group(1))
+    
+    if "seedance" in p_lower:
+        params["video_model"] = "seedance"
+    elif any(k in p_lower for k in ["omni flash", "omni_flash", "omni model", "omni_model", "veo", "google veo"]):
+        params["video_model"] = "omni_flash"
+    
+    STYLE_MAP = {
+        "cinematic": "cinematic",
+        "photoreal": "photoreal",
+        "realistic": "photoreal",
+        "cyberpunk": "cyberpunk",
+        "anime": "anime",
+        "3d": "3d_pixar",
+        "pixar": "3d_pixar",
+        "cartoon": "anime"
+    }
+    for style_key, style_value in STYLE_MAP.items():
+        if style_key in p_lower:
+            params["style"] = style_value
+            break
+            
+    ASPECT_MAP = {
+        "16:9": "16:9",
+        "169": "16:9",
+        "landscape": "16:9",
+        "9:16": "9:16",
+        "916": "9:16",
+        "portrait": "9:16",
+        "vertical": "9:16",
+        "1:1": "1:1",
+        "square": "1:1",
+        "4:3": "4:3",
+        "43": "4:3"
+    }
+    for ar_key, ar_value in ASPECT_MAP.items():
+        if ar_key in p_lower:
+            params["aspect_ratio"] = ar_value
+            break
+            
+    VOICE_MAP = {
+        "hindi": "edge",
+        "english": "edge",
+        "male": "edge",
+        "female": "edge",
+        "eleven": "elevenlabs",
+        "elevenlabs": "elevenlabs"
+    }
+    for voice_key, voice_value in VOICE_MAP.items():
+        if voice_key in p_lower:
+            params["voice_provider"] = voice_value
+            break
+            
+    if "bollywood" in p_lower or "dramatic" in p_lower:
+        params["skill_id"] = "hollywood_anamorphic_director"
+    elif "anime" in p_lower or "cyberpunk" in p_lower:
+        params["skill_id"] = "anime_cyberpunk_action"
+    elif "ecommerce" in p_lower or "viral" in p_lower or "ugc" in p_lower:
+        params["skill_id"] = "ecommerce_ugc_viral_hook"
+    elif "jewellery" in p_lower or "indian" in p_lower or "luxury" in p_lower:
+        params["skill_id"] = "indian_luxury_jewellery_heritage"
+    elif "cinematic fashion" in p_lower or "fashion video" in p_lower or "vogue" in p_lower:
+        params["skill_id"] = "cinematic_fashion_video_studio"
+        
+    if re.search(r'\b(saare\s+scene\s+ka\s+ek|sare\s+scene\s+ka\s+ek|single\s+video|one\s+video|combine\s+all\s+scenes|ek\s+hi\s+video|pura\s+ek\s+video)\b', p_lower, re.IGNORECASE):
+        params["single_video"] = True
+        
+    if "no brand" in p_lower or "without brand" in p_lower:
+        params["apply_brand_kit"] = False
+    elif "with brand" in p_lower or "use brand" in p_lower:
+        params["apply_brand_kit"] = True
+        
+    return params
+
 class AgentPipelineStartRequest(BaseModel):
     prompt: str
     mode: str = 'autonomous'  # autonomous | assisted
@@ -686,7 +777,7 @@ class AgentPipelineStartRequest(BaseModel):
     video_model: str = 'omni_model'
     voice_provider: str = 'edge'
     voice_id: str = ''
-    apply_brand_kit: bool = True
+    apply_brand_kit: bool = False
     skill_id: Optional[str] = None
     reference_image: Optional[str] = None
 
@@ -694,22 +785,36 @@ class AgentPipelineStartRequest(BaseModel):
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
     from services.geo_service import extract_client_ip, format_telemetry_log
 
+    # Extract smart parameters from prompt
+    smart_params = extract_prompt_parameters(req.prompt)
+
     pipeline_id = f"pipeline_{uuid.uuid4().hex[:8]}"
+    
+    # Merge UI request with Smart Prompt overrides
     context = PipelineContext(
         pipeline_id=pipeline_id,
         user_prompt=req.prompt,
-        mode=req.mode,
-        num_scenes=req.num_scenes,
-        style=req.style,
-        aspect_ratio=req.aspect_ratio,
+        mode=smart_params.get("mode", req.mode),
+        num_scenes=smart_params.get("num_scenes", req.num_scenes),
+        style=smart_params.get("style", req.style),
+        aspect_ratio=smart_params.get("aspect_ratio", req.aspect_ratio),
         image_model=req.image_model,
-        video_model=req.video_model or 'omni_model',
-        voice_provider=req.voice_provider,
+        video_model=smart_params.get("video_model", req.video_model or 'omni_model'),
+        voice_provider=smart_params.get("voice_provider", req.voice_provider),
         voice_id=req.voice_id,
-        apply_brand_kit=req.apply_brand_kit,
-        skill_id=req.skill_id,
+        apply_brand_kit=smart_params.get("apply_brand_kit", req.apply_brand_kit),
+        skill_id=smart_params.get("skill_id", req.skill_id),
         reference_image=req.reference_image
     )
+    
+    # Store additional parameters in project_brief
+    brief = {}
+    if smart_params.get("single_video"):
+        brief["single_video"] = True
+    if "total_duration" in smart_params:
+        brief["total_duration"] = smart_params["total_duration"]
+    if brief:
+        context.project_brief = brief
 
     # Track Client IP and Geo-Location in Activity Logs
     client_ip = extract_client_ip(request)

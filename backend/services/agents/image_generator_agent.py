@@ -85,7 +85,8 @@ class ImageGeneratorAgent(BaseAgent):
                     res = await generate_gemini_image(
                         prompt=scene.image_prompt or scene.description or context.user_prompt,
                         model="gemini-2.5-flash-image",
-                        filename_hint=f"scene_{scene.index}"
+                        filename_hint=f"scene_{scene.index}",
+                        aspect_ratio=context.aspect_ratio
                     )
                     if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
                         # Copy or link to designated scene path

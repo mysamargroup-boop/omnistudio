@@ -4,6 +4,7 @@ import re
 from typing import List
 from config import settings
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
+from services.skills_service import skill_manager
 
 logger = logging.getLogger("omnistudio.agents.storyboard_planner")
 
@@ -96,9 +97,37 @@ class StoryboardPlannerAgent(BaseAgent):
         if not context.scenes:
             return AgentResult(success=True)
 
+        # ── Load active directorial skill (if selected) ──
+        active_skill = None
+        if context.skill_id:
+            active_skill = skill_manager.get_skill(context.skill_id)
+            if active_skill:
+                logger.info("StoryboardPlanner using skill: %s", active_skill.name)
+
+        # Override camera motions, lenses, lighting with skill data if available
+        effective_camera_motions = CINEMATIC_CAMERA_MOTIONS
+        effective_lenses = CINEMATIC_LENSES
+        effective_lighting = LIGHTING_BY_STYLE.get(context.style, LIGHTING_BY_STYLE["cinematic"])
+
+        if active_skill:
+            if active_skill.camera_motions:
+                # Convert skill camera motion strings to the dict format used by the prompt
+                effective_camera_motions = [
+                    {"name": cm, "desc": cm.replace("_", " ").title()}
+                    for cm in active_skill.camera_motions
+                ]
+            if active_skill.lenses:
+                effective_lenses = active_skill.lenses
+            if active_skill.lighting_presets:
+                effective_lighting = active_skill.lighting_presets
+
         num_scenes = len(context.scenes)
-        style_lighting = LIGHTING_BY_STYLE.get(context.style, LIGHTING_BY_STYLE["cinematic"])
-        prompt_text = f"""You are a master Hollywood director of photography (DP) and visual storyboard artist.
+        
+        skill_system_prompt = ""
+        if active_skill and active_skill.system_prompt:
+            skill_system_prompt = active_skill.system_prompt + "\n\n"
+            
+        prompt_text = f"""{skill_system_prompt}You are a master Hollywood director of photography (DP) and visual storyboard artist.
 Analyze this film project:
 Prompt: "{context.user_prompt}"
 Style: "{context.style}"
@@ -107,12 +136,12 @@ Number of scenes: {num_scenes}
 Assign a DISTINCT, highly cinematic camera angle, lens, lighting, and camera motion for each scene.
 STRICT RULE: Do NOT use boring, repetitive camera motions like simple 'push' or 'pan' or 'zoom' for all scenes.
 You MUST choose from these advanced cinematography motions:
-{json.dumps([m['name'] + ' (' + m['desc'] + ')' for m in CINEMATIC_CAMERA_MOTIONS])}
+{json.dumps([m['name'] + ' (' + m['desc'] + ')' for m in effective_camera_motions])}
 
 CRITICAL STYLE ENFORCEMENT — The selected visual style is "{context.style}".
 You MUST keep ALL lighting, color grading, and atmosphere STRICTLY consistent with "{context.style}" aesthetic.
 Approved lighting options for "{context.style}" style:
-{json.dumps(style_lighting)}
+{json.dumps(effective_lighting)}
 Choose ONLY from the approved lighting options listed above for the "{context.style}" style.
 
 STAY FAITHFUL: The scene descriptions MUST accurately reflect the user's concept. Do not add or replace the subject, setting, or atmosphere with anything the user did not write.
@@ -170,9 +199,9 @@ Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema
             base_action = scene.description or context.user_prompt
             if generated_scenes and i < len(generated_scenes):
                 plan = generated_scenes[i]
-                scene.camera_angle = plan.get("camera_angle") or CINEMATIC_CAMERA_MOTIONS[i % len(CINEMATIC_CAMERA_MOTIONS)]["name"]
-                scene.motion_type = plan.get("motion_type") or CINEMATIC_CAMERA_MOTIONS[i % len(CINEMATIC_CAMERA_MOTIONS)]["name"]
-                scene.lighting = plan.get("lighting") or get_lighting_for_style(context.style, i)
+                scene.camera_angle = plan.get("camera_angle") or effective_camera_motions[i % len(effective_camera_motions)]["name"]
+                scene.motion_type = plan.get("motion_type") or effective_camera_motions[i % len(effective_camera_motions)]["name"]
+                scene.lighting = plan.get("lighting") or (effective_lighting[i % len(effective_lighting)] if isinstance(effective_lighting, list) else get_lighting_for_style(context.style, i))
                 plan_desc = plan.get("description", "").strip()
                 if plan_desc and plan_desc.lower() not in base_action.lower():
                     scene.description = f"{base_action}. Visual framing: {plan_desc}"
@@ -180,9 +209,9 @@ Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema
                     scene.description = base_action
             else:
                 # Algorithmic diverse assignment guaranteeing NO repeated motions
-                motion_info = CINEMATIC_CAMERA_MOTIONS[i % len(CINEMATIC_CAMERA_MOTIONS)]
-                lens_info = CINEMATIC_LENSES[i % len(CINEMATIC_LENSES)]
-                lighting_info = get_lighting_for_style(context.style, i)
+                motion_info = effective_camera_motions[i % len(effective_camera_motions)]
+                lens_info = effective_lenses[i % len(effective_lenses)]
+                lighting_info = effective_lighting[i % len(effective_lighting)] if isinstance(effective_lighting, list) else get_lighting_for_style(context.style, i)
 
                 scene.motion_type = motion_info["name"]
                 scene.camera_angle = motion_info["desc"].split(",")[0]

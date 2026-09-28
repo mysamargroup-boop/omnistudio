@@ -321,7 +321,8 @@ async def generate_gemini_image(
     prompt: str,
     model: str = "gemini-2.5-flash-image",
     filename_hint: Optional[str] = None,
-    reference_image_path: Optional[str] = None
+    reference_image_path: Optional[str] = None,
+    aspect_ratio: Optional[str] = None
 ) -> Dict[str, Any]:
     """Generate image via Google Gemini multimodal generation with active billing key, supporting reference images"""
     import base64
@@ -351,9 +352,12 @@ async def generate_gemini_image(
 
     parts.append({"text": prompt})
     url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
+    gen_config: Dict[str, Any] = {"responseModalities": ["IMAGE"]}
+    if aspect_ratio and aspect_ratio in ["16:9", "9:16", "1:1", "4:3", "3:4"]:
+        gen_config["aspectRatio"] = aspect_ratio
     payload = {
         "contents": [{"parts": parts}],
-        "generationConfig": {"responseModalities": ["IMAGE"]}
+        "generationConfig": gen_config
     }
 
     try:

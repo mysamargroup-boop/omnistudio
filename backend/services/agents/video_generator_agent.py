@@ -71,7 +71,7 @@ class VideoGeneratorAgent(BaseAgent):
             prompt_for_video = (
                 f"{context.user_prompt}. {scene.description or scene.image_prompt}"
                 if is_single_video
-                else (scene.description or scene.image_prompt or context.user_prompt)
+                else (scene.video_prompt or scene.description or scene.image_prompt or context.user_prompt)
             )
 
             logger.info("Calling %s for scene %s (duration: %ss)...", model_display_name, scene.index, dur)

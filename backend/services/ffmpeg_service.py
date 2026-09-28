@@ -136,6 +136,7 @@ def image_to_video_motion(
         "-preset", safe_preset,
         "-t", str(duration),
         "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
         str(target_out)
     ]
     
@@ -153,6 +154,7 @@ def image_to_video_motion(
                 "-preset", safe_preset,
                 "-t", str(duration),
                 "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
                 str(target_out)
             ]
             subprocess.run(fallback_cmd, check=True, timeout=180)
@@ -170,6 +172,7 @@ def image_to_video_motion(
             "-crf", safe_crf,
             "-preset", safe_preset,
             "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
             str(output_path)
         ]
         try:

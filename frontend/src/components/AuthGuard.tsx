@@ -96,7 +96,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className={cn(
         isSidebarCollapsed ? "lg:ml-16 ml-0" : "lg:ml-64 ml-0",
-        "flex flex-col bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 transition-all duration-300 max-w-full overflow-x-clip min-h-screen"
+        "flex flex-col bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 transition-all duration-300 max-w-full",
+        pathname === "/video" ? "h-screen h-[100dvh] overflow-hidden" : "overflow-x-clip min-h-screen"
       )}>
         <div className={cn(
           "sticky top-0 z-[1000] w-full px-3 sm:px-6 bg-[var(--bg-primary)]/85 backdrop-blur-xl border-b border-transparent transition-all flex-shrink-0",
@@ -105,14 +106,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           <Header />
         </div>
         <main className={cn(
-          "flex-1 w-full overflow-x-clip min-h-0 flex flex-col",
+          "flex-1 w-full min-h-0 flex flex-col",
+          pathname === "/video" ? "overflow-hidden" : "overflow-x-clip",
           isStudioRoute
             ? "p-0"
             : isSidebarCollapsed
             ? "px-3 sm:px-6 py-4 max-w-[1700px] mx-auto"
             : "px-4 sm:px-8 py-4 max-w-7xl mx-auto"
         )}>
-          <PageTransition className={pathname === "/video" ? "h-full flex-1 flex flex-col min-h-0" : undefined}>{children}</PageTransition>
+          <PageTransition className={pathname === "/video" ? "h-full flex-1 flex flex-col min-h-0 overflow-hidden" : undefined}>{children}</PageTransition>
         </main>
       </div>
     </>

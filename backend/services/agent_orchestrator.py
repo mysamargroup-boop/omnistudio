@@ -78,6 +78,7 @@ class SceneData(BaseModel):
     duration_seconds: float = 4.0
     image_prompt: str = ""
     negative_prompt: str = ""
+    video_prompt: str = ""
     image_path: Optional[str] = None
     video_path: Optional[str] = None
     audio_path: Optional[str] = None

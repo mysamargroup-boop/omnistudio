@@ -1,6 +1,7 @@
 import hmac
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from typing import Optional
+from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from fastapi.responses import FileResponse
@@ -162,13 +163,16 @@ except Exception as e:
 
 
 @app.get("/outputs/trash/{media_type}/{filename:path}", dependencies=api_security)
-async def serve_trash_output(media_type: str, filename: str):
+async def serve_trash_output(media_type: str, filename: str, download: Optional[bool] = Query(False)):
     path = safe_resolve_output_path(filename, f"trash/{media_type}", must_exist=True)
-    return FileResponse(path, headers={"Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer"})
+    headers = {"Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer", "Accept-Ranges": "bytes"}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{Path(filename).name}"'
+    return FileResponse(path, headers=headers)
 
 
 @app.get("/outputs/{media_type}/{filename:path}", dependencies=api_security)
-async def serve_output(media_type: str, filename: str):
+async def serve_output(media_type: str, filename: str, download: Optional[bool] = Query(False)):
     if media_type == "trash":
         raise HTTPException(status_code=400, detail="Use /outputs/trash/<type>/<filename> for trash assets")
     try:
@@ -199,6 +203,8 @@ async def serve_output(media_type: str, filename: str):
         "Accept-Ranges": "bytes",
         "Referrer-Policy": "no-referrer",
     }
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{Path(filename).name}"'
     return FileResponse(path, headers=headers)
 
 class PinVerificationRequest(BaseModel):
