@@ -108,6 +108,16 @@ const DIFFUSION_MODELS: PipelineModelOption[] = [
   { id: "seedance_2_5", name: "Seedance 2.5", badge: "AI", provider: "ByteDance", description: "Ultra-consistent character & scene generation", active: true },
 ];
 
+const VIDEO_MODELS: PipelineModelOption[] = [
+  { id: "omni_flash", name: "Google Omni Flash (Veo 3.1)", badge: "SMART", provider: "Google", description: "Smooth cinematic motion & temporal consistency", active: true },
+  { id: "seedance", name: "Seedance", badge: "PRO", provider: "ByteDance", description: "Dynamic camera motion & natural organic movement", active: true }
+];
+
+const VIDEO_DURATIONS: Record<string, number[]> = {
+  "omni_flash": [4, 6, 8],
+  "seedance": [2, 4, 5, 8, 12]
+};
+
 const STYLES = [
   { id: "none", label: "None", desc: "Pure Prompt Directives" },
   { id: "cinematic", label: "Cinematic 35mm", desc: "Arri Alexa, Volumetric Lighting" },
@@ -185,6 +195,14 @@ function PipelineContent() {
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [voiceProvider, setVoiceProvider] = useState("edge");
   const [imageModel, setImageModel] = useState("auto");
+  const [videoModel, setVideoModel] = useState("omni_flash");
+  const [videoDuration, setVideoDuration] = useState(4);
+
+  useEffect(() => {
+    if (!VIDEO_DURATIONS[videoModel]?.includes(videoDuration)) {
+      setVideoDuration(VIDEO_DURATIONS[videoModel]?.[0] || 4);
+    }
+  }, [videoModel, videoDuration]);
   
   // Two distinct operation modes (presented as 2 large interactive cards)
   const [agentMode, setAgentMode] = useState<"autonomous" | "assisted">("autonomous");
@@ -674,7 +692,8 @@ function PipelineContent() {
         style,
         aspect_ratio: aspectRatio,
         image_model: imageModel,
-        video_model: "omni_model",
+        video_model: videoModel,
+        total_duration: videoDuration,
         voice_provider: voiceProvider,
         apply_brand_kit: applyBrandKit,
         skill_id: selectedSkill !== "none" ? selectedSkill : undefined,
@@ -1171,7 +1190,55 @@ function PipelineContent() {
             )}
           </div>
 
-          {/* 3b. Directorial Skill & Cinematic Style Pack */}
+          {/* 4. Video Engine */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <div className="flex items-center justify-between font-mono">
+              <label className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold block">
+                VIDEO ENGINE
+              </label>
+            </div>
+            <Dropdown
+              options={VIDEO_MODELS.map((m) => ({
+                value: m.id,
+                label: m.name,
+                badge: m.badge,
+                description: `${m.provider} • ${m.description}`,
+                active: m.active,
+              }))}
+              value={videoModel}
+              onChange={(v) => setVideoModel(v)}
+              size="sm"
+              openDirection="up"
+              triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#101420] text-xs py-2 shadow-xs"
+              menuClassName="bg-white/95 dark:bg-[#0c101d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/10"
+            />
+          </div>
+
+          {/* 5. Duration Selector */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
+              SCENE DURATION
+            </label>
+            <div className="flex gap-2">
+              {(VIDEO_DURATIONS[videoModel] || []).map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setVideoDuration(sec)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-lg text-center transition-all cursor-pointer font-mono font-bold text-xs",
+                    videoDuration === sec
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs"
+                      : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
+                  )}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 5b. Directorial Skill & Cinematic Style Pack */}
           <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
             <div className="flex items-center justify-between font-mono">
               <label className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold block">

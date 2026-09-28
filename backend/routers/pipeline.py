@@ -780,6 +780,7 @@ class AgentPipelineStartRequest(BaseModel):
     apply_brand_kit: bool = False
     skill_id: Optional[str] = None
     reference_image: Optional[str] = None
+    total_duration: Optional[float] = None
 
 @router.post("/agent/start")
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
@@ -811,8 +812,13 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
     brief = {}
     if smart_params.get("single_video"):
         brief["single_video"] = True
+    
+    # Priority: Smart prompt > Frontend UI
     if "total_duration" in smart_params:
         brief["total_duration"] = smart_params["total_duration"]
+    elif req.total_duration is not None:
+        brief["total_duration"] = req.total_duration
+        
     if brief:
         context.project_brief = brief
 
