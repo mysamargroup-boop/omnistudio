@@ -24,6 +24,7 @@ interface ModernSelectProps {
   disabled?: boolean;
   searchable?: boolean;
   size?: "sm" | "md" | "lg";
+  openDirection?: "up" | "down";
 }
 
 export default function ModernSelect({
@@ -38,6 +39,7 @@ export default function ModernSelect({
   disabled = false,
   searchable = false,
   size = "md",
+  openDirection = "down",
 }: ModernSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -140,8 +142,9 @@ export default function ModernSelect({
         <div
           data-popover-content="true"
           className={cn(
-            "absolute z-[100] mt-1.5 w-full min-w-[220px] rounded-2xl p-1.5 shadow-2xl backdrop-blur-xl border animate-in fade-in zoom-in-95 duration-150",
+            "absolute z-[100] w-full max-w-[calc(100vw-32px)] left-0 rounded-2xl p-1.5 shadow-2xl backdrop-blur-xl border animate-in fade-in zoom-in-95 duration-150",
             "bg-white/95 dark:bg-[#121218]/95 border-black/[0.08] dark:border-white/[0.08]",
+            openDirection === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5",
             popoverClassName
           )}
         >

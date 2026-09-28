@@ -102,10 +102,10 @@ const DIFFUSION_MODELS: PipelineModelOption[] = [
   { id: "gemini_flash_image", name: "Google Gemini 2.5 Flash", badge: "FAST", provider: "Google DeepMind", description: "Ultra-fast high fidelity image diffusion", active: true },
   { id: "imagen_3", name: "Google Imagen 4", badge: "PRO", provider: "Google Cloud AI", description: "Flagship photoreal lighting & textures", active: true },
   { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "Composition precision & realistic skin", active: true },
-  { id: "flux_2_ultra", name: "Flux 2 Ultra", badge: "SOTA", provider: "Black Forest Labs", description: "Next-gen photorealism, 4K studio-grade output", active: true },
-  { id: "flux_pro", name: "Flux.1 Pro", badge: "PRO", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: true },
-  { id: "midjourney_v7", name: "Midjourney v7", badge: "NEW", provider: "Midjourney", description: "Artistic hyperrealism with cinematic aesthetics", active: true },
-  { id: "seedance_2_5", name: "Seedance 2.5", badge: "AI", provider: "ByteDance", description: "Ultra-consistent character & scene generation", active: true },
+  { id: "flux_2_ultra", name: "Flux 2 Ultra", badge: "SOTA", provider: "Black Forest Labs", description: "Next-gen photorealism, 4K studio-grade output", active: false },
+  { id: "flux_pro", name: "Flux.1 Pro", badge: "PRO", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: false },
+  { id: "midjourney_v7", name: "Midjourney v7", badge: "NEW", provider: "Midjourney", description: "Artistic hyperrealism with cinematic aesthetics", active: false },
+  { id: "seedance_2_5", name: "Seedance 2.5", badge: "AI", provider: "ByteDance", description: "Ultra-consistent character & scene generation", active: false },
 ];
 
 const VIDEO_MODELS: PipelineModelOption[] = [
@@ -1264,7 +1264,7 @@ function PipelineContent() {
                 </button>
               </div>
             </div>
-            <ModernSelect
+            <ModernSelect openDirection="up"
               value={selectedSkill}
               onChange={(val) => setSelectedSkill(val)}
               options={[
