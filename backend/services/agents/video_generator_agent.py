@@ -4,6 +4,7 @@ import logging
 import shutil
 import asyncio
 from pathlib import Path
+from typing import Optional, List, Dict, Any
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
 from services.ffmpeg_service import image_to_video_motion
 from services.gemini_service import get_gemini_key, generate_veo_video

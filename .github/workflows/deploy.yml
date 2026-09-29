@@ -75,11 +75,15 @@ jobs:
             docker compose down --remove-orphans || true
             docker rm -f $(docker ps -a -q --filter "name=omnistudio") 2>/dev/null || true
             
+            echo "Ensuring host output directories exist with full permissions..."
+            mkdir -p /home/omnistudio/backend/outputs/images /home/omnistudio/backend/outputs/videos /home/omnistudio/backend/outputs/audio /home/omnistudio/backend/outputs/final /home/omnistudio/backend/outputs/trash
+            chmod -R 777 /home/omnistudio/backend/outputs || true
+
             echo "Starting OmniStudio containers with force-recreate..."
             docker compose up -d --remove-orphans --force-recreate
             
             echo "Waiting for container startup..."
-            sleep 8
+            sleep 12
             
             echo "Cleaning up dangling images..."
             docker image prune -f
@@ -87,8 +91,12 @@ jobs:
             echo "Verifying containers are running:"
             docker ps --filter "name=omnistudio" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             
+            echo "--- Backend Container Logs (Last 40 lines) ---"
+            docker logs --tail 40 omnistudio-omni-backend-1 || true
+            
             echo "Probing container connectivity locally on VPS..."
             curl -IsS http://localhost:3060 | head -n 5 || true
             curl -IsS http://localhost:8050/api/health | head -n 5 || true
+            curl -IsS http://localhost:8050/api/ping | head -n 5 || true
             
             echo "Deployment Completed Successfully!"
