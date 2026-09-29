@@ -315,6 +315,7 @@ export default function VaultPage() {
 
   // Context Menu & Rename states matching Reference Images
   const [activeMenuKey, setActiveMenuKey] = useState<string | null>(null);
+  const [downloadMenuKey, setDownloadMenuKey] = useState<string | null>(null);
   const [renameModalAsset, setRenameModalAsset] = useState<VaultAsset | null>(null);
   const [renameNewName, setRenameNewName] = useState<string>("");
   const [renaming, setRenaming] = useState<boolean>(false);
@@ -539,6 +540,7 @@ export default function VaultPage() {
   useEffect(() => {
     const handleWindowClick = () => {
       setActiveMenuKey(null);
+      setDownloadMenuKey(null);
       setOpenDropdown(null);
     };
     window.addEventListener("click", handleWindowClick);
@@ -1831,8 +1833,8 @@ export default function VaultPage() {
                     }
                   }}
                   className={cn(
-                    "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0 [content-visibility:auto] [contain-intrinsic-size:280px]",
-                    isMenuOpen ? "overflow-visible z-[100] relative" : "overflow-hidden z-10",
+                    "break-inside-avoid inline-block w-full mb-4 align-top group relative rounded-2xl bg-zinc-950 shadow-sm hover:shadow-2xl transition-all duration-300 select-none cursor-pointer border-0 [contain-intrinsic-size:280px]",
+                    isMenuOpen ? "overflow-visible z-[100] relative" : "overflow-hidden z-10 [content-visibility:auto]",
                     selected && "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                   )}
                 >
@@ -1900,7 +1902,13 @@ export default function VaultPage() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveMenuKey(isMenuOpen ? null : file.filename);
+                    if (isMenuOpen) {
+                      setActiveMenuKey(null);
+                      setDownloadMenuKey(null);
+                    } else {
+                      setActiveMenuKey(file.filename);
+                      setDownloadMenuKey(null);
+                    }
                   }}
                   className={cn(
                     "p-1 hover:scale-110 transition-transform cursor-pointer",
@@ -1940,7 +1948,7 @@ export default function VaultPage() {
               {isMenuOpen && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-11 right-3 z-[110] w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none"
+                  className="absolute top-11 right-3 z-[110] w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none max-h-[min(540px,calc(100vh-100px))] overflow-y-auto"
                 >
                   <button
                     type="button"
@@ -2027,98 +2035,114 @@ export default function VaultPage() {
                     <span>Add to prompt</span>
                   </button>
 
-                  {/* Download with Interactive Format Submenu on Hover */}
-                  <div className="relative group/download">
+                  {/* Download with Interactive Expandable Formats Accordion */}
+                  <div className="relative rounded-xl overflow-hidden transition-colors">
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveMenuKey(null);
-                        downloadAssetWithFormat(file.url, file.filename, 'original');
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDownloadMenuKey((prev) => (prev === file.filename ? null : file.filename));
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/10 transition-colors text-left cursor-pointer"
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors text-left cursor-pointer",
+                        downloadMenuKey === file.filename ? "bg-white/10 text-white" : "hover:bg-white/10 text-zinc-200"
+                      )}
                     >
                       <div className="flex items-center gap-3">
-                        <Download className="w-4 h-4 text-zinc-400 group-hover/download:text-white" />
+                        <Download className={cn("w-4 h-4", downloadMenuKey === file.filename ? "text-emerald-400" : "text-zinc-400")} />
                         <span>Download</span>
                       </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover/download:text-white group-hover/download:translate-x-0.5 transition-all" />
+                      <ChevronDown
+                        className={cn(
+                          "w-3.5 h-3.5 transition-transform duration-200",
+                          downloadMenuKey === file.filename ? "rotate-180 text-emerald-400" : "text-zinc-500"
+                        )}
+                      />
                     </button>
 
-                    {/* Submenu on Hover (Pops out to the left) */}
-                    <div className="absolute right-full -top-1 mr-1.5 w-48 bg-[#16161d] border border-white/10 rounded-2xl p-1.5 shadow-2xl space-y-0.5 z-[120] text-xs font-jakarta opacity-0 invisible group-hover/download:opacity-100 group-hover/download:visible transition-all duration-150 backdrop-blur-xl">
-                      <div className="px-2.5 py-1 text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-wider border-b border-white/5 mb-1 flex items-center justify-between">
-                        <span>Download As</span>
-                        <span className="text-[9px] text-zinc-500">FORMAT</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenuKey(null);
-                          downloadAssetWithFormat(file.url, file.filename, 'original');
-                        }}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-zinc-200 hover:text-white transition-colors text-left cursor-pointer"
-                      >
-                        <span className="font-medium">Original File</span>
-                        <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400">SRC</span>
-                      </button>
+                    {/* Inline Expandable Format Options (Never clips outside the card!) */}
+                    {downloadMenuKey === file.filename && (
+                      <div className="mt-0.5 mb-1 mx-1 p-1 bg-black/40 border border-white/5 rounded-xl space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-2 py-0.5 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                          <span>Format</span>
+                          <span className="text-[8px] text-zinc-500">OPTIONS</span>
+                        </div>
 
-                      {isImage && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuKey(null);
-                              downloadAssetWithFormat(file.url, file.filename, 'png');
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-emerald-500/15 text-zinc-200 hover:text-emerald-300 transition-colors text-left cursor-pointer"
-                          >
-                            <span className="font-medium">PNG (Lossless)</span>
-                            <span className="text-[9px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-400 font-bold">PNG</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuKey(null);
-                              downloadAssetWithFormat(file.url, file.filename, 'jpeg');
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-zinc-200 hover:text-white transition-colors text-left cursor-pointer"
-                          >
-                            <span className="font-medium">JPEG (High-Res)</span>
-                            <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400 font-bold">JPG</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuKey(null);
-                              downloadAssetWithFormat(file.url, file.filename, 'webp');
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/15 text-zinc-200 hover:text-cyan-300 transition-colors text-left cursor-pointer"
-                          >
-                            <span className="font-medium">WebP (Web-Ready)</span>
-                            <span className="text-[9px] font-mono px-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">WEBP</span>
-                          </button>
-                        </>
-                      )}
-
-                      {isVideo && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveMenuKey(null);
-                            downloadAssetWithFormat(file.url, file.filename, 'original');
+                            setDownloadMenuKey(null);
+                            downloadAssetWithFormat(file.url, file.filename, "original");
                           }}
-                          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/15 text-zinc-200 hover:text-cyan-300 transition-colors text-left cursor-pointer"
+                          className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
                         >
-                          <span className="font-medium">MP4 Video</span>
-                          <span className="text-[9px] font-mono px-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">1080P</span>
+                          <span className="font-medium">Original File</span>
+                          <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400">SRC</span>
                         </button>
-                      )}
-                    </div>
+
+                        {isImage && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuKey(null);
+                                setDownloadMenuKey(null);
+                                downloadAssetWithFormat(file.url, file.filename, "png");
+                              }}
+                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 transition-colors text-left cursor-pointer text-[11px]"
+                            >
+                              <span className="font-medium">PNG (Lossless)</span>
+                              <span className="text-[9px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-400 font-bold">PNG</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuKey(null);
+                                setDownloadMenuKey(null);
+                                downloadAssetWithFormat(file.url, file.filename, "jpeg");
+                              }}
+                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
+                            >
+                              <span className="font-medium">JPEG (High-Res)</span>
+                              <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400 font-bold">JPG</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuKey(null);
+                                setDownloadMenuKey(null);
+                                downloadAssetWithFormat(file.url, file.filename, "webp");
+                              }}
+                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-cyan-500/15 text-zinc-300 hover:text-cyan-300 transition-colors text-left cursor-pointer text-[11px]"
+                            >
+                              <span className="font-medium">WebP (Web-Ready)</span>
+                              <span className="text-[9px] font-mono px-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">WEBP</span>
+                            </button>
+                          </>
+                        )}
+
+                        {isVideo && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuKey(null);
+                              setDownloadMenuKey(null);
+                              downloadAssetWithFormat(file.url, file.filename, "original");
+                            }}
+                            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-cyan-500/15 text-zinc-300 hover:text-cyan-300 transition-colors text-left cursor-pointer text-[11px]"
+                          >
+                            <span className="font-medium">MP4 Video</span>
+                            <span className="text-[9px] font-mono px-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">1080P</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <button
