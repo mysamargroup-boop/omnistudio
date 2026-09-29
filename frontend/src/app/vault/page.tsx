@@ -321,6 +321,7 @@ export default function VaultPage() {
   const [renaming, setRenaming] = useState<boolean>(false);
   const [renameError, setRenameError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [exporting4K, setExporting4K] = useState<string | null>(null);
 
   // In-Browser Memory (RAM) Ephemeral Assets state
   const [browserMemoryAssets, setBrowserMemoryAssets] = useState<VaultAsset[]>([]);
@@ -667,10 +668,28 @@ export default function VaultPage() {
   const downloadAssetWithFormat = async (
     url: string,
     filename: string,
-    format: 'original' | 'png' | 'jpeg' | 'webp' = 'original'
+    format: 'original' | 'png' | 'jpeg' | 'webp' | '4k' = 'original',
+    mediaType: string = 'images'
   ) => {
     if (format === 'original') {
       return downloadAsset(url, filename);
+    }
+    if (format === '4k') {
+      setExporting4K(filename);
+      try {
+        const res = await api.export4KVideo(filename, mediaType);
+        if (res?.success && res.url) {
+          await downloadAsset(res.url, res.filename);
+        } else {
+          await downloadAsset(url, filename);
+        }
+      } catch (e) {
+        console.error("4K export failed, downloading original file:", e);
+        await downloadAsset(url, filename);
+      } finally {
+        setExporting4K(null);
+      }
+      return;
     }
     try {
       const mediaFullUrl = getMediaUrl(url);
@@ -1990,7 +2009,7 @@ export default function VaultPage() {
               {isMenuOpen && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-11 right-3 z-[110] w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none max-h-[min(540px,calc(100vh-100px))] overflow-y-auto"
+                  className="absolute top-11 right-3 z-[110] w-52 bg-[#121216]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 shadow-2xl text-xs font-jakarta space-y-0.5 animate-in fade-in zoom-in-95 duration-150 text-zinc-200 select-none overflow-visible"
                 >
                   <button
                     type="button"
@@ -2077,13 +2096,20 @@ export default function VaultPage() {
                     <span>Add to prompt</span>
                   </button>
 
-                  {/* Download with Interactive Expandable Formats Accordion */}
-                  <div className="relative rounded-xl overflow-hidden transition-colors">
+                  {/* Download with Flyout Submenu — Opens to the side on HOVER, never on click */}
+                  <div
+                    className="relative group/dl"
+                    onMouseEnter={() => setDownloadMenuKey(file.filename)}
+                    onMouseLeave={() => setDownloadMenuKey(null)}
+                  >
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDownloadMenuKey((prev) => (prev === file.filename ? null : file.filename));
+                        // Direct download of original on click
+                        downloadAssetWithFormat(file.url, file.filename, "original", file.type);
+                        setActiveMenuKey(null);
+                        setDownloadMenuKey(null);
                       }}
                       className={cn(
                         "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors text-left cursor-pointer",
@@ -2094,20 +2120,23 @@ export default function VaultPage() {
                         <Download className={cn("w-4 h-4", downloadMenuKey === file.filename ? "text-emerald-400" : "text-zinc-400")} />
                         <span>Download</span>
                       </div>
-                      <ChevronDown
+                      <ChevronRight
                         className={cn(
                           "w-3.5 h-3.5 transition-transform duration-200",
-                          downloadMenuKey === file.filename ? "rotate-180 text-emerald-400" : "text-zinc-500"
+                          downloadMenuKey === file.filename ? "text-emerald-400 translate-x-0.5" : "text-zinc-500"
                         )}
                       />
                     </button>
 
-                    {/* Inline Expandable Format Options (Never clips outside the card!) */}
+                    {/* Flyout Submenu: Opens to the left (side) of the 3-dots dropdown */}
                     {downloadMenuKey === file.filename && (
-                      <div className="mt-0.5 mb-1 mx-1 p-1 bg-black/40 border border-white/5 rounded-xl space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
-                        <div className="px-2 py-0.5 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
-                          <span>Format</span>
-                          <span className="text-[8px] text-zinc-500">OPTIONS</span>
+                      <div
+                        className="absolute right-full top-0 mr-1.5 w-52 bg-[#121216]/98 backdrop-blur-2xl border border-white/15 rounded-2xl p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.85)] space-y-0.5 z-[150] animate-in fade-in zoom-in-95 duration-150 text-zinc-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-2.5 py-1 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-white/5 mb-1">
+                          <span>Export Format</span>
+                          <span className="text-[8px] text-zinc-500">QUALITY</span>
                         </div>
 
                         <button
@@ -2116,12 +2145,12 @@ export default function VaultPage() {
                             e.stopPropagation();
                             setActiveMenuKey(null);
                             setDownloadMenuKey(null);
-                            downloadAssetWithFormat(file.url, file.filename, "original");
+                            downloadAssetWithFormat(file.url, file.filename, "original", file.type);
                           }}
-                          className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
+                          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
                         >
                           <span className="font-medium">Original File</span>
-                          <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400">SRC</span>
+                          <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400">RAW</span>
                         </button>
 
                         {isImage && (
@@ -2134,7 +2163,7 @@ export default function VaultPage() {
                                 setDownloadMenuKey(null);
                                 downloadAssetWithFormat(file.url, file.filename, "png");
                               }}
-                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 transition-colors text-left cursor-pointer text-[11px]"
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 transition-colors text-left cursor-pointer text-[11px]"
                             >
                               <span className="font-medium">PNG (Lossless)</span>
                               <span className="text-[9px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-400 font-bold">PNG</span>
@@ -2147,7 +2176,7 @@ export default function VaultPage() {
                                 setDownloadMenuKey(null);
                                 downloadAssetWithFormat(file.url, file.filename, "jpeg");
                               }}
-                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
                             >
                               <span className="font-medium">JPEG (High-Res)</span>
                               <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400 font-bold">JPG</span>
@@ -2160,7 +2189,7 @@ export default function VaultPage() {
                                 setDownloadMenuKey(null);
                                 downloadAssetWithFormat(file.url, file.filename, "webp");
                               }}
-                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-cyan-500/15 text-zinc-300 hover:text-cyan-300 transition-colors text-left cursor-pointer text-[11px]"
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/15 text-zinc-300 hover:text-cyan-300 transition-colors text-left cursor-pointer text-[11px]"
                             >
                               <span className="font-medium">WebP (Web-Ready)</span>
                               <span className="text-[9px] font-mono px-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">WEBP</span>
@@ -2169,19 +2198,46 @@ export default function VaultPage() {
                         )}
 
                         {isVideo && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuKey(null);
-                              setDownloadMenuKey(null);
-                              downloadAssetWithFormat(file.url, file.filename, "original");
-                            }}
-                            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-cyan-500/15 text-zinc-300 hover:text-cyan-300 transition-colors text-left cursor-pointer text-[11px]"
-                          >
-                            <span className="font-medium">MP4 Video</span>
-                            <span className="text-[9px] font-mono px-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">1080P</span>
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuKey(null);
+                                setDownloadMenuKey(null);
+                                downloadAssetWithFormat(file.url, file.filename, "original", file.type);
+                              }}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-zinc-300 hover:text-white transition-colors text-left cursor-pointer text-[11px]"
+                            >
+                              <span className="font-medium">MP4 (Original HD)</span>
+                              <span className="text-[9px] font-mono px-1 rounded bg-white/10 text-zinc-400 font-bold">720P</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuKey(null);
+                                setDownloadMenuKey(null);
+                                downloadAssetWithFormat(file.url, file.filename, "4k", file.type);
+                              }}
+                              disabled={exporting4K === file.filename}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-cyan-500/15 text-zinc-300 hover:text-cyan-300 transition-colors text-left cursor-pointer text-[11px]"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                {exporting4K === file.filename ? (
+                                  <Spinner size="xs" variant="current" />
+                                ) : (
+                                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                                )}
+                                <span className="font-medium">
+                                  {exporting4K === file.filename ? "Rendering 4K..." : "4K Ultra HD"}
+                                </span>
+                              </div>
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold">
+                                4K UHD
+                              </span>
+                            </button>
+                          </>
                         )}
                       </div>
                     )}

@@ -530,6 +530,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ media_type, old_filename, new_filename }),
     }),
+  export4KVideo: (filename: string, media_type: string = "videos") =>
+    fetchApi<{ success: boolean; filename: string; url: string }>("/api/assets/export-4k", {
+      method: "POST",
+      body: JSON.stringify({ filename, media_type }),
+    }),
 
   // AI Video Intelligence & Creator Tools
   aiRemoveSilence: (video_path: string, noise_threshold_db: number = -30.0, min_silence_duration: number = 0.5) =>
