@@ -251,6 +251,16 @@ function PipelineContent() {
   const [directorialNotes, setDirectorialNotes] = useState("");
   const [approvingStep, setApprovingStep] = useState(false);
 
+  // @ Mention Character State
+  const [characters, setCharacters] = useState<any[]>([]);
+  const [mentionQuery, setMentionQuery] = useState<{ active: boolean; text: string; startIndex: number } | null>(null);
+
+  useEffect(() => {
+    api.getCharacters().then((res: any) => {
+      if (res?.characters) setCharacters(res.characters);
+    }).catch(() => {});
+  }, []);
+
   // Omnichannel Publishing State
   const [selectedPublishChannels, setSelectedPublishChannels] = useState<string[]>([
     "youtube",
@@ -273,6 +283,32 @@ function PipelineContent() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setTopic(val);
+    
+    // Check if cursor is right after an @ mention
+    const cursor = e.target.selectionStart;
+    const textBefore = val.slice(0, cursor);
+    const mentionMatch = textBefore.match(/@([a-zA-Z0-9_-]*)$/);
+    if (mentionMatch) {
+      setMentionQuery({ active: true, text: mentionMatch[1], startIndex: mentionMatch.index! });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleSelectMention = (char: any) => {
+    if (!mentionQuery) return;
+    const before = topic.slice(0, mentionQuery.startIndex);
+    const after = topic.slice(mentionQuery.startIndex + mentionQuery.text.length + 1); // +1 for @
+    setTopic(`${before}@${char.name} ${after}`);
+    setMentionQuery(null);
+    if (char.image_url) {
+      setReferenceImage(char.image_url);
+    }
+  };
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -1014,26 +1050,67 @@ function PipelineContent() {
           </div>
         </div>
 
-        <textarea
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.key === "Enter" && e.ctrlKey) || (e.key === "Enter" && e.metaKey)) {
-              e.preventDefault();
-              handleLaunchAgency();
+        <div className="relative">
+          <textarea
+            value={topic}
+            onChange={handlePromptChange}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" && e.ctrlKey) || (e.key === "Enter" && e.metaKey)) {
+                e.preventDefault();
+                handleLaunchAgency();
+              }
+            }}
+            placeholder={
+              mode === "autonomous"
+                ? "E.g. Create an ultra-luxury commercial for an emerald jewelry collection featuring an elegant protagonist walking through a grand moonlit palace with flowing silks..."
+                : "E.g. Formulate a cinematic sci-fi documentary with multiple acts, dramatic rim lighting, and orchestral soundtrack..."
             }
-          }}
-          placeholder={
-            mode === "autonomous"
-              ? "E.g. Create an ultra-luxury commercial for an emerald jewelry collection featuring an elegant protagonist walking through a grand moonlit palace with flowing silks..."
-              : "E.g. Formulate a cinematic sci-fi documentary with multiple acts, dramatic rim lighting, and orchestral soundtrack..."
-          }
-          rows={3}
-          className={cn(
-            "w-full min-h-[110px] bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed",
-            running && "ring-2 ring-emerald-500/30 border-emerald-500/50"
+            rows={3}
+            className={cn(
+              "w-full min-h-[110px] bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 text-sm text-zinc-950 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all font-jakarta leading-relaxed",
+              running && "ring-2 ring-emerald-500/30 border-emerald-500/50"
+            )}
+          />
+
+          {/* @ Mention Popover */}
+          {mentionQuery?.active && (
+            <div className="absolute bottom-full left-4 mb-2 w-64 bg-white dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
+              <div className="p-2 border-b border-black/[0.05] dark:border-white/[0.05] flex items-center gap-2">
+                <span className="text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-wider">Mention Asset</span>
+              </div>
+              <div className="max-h-48 overflow-y-auto p-1">
+                <button
+                  type="button"
+                  onClick={() => { setMentionQuery(null); refFileInputRef.current?.click(); }}
+                  className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-left transition-colors text-xs text-emerald-600 dark:text-emerald-400 font-medium"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload new reference...</span>
+                </button>
+                {characters.filter(c => c.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).map(char => (
+                  <button
+                    key={char.id}
+                    type="button"
+                    onClick={() => handleSelectMention(char)}
+                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.02] text-left transition-colors mt-1"
+                  >
+                    {char.image_url ? (
+                      <img src={getMediaUrl(char.image_url)} alt={char.name} className="w-6 h-6 rounded-md object-cover border border-black/10" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400">
+                        {char.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block truncate">{char.name}</span>
+                      <span className="text-[9px] text-zinc-500 truncate block">Visual Asset</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-        />
+        </div>
 
         {/* Quick Reference Image Upload — Always Visible */}
         <div className="flex items-center gap-2 mt-1.5">
