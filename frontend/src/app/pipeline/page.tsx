@@ -839,8 +839,8 @@ function PipelineContent() {
     }
   };
 
-  // Accurate cost estimation: image gen + video motion + voice per scene
-  const voiceCostPerScene = voiceProvider === "edge" ? 0.0 : voiceProvider === "sarvam" ? 0.002 : 0.02;
+  // Accurate cost estimation: image gen + video gen + voice per scene
+  const voiceCostPerScene = voiceProvider === "none" ? 0.0 : voiceProvider === "edge" ? 0.0 : voiceProvider === "sarvam" ? 0.002 : 0.02;
   const imageModelRates: Record<string, number> = {
     auto: 0.005,
     gemini_flash_image: 0.005,
@@ -852,10 +852,22 @@ function PipelineContent() {
     seedance_2_5: 0.03,
   };
   const imageCostPerScene = imageModelRates[imageModel] ?? 0.02;
-  const videoCostPerScene = 0.0; // Local FFmpeg Ken Burns & Motion synthesis is free
+  const videoModelRates: Record<string, number> = {
+    omni_flash: 0.20,   // ~$0.20/sec Veo 3.1
+    seedance: 0.15,      // ~$0.15/sec Seedance
+    kling_1_6: 0.10,
+    runway_gen4: 0.25,
+    pika_2_2: 0.08,
+    hailuo_minimax: 0.10,
+    sora: 0.30,
+    luma_ray3: 0.12,
+  };
+  const videoCostPerSec = videoModelRates[videoModel] ?? 0.20;
+  const videoCostPerScene = videoCostPerSec * videoDuration;
   const costPerScene = voiceCostPerScene + imageCostPerScene + videoCostPerScene;
   const estimatedCostUsd = Math.round(costPerScene * scenes * 1000) / 1000;
   const estimatedCostInr = Math.round(estimatedCostUsd * 83.5 * 100) / 100;
+  const estimatedTimeSec = scenes * (videoDuration + 15); // video gen time + image gen + processing overhead
 
   // ── Render 4-Department Live Progress Bar (Clean, uncluttered) ──
   const renderDepartmentProgress = () => {
@@ -1271,7 +1283,7 @@ function PipelineContent() {
                   onClick={() => skillFileInputRef.current?.click()}
                   disabled={uploadingSkill}
                   title="Upload custom .json or .yaml skill configuration"
-                  className="text-[9px] font-mono text-amber-500 hover:text-amber-400 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/25 cursor-pointer transition-all"
+                  className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/20 cursor-pointer transition-all"
                 >
                   <Upload className="w-2.5 h-2.5" />
                   <span>{uploadingSkill ? "Uploading..." : "+ Upload Skill"}</span>
@@ -1541,7 +1553,11 @@ function PipelineContent() {
         <div className="flex items-center gap-3 font-mono text-xs text-zinc-500">
           <span className="flex items-center gap-1.5">
             <Clock className={cn("w-3.5 h-3.5", mode === "autonomous" ? "text-emerald-500" : "text-violet-500")} />
-            Est. Time: ~{scenes * 6}s
+            ~{Math.ceil(estimatedTimeSec / 60)}min
+          </span>
+          <span>•</span>
+          <span>
+            Output: <strong className="text-zinc-900 dark:text-white">{scenes * videoDuration}s</strong> video
           </span>
           <span>•</span>
           <span>
