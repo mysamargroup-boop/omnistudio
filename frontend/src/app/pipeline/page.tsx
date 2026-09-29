@@ -45,6 +45,8 @@ import {
   Calendar,
   Zap,
   ImagePlus,
+  UserCheck,
+  Lock,
 } from "lucide-react";
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -251,8 +253,10 @@ function PipelineContent() {
   const [directorialNotes, setDirectorialNotes] = useState("");
   const [approvingStep, setApprovingStep] = useState(false);
 
-  // @ Mention Character State
+  // @ Mention & Character Lock State
   const [characters, setCharacters] = useState<any[]>([]);
+  const [selectedCharacter, setSelectedCharacter] = useState<any | null>(null);
+  const [showCharacterSelector, setShowCharacterSelector] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<{ active: boolean; text: string; startIndex: number } | null>(null);
 
   useEffect(() => {
@@ -305,8 +309,10 @@ function PipelineContent() {
     const after = topic.slice(mentionQuery.startIndex + mentionQuery.text.length + 1); // +1 for @
     setTopic(`${before}@${char.name} ${after}`);
     setMentionQuery(null);
-    if (char.image_url) {
-      setReferenceImage(char.image_url);
+    setSelectedCharacter(char);
+    const img = char.imageUrl || char.image_url;
+    if (img) {
+      setReferenceImage(img);
     }
   };
 
@@ -735,6 +741,7 @@ function PipelineContent() {
 
     try {
       // 1. Start agent pipeline on backend
+      const charImg = selectedCharacter?.imageUrl || selectedCharacter?.image_url;
       const startRes = await api.startAgentPipeline({
         prompt: effectiveTopic,
         mode: agentMode,
@@ -747,7 +754,12 @@ function PipelineContent() {
         voice_provider: voiceProvider,
         apply_brand_kit: applyBrandKit,
         skill_id: selectedSkill !== "none" ? selectedSkill : undefined,
-        reference_image: referenceImage || undefined,
+        reference_image: referenceImage || charImg || undefined,
+        character_id: selectedCharacter?.id || undefined,
+        character_name: selectedCharacter?.name || undefined,
+        character_image: charImg || undefined,
+        character_prompt: selectedCharacter?.prompt || undefined,
+        character_lock: !!selectedCharacter,
       });
 
       if (!startRes?.success || !startRes?.pipeline_id) {
@@ -1114,8 +1126,113 @@ function PipelineContent() {
           )}
         </div>
 
-        {/* Quick Reference Image Upload — Always Visible */}
-        <div className="flex items-center gap-2 mt-1.5">
+        {/* Quick Reference Image & Character Lock — Always Visible */}
+        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+          {/* Character Lock Selector / Badge */}
+          {selectedCharacter ? (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/30 text-[10px] font-mono animate-in fade-in">
+              {selectedCharacter.imageUrl || selectedCharacter.image_url ? (
+                <img
+                  src={getMediaUrl(selectedCharacter.imageUrl || selectedCharacter.image_url)}
+                  alt={selectedCharacter.name}
+                  className="w-6 h-6 rounded-lg object-cover border border-violet-500/30"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-lg bg-violet-600 text-white flex items-center justify-center font-bold text-[10px]">
+                  {selectedCharacter.name.charAt(0)}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-violet-600 dark:text-violet-400 font-bold">
+                  Lock: {selectedCharacter.name}
+                </span>
+                <span className="text-[8px] px-1 py-0.5 rounded bg-violet-500/15 text-violet-600 dark:text-violet-300 uppercase tracking-wider font-bold">
+                  100% Continuity
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCharacter(null)}
+                className="ml-1 text-zinc-400 hover:text-rose-500 cursor-pointer transition-colors"
+                title="Unlock Character"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowCharacterSelector(!showCharacterSelector)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-600 dark:text-zinc-300 hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400 transition-all cursor-pointer"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-violet-500" />
+                <span>+ Character Lock</span>
+              </button>
+
+              {/* Character Selector Dropdown */}
+              {showCharacterSelector && (
+                <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-[#101422] border border-black/[0.08] dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 p-2">
+                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-black/[0.06] dark:border-white/[0.06] mb-1">
+                    <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 tracking-wider">
+                      Select Character to Lock
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCharacterSelector(false)}
+                      className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto space-y-1 p-1">
+                    {characters.length === 0 ? (
+                      <div className="text-center py-4 text-xs text-zinc-400 font-mono">
+                        No characters created yet in Character Studio.
+                      </div>
+                    ) : (
+                      characters.map((char) => (
+                        <button
+                          key={char.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCharacter(char);
+                            setShowCharacterSelector(false);
+                            const img = char.imageUrl || char.image_url;
+                            if (img) setReferenceImage(img);
+                          }}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-500/10 text-left transition-colors cursor-pointer group"
+                        >
+                          {char.imageUrl || char.image_url ? (
+                            <img
+                              src={getMediaUrl(char.imageUrl || char.image_url)}
+                              alt={char.name}
+                              className="w-8 h-8 rounded-lg object-cover border border-black/10 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-600 dark:text-zinc-300 shrink-0">
+                              {char.name.charAt(0)}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate group-hover:text-violet-600 dark:group-hover:text-violet-400">
+                              {char.name}
+                            </span>
+                            <span className="text-[9px] text-zinc-400 dark:text-zinc-500 truncate block">
+                              {char.tagline || char.prompt || "Locked Face & Outfit"}
+                            </span>
+                          </div>
+                          <Lock className="w-3 h-3 text-zinc-400 group-hover:text-violet-500 shrink-0" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quick Reference Image Upload */}
           {referenceImage ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono">
               <img src={getMediaUrl(referenceImage)} alt="Ref" className="w-7 h-7 rounded-lg object-cover" />
@@ -1395,6 +1512,74 @@ function PipelineContent() {
                 </div>
                 <div className="text-[9px] text-zinc-500 dark:text-zinc-400 line-clamp-2">
                   {availableSkills.find((s) => s.id === selectedSkill)?.description}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 5c. Character Lock & Consistency Engine */}
+          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] space-y-2">
+            <div className="flex items-center justify-between font-mono">
+              <label className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold block">
+                CHARACTER LOCK
+              </label>
+              {selectedCharacter && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCharacter(null)}
+                  className="text-[9px] font-mono text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                >
+                  Clear Lock
+                </button>
+              )}
+            </div>
+            <ModernSelect
+              openDirection="up"
+              value={selectedCharacter ? selectedCharacter.id : "none"}
+              onChange={(val) => {
+                if (val === "none") {
+                  setSelectedCharacter(null);
+                } else {
+                  const found = characters.find((c) => c.id === val);
+                  if (found) {
+                    setSelectedCharacter(found);
+                    const img = found.imageUrl || found.image_url;
+                    if (img) setReferenceImage(img);
+                  }
+                }
+              }}
+              options={[
+                { value: "none", label: "None (Dynamic AI Casting)" },
+                ...characters.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  description: c.tagline || c.prompt,
+                  badge: c.category?.toUpperCase() || "CHARACTER",
+                })),
+              ]}
+              searchable
+            />
+            {selectedCharacter && (
+              <div className="p-2.5 rounded-xl bg-violet-500/[0.05] border border-violet-500/20 text-[10px] space-y-1 text-zinc-700 dark:text-zinc-300 animate-in fade-in duration-150">
+                <div className="font-bold text-violet-600 dark:text-violet-400 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {selectedCharacter.imageUrl || selectedCharacter.image_url ? (
+                      <img
+                        src={getMediaUrl(selectedCharacter.imageUrl || selectedCharacter.image_url)}
+                        alt=""
+                        className="w-5 h-5 rounded-md object-cover border border-violet-500/30"
+                      />
+                    ) : (
+                      <UserCheck className="w-3.5 h-3.5" />
+                    )}
+                    <span>{selectedCharacter.name}</span>
+                  </div>
+                  <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-violet-500/15 text-violet-600 dark:text-violet-300 font-bold">
+                    100% IDENTITY LOCK
+                  </span>
+                </div>
+                <div className="text-[9px] text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                  {selectedCharacter.prompt || selectedCharacter.tagline || selectedCharacter.description}
                 </div>
               </div>
             )}
@@ -1774,12 +1959,13 @@ function PipelineContent() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-mono">
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs font-mono">
                 <div><span className="text-zinc-400">Title:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.title || "Untitled"}</strong></div>
                 <div><span className="text-zinc-400">Mood:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.mood || "Cinematic"}</strong></div>
                 <div><span className="text-zinc-400">Target:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.target_audience || "Global"}</strong></div>
                 <div><span className="text-zinc-400">Diffusion:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.diffusion_model || projectBrief.visual_style || style}</strong></div>
                 <div><span className="text-zinc-400">Video Engine:</span> <strong className="text-emerald-600 dark:text-emerald-400 block truncate">{projectBrief.video_model || "Omni Video Model"}</strong></div>
+                <div><span className="text-zinc-400">Protagonist:</span> <strong className="text-violet-600 dark:text-violet-400 block truncate">{selectedCharacter ? `Locked: ${selectedCharacter.name}` : (projectBrief.character_name || "Autonomous")}</strong></div>
               </div>
             </div>
           )}

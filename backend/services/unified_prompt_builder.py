@@ -72,7 +72,9 @@ class UnifiedPromptBuilder:
         video_model: str = "omni_flash",
         skill: Optional[Any] = None,
         brand_kit: Optional[dict] = None,
-        apply_brand_kit: bool = False
+        apply_brand_kit: bool = False,
+        character_lock: bool = False,
+        character_data: Optional[dict] = None
     ):
         self.user_prompt = user_prompt
         self.style = style
@@ -81,9 +83,24 @@ class UnifiedPromptBuilder:
         self.skill = skill
         self.brand_kit = brand_kit if apply_brand_kit else None
         
+        # Character lock configuration
+        self.character_lock = character_lock
+        self.character_data = character_data
+
         # Detect character presence for consistency enforcement
-        self._has_character = self._detect_character()
-        self._character_anchor = self._build_character_anchor() if self._has_character else ""
+        self._has_character = self._detect_character() or self.character_lock
+        self._character_anchor = self._build_character_anchor()
+
+    def set_character_lock(self, character_name: str, character_image: str = "", character_prompt: str = ""):
+        """Explicitly engage character lock with name, image, and styling prompt."""
+        self.character_lock = True
+        self.character_data = {
+            "name": character_name,
+            "image": character_image,
+            "prompt": character_prompt
+        }
+        self._has_character = True
+        self._character_anchor = self._build_character_anchor()
 
     def _detect_character(self) -> bool:
         """Detect if prompt contains a human character."""
@@ -93,7 +110,13 @@ class UnifiedPromptBuilder:
         return any(w in lower for w in keywords)
 
     def _build_character_anchor(self) -> str:
-        """Extract character appearance description, stripping scene breakdowns."""
+        """Extract character appearance description or construct from character lock data."""
+        if self.character_lock and self.character_data:
+            c_name = self.character_data.get("name") or "Protagonist"
+            c_prompt = self.character_data.get("prompt") or ""
+            return f"Featuring Character: {c_name}, {c_prompt}. 100% facial identity and outfit continuity."
+        if not self._has_character:
+            return ""
         clean_char = self.user_prompt
         match = re.split(
             r'\b(scene\s*\d+|camera\s*&|motion\s*pace|generate\s*directly)\b',
@@ -170,7 +193,11 @@ class UnifiedPromptBuilder:
         desc = self._get_scene_description(scene_desc, scene_index)
         
         # Apply character anchor
-        if self._character_anchor and self._character_anchor not in desc:
+        if self.character_lock and self.character_data:
+            char_anchor = f"Featuring Character: {self.character_data.get('name', 'Protagonist')}, {self.character_data.get('prompt', '')}. 100% facial identity and outfit continuity."
+            if char_anchor not in desc:
+                desc = f"{char_anchor} {desc}"
+        elif self._character_anchor and self._character_anchor not in desc:
             desc = f"{self._character_anchor}. {desc}"
 
         angle = camera_angle or "Cinematic wide angle"
@@ -217,7 +244,13 @@ class UnifiedPromptBuilder:
         model = self.image_model.lower()
         anti_grid = "split screen, collage, grid, 4-panel, multi-panel, contact sheet, storyboard layout, comic strip, multiple sub-frames in one image"
         anti_contamination = self.STYLE_NEGATIVES.get(self.style, "")
-        consistency = "changing face, different person, identity morphing, altered clothes, extra people" if self._has_character else ""
+        if self.character_lock and self.character_data:
+            c_name = self.character_data.get("name", "protagonist")
+            consistency = f"changing face, different person, identity morphing, different actor than {c_name}, altered clothes, extra people"
+        elif self._has_character:
+            consistency = "changing face, different person, identity morphing, altered clothes, extra people"
+        else:
+            consistency = ""
 
         if "flux" in model:
             base_neg = f"lowres, plastic skin, distorted hands, oversaturated, watermark, {anti_grid}"
@@ -258,7 +291,10 @@ class UnifiedPromptBuilder:
         desc = self._get_scene_description(scene_desc, scene_index)
         
         # Character anchor for video
-        if self._character_anchor:
+        if self.character_lock and self.character_data:
+            char_anchor = f"Featuring Character: {self.character_data.get('name', 'Protagonist')}, {self.character_data.get('prompt', '')}. 100% facial identity and outfit continuity."
+            desc = f"{char_anchor} {desc}"
+        elif self._character_anchor:
             desc = f"{desc}. {self._character_anchor}"
 
         angle = camera_angle or ""

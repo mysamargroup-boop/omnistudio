@@ -25,6 +25,14 @@ class PromptEngineerAgent(BaseAgent):
         brand_kit = context.project_brief.get("brand_kit") if context.project_brief else None
 
         # ── Initialize Unified Prompt Builder ──
+        char_data = None
+        if context.character_lock and context.character_name:
+            char_data = {
+                "name": context.character_name,
+                "image": context.character_image or "",
+                "prompt": context.character_prompt or ""
+            }
+
         builder = UnifiedPromptBuilder(
             user_prompt=context.user_prompt,
             style=context.style,
@@ -32,7 +40,9 @@ class PromptEngineerAgent(BaseAgent):
             video_model=context.video_model or "omni_flash",
             skill=skill,
             brand_kit=brand_kit,
-            apply_brand_kit=getattr(context, "apply_brand_kit", False)
+            apply_brand_kit=getattr(context, "apply_brand_kit", False),
+            character_lock=bool(context.character_lock and context.character_name),
+            character_data=char_data
         )
 
         # ── Generate prompts for each scene ──
@@ -56,10 +66,11 @@ class PromptEngineerAgent(BaseAgent):
         model = context.image_model or "gemini_flash_image"
         skill_msg = f" with Skill '{skill_name}'" if skill else ""
         brand_msg = " + Brand Kit" if brand_kit and getattr(context, "apply_brand_kit", False) else ""
+        char_msg = f" + Character Lock '{context.character_name}'" if context.character_lock and context.character_name else ""
         context.add_log(
             self.name,
             f"Engineered unified prompts (image + video) for {len(context.scenes)} scenes "
-            f"tailored to '{model}' + '{context.video_model or 'omni_flash'}'{skill_msg}{brand_msg}."
+            f"tailored to '{model}' + '{context.video_model or 'omni_flash'}'{skill_msg}{brand_msg}{char_msg}."
         )
 
         return AgentResult(success=True)

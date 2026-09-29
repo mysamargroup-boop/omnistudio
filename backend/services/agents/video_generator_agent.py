@@ -193,6 +193,24 @@ async def crossfade_merge_videos(
         return False
 
 
+def _resolve_image_to_disk_or_url(img_ref: Optional[str]) -> Optional[str]:
+    """Resolve an image reference (file path, /outputs/ web path, or URL) to a usable path."""
+    if not img_ref:
+        return None
+    p = Path(img_ref)
+    if p.exists() and p.is_file():
+        return str(p)
+    if "/outputs/" in img_ref:
+        parts = img_ref.split("/outputs/")[-1]
+        cand = settings.OUTPUTS_PATH / parts
+        if cand.exists():
+            return str(cand)
+    cand2 = settings.OUTPUTS_PATH / 'images' / p.name
+    if cand2.exists():
+        return str(cand2)
+    return img_ref
+
+
 class VideoGeneratorAgent(BaseAgent):
     name = "VideoGeneratorAgent"
     description = "Generates animated video clips with automatic extension chain for long-duration output"
@@ -243,7 +261,7 @@ class VideoGeneratorAgent(BaseAgent):
             else:
                 dur = max(float(scene.duration_seconds or 4.0), 4.0)
 
-            # ── Resolve keyframe image ──
+            # ── Resolve keyframe image reference ──
             img_disk_path = None
             if scene.image_path:
                 img_name = Path(scene.image_path).name
@@ -252,6 +270,14 @@ class VideoGeneratorAgent(BaseAgent):
                     img_disk_path = candidate
                 elif Path(scene.image_path).exists():
                     img_disk_path = Path(scene.image_path)
+
+            # Character Lock & Reference Priority
+            if context.character_lock and context.character_image:
+                primary_ref = _resolve_image_to_disk_or_url(context.character_image)
+                if scene.index == 1:
+                    context.add_log(self.name, f"Character lock active: {context.character_name} - using character image for consistency")
+            else:
+                primary_ref = str(img_disk_path) if img_disk_path else _resolve_image_to_disk_or_url(context.reference_image)
 
             prompt_for_video = (
                 f"{context.user_prompt}. {scene.description or scene.image_prompt}"
@@ -272,7 +298,7 @@ class VideoGeneratorAgent(BaseAgent):
                 segment_clips = []
                 remaining = dur
                 segment_idx = 0
-                current_ref_image = str(img_disk_path) if img_disk_path else None
+                current_ref_image = primary_ref
 
                 while remaining > 0:
                     # Calculate this segment's duration
@@ -397,14 +423,14 @@ class VideoGeneratorAgent(BaseAgent):
                     veo_res = await generate_seedance_video(
                         prompt=prompt_for_video,
                         aspect_ratio=context.aspect_ratio,
-                        image_path=str(img_disk_path) if img_disk_path else None,
+                        image_path=primary_ref,
                         duration_seconds=int(dur)
                     )
                 else:
                     veo_res = await generate_veo_video(
                         prompt=prompt_for_video,
                         aspect_ratio=context.aspect_ratio,
-                        image_path=str(img_disk_path) if img_disk_path else None,
+                        image_path=primary_ref,
                         duration_seconds=int(dur)
                     )
 

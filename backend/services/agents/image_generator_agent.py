@@ -87,6 +87,13 @@ class ImageGeneratorAgent(BaseAgent):
         engine_title = "Google Imagen 3" if wants_google_imagen else "OpenAI GPT Image (DALL-E 3 HD Advance Model)"
         logger.info("ImageGeneratorAgent executing with primary engine: %s", engine_title)
 
+        ref_img_path = context.character_image if (context.character_lock and context.character_image) else context.reference_image
+        if ref_img_path and "/outputs/" in ref_img_path:
+            parts = ref_img_path.split("/outputs/")[-1]
+            cand = settings.OUTPUTS_PATH / parts
+            if cand.exists():
+                ref_img_path = str(cand)
+
         for scene in context.scenes:
             file_name = f"scene_{scene.index}_{uuid.uuid4().hex[:8]}.png"
             local_path = images_dir / file_name
@@ -104,6 +111,7 @@ class ImageGeneratorAgent(BaseAgent):
                             prompt=prompt_to_use,
                             model="gemini-2.5-flash-image",
                             filename_hint=f"scene_{scene.index}",
+                            reference_image_path=ref_img_path,
                             aspect_ratio=context.aspect_ratio
                         )
                         if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
@@ -161,6 +169,7 @@ class ImageGeneratorAgent(BaseAgent):
                             prompt=prompt_to_use,
                             model="gemini-2.5-flash-image",
                             filename_hint=f"scene_{scene.index}",
+                            reference_image_path=ref_img_path,
                             aspect_ratio=context.aspect_ratio
                         )
                         if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():

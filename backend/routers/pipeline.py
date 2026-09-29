@@ -790,6 +790,11 @@ class AgentPipelineStartRequest(BaseModel):
     skill_id: Optional[str] = None
     reference_image: Optional[str] = None
     total_duration: Optional[float] = None
+    character_id: Optional[str] = None
+    character_name: Optional[str] = None
+    character_image: Optional[str] = None
+    character_prompt: Optional[str] = None
+    character_lock: bool = False
 
 @router.post("/agent/start")
 async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request):
@@ -797,6 +802,47 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
 
     # Extract smart parameters from prompt
     smart_params = extract_prompt_parameters(req.prompt)
+
+    # Resolve Character Lock & Identity Consistency
+    char_id = req.character_id
+    char_name = req.character_name
+    char_image = req.character_image
+    char_prompt = req.character_prompt
+    char_lock = bool(req.character_lock or char_id or char_name)
+
+    if not char_id:
+        mention_match = re.search(r'@(?:char_)?([a-zA-Z0-9_\-]+)', req.prompt)
+        if mention_match:
+            candidate_slug = mention_match.group(1).lower()
+            try:
+                from database import get_db_cursor
+                with get_db_cursor() as cur:
+                    cur.execute(
+                        "SELECT id, name, prompt, image_url, is_locked FROM characters WHERE lower(name) = ? OR lower(id) = ? OR lower(id) = ?",
+                        (candidate_slug, candidate_slug, f"char_{candidate_slug}")
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        char_id, char_name, char_prompt, char_image, _ = row
+                        char_lock = True
+            except Exception as e:
+                logger.warning("Failed to lookup character mention from db: %s", e)
+    elif char_id and (not char_prompt or not char_image):
+        try:
+            from database import get_db_cursor
+            with get_db_cursor() as cur:
+                cur.execute("SELECT name, prompt, image_url, is_locked FROM characters WHERE id = ?", (char_id,))
+                row = cur.fetchone()
+                if row:
+                    if not char_name:
+                        char_name = row[0]
+                    if not char_prompt:
+                        char_prompt = row[1]
+                    if not char_image:
+                        char_image = row[2]
+                    char_lock = True
+        except Exception as e:
+            logger.warning("Failed to lookup character from db: %s", e)
 
     pipeline_id = f"pipeline_{uuid.uuid4().hex[:8]}"
     
@@ -814,7 +860,12 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         voice_id=req.voice_id,
         apply_brand_kit=smart_params.get("apply_brand_kit", req.apply_brand_kit),
         skill_id=smart_params.get("skill_id", req.skill_id),
-        reference_image=req.reference_image
+        reference_image=req.reference_image or char_image,
+        character_id=char_id,
+        character_name=char_name,
+        character_image=char_image,
+        character_prompt=char_prompt,
+        character_lock=char_lock
     )
     
     # Store additional parameters in project_brief
@@ -832,6 +883,9 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         
     if brief:
         context.project_brief = brief
+
+    if char_lock and char_name:
+        context.add_log("Character Studio", f"Character Lock active: '{char_name}'. Enforcing 100% facial identity & styling continuity across all scenes.")
 
     # Track Client IP and Geo-Location in Activity Logs
     client_ip = extract_client_ip(request)

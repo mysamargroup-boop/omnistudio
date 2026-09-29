@@ -21,13 +21,22 @@ class ScriptWriterAgent(BaseAgent):
         
         num_scenes = context.num_scenes or 4
         dur = float(context.project_brief.get("scene_duration", 4.0) if context.project_brief else 4.0)
+
+        char_block = ""
+        if context.character_lock and context.character_name:
+            char_block = f"""
+CHARACTER LOCK ENFORCED:
+- Locked Protagonist Name: {context.character_name}
+- Appearance & Visual Styling: {context.character_prompt or "Maintain exact facial identity and styling"}
+- Continuity Directive: You MUST feature {context.character_name} across ALL {num_scenes} scenes. Keep the exact same appearance, attire, and character traits in every single scene description.
+"""
         
         prompt_instruction = f"""You are an award-winning cinematic screenwriter and film director.
 Write a rich, emotionally captivating {num_scenes}-scene cinematic screenplay based on this concept:
 Concept: "{context.user_prompt}"
 Visual Style: "{context.style}"
 Total Scenes: {num_scenes}
-
+{char_block}
 CRITICAL RULES:
 1. CHARACTER & OUTFIT CONTINUITY: If a character/protagonist is present (e.g. woman, model, bride, man, actor), the EXACT SAME character, same facial identity, same outfit, and same styling MUST be maintained across ALL scenes. Do not change the protagonist between scenes or replace them with random standalone objects.
 2. If the user prompt does NOT contain explicit dialogues, compose evocative, culturally authentic and poetic narration or character dialogue that fits the scene perfectly (e.g., celebratory wedding poetry/narration for an Indian bridal dance).
@@ -131,8 +140,9 @@ CRITICAL RULES:
             ))
 
         total_sc_dur = sum(s.duration_seconds for s in context.scenes)
+        char_msg = f" Enforced character continuity for '{context.character_name}'." if context.character_lock and context.character_name else ""
         context.add_log(
             self.name,
-            f"Screenplay formulated with authentic scene narrations across {len(context.scenes)} scenes (total: ~{int(total_sc_dur)}s)."
+            f"Screenplay formulated with authentic scene narrations across {len(context.scenes)} scenes (total: ~{int(total_sc_dur)}s).{char_msg}"
         )
         return AgentResult(success=True, data={"scene_count": len(context.scenes)})

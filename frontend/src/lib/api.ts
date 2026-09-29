@@ -367,11 +367,17 @@ export const api = {
     aspect_ratio?: string;
     image_model?: string;
     video_model?: string;
+    total_duration?: number;
     voice_provider?: string;
     voice_id?: string;
     apply_brand_kit?: boolean;
     skill_id?: string;
     reference_image?: string;
+    character_id?: string;
+    character_name?: string;
+    character_image?: string;
+    character_prompt?: string;
+    character_lock?: boolean;
   }) => fetchApi<any>("/api/pipeline/agent/start", { method: "POST", body: JSON.stringify(data) }),
 
   streamAgentPipeline: async (
