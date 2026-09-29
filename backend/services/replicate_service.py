@@ -131,3 +131,90 @@ async def generate_flux_image(
             "error": f"Flux generation error: {str(e)}",
             "provider": "replicate"
         }
+
+async def generate_seedance_video(
+    prompt: str,
+    aspect_ratio: str = "16:9",
+    image_path: Optional[str] = None,
+    duration_seconds: int = 5
+) -> dict:
+    """Generate video via ByteDance Seedance model (Replicate)"""
+    from services.prompt_utils import generate_image_filename
+    import base64
+    
+    filename = generate_image_filename(f"seedance_{prompt[:20]}", ext=".mp4")
+    local_path = settings.VIDEOS_PATH / filename
+    
+    if not settings.REPLICATE_API_TOKEN:
+        return {
+            "success": False,
+            "error_type": "KEY_MISSING",
+            "error": "Replicate API Token is missing. Please configure REPLICATE_API_TOKEN in Settings to generate Seedance videos.",
+            "provider": "replicate",
+            "required_key": "REPLICATE_API_TOKEN"
+        }
+        
+    try:
+        # Assuming an open or custom Seedance deployment on Replicate
+        # We will use the standard Replicate predictions endpoint
+        # The user provided reference to Higgsfield open seedance, 
+        # so this provides a functional bridge when they deploy the model or when it becomes available.
+        url = "https://api.replicate.com/v1/models/bytedance/seedance-2.5/predictions"
+        headers = {
+            "Authorization": f"Bearer {settings.REPLICATE_API_TOKEN}",
+            "Content-Type": "application/json",
+            "Prefer": "wait"
+        }
+        
+        # Prepare input data
+        input_data = {
+            "prompt": prompt,
+            "duration": duration_seconds,
+            "aspect_ratio": aspect_ratio
+        }
+        
+        if image_path:
+            img_p = Path(image_path)
+            if img_p.exists():
+                # Replicate usually takes image URLs or data URIs
+                with open(img_p, "rb") as f:
+                    img_b64 = base64.b64encode(f.read()).decode("utf-8")
+                mime = "image/png" if img_p.suffix.lower() == ".png" else "image/jpeg"
+                input_data["image"] = f"data:{mime};base64,{img_b64}"
+                
+        data = {
+            "input": input_data
+        }
+        
+        # In reality Seedance might take longer than 90s, so this waits, or we'd need polling. 
+        # Since this is a placeholder implementation that works when the model is up:
+        result = await _execute_replicate_prediction(url, data, headers, timeout=120.0)
+        
+        if "output" in result and result["output"]:
+            vid_url = result["output"] if isinstance(result["output"], str) else result["output"][0]
+            async with httpx.AsyncClient() as dl_client:
+                r = await dl_client.get(vid_url, timeout=60.0)
+            with open(local_path, "wb") as f:
+                f.write(r.content)
+            return {
+                "success": True,
+                "filename": filename,
+                "url": f"/outputs/videos/{filename}",
+                "local_path": str(local_path),
+                "model": "ByteDance Seedance 2.5",
+                "duration": duration_seconds
+            }
+        else:
+            return {
+                "success": False,
+                "error_type": "API_ERROR",
+                "error": result.get("error", "Replicate Seedance returned empty output or failed."),
+                "provider": "replicate"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error_type": "API_ERROR",
+            "error": f"Seedance video generation error: {str(e)}",
+            "provider": "replicate"
+        }

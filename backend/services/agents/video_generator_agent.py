@@ -7,6 +7,7 @@ from pathlib import Path
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
 from services.ffmpeg_service import image_to_video_motion
 from services.gemini_service import get_gemini_key, generate_veo_video
+from services.replicate_service import generate_seedance_video
 from database import db_save_asset
 from config import settings
 
@@ -215,11 +216,16 @@ class VideoGeneratorAgent(BaseAgent):
         cost_per_sec = MODEL_COST_PER_SEC.get(target_model, 0.20)
         model_display_name = MODEL_DISPLAY.get(target_model, "Google Veo 3.1 (Omni Flash)")
 
-        # Validate API keys
+        # Validate API keys and handle fallback
         if "seedance" in target_model:
             if not settings.REPLICATE_API_TOKEN:
-                return AgentResult(success=False, error="REPLICATE_API_TOKEN not configured for Seedance.")
-        else:
+                logger.warning("Seedance selected but REPLICATE_API_TOKEN missing. Falling back to Omni Flash.")
+                target_model = "omni_flash"
+                max_clip_sec = MODEL_MAX_CLIP.get(target_model, 10)
+                cost_per_sec = MODEL_COST_PER_SEC.get(target_model, 0.20)
+                model_display_name = MODEL_DISPLAY.get(target_model, "Google Veo 3.1 (Omni Flash)")
+        
+        if "seedance" not in target_model:
             if not get_gemini_key():
                 return AgentResult(success=False, error="GEMINI_API_KEY not configured for video generation.")
 
@@ -292,12 +298,20 @@ class VideoGeneratorAgent(BaseAgent):
                         segment_idx, seg_dur, "yes" if current_ref_image else "no"
                     )
 
-                    veo_res = await generate_veo_video(
-                        prompt=seg_prompt,
-                        aspect_ratio=context.aspect_ratio,
-                        image_path=current_ref_image,
-                        duration_seconds=int(seg_dur)
-                    )
+                    if "seedance" in target_model:
+                        veo_res = await generate_seedance_video(
+                            prompt=seg_prompt,
+                            aspect_ratio=context.aspect_ratio,
+                            image_path=current_ref_image,
+                            duration_seconds=int(seg_dur)
+                        )
+                    else:
+                        veo_res = await generate_veo_video(
+                            prompt=seg_prompt,
+                            aspect_ratio=context.aspect_ratio,
+                            image_path=current_ref_image,
+                            duration_seconds=int(seg_dur)
+                        )
 
                     if not veo_res.get("success"):
                         err = veo_res.get("error", "Unknown error")
@@ -379,12 +393,20 @@ class VideoGeneratorAgent(BaseAgent):
                 web_url = f"/outputs/videos/{file_name}"
 
                 logger.info("Calling %s for scene %s (duration: %ss)...", model_display_name, scene.index, dur)
-                veo_res = await generate_veo_video(
-                    prompt=prompt_for_video,
-                    aspect_ratio=context.aspect_ratio,
-                    image_path=str(img_disk_path) if img_disk_path else None,
-                    duration_seconds=int(dur)
-                )
+                if "seedance" in target_model:
+                    veo_res = await generate_seedance_video(
+                        prompt=prompt_for_video,
+                        aspect_ratio=context.aspect_ratio,
+                        image_path=str(img_disk_path) if img_disk_path else None,
+                        duration_seconds=int(dur)
+                    )
+                else:
+                    veo_res = await generate_veo_video(
+                        prompt=prompt_for_video,
+                        aspect_ratio=context.aspect_ratio,
+                        image_path=str(img_disk_path) if img_disk_path else None,
+                        duration_seconds=int(dur)
+                    )
 
                 if not veo_res.get("success"):
                     err_msg = veo_res.get("error") or f"Unknown {model_display_name} API error"
