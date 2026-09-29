@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -62,21 +63,32 @@ jobs:
           command_timeout: 30m
           script_stop: true
           script: |
-            echo "🚀 Logging into GHCR on VPS securely..."
+            echo "Logging into GHCR on VPS securely..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             cd /home/omnistudio
             
-            echo "🔄 Pulling latest securely-built images from GHCR..."
+            echo "Pulling latest securely-built images from GHCR..."
             docker compose pull
             
-            echo "🚀 Starting OmniStudio containers..."
-            docker compose up -d
+            echo "Gracefully stopping and removing any conflicting stale containers..."
+            docker compose down --remove-orphans || true
+            docker rm -f $(docker ps -a -q --filter "name=omnistudio") 2>/dev/null || true
             
-            echo "🧹 Cleaning up dangling images..."
+            echo "Starting OmniStudio containers with force-recreate..."
+            docker compose up -d --remove-orphans --force-recreate
+            
+            echo "Waiting for container startup..."
+            sleep 8
+            
+            echo "Cleaning up dangling images..."
             docker image prune -f
             
-            echo "✅ Verifying containers are running:"
+            echo "Verifying containers are running:"
             docker ps --filter "name=omnistudio" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             
-            echo "🎉 Secure Deployment Completed Successfully!"
+            echo "Probing container connectivity locally on VPS..."
+            curl -IsS http://localhost:3060 | head -n 5 || true
+            curl -IsS http://localhost:8050/api/health | head -n 5 || true
+            
+            echo "Deployment Completed Successfully!"

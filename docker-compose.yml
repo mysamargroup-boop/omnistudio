@@ -90,8 +90,7 @@ services:
       retries: 3
       start_period: 20s
     depends_on:
-      omni-backend:
-        condition: service_healthy
+      - omni-backend
     networks:
       - omnistudio-network
 
