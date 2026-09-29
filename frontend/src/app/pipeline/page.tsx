@@ -1274,6 +1274,7 @@ function PipelineContent() {
               onChange={(v) => setImageModel(v)}
               size="sm"
               openDirection="up"
+              align="right"
               triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#101420] text-xs py-2 shadow-xs"
               menuClassName="bg-white/95 dark:bg-[#0c101d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/10"
             />
@@ -1312,6 +1313,7 @@ function PipelineContent() {
               onChange={(v) => setVideoModel(v)}
               size="sm"
               openDirection="up"
+              align="right"
               triggerClassName="rounded-xl border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#101420] text-xs py-2 shadow-xs"
               menuClassName="bg-white/95 dark:bg-[#0c101d]/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/10"
             />

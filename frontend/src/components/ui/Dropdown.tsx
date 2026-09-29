@@ -24,7 +24,7 @@ export interface DropdownProps {
   menuClassName?: string;
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
-  align?: "left" | "right";
+  align?: "left" | "right" | "auto";
   openDirection?: "up" | "down" | "auto";
   actionItem?: {
     label: string;
@@ -44,7 +44,7 @@ export default function Dropdown({
   menuClassName,
   disabled = false,
   size = "md",
-  align = "left",
+  align = "auto",
   openDirection = "auto",
   actionItem,
 }: DropdownProps) {
@@ -52,6 +52,7 @@ export default function Dropdown({
   const containerRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [actualDirection, setActualDirection] = useState<"up" | "down">("down");
+  const [actualAlign, setActualAlign] = useState<"left" | "right">("left");
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -60,6 +61,7 @@ export default function Dropdown({
       const idx = options.findIndex((opt) => opt.value === value);
       setFocusedIndex(idx >= 0 ? idx : 0);
 
+      // Vertical auto-placement
       if (openDirection === "up") {
         setActualDirection("up");
       } else if (openDirection === "down") {
@@ -77,8 +79,25 @@ export default function Dropdown({
           }
         }
       }
+
+      // Horizontal auto-placement (prevents clipping on right side of viewport)
+      if (align === "right") {
+        setActualAlign("right");
+      } else if (align === "left") {
+        setActualAlign("left");
+      } else {
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const spaceRight = window.innerWidth - rect.left;
+          if (spaceRight < 360) {
+            setActualAlign("right");
+          } else {
+            setActualAlign("left");
+          }
+        }
+      }
     }
-  }, [isOpen, value, options, openDirection]);
+  }, [isOpen, value, options, openDirection, align]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -166,9 +185,9 @@ export default function Dropdown({
       {isOpen && (
         <div
           className={cn(
-            "absolute z-[9999] min-w-full sm:min-w-[340px] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
+            "absolute z-[9999] min-w-full sm:min-w-[320px] max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
             actualDirection === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5",
-            align === "right" ? "right-0" : "left-0",
+            actualAlign === "right" ? "right-0" : "left-0",
             menuClassName
           )}
         >
