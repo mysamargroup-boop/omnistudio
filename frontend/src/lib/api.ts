@@ -460,7 +460,13 @@ export const api = {
     }),
 
   // Assets
-  getAllAssets: () => fetchApi<any>("/api/assets/all"),
+  getAllAssets: (offset?: number, limit?: number) => {
+    const params = new URLSearchParams();
+    if (offset !== undefined) params.append("offset", String(offset));
+    if (limit !== undefined) params.append("limit", String(limit));
+    const qs = params.toString();
+    return fetchApi<any>(`/api/assets/all${qs ? `?${qs}` : ""}`);
+  },
   getVaultImages: () => fetchApi<any>("/api/assets/images"),
   getVaultVideos: () => fetchApi<any>("/api/assets/videos"),
   getVaultAudios: () => fetchApi<any>("/api/assets/audio"),

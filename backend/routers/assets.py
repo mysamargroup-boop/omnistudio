@@ -129,11 +129,24 @@ import logging
 
 assets_logger = logging.getLogger("omnistudio.assets")
 
+_PROMPT_MAP_CACHE: dict = {}
+_PROMPT_MAP_CACHE_TIMESTAMP: float = 0.0
+_PROMPT_MAP_CACHE_TTL: float = 60.0
+
+def invalidate_prompt_map_cache():
+    global _PROMPT_MAP_CACHE_TIMESTAMP
+    _PROMPT_MAP_CACHE_TIMESTAMP = 0.0
+
 def get_assets_prompt_map() -> dict[str, str]:
     """
     Returns a mapping of {filename: prompt} for assets generated on this platform.
-    Pulls from usage_logs.json, SQLite generations table, and assets metadata.
+    Cached for 60s to eliminate repetitive multi-source I/O overhead.
     """
+    global _PROMPT_MAP_CACHE, _PROMPT_MAP_CACHE_TIMESTAMP
+    now = time.time()
+    if _PROMPT_MAP_CACHE and (now - _PROMPT_MAP_CACHE_TIMESTAMP) < _PROMPT_MAP_CACHE_TTL:
+        return _PROMPT_MAP_CACHE
+
     prompt_map: dict[str, str] = {}
 
     # 1. From usage_logs.json (covers all recent UI generations)
@@ -187,27 +200,46 @@ def get_assets_prompt_map() -> dict[str, str]:
     except Exception as e:
         assets_logger.debug("Prompt map assets error: %s", e)
 
+    _PROMPT_MAP_CACHE = prompt_map
+    _PROMPT_MAP_CACHE_TIMESTAMP = now
     return prompt_map
 
-def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None) -> list[dict]:
+def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None, limit: int = 1500) -> list[dict]:
+    """
+    High-performance directory scanner using os.scandir with cached stats.
+    Avoids separate stat calls and construction of Path objects for faster traversal.
+    """
     files = []
     if not dir_path.exists():
         return files
     if prompt_map is None:
         prompt_map = get_assets_prompt_map()
-    for f in sorted(dir_path.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
-        if f.is_file() and not f.name.startswith("."):
+
+    try:
+        entries = []
+        with os.scandir(str(dir_path)) as it:
+            for entry in it:
+                if entry.is_file() and not entry.name.startswith("."):
+                    try:
+                        entries.append(entry)
+                    except (OSError, FileNotFoundError):
+                        continue
+
+        # Sort by modification time descending
+        entries.sort(key=lambda e: e.stat().st_mtime, reverse=True)
+
+        url_prefix = f"/outputs/trash/{media_type}" if is_trash else f"/outputs/{media_type}"
+        for entry in entries[:limit]:
             try:
-                stat = f.stat()
+                stat = entry.stat()
                 # Skip 0-byte dummy files or corrupt files smaller than 100 bytes
                 if stat.st_size <= 100:
                     continue
-                url_prefix = f"/outputs/trash/{media_type}" if is_trash else f"/outputs/{media_type}"
-                prompt_val = prompt_map.get(f.name)
+                prompt_val = prompt_map.get(entry.name)
                 files.append({
-                    "filename": f.name,
-                    "url": f"{url_prefix}/{f.name}",
-                    "local_path": str(f),
+                    "filename": entry.name,
+                    "url": f"{url_prefix}/{entry.name}",
+                    "local_path": entry.path,
                     "size_bytes": stat.st_size,
                     "size_mb": round(stat.st_size / (1024 * 1024), 2),
                     "modified": stat.st_mtime,
@@ -218,6 +250,8 @@ def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prom
                 })
             except (OSError, FileNotFoundError):
                 continue
+    except Exception as e:
+        assets_logger.error("scan_directory error for %s: %s", dir_path, e)
     return files
 
 from services.security_service import sanitize_filename
@@ -398,50 +432,69 @@ import time
 
 _ASSETS_CACHE: dict = {}
 _ASSETS_CACHE_TIMESTAMP: float = 0
-_CACHE_TTL_SECONDS: float = 15.0
+_CACHE_TTL_SECONDS: float = 30.0
 
 def invalidate_assets_cache():
-    global _ASSETS_CACHE_TIMESTAMP
-    _ASSETS_CACHE_TIMESTAMP = 0
+    global _ASSETS_CACHE_TIMESTAMP, _PROMPT_MAP_CACHE_TIMESTAMP
+    _ASSETS_CACHE_TIMESTAMP = 0.0
+    _PROMPT_MAP_CACHE_TIMESTAMP = 0.0
 
 @router.get("/all")
 @limiter.limit("60/minute")
-async def get_all_assets(request: Request):
+async def get_all_assets(
+    request: Request,
+    offset: int = Query(0, ge=0),
+    limit: Optional[int] = Query(None, ge=1, le=2000)
+):
     global _ASSETS_CACHE, _ASSETS_CACHE_TIMESTAMP
     now = time.time()
     if _ASSETS_CACHE and (now - _ASSETS_CACHE_TIMESTAMP) < _CACHE_TTL_SECONDS:
-        return _ASSETS_CACHE
+        cached = _ASSETS_CACHE
+    else:
+        prompt_map = await asyncio.to_thread(get_assets_prompt_map)
+        (
+            images, videos, audio, final,
+            trash_images, trash_videos, trash_audio, trash_final
+        ) = await asyncio.gather(
+            asyncio.to_thread(scan_directory, settings.IMAGES_PATH, "images", False, prompt_map),
+            asyncio.to_thread(scan_directory, settings.VIDEOS_PATH, "videos", False, prompt_map),
+            asyncio.to_thread(scan_directory, settings.AUDIO_PATH, "audio", False, prompt_map),
+            asyncio.to_thread(scan_directory, settings.FINAL_PATH, "final", False, prompt_map),
+            asyncio.to_thread(scan_directory, settings.TRASH_PATH / "images", "images", True, prompt_map),
+            asyncio.to_thread(scan_directory, settings.TRASH_PATH / "videos", "videos", True, prompt_map),
+            asyncio.to_thread(scan_directory, settings.TRASH_PATH / "audio", "audio", True, prompt_map),
+            asyncio.to_thread(scan_directory, settings.TRASH_PATH / "final", "final", True, prompt_map),
+        )
 
-    prompt_map = await asyncio.to_thread(get_assets_prompt_map)
-    (
-        images, videos, audio, final,
-        trash_images, trash_videos, trash_audio, trash_final
-    ) = await asyncio.gather(
-        asyncio.to_thread(scan_directory, settings.IMAGES_PATH, "images", False, prompt_map),
-        asyncio.to_thread(scan_directory, settings.VIDEOS_PATH, "videos", False, prompt_map),
-        asyncio.to_thread(scan_directory, settings.AUDIO_PATH, "audio", False, prompt_map),
-        asyncio.to_thread(scan_directory, settings.FINAL_PATH, "final", False, prompt_map),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "images", "images", True, prompt_map),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "videos", "videos", True, prompt_map),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "audio", "audio", True, prompt_map),
-        asyncio.to_thread(scan_directory, settings.TRASH_PATH / "final", "final", True, prompt_map),
-    )
+        total_trash = len(trash_images) + len(trash_videos) + len(trash_audio) + len(trash_final)
+        total_trash_bytes = sum(f["size_bytes"] for f in (trash_images + trash_videos + trash_audio + trash_final))
 
-    total_trash = len(trash_images) + len(trash_videos) + len(trash_audio) + len(trash_final)
-    total_trash_bytes = sum(f["size_bytes"] for f in (trash_images + trash_videos + trash_audio + trash_final))
+        cached = {
+            "images": images,
+            "videos": videos,
+            "audio": audio,
+            "final": final,
+            "total": len(images) + len(videos) + len(audio) + len(final),
+            "trash_count": total_trash,
+            "trash_bytes": total_trash_bytes
+        }
+        _ASSETS_CACHE = cached
+        _ASSETS_CACHE_TIMESTAMP = now
 
-    result = {
-        "images": images,
-        "videos": videos,
-        "audio": audio,
-        "final": final,
-        "total": len(images) + len(videos) + len(audio) + len(final),
-        "trash_count": total_trash,
-        "trash_bytes": total_trash_bytes
-    }
-    _ASSETS_CACHE = result
-    _ASSETS_CACHE_TIMESTAMP = now
-    return result
+    if limit is not None:
+        return {
+            "images": cached["images"][offset:offset + limit],
+            "videos": cached["videos"][offset:offset + limit],
+            "audio": cached["audio"][offset:offset + limit],
+            "final": cached["final"][offset:offset + limit],
+            "total": cached["total"],
+            "offset": offset,
+            "limit": limit,
+            "trash_count": cached["trash_count"],
+            "trash_bytes": cached["trash_bytes"]
+        }
+
+    return cached
 
 
 @router.get("/prompt/{filename}")
@@ -507,6 +560,8 @@ async def move_to_trash(req: BulkActionRequest, request: Request):
             trashed.append(item.filename)
         else:
             failed.append(item.filename)
+    if trashed:
+        invalidate_assets_cache()
     return {
         "success": True,
         "trashed_count": len(trashed),
@@ -526,6 +581,8 @@ async def restore_from_trash(req: BulkActionRequest, request: Request):
             restored.append(item.filename)
         else:
             failed.append(item.filename)
+    if restored:
+        invalidate_assets_cache()
     return {
         "success": True,
         "restored_count": len(restored),
@@ -548,6 +605,8 @@ async def bulk_delete_assets(req: BulkActionRequest, request: Request):
             processed.append(item.filename)
         else:
             failed.append(item.filename)
+    if processed:
+        invalidate_assets_cache()
     return {
         "success": True,
         "permanent": req.permanent,
@@ -571,6 +630,8 @@ async def empty_trash(request: Request):
                     await delete_file_from_r2(object_name)
                     db_delete_asset(filename=filename, asset_type=media_type)
                     purged.append(filename)
+    if purged:
+        invalidate_assets_cache()
     return {
         "success": True,
         "purged_count": len(purged),
@@ -590,11 +651,13 @@ async def delete_asset(
     if permanent or from_trash:
         ok = await safe_permanent_delete(media_type, filename, from_trash=from_trash)
         if ok:
+            invalidate_assets_cache()
             return {"success": True, "deleted": filename, "permanent": True}
         return {"success": False, "error": "File not found"}
     else:
         ok = safe_move_to_trash(media_type, filename)
         if ok:
+            invalidate_assets_cache()
             return {"success": True, "trashed": filename, "permanent": False}
         return {"success": False, "error": "File not found or could not move to trash"}
 
@@ -637,6 +700,7 @@ async def rename_asset(req: RenameAssetRequest, request: Request):
 
     # Update database record
     db_rename_asset(old_clean, new_clean, req.media_type)
+    invalidate_assets_cache()
 
     return {
         "success": True,
