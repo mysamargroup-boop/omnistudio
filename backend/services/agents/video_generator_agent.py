@@ -230,9 +230,10 @@ class VideoGeneratorAgent(BaseAgent):
         for scene in scenes_to_process:
             # ── Determine target duration for this scene ──
             if is_single_video:
-                dur = 6.0
-            elif total_duration_from_brief:
-                dur = max(float(total_duration_from_brief), 4.0)
+                dur = total_duration_from_brief if total_duration_from_brief else 6.0
+            elif total_duration_from_brief and len(context.scenes) > 0:
+                # Distribute total duration across scenes
+                dur = max(float(total_duration_from_brief) / len(context.scenes), 4.0)
             else:
                 dur = max(float(scene.duration_seconds or 4.0), 4.0)
 
