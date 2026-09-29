@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -109,13 +109,25 @@ const DIFFUSION_MODELS: PipelineModelOption[] = [
 ];
 
 const VIDEO_MODELS: PipelineModelOption[] = [
-  { id: "omni_flash", name: "Google Omni Flash (Veo 3.1)", badge: "SMART", provider: "Google", description: "Smooth cinematic motion & temporal consistency", active: true },
-  { id: "seedance", name: "Seedance", badge: "PRO", provider: "ByteDance", description: "Dynamic camera motion & natural organic movement", active: true }
+  { id: "omni_flash", name: "Google Veo 3.1 (Omni Flash)", badge: "SMART", provider: "Google DeepMind", description: "Smooth cinematic motion, temporal consistency", active: true },
+  { id: "seedance", name: "Seedance 2.5", badge: "PRO", provider: "ByteDance", description: "Dynamic camera, natural organic movement", active: false },
+  { id: "kling_1_6", name: "Kling 1.6 Pro", badge: "CINEMA", provider: "Kuaishou", description: "Professional cinematic video, 1080p output", active: false },
+  { id: "runway_gen4", name: "Runway Gen-4", badge: "SOTA", provider: "Runway", description: "State-of-the-art motion fidelity & control", active: false },
+  { id: "pika_2_2", name: "Pika 2.2", badge: "FAST", provider: "Pika Labs", description: "Fast stylized video with scene control", active: false },
+  { id: "hailuo_minimax", name: "Hailuo AI (MiniMax)", badge: "NEW", provider: "MiniMax", description: "High-quality character consistency", active: false },
+  { id: "sora", name: "OpenAI Sora", badge: "PREMIUM", provider: "OpenAI", description: "World-simulation video generation", active: false },
+  { id: "luma_ray3", name: "Luma Ray 3", badge: "3D", provider: "Luma AI", description: "Photorealistic 3D-aware video synthesis", active: false },
 ];
 
 const VIDEO_DURATIONS: Record<string, number[]> = {
   "omni_flash": [4, 6, 8, 10],
-  "seedance": [4, 5, 8, 10, 12, 15, 20, 30]
+  "seedance": [4, 5, 8, 10, 12, 15, 20, 30],
+  "kling_1_6": [5, 10],
+  "runway_gen4": [4, 8, 10, 16],
+  "pika_2_2": [3, 5, 8],
+  "hailuo_minimax": [4, 6],
+  "sora": [5, 10, 15, 20],
+  "luma_ray3": [4, 5],
 };
 
 const STYLES = [

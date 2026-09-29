@@ -166,7 +166,7 @@ export default function Dropdown({
       {isOpen && (
         <div
           className={cn(
-            "absolute z-[9999] min-w-full sm:min-w-[240px] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
+            "absolute z-[9999] min-w-full sm:min-w-[340px] max-h-64 overflow-y-auto rounded-xl bg-white/95 dark:bg-[#0e121e]/95 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 custom-scrollbar ring-1 ring-black/5",
             actualDirection === "up" ? "bottom-full mb-1.5" : "top-full mt-1.5",
             align === "right" ? "right-0" : "left-0",
             menuClassName
