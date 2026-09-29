@@ -28,7 +28,7 @@ interface AgentCardProps {
   mode?: string;
 }
 
-export default function AgentCard({
+function AgentCardComponent({
   agentId,
   status,
   output,
@@ -340,3 +340,6 @@ export default function AgentCard({
     </div>
   );
 }
+
+const AgentCard = React.memo(AgentCardComponent);
+export default AgentCard;

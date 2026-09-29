@@ -859,9 +859,16 @@ async def stream_agent_pipeline(pipeline_id: str, request: Request):
             logger.warning(f"Initial state load for {pipeline_id}: {e}")
 
         await orchestrator.attach_listener(pipeline_id, q)
+        stream_start_time = time.time()
+        max_stream_duration = 900.0  # 15 minutes max stream duration safeguard
         
         try:
             while True:
+                # Max stream lifetime safeguard
+                if time.time() - stream_start_time > max_stream_duration:
+                    logger.warning(f"SSE stream for pipeline {pipeline_id} reached {max_stream_duration}s safety timeout; concluding stream")
+                    break
+
                 try:
                     ctx_dict = await asyncio.wait_for(q.get(), timeout=1.0)
                     yield f"data: {json.dumps(ctx_dict)}\n\n"

@@ -431,101 +431,103 @@ function PipelineContent() {
     if (!event) return;
     pendingEventRef.current = null;
 
-    if (event.project_brief && Object.keys(event.project_brief).length > 0) {
-      setProjectBrief(event.project_brief);
-    }
-    if (event.scenes && Array.isArray(event.scenes)) {
-      setChoreographedScenes(event.scenes);
-    }
-    if (typeof event.total_cost_usd === "number") setTotalCostUsd(event.total_cost_usd);
-    if (typeof event.total_cost_inr === "number") setTotalCostInr(event.total_cost_inr);
-    if (event.master_video_path) {
-      setMasterVideo(event.master_video_path);
-    }
-    if (event.image_model && event.image_model !== imageModel) {
-      setImageModel(event.image_model);
-    }
-
-    if (event.state === "complete" || event.master_video_path) {
-      setRetentionScore(92.4);
-      setSocialCopy({
-        title: `${event.project_brief?.title || "Cinematic Masterpiece"} | Official 4K AI Visuals`,
-        caption: `Produced autonomously using OmniStudio Agentic OS 5.0 with 22 specialized AI agents.\n\nCinematic Palette: ${style} | Audio: Neural Speech Dubbing`,
-        hashtags: ["#OmniStudio", "#AIFilmmaking", "#GenerativeAI", "#CinematicAI", "#CreativeOS"],
-      });
-      setAbHookVariants([
-        "Hook A: Atmospheric wide shot establishing tension and epic scale",
-        "Hook B: Kinetic close-up tracking shot with rhythmic bass drop",
-      ]);
-    }
-
-    if (event.agent_logs && Array.isArray(event.agent_logs)) {
-      setActivityLogs(
-        event.agent_logs.map((l: any) => ({
-          timestamp: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
-          agent: l.agent?.toLowerCase().replace("agent", "") || "system",
-          message: l.message,
-          cost_usd: l.cost_usd,
-          cost_inr: l.cost_inr,
-          type: "info",
-        }))
-      );
-    }
-
-    const currentState = event.state as string;
-    const pausedAfter = event.paused_after_state || (currentState === "paused" ? (choreographedScenes.some((s: any) => s.image_path) ? "generating_images" : "scripting") : null);
-
-    if (currentState === "failed") {
-      setLaunchError(event.error_message || "Agent execution encountered an error");
-      setRunning(false);
-      setApprovalModalOpen(false);
-    } else if (currentState === "paused") {
-      setPausedState(pausedAfter || "scripting");
-      setApprovalModalOpen(true);
-    } else {
-      setApprovalModalOpen(false);
-    }
-
-    const effectiveState = currentState === "paused" && pausedAfter ? pausedAfter : currentState;
-    const currentAgentId = STATE_TO_AGENT_ID[effectiveState];
-    const currentIndex = currentAgentId ? AGENT_ORDER.indexOf(currentAgentId) : -1;
-
-    setAgentStatuses((prev) => {
-      const updated: Record<string, AgentNodeStatus> = { ...prev };
-      if (currentState === "complete") {
-        AGENT_ORDER.forEach((id) => {
-          updated[id] = { state: "complete", message: "Completed successfully" };
-        });
-        const pId = event.pipeline_id || pipelineId;
-        if (pId) {
-          completeActiveJob(pId);
-          try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
-        }
-      } else if (currentState === "paused") {
-        if (currentAgentId) {
-          updated[currentAgentId] = { state: "paused", message: `Awaiting directorial approval (${pausedAfter?.toUpperCase() || "GATE"})` };
-        }
-      } else if (currentState === "failed") {
-        if (currentAgentId) {
-          updated[currentAgentId] = { state: "failed", message: event.error_message || "Agent execution failed" };
-        }
-        const pId = event.pipeline_id || pipelineId;
-        if (pId) {
-          completeActiveJob(pId);
-          try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
-        }
-      } else {
-        AGENT_ORDER.forEach((id, idx) => {
-          if (idx < currentIndex) {
-            updated[id] = { state: "complete", message: "Completed" };
-          } else if (idx === currentIndex) {
-            updated[id] = { state: "running", message: "Synthesizing and executing..." };
-          } else {
-            updated[id] = { state: "pending", message: "In production queue" };
-          }
-        });
+    React.startTransition(() => {
+      if (event.project_brief && Object.keys(event.project_brief).length > 0) {
+        setProjectBrief(event.project_brief);
       }
-      return updated;
+      if (event.scenes && Array.isArray(event.scenes)) {
+        setChoreographedScenes(event.scenes);
+      }
+      if (typeof event.total_cost_usd === "number") setTotalCostUsd(event.total_cost_usd);
+      if (typeof event.total_cost_inr === "number") setTotalCostInr(event.total_cost_inr);
+      if (event.master_video_path) {
+        setMasterVideo(event.master_video_path);
+      }
+      if (event.image_model && event.image_model !== imageModel) {
+        setImageModel(event.image_model);
+      }
+
+      if (event.state === "complete" || event.master_video_path) {
+        setRetentionScore(92.4);
+        setSocialCopy({
+          title: `${event.project_brief?.title || "Cinematic Masterpiece"} | Official 4K AI Visuals`,
+          caption: `Produced autonomously using OmniStudio Agentic OS 5.0 with 22 specialized AI agents.\n\nCinematic Palette: ${style} | Audio: Neural Speech Dubbing`,
+          hashtags: ["#OmniStudio", "#AIFilmmaking", "#GenerativeAI", "#CinematicAI", "#CreativeOS"],
+        });
+        setAbHookVariants([
+          "Hook A: Atmospheric wide shot establishing tension and epic scale",
+          "Hook B: Kinetic close-up tracking shot with rhythmic bass drop",
+        ]);
+      }
+
+      if (event.agent_logs && Array.isArray(event.agent_logs)) {
+        setActivityLogs(
+          event.agent_logs.map((l: any) => ({
+            timestamp: l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+            agent: l.agent?.toLowerCase().replace("agent", "") || "system",
+            message: l.message,
+            cost_usd: l.cost_usd,
+            cost_inr: l.cost_inr,
+            type: "info",
+          }))
+        );
+      }
+
+      const currentState = event.state as string;
+      const pausedAfter = event.paused_after_state || (currentState === "paused" ? (choreographedScenes.some((s: any) => s.image_path) ? "generating_images" : "scripting") : null);
+
+      if (currentState === "failed") {
+        setLaunchError(event.error_message || "Agent execution encountered an error");
+        setRunning(false);
+        setApprovalModalOpen(false);
+      } else if (currentState === "paused") {
+        setPausedState(pausedAfter || "scripting");
+        setApprovalModalOpen(true);
+      } else {
+        setApprovalModalOpen(false);
+      }
+
+      const effectiveState = currentState === "paused" && pausedAfter ? pausedAfter : currentState;
+      const currentAgentId = STATE_TO_AGENT_ID[effectiveState];
+      const currentIndex = currentAgentId ? AGENT_ORDER.indexOf(currentAgentId) : -1;
+
+      setAgentStatuses((prev) => {
+        const updated: Record<string, AgentNodeStatus> = { ...prev };
+        if (currentState === "complete") {
+          AGENT_ORDER.forEach((id) => {
+            updated[id] = { state: "complete", message: "Completed successfully" };
+          });
+          const pId = event.pipeline_id || pipelineId;
+          if (pId) {
+            completeActiveJob(pId);
+            try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+          }
+        } else if (currentState === "paused") {
+          if (currentAgentId) {
+            updated[currentAgentId] = { state: "paused", message: `Awaiting directorial approval (${pausedAfter?.toUpperCase() || "GATE"})` };
+          }
+        } else if (currentState === "failed") {
+          if (currentAgentId) {
+            updated[currentAgentId] = { state: "failed", message: event.error_message || "Agent execution failed" };
+          }
+          const pId = event.pipeline_id || pipelineId;
+          if (pId) {
+            completeActiveJob(pId);
+            try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+          }
+        } else {
+          AGENT_ORDER.forEach((id, idx) => {
+            if (idx < currentIndex) {
+              updated[id] = { state: "complete", message: "Completed" };
+            } else if (idx === currentIndex) {
+              updated[id] = { state: "running", message: "Synthesizing and executing..." };
+            } else {
+              updated[id] = { state: "pending", message: "In production queue" };
+            }
+          });
+        }
+        return updated;
+      });
     });
   }, [style, pipelineId]);
 

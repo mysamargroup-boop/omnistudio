@@ -41,7 +41,7 @@ interface SceneReviewGridProps {
   compact?: boolean;
 }
 
-export default function SceneReviewGrid({
+function SceneReviewGridComponent({
   scenes,
   onRegenerateScene,
   onPreviewScene,
@@ -496,4 +496,7 @@ export default function SceneReviewGrid({
     </>
   );
 }
+
+const SceneReviewGrid = React.memo(SceneReviewGridComponent);
+export default SceneReviewGrid;
 

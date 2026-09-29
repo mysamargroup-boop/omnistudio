@@ -216,40 +216,36 @@ def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prom
         prompt_map = get_assets_prompt_map()
 
     try:
-        entries = []
+        items = []
         with os.scandir(str(dir_path)) as it:
             for entry in it:
                 if entry.is_file() and not entry.name.startswith("."):
                     try:
-                        entries.append(entry)
+                        st = entry.stat()
+                        # Skip 0-byte dummy files or corrupt files smaller than 100 bytes
+                        if st.st_size > 100:
+                            items.append((entry.name, entry.path, st.st_size, st.st_mtime))
                     except (OSError, FileNotFoundError):
                         continue
 
         # Sort by modification time descending
-        entries.sort(key=lambda e: e.stat().st_mtime, reverse=True)
+        items.sort(key=lambda x: x[3], reverse=True)
 
         url_prefix = f"/outputs/trash/{media_type}" if is_trash else f"/outputs/{media_type}"
-        for entry in entries[:limit]:
-            try:
-                stat = entry.stat()
-                # Skip 0-byte dummy files or corrupt files smaller than 100 bytes
-                if stat.st_size <= 100:
-                    continue
-                prompt_val = prompt_map.get(entry.name)
-                files.append({
-                    "filename": entry.name,
-                    "url": f"{url_prefix}/{entry.name}",
-                    "local_path": entry.path,
-                    "size_bytes": stat.st_size,
-                    "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                    "modified": stat.st_mtime,
-                    "type": media_type,
-                    "is_trash": is_trash,
-                    "prompt": prompt_val,
-                    "has_prompt": bool(prompt_val)
-                })
-            except (OSError, FileNotFoundError):
-                continue
+        for name, path, size, mtime in items[:limit]:
+            prompt_val = prompt_map.get(name)
+            files.append({
+                "filename": name,
+                "url": f"{url_prefix}/{name}",
+                "local_path": path,
+                "size_bytes": size,
+                "size_mb": round(size / (1024 * 1024), 2),
+                "modified": mtime,
+                "type": media_type,
+                "is_trash": is_trash,
+                "prompt": prompt_val,
+                "has_prompt": bool(prompt_val)
+            })
     except Exception as e:
         assets_logger.error("scan_directory error for %s: %s", dir_path, e)
     return files

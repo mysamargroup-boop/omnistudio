@@ -1,5 +1,6 @@
 import os
 import requests
+import httpx
 import logging
 import base64
 import asyncio
@@ -17,11 +18,12 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 @retry(
     wait=wait_exponential(multiplier=1, min=2, max=10),
     stop=stop_after_attempt(3),
-    retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.ConnectionError)),
+    retry=retry_if_exception_type((requests.exceptions.Timeout, requests.exceptions.ConnectionError, httpx.RequestError)),
     reraise=True
 )
 def _safe_gemini_post(url: str, json_payload: dict, timeout: int):
-    return requests.post(url, json=json_payload, timeout=timeout)
+    with httpx.Client(timeout=float(timeout)) as client:
+        return client.post(url, json=json_payload)
 
 def get_gemini_key() -> str:
     key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
@@ -159,11 +161,11 @@ async def generate_veo_video(
     }
 
     try:
-        r = _safe_gemini_post(url, payload, timeout=30)
+        r = await asyncio.to_thread(_safe_gemini_post, url, payload, timeout=30)
         if r.status_code == 404 and target_model == "veo-3.1-fast-generate-preview":
             fallback_url = f"{GEMINI_API_URL}/models/veo-2.0-generate-001:predictLongRunning?key={key}"
             logger.info("Veo 3.1 preview returned 404; retrying with official endpoint veo-2.0-generate-001...")
-            r = _safe_gemini_post(fallback_url, payload, timeout=30)
+            r = await asyncio.to_thread(_safe_gemini_post, fallback_url, payload, timeout=30)
 
         if r.status_code == 429:
             return {
@@ -192,22 +194,23 @@ async def generate_veo_video(
         # Poll operation
         poll_url = f"{GEMINI_API_URL}/{op_name.lstrip('/')}?key={key}" if not op_name.startswith("http") else f"{op_name}?key={key}"
         
-        # Poll up to 120 seconds (24 * 5s)
+        # Poll up to 120 seconds (24 * 5s) using async httpx client to prevent event loop blocking
         max_attempts = 24
         operation_result = None
-        for attempt in range(max_attempts):
-            await asyncio.sleep(5)
-            try:
-                poll_r = requests.get(poll_url, headers={"x-goog-api-key": key}, timeout=25)
-                if poll_r.status_code == 200:
-                    poll_json = poll_r.json()
-                    if poll_json.get("done"):
-                        operation_result = poll_json
-                        break
-                else:
-                    logger.warning("Veo poll check HTTP %s: %s", poll_r.status_code, poll_r.text[:200])
-            except Exception as pe:
-                logger.warning("Error during Veo poll attempt %d: %s", attempt, pe)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for attempt in range(max_attempts):
+                await asyncio.sleep(5)
+                try:
+                    poll_r = await client.get(poll_url, headers={"x-goog-api-key": key})
+                    if poll_r.status_code == 200:
+                        poll_json = poll_r.json()
+                        if poll_json.get("done"):
+                            operation_result = poll_json
+                            break
+                    else:
+                        logger.warning("Veo poll check HTTP %s: %s", poll_r.status_code, poll_r.text[:200])
+                except Exception as pe:
+                    logger.warning("Error during Veo poll attempt %d: %s", attempt, pe)
 
         if not operation_result:
             return {
@@ -262,15 +265,16 @@ async def generate_veo_video(
             if "generativelanguage.googleapis.com" in dl_url and "key=" not in dl_url:
                 dl_url = f"{dl_url}&key={key}" if "?" in dl_url else f"{dl_url}?key={key}"
             
-            dl_r = requests.get(dl_url, headers={"x-goog-api-key": key}, timeout=90)
-            if dl_r.status_code == 200:
-                with open(local_path, "wb") as f:
-                    f.write(dl_r.content)
-            else:
-                return {
-                    "success": False,
-                    "error": f"Failed to download generated Veo video from Google ({dl_r.status_code}): {dl_r.text[:200]}"
-                }
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                dl_r = await client.get(dl_url, headers={"x-goog-api-key": key})
+                if dl_r.status_code == 200:
+                    with open(local_path, "wb") as f:
+                        f.write(dl_r.content)
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Failed to download generated Veo video from Google ({dl_r.status_code}): {dl_r.text[:200]}"
+                    }
         else:
             return {
                 "success": False,

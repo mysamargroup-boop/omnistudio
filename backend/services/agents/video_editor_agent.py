@@ -2,9 +2,10 @@ import os
 import uuid
 import shutil
 import logging
+import asyncio
 from pathlib import Path
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
-from services.ffmpeg_service import concatenate_videos, merge_audio_video, image_to_video_motion
+from services.ffmpeg_service import concatenate_videos, merge_audio_video, image_to_video_motion, get_media_duration
 from database import db_save_asset
 from config import settings
 
@@ -36,8 +37,7 @@ class VideoEditorAgent(BaseAgent):
                 if cand_a.exists():
                     aud_cand = cand_a
                     try:
-                        from services.ffmpeg_service import get_media_duration
-                        aud_dur = get_media_duration(cand_a)
+                        aud_dur = await asyncio.to_thread(get_media_duration, cand_a)
                     except Exception:
                         aud_dur = 0.0
 
@@ -56,8 +56,7 @@ class VideoEditorAgent(BaseAgent):
             needs_motion_synth = False
             if scene_vid_path and aud_dur > 0:
                 try:
-                    from services.ffmpeg_service import get_media_duration
-                    vid_dur = get_media_duration(scene_vid_path)
+                    vid_dur = await asyncio.to_thread(get_media_duration, scene_vid_path)
                     if vid_dur < (aud_dur - 0.5):
                         needs_motion_synth = True
                 except Exception:
@@ -71,7 +70,8 @@ class VideoEditorAgent(BaseAgent):
                 if img_cand.exists():
                     tmp_scene_vid = settings.OUTPUTS_PATH / 'videos' / f"scene_{scene.index}_{uuid.uuid4().hex[:6]}.mp4"
                     try:
-                        image_to_video_motion(
+                        await asyncio.to_thread(
+                            image_to_video_motion,
                             image_path=img_cand,
                             output_path=tmp_scene_vid,
                             duration=target_duration,
@@ -87,7 +87,8 @@ class VideoEditorAgent(BaseAgent):
             if scene_vid_path and aud_cand:
                 merged_scene_vid = settings.OUTPUTS_PATH / 'videos' / f"aud_{scene_vid_path.name}"
                 try:
-                    merge_audio_video(
+                    await asyncio.to_thread(
+                        merge_audio_video,
                         video_path=scene_vid_path,
                         audio_path=aud_cand,
                         output_path=merged_scene_vid,
@@ -106,13 +107,13 @@ class VideoEditorAgent(BaseAgent):
         if scene_video_paths:
             try:
                 if len(scene_video_paths) == 1:
-                    shutil.copyfile(str(scene_video_paths[0]), str(output_path))
+                    await asyncio.to_thread(shutil.copyfile, str(scene_video_paths[0]), str(output_path))
                 else:
-                    concatenate_videos(scene_video_paths, output_path)
+                    await asyncio.to_thread(concatenate_videos, scene_video_paths, output_path)
             except Exception as ce:
                 logger.error("Failed to concatenate scenes into master: %s", ce)
                 if scene_video_paths and scene_video_paths[0].exists():
-                    shutil.copyfile(str(scene_video_paths[0]), str(output_path))
+                    await asyncio.to_thread(shutil.copyfile, str(scene_video_paths[0]), str(output_path))
 
         if output_path.exists() and output_path.stat().st_size > 1000:
             context.master_video_path = web_url

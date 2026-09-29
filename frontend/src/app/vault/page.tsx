@@ -547,29 +547,53 @@ export default function VaultPage() {
     return () => window.removeEventListener("click", handleWindowClick);
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (forceReloadAll: boolean = false) => {
     setLoading(true);
     loadBrowserMemoryAssets();
     try {
-      const [allRes, trashRes, favRes, colRes] = await Promise.allSettled([
-        api.getAllAssets(),
-        api.getTrashAssets(),
-        api.getFavorites(),
-        api.getCollections(),
-      ]);
+      // Lazy loading optimization: Only fetch active assets and favorites initially.
+      // Trash assets are loaded on-demand when on the trash tab or when forced.
+      // Collections are loaded independently in the background.
+      const shouldLoadTrash = tab === "trash" || forceReloadAll;
+      const promises: Promise<any>[] = [api.getAllAssets(), api.getFavorites()];
+      if (shouldLoadTrash) {
+        promises.push(api.getTrashAssets());
+      }
+      const results = await Promise.allSettled(promises);
+      const allRes = results[0];
+      const favRes = results[1];
+      const trashRes = shouldLoadTrash ? results[2] : null;
+
       if (allRes.status === "fulfilled") setAssets(allRes.value);
-      if (trashRes.status === "fulfilled") setTrashAssets(trashRes.value);
       if (favRes.status === "fulfilled" && favRes.value?.favorites) {
         setFavorites(new Set(favRes.value.favorites));
       }
-      if (colRes.status === "fulfilled" && colRes.value?.collections) {
-        setCollections(colRes.value.collections);
+      if (trashRes && trashRes.status === "fulfilled") {
+        setTrashAssets(trashRes.value);
       }
     } catch (e) {
       console.error("Failed to load vault assets", e);
     }
     setLoading(false);
   };
+
+  // Lazy-load trash when switching to the trash tab if not already loaded
+  useEffect(() => {
+    if (tab === "trash" && !trashAssets) {
+      api.getTrashAssets().then((res) => {
+        if (res) setTrashAssets(res);
+      }).catch(console.error);
+    }
+  }, [tab, trashAssets]);
+
+  // Lazy-load collections on mount in the background without blocking initial render
+  useEffect(() => {
+    if (collections.length === 0) {
+      api.getCollections().then((res) => {
+        if (res?.collections) setCollections(res.collections);
+      }).catch(console.error);
+    }
+  }, []);
 
   const handleToggleFavorite = async (e: React.MouseEvent, filename: string) => {
     e.stopPropagation();
@@ -819,6 +843,24 @@ export default function VaultPage() {
     if (!lightboxAsset) return -1;
     return lightboxFiles.findIndex((f) => f.filename === lightboxAsset.filename);
   }, [lightboxAsset, lightboxFiles]);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Smooth Infinite Scrolling via IntersectionObserver
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && activeFiles.length > visibleCount) {
+          setVisibleCount((prev) => Math.min(prev + 48, activeFiles.length));
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeFiles.length, visibleCount]);
 
   // Lightbox keyboard navigation (Esc, Arrow keys, Zoom shortcuts, i for info)
   useEffect(() => {
@@ -2247,9 +2289,14 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Progressive Load More Button */}
+      {/* Infinite Scroll Sentinel */}
       {activeFiles.length > visibleCount && (
-        <div className="flex justify-center pt-8 pb-16">
+        <div ref={sentinelRef} className="h-6 w-full pointer-events-none" />
+      )}
+
+      {/* Progressive Load More Button (Manual Fallback) */}
+      {activeFiles.length > visibleCount && (
+        <div className="flex justify-center pt-4 pb-16">
           <button
             type="button"
             onClick={() => setVisibleCount((prev) => prev + 48)}
