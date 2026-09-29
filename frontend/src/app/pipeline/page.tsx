@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -205,7 +205,7 @@ function PipelineContent() {
   const [scenes, setScenes] = useState(3);
   const [style, setStyle] = useState("none");
   const [aspectRatio, setAspectRatio] = useState("16:9");
-  const [voiceProvider, setVoiceProvider] = useState("edge");
+  const [voiceProvider, setVoiceProvider] = useState("none");
   const [imageModel, setImageModel] = useState("auto");
   const [videoModel, setVideoModel] = useState("omni_flash");
   const [videoDuration, setVideoDuration] = useState(4);
@@ -1038,15 +1038,17 @@ function PipelineContent() {
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => refFileInputRef.current?.click()}
-              disabled={uploadingRef}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-500 transition-all cursor-pointer"
-            >
-              <ImagePlus className="w-3.5 h-3.5" />
-              <span>{uploadingRef ? "Uploading..." : "+ Reference Image"}</span>
-            </button>
+            <div className="p-[1px] rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 transition-all">
+              <button
+                type="button"
+                onClick={() => refFileInputRef.current?.click()}
+                disabled={uploadingRef}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[11px] bg-white dark:bg-[#0e121e] text-[10px] font-mono text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-all cursor-pointer"
+              >
+                <ImagePlus className="w-3.5 h-3.5" />
+                <span>{uploadingRef ? "Uploading..." : "+ Reference Image"}</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -1310,7 +1312,20 @@ function PipelineContent() {
             <label className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 font-bold block">
               NEURAL SPEECH DUB
             </label>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-4 gap-1">
+              <button
+                type="button"
+                onClick={() => setVoiceProvider("none")}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
+                  voiceProvider === "none"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-xs"
+                    : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
+                )}
+              >
+                <span className="text-[11px] block font-bold">None</span>
+                <span className="text-[8px] font-mono text-zinc-400 block">Native Audio</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setVoiceProvider("sarvam")}
@@ -1321,8 +1336,8 @@ function PipelineContent() {
                     : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
                 )}
               >
-                <span className="text-[11px] block font-bold">Sarvam Indic</span>
-                <span className="text-[8px] font-mono text-violet-400 dark:text-violet-300 block">Hindi & Indic</span>
+                <span className="text-[11px] block font-bold">Sarvam</span>
+                <span className="text-[8px] font-mono text-violet-400 dark:text-violet-300 block">Hindi</span>
               </button>
               <button
                 type="button"
@@ -1334,8 +1349,8 @@ function PipelineContent() {
                     : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
                 )}
               >
-                <span className="text-[11px] block font-bold">Edge Neural</span>
-                <span className="text-[8px] font-mono text-emerald-500 block">Instant Free</span>
+                <span className="text-[11px] block font-bold">Edge</span>
+                <span className="text-[8px] font-mono text-emerald-500 block">Free</span>
               </button>
               <button
                 type="button"
@@ -1347,8 +1362,8 @@ function PipelineContent() {
                     : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
                 )}
               >
-                <span className="text-[11px] block font-bold">ElevenLabs</span>
-                <span className="text-[8px] font-mono text-zinc-400 block">Studio Voice</span>
+                <span className="text-[11px] block font-bold">11Labs</span>
+                <span className="text-[8px] font-mono text-zinc-400 block">Studio</span>
               </button>
             </div>
           </div>
