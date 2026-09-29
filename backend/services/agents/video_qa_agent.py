@@ -48,82 +48,119 @@ async def extract_qa_frames(video_path: Path) -> list[Path]:
 
 
 async def analyze_video_frames(frames: list[Path], prompt: str) -> dict:
-    """Uses Gemini Pro Vision via REST to analyze extracted frames against the prompt."""
+    """Uses OpenAI GPT-4o Vision (Tier 1) or Gemini Pro Vision (Tier 2) to analyze extracted frames and perform recursive reasoning."""
     if not frames:
         return {"score": 100, "reason": "No frames to analyze, skipping QA"}
-        
-    try:
-        key = get_gemini_key()
-        if not key:
-            return {"score": 100, "reason": "No API key, skipping"}
+
+    import base64
+    import json
+    import httpx
+    from services.openai_service import get_openai_key
+
+    # Encode frames
+    base64_frames = []
+    for f in frames:
+        try:
+            with open(f, "rb") as image_file:
+                base64_frames.append(base64.b64encode(image_file.read()).decode("utf-8"))
+        except Exception as e:
+            logger.warning("Failed to encode frame %s: %s", f, e)
+
+    if not base64_frames:
+        return {"score": 100, "reason": "No valid frames encoded, passing by default"}
+
+    qa_prompt_instruction = (
+        f"You are a strict Video Quality Assurance Director and Cinematography Critic. "
+        f"Analyze these {len(base64_frames)} extracted frames from a generated AI video clip. "
+        f"The video was generated using this prompt: '{prompt}'.\n\n"
+        f"Task:\n"
+        f"1. Score how well the video matches the prompt on a scale of 0 to 100.\n"
+        f"2. Deduct points for severe deformations, unnatural anatomy, identity drift, camera jitter, or wrong subject/setting.\n"
+        f"3. If score < 70, provide 'corrected_prompt' that surgically fixes the issues (e.g. steady camera angle, slower motion, high temporal consistency) and 'negative_prompt_additions'.\n\n"
+        f"Respond ONLY with a valid JSON object in this format:\n"
+        f'{{"score": 85, "reason": "Brief explanation", "corrected_prompt": "Refined cinematic prompt...", "negative_prompt_additions": "jitter, morphing, warped anatomy"}}'
+    )
+
+    # 1. Try OpenAI GPT-4o Vision (Tier 1 Primary for Recursive Reasoning)
+    openai_key = get_openai_key()
+    if openai_key:
+        try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=openai_key)
+            content_parts: list[dict] = [{"type": "text", "text": qa_prompt_instruction}]
+            for b64 in base64_frames:
+                content_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "low"}
+                })
             
-        parts = []
-        import base64
-        import json
-        import httpx
-        
-        for f in frames:
-            try:
-                with open(f, "rb") as image_file:
-                    img_data = base64.b64encode(image_file.read()).decode("utf-8")
+            res = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": content_parts}],
+                temperature=0.2,
+                response_format={"type": "json_object"}
+            )
+            raw = res.choices[0].message.content.strip()
+            result = json.loads(raw)
+            return {
+                "score": int(result.get("score", 100)),
+                "reason": result.get("reason", "OpenAI Vision QA evaluated"),
+                "corrected_prompt": result.get("corrected_prompt", ""),
+                "negative_prompt_additions": result.get("negative_prompt_additions", ""),
+                "model": "OpenAI GPT-4o Vision"
+            }
+        except Exception as oe:
+            logger.warning("OpenAI GPT-4o Vision QA failed: %s, falling back to Gemini", oe)
+
+    # 2. Try Gemini 2.5 Pro Vision (Tier 2 Fallback)
+    key = get_gemini_key()
+    if key:
+        try:
+            parts = []
+            for b64 in base64_frames:
                 parts.append({
                     "inlineData": {
                         "mimeType": "image/jpeg",
-                        "data": img_data
+                        "data": b64
                     }
                 })
-            except Exception as e:
-                logger.warning("Failed to encode frame %s: %s", f, e)
-                
-        prompt_text = (
-            f"You are a strict Video Quality Assurance Director. "
-            f"Analyze these 3 frames from a generated video. "
-            f"The video was generated using this prompt: '{prompt}'.\n\n"
-            f"Task: Score how well the video matches the prompt on a scale of 0 to 100. "
-            f"Deduct points for severe deformations, completely wrong subjects, or if the core action/subject is missing. "
-            f"Respond ONLY with a JSON object in this exact format:\n"
-            f'{{"score": 85, "reason": "Brief explanation here"}}'
-        )
-        parts.append({"text": prompt_text})
-        
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={key}"
-        payload = {
-            "contents": [{"parts": parts}]
-        }
-        
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, json=payload, timeout=60.0)
-            
-        if res.status_code == 200:
-            data = res.json()
-            candidates = data.get("candidates", [])
-            if candidates and candidates[0].get("content", {}).get("parts"):
-                text = candidates[0]["content"]["parts"][0].get("text", "")
-                text = text.strip().removeprefix("```json").removesuffix("```").strip()
-                result = json.loads(text)
-                return {
-                    "score": int(result.get("score", 100)),
-                    "reason": result.get("reason", "Parsed fallback")
-                }
-        
-        return {"score": 100, "reason": f"API Error: {res.status_code}"}
-        
-    except Exception as e:
-        logger.error("Vision QA failed: %s", e)
-        return {"score": 100, "reason": "Vision QA failed to process, passing by default"}
+            parts.append({"text": qa_prompt_instruction})
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={key}"
+            payload = {"contents": [{"parts": parts}]}
+            async with httpx.AsyncClient() as client:
+                res = await client.post(url, json=payload, timeout=60.0)
+            if res.status_code == 200:
+                data = res.json()
+                candidates = data.get("candidates", [])
+                if candidates and candidates[0].get("content", {}).get("parts"):
+                    text = candidates[0]["content"]["parts"][0].get("text", "")
+                    text = text.strip().removeprefix("```json").removesuffix("```").strip()
+                    result = json.loads(text)
+                    return {
+                        "score": int(result.get("score", 100)),
+                        "reason": result.get("reason", "Gemini Vision QA evaluated"),
+                        "corrected_prompt": result.get("corrected_prompt", ""),
+                        "negative_prompt_additions": result.get("negative_prompt_additions", ""),
+                        "model": "Gemini 2.5 Pro Vision"
+                    }
+        except Exception as ge:
+            logger.warning("Gemini Vision QA failed: %s", ge)
+
+    return {"score": 100, "reason": "Vision QA passed by default"}
 
 
 class VideoQAAgent(BaseAgent):
     name = "VideoQAAgent"
-    description = "Performs visual quality assurance on generated videos using Vision AI. Regenerates automatically if the output fails standards."
+    description = "Performs visual quality assurance and recursive error correction on generated videos using Vision AI. Regenerates automatically if the output fails standards."
     icon = "check-circle"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
         logger.info("Starting Vision QA on generated scenes...")
+        from services.openai_service import get_openai_key
         
-        # We only QA if we have a GEMINI key for vision
-        if not get_gemini_key():
-            context.add_log(self.name, "Skipped QA (Gemini Vision API key not configured).")
+        # Verify vision API key is available
+        if not get_openai_key() and not get_gemini_key():
+            context.add_log(self.name, "Skipped QA (Neither OpenAI nor Gemini Vision API key configured).")
             return AgentResult(success=True)
             
         target_model = (context.video_model or "omni_flash").lower()
@@ -176,21 +213,28 @@ class VideoQAAgent(BaseAgent):
                 qa_failed += 1
                 context.add_log(self.name, f"Scene {scene.index} failed QA (Score {score}). Reason: {reason}. Triggering autonomous regeneration...")
                 
-                # --- REGENERATION LOGIC ---
+                # --- REGENERATION LOGIC with Recursive Prompt Rewrite ---
                 from services.gemini_service import generate_veo_video
                 
+                corrected = qa_result.get("corrected_prompt", "").strip()
+                if corrected and len(corrected) > 15:
+                    prompt_for_regen = corrected
+                    context.add_log(self.name, f"Scene {scene.index} recursive prompt rewrite: '{corrected[:80]}...'")
+                else:
+                    prompt_for_regen = prompt_to_check + ". Focus strongly on temporal consistency, natural anatomy, and smooth cinematic kinematics."
+
                 # Attempt 1 regeneration
                 dur = scene.duration_seconds or 4.0
                 if "seedance" in target_model:
                     regen_res = await generate_seedance_video(
-                        prompt=prompt_to_check + ". Focus strongly on accuracy and clear subject representation.",
+                        prompt=prompt_for_regen,
                         aspect_ratio=context.aspect_ratio,
                         image_path=scene.image_path,
                         duration_seconds=int(dur)
                     )
                 else:
                     regen_res = await generate_veo_video(
-                        prompt=prompt_to_check + ". Focus strongly on accuracy and clear subject representation.",
+                        prompt=prompt_for_regen,
                         aspect_ratio=context.aspect_ratio,
                         image_path=scene.image_path,
                         duration_seconds=int(dur)

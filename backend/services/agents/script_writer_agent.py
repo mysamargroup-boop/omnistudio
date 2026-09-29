@@ -14,6 +14,11 @@ class ScriptWriterAgent(BaseAgent):
     icon = "file-text"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
+        # Skip if user provided detailed storyboard (preserve_user_scenes flag)
+        if context.preserve_user_scenes:
+            context.add_log(self.name, "Storyboard preservation mode active — skipping AI screenplay generation to preserve user's scene specifications.")
+            return AgentResult(success=True)
+        
         num_scenes = context.num_scenes or 4
         dur = float(context.project_brief.get("scene_duration", 4.0) if context.project_brief else 4.0)
         
@@ -59,8 +64,29 @@ CRITICAL RULES:
                 pass
             return None
 
-        # 1. Try Gemini
-        if get_gemini_key():
+        # 1. Try OpenAI (Tier 1 Primary for Script & Dialogue Writing)
+        from services.openai_service import get_openai_key, generate_openai_chat
+        openai_key = get_openai_key()
+        if openai_key:
+            try:
+                res = await generate_openai_chat(
+                    messages=[
+                        {"role": "system", "content": "You are an award-winning cinematic screenwriter and film director."},
+                        {"role": "user", "content": prompt_instruction}
+                    ],
+                    model="gpt-4o",
+                    temperature=0.7
+                )
+                if res.get("success") and res.get("text"):
+                    parsed = _clean_json_array(res["text"])
+                    if parsed and len(parsed) >= num_scenes:
+                        generated_scenes = parsed[:num_scenes]
+                        logger.info("ScriptWriter successfully generated screenplay with OpenAI %s", res.get("model"))
+            except Exception as e:
+                logger.warning("OpenAI script generation error: %s, falling back to Gemini", e)
+
+        # 2. Try Gemini (Tier 2 Fallback)
+        if not generated_scenes and get_gemini_key():
             try:
                 res = await generate_gemini_text(prompt_instruction, model="gemini-2.5-flash")
                 if res.get("success") and res.get("text"):
@@ -69,32 +95,6 @@ CRITICAL RULES:
                         generated_scenes = parsed[:num_scenes]
             except Exception as e:
                 logger.warning("Gemini script generation error: %s", e)
-
-        # 2. Try OpenAI (from settings or database)
-        openai_key = settings.OPENAI_API_KEY
-        if not openai_key:
-            try:
-                from database import db_get_all_settings
-                st = db_get_all_settings()
-                openai_key = st.get("openai_api_key") or st.get("OPENAI_API_KEY") or ""
-            except Exception:
-                pass
-
-        if not generated_scenes and openai_key:
-            try:
-                from openai import AsyncOpenAI
-                client = AsyncOpenAI(api_key=openai_key)
-                completion = await client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": prompt_instruction}],
-                    temperature=0.7
-                )
-                raw = completion.choices[0].message.content.strip()
-                parsed = _clean_json_array(raw)
-                if parsed and len(parsed) >= num_scenes:
-                    generated_scenes = parsed[:num_scenes]
-            except Exception as e:
-                logger.warning("OpenAI script generation error: %s", e)
 
         # 3. Dynamic Context-Aware Fallback (Synthesized from the user's actual prompt)
         if not generated_scenes:

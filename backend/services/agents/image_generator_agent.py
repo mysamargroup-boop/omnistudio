@@ -5,8 +5,11 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 import colorsys
 
+import re
+import shutil
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
 from services.gemini_service import generate_gemini_image, get_gemini_key
+from services.openai_service import generate_openai_image, get_openai_key
 from database import db_save_asset
 from config import settings
 
@@ -73,40 +76,112 @@ class ImageGeneratorAgent(BaseAgent):
         images_dir = settings.OUTPUTS_PATH / 'images'
         images_dir.mkdir(parents=True, exist_ok=True)
 
+        # Detect if user explicitly requested Google Imagen in prompt or image_model
+        p_lower = (context.user_prompt or "").lower()
+        model_req = (context.image_model or "").lower()
+        wants_google_imagen = bool(
+            re.search(r'\b(google\s*imagen|imagen\s*3|imagen3|imagen|google\s*image)\b', p_lower) or
+            ("imagen" in model_req)
+        )
+
+        engine_title = "Google Imagen 3" if wants_google_imagen else "OpenAI GPT Image (DALL-E 3 HD Advance Model)"
+        logger.info("ImageGeneratorAgent executing with primary engine: %s", engine_title)
+
         for scene in context.scenes:
             file_name = f"scene_{scene.index}_{uuid.uuid4().hex[:8]}.png"
             local_path = images_dir / file_name
             web_url = f"/outputs/images/{file_name}"
+            prompt_to_use = scene.image_prompt or scene.description or context.user_prompt
 
             generated = False
-            # 1. Attempt Gemini 2.5 Flash Image diffusion if API key is present
-            if get_gemini_key():
-                try:
-                    res = await generate_gemini_image(
-                        prompt=scene.image_prompt or scene.description or context.user_prompt,
-                        model="gemini-2.5-flash-image",
-                        filename_hint=f"scene_{scene.index}",
-                        aspect_ratio=context.aspect_ratio
-                    )
-                    if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
-                        # Copy or link to designated scene path
-                        src_path = Path(res["local_path"])
-                        if src_path != local_path:
-                            import shutil
-                            shutil.copyfile(str(src_path), str(local_path))
-                        generated = True
-                except Exception as e:
-                    logger.warning("Gemini Image generation failed for scene %s: %s", scene.index, e)
+            used_model_name = ""
 
-            # 2. Robust fallback: render high-def stylized cinematic card
+            if wants_google_imagen:
+                # 1. User asked for Google Imagen: Try Google Imagen / Gemini Image
+                if get_gemini_key():
+                    try:
+                        res = await generate_gemini_image(
+                            prompt=prompt_to_use,
+                            model="gemini-2.5-flash-image",
+                            filename_hint=f"scene_{scene.index}",
+                            aspect_ratio=context.aspect_ratio
+                        )
+                        if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
+                            src_path = Path(res["local_path"])
+                            if src_path != local_path:
+                                shutil.copyfile(str(src_path), str(local_path))
+                            generated = True
+                            used_model_name = "Google Imagen 3"
+                    except Exception as e:
+                        logger.warning("Google Imagen generation failed for scene %s: %s", scene.index, e)
+
+                # Fallback to OpenAI if Google Imagen failed
+                if not generated and get_openai_key():
+                    try:
+                        res = await generate_openai_image(
+                            prompt=prompt_to_use,
+                            model="dall-e-3",
+                            quality="hd",
+                            aspect_ratio=context.aspect_ratio,
+                            filename_hint=f"scene_{scene.index}"
+                        )
+                        if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
+                            src_path = Path(res["local_path"])
+                            if src_path != local_path:
+                                shutil.copyfile(str(src_path), str(local_path))
+                            generated = True
+                            used_model_name = "OpenAI DALL-E 3 HD (Fallback)"
+                    except Exception as oe:
+                        logger.warning("OpenAI image fallback failed: %s", oe)
+
+            else:
+                # 1. BY DEFAULT: Use OpenAI GPT Image Model (DALL-E 3 HD Advance Model)
+                if get_openai_key():
+                    try:
+                        res = await generate_openai_image(
+                            prompt=prompt_to_use,
+                            model="dall-e-3",
+                            quality="hd",
+                            aspect_ratio=context.aspect_ratio,
+                            filename_hint=f"scene_{scene.index}"
+                        )
+                        if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
+                            src_path = Path(res["local_path"])
+                            if src_path != local_path:
+                                shutil.copyfile(str(src_path), str(local_path))
+                            generated = True
+                            used_model_name = "OpenAI GPT Image (DALL-E 3 HD)"
+                    except Exception as oe:
+                        logger.warning("OpenAI DALL-E 3 HD generation failed for scene %s: %s", scene.index, oe)
+
+                # Fallback to Google Imagen if OpenAI failed or key not configured
+                if not generated and get_gemini_key():
+                    try:
+                        res = await generate_gemini_image(
+                            prompt=prompt_to_use,
+                            model="gemini-2.5-flash-image",
+                            filename_hint=f"scene_{scene.index}",
+                            aspect_ratio=context.aspect_ratio
+                        )
+                        if res.get("success") and res.get("local_path") and Path(res["local_path"]).exists():
+                            src_path = Path(res["local_path"])
+                            if src_path != local_path:
+                                shutil.copyfile(str(src_path), str(local_path))
+                            generated = True
+                            used_model_name = "Google Imagen 3 (Fallback)"
+                    except Exception as e:
+                        logger.warning("Google Imagen fallback failed for scene %s: %s", scene.index, e)
+
+            # 2. Robust fallback: render high-def stylized cinematic card if both fail
             if not generated or not local_path.exists():
                 _generate_cinematic_fallback_image(
                     output_path=local_path,
                     scene_idx=scene.index,
                     title=scene.title,
-                    prompt=scene.image_prompt or scene.description or context.user_prompt,
+                    prompt=prompt_to_use,
                     aspect_ratio=context.aspect_ratio
                 )
+                used_model_name = "Cinematic Card Fallback"
 
             # Assign web-accessible URL
             scene.image_path = web_url
@@ -118,12 +193,13 @@ class ImageGeneratorAgent(BaseAgent):
                     url=web_url,
                     filename=file_name,
                     prompt=scene.image_prompt or scene.description,
-                    model=context.image_model,
-                    cost_usd=0.005,
-                    cost_inr=0.42
+                    model=used_model_name or ("Google Imagen 3" if wants_google_imagen else "OpenAI DALL-E 3 HD"),
+                    cost_usd=0.04 if not wants_google_imagen else 0.005,
+                    cost_inr=3.35 if not wants_google_imagen else 0.42
                 )
             except Exception as dbe:
                 logger.debug("Failed to record image asset in DB: %s", dbe)
 
-        context.add_log(self.name, f"Synthesized {len(context.scenes)} choreographed keyframe visuals", cost_usd=0.015, cost_inr=1.25)
+        active_label = used_model_name or ("Google Imagen 3" if wants_google_imagen else "OpenAI GPT Image (DALL-E 3 HD)")
+        context.add_log(self.name, f"Synthesized {len(context.scenes)} choreographed keyframe visuals via {active_label}")
         return AgentResult(success=True)

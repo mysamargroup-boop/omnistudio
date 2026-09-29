@@ -94,6 +94,11 @@ class StoryboardPlannerAgent(BaseAgent):
     icon = "layout"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
+        # Skip if user provided detailed storyboard (preserve_user_scenes flag)
+        if context.preserve_user_scenes:
+            context.add_log(self.name, "Storyboard preservation mode active — skipping AI camera motion generation to preserve user's camera specifications.")
+            return AgentResult(success=True)
+        
         if not context.scenes:
             return AgentResult(success=True)
 
@@ -161,38 +166,43 @@ Return ONLY a JSON array with exactly {num_scenes} objects, matching this schema
 """
         generated_scenes = None
 
-        # 1. Try Gemini
-        try:
-            from services.gemini_service import get_gemini_key, generate_gemini_text
-            if get_gemini_key():
-                res = await generate_gemini_text(prompt_text)
+        # 1. Try OpenAI (Tier 1 Primary for Storyboard & Director Planning)
+        from services.openai_service import get_openai_key, generate_openai_chat
+        openai_key = get_openai_key()
+        if openai_key:
+            try:
+                res = await generate_openai_chat(
+                    messages=[
+                        {"role": "system", "content": "You are a master Hollywood cinematography director and visual storyboard planner."},
+                        {"role": "user", "content": prompt_text}
+                    ],
+                    model="gpt-4o",
+                    temperature=0.7
+                )
                 if res.get("success") and res.get("text"):
                     match = re.search(r'\[.*\]', res["text"], re.DOTALL)
                     if match:
                         parsed = json.loads(match.group(0))
                         if isinstance(parsed, list) and len(parsed) >= num_scenes:
                             generated_scenes = parsed
-        except Exception as e:
-            logger.warning("Gemini storyboard planner call failed: %s", e)
-
-        # 2. Try OpenAI
-        if not generated_scenes and settings.OPENAI_API_KEY:
-            try:
-                from openai import AsyncOpenAI
-                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-                res = await client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": prompt_text}],
-                    temperature=0.7
-                )
-                text = res.choices[0].message.content.strip()
-                match = re.search(r'\[.*\]', text, re.DOTALL)
-                if match:
-                    parsed = json.loads(match.group(0))
-                    if isinstance(parsed, list) and len(parsed) >= num_scenes:
-                        generated_scenes = parsed
+                            logger.info("StoryboardPlanner successfully planned %s scenes with OpenAI %s", len(parsed), res.get("model"))
             except Exception as e:
-                logger.warning("OpenAI storyboard planner call failed: %s", e)
+                logger.warning("OpenAI storyboard planner call failed: %s, falling back to Gemini", e)
+
+        # 2. Try Gemini (Tier 2 Fallback)
+        if not generated_scenes:
+            try:
+                from services.gemini_service import get_gemini_key, generate_gemini_text
+                if get_gemini_key():
+                    res = await generate_gemini_text(prompt_text)
+                    if res.get("success") and res.get("text"):
+                        match = re.search(r'\[.*\]', res["text"], re.DOTALL)
+                        if match:
+                            parsed = json.loads(match.group(0))
+                            if isinstance(parsed, list) and len(parsed) >= num_scenes:
+                                generated_scenes = parsed
+            except Exception as e:
+                logger.warning("Gemini storyboard planner call failed: %s", e)
 
         # Apply generated or rich algorithmic progression (style-aware lighting)
         for i, scene in enumerate(context.scenes):

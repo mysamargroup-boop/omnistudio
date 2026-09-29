@@ -19,15 +19,19 @@ class VoiceDirectorAgent(BaseAgent):
     icon = "mic"
 
     async def execute(self, context: PipelineContext) -> AgentResult:
+        if (context.voice_provider or "").lower() in ["none", "native", "no_voice", "off", ""]:
+            context.add_log(self.name, "Soundtrack/Voice set to None — native video audio mode active (preserving raw video audio stream without voiceover overlay).")
+            return AgentResult(success=True, data={"native_audio": True})
+
         audio_dir = settings.OUTPUTS_PATH / 'audio'
         audio_dir.mkdir(parents=True, exist_ok=True)
 
         use_sarvam = (context.voice_provider == "sarvam") or bool(
             (settings.SARVAM_API_KEY and str(settings.SARVAM_API_KEY).strip()) and 
-            (context.voice_provider != "elevenlabs")
+            (context.voice_provider not in ["elevenlabs", "edge"])
         )
         use_elevenlabs = (context.voice_provider == "elevenlabs") or bool(
-            settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip() and not use_sarvam
+            settings.ELEVENLABS_API_KEY and str(settings.ELEVENLABS_API_KEY).strip() and not use_sarvam and context.voice_provider != "edge"
         )
         
         sarvam_speaker = context.voice_id if (context.voice_id and context.voice_id in [v["id"] for v in SARVAM_DEFAULT_VOICES]) else "shubh"

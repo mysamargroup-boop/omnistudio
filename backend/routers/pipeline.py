@@ -760,6 +760,15 @@ def extract_prompt_parameters(prompt: str) -> dict:
     if re.search(r'\b(saare\s+scene\s+ka\s+ek|sare\s+scene\s+ka\s+ek|single\s+video|one\s+video|combine\s+all\s+scenes|ek\s+hi\s+video|pura\s+ek\s+video)\b', p_lower, re.IGNORECASE):
         params["single_video"] = True
         
+    if any(k in p_lower for k in ["google imagen", "imagen 3", "imagen3", "imagen", "google image"]):
+        params["image_model"] = "imagen_3"
+    elif any(k in p_lower for k in ["gpt image", "gpt-image", "dalle", "dall-e", "openai image"]):
+        params["image_model"] = "gpt-image-2"
+
+    if any(k in p_lower for k in ["soundtrack: none", "soundtrack none", "no soundtrack", "no music", "no audio", "bina sound", "without sound", "native audio", "native sound", "bina music", "bina soundtrack", "pure video"]):
+        params["voice_provider"] = "none"
+        params["soundtrack"] = "native"
+
     if "no brand" in p_lower or "without brand" in p_lower:
         params["apply_brand_kit"] = False
     elif "with brand" in p_lower or "use brand" in p_lower:
@@ -773,9 +782,9 @@ class AgentPipelineStartRequest(BaseModel):
     num_scenes: int = 3
     style: str = 'cinematic'
     aspect_ratio: str = '16:9'
-    image_model: str = 'imagen-3'
+    image_model: str = 'gpt-image-2'
     video_model: str = 'omni_model'
-    voice_provider: str = 'edge'
+    voice_provider: str = 'none'
     voice_id: str = ''
     apply_brand_kit: bool = False
     skill_id: Optional[str] = None
@@ -799,9 +808,9 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
         num_scenes=smart_params.get("num_scenes", req.num_scenes),
         style=smart_params.get("style", req.style),
         aspect_ratio=smart_params.get("aspect_ratio", req.aspect_ratio),
-        image_model=req.image_model,
+        image_model=smart_params.get("image_model", req.image_model or "gpt-image-2"),
         video_model=smart_params.get("video_model", req.video_model or 'omni_model'),
-        voice_provider=smart_params.get("voice_provider", req.voice_provider),
+        voice_provider=smart_params.get("voice_provider", req.voice_provider or "none"),
         voice_id=req.voice_id,
         apply_brand_kit=smart_params.get("apply_brand_kit", req.apply_brand_kit),
         skill_id=smart_params.get("skill_id", req.skill_id),
@@ -812,6 +821,8 @@ async def start_agent_pipeline(req: AgentPipelineStartRequest, request: Request)
     brief = {}
     if smart_params.get("single_video"):
         brief["single_video"] = True
+    if smart_params.get("soundtrack"):
+        brief["soundtrack"] = smart_params["soundtrack"]
     
     # Priority: Smart prompt > Frontend UI
     if "total_duration" in smart_params:

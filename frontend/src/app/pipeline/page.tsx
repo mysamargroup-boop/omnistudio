@@ -98,10 +98,10 @@ interface PipelineModelOption {
 }
 
 const DIFFUSION_MODELS: PipelineModelOption[] = [
-  { id: "auto", name: "Auto (AI Agent Selected)", badge: "SMART", provider: "Director Agent", description: "Agent analyzes prompt & switches to optimal diffusion model dynamically", active: true },
+  { id: "gpt-image-2", name: "OpenAI GPT Image (DALL-E 3 HD)", badge: "ADVANCE", provider: "OpenAI", description: "Default flagship: Ultra-advance composition, realistic textures & fidelity", active: true },
+  { id: "imagen_3", name: "Google Imagen 3 / 4", badge: "PRO", provider: "Google Cloud AI", description: "Flagship photoreal lighting & textures (use via prompt 'google imagen')", active: true },
+  { id: "auto", name: "Auto Director (Smart Switch)", badge: "SMART", provider: "Director Agent", description: "Defaults to OpenAI GPT Image HD; switches to Google Imagen if mentioned in prompt", active: true },
   { id: "gemini_flash_image", name: "Google Gemini 2.5 Flash", badge: "FAST", provider: "Google DeepMind", description: "Ultra-fast high fidelity image diffusion", active: true },
-  { id: "imagen_3", name: "Google Imagen 4", badge: "PRO", provider: "Google Cloud AI", description: "Flagship photoreal lighting & textures", active: true },
-  { id: "gpt-image-2", name: "GPT Image 2", badge: "PREMIUM", provider: "OpenAI", description: "Composition precision & realistic skin", active: true },
   { id: "flux_2_ultra", name: "Flux 2 Ultra", badge: "SOTA", provider: "Black Forest Labs", description: "Next-gen photorealism, 4K studio-grade output", active: false },
   { id: "flux_pro", name: "Flux.1 Pro", badge: "PRO", provider: "Black Forest Labs", description: "Studio typography & photorealism", active: false },
   { id: "midjourney_v7", name: "Midjourney v7", badge: "NEW", provider: "Midjourney", description: "Artistic hyperrealism with cinematic aesthetics", active: false },
@@ -206,7 +206,7 @@ function PipelineContent() {
   const [style, setStyle] = useState("none");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [voiceProvider, setVoiceProvider] = useState("none");
-  const [imageModel, setImageModel] = useState("auto");
+  const [imageModel, setImageModel] = useState("gpt-image-2");
   const [videoModel, setVideoModel] = useState("omni_flash");
   const [videoDuration, setVideoDuration] = useState(4);
 
@@ -2336,8 +2336,21 @@ function PipelineContent() {
               {/* If paused after scripting: Show Screenplay Dialogues */}
               {pausedState === "scripting" && choreographedScenes.length > 0 && (
                 <div className="space-y-2">
+                  {/* Storyboard preservation indicator */}
+                  {projectBrief?.preserve_user_scenes && (
+                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Storyboard Preservation Mode Active — Your camera specifications preserved
+                      </span>
+                    </div>
+                  )}
+                  
                   <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 block">
-                    Screenplay & Narration Dialogues ({choreographedScenes.length} Scenes)
+                    {projectBrief?.preserve_user_scenes 
+                      ? `Your Original Storyboard (${choreographedScenes.length} Scenes)`
+                      : `Screenplay & Narration Dialogues (${choreographedScenes.length} Scenes)`
+                    }
                   </span>
                   <div className="space-y-2">
                     {choreographedScenes.map((sc, i) => (
@@ -2346,7 +2359,17 @@ function PipelineContent() {
                           <span className="text-xs font-bold text-zinc-900 dark:text-white">{sc.title || `Scene ${i + 1}`}</span>
                           <span className="text-[10px] font-mono text-emerald-500">{sc.duration_seconds || 4}s</span>
                         </div>
-                        <p className="text-xs font-serif italic text-zinc-800 dark:text-zinc-200">"{sc.script}"</p>
+                        {sc.lens && (
+                          <span className="text-[9px] font-mono text-zinc-500">Lens: {sc.lens}</span>
+                        )}
+                        {sc.camera_angle && (
+                          <span className="text-[9px] font-mono text-zinc-500">Camera: {sc.camera_angle}</span>
+                        )}
+                        {sc.script ? (
+                          <p className="text-xs font-serif italic text-zinc-800 dark:text-zinc-200">"{sc.script}"</p>
+                        ) : (
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-3">{sc.description}</p>
+                        )}
                       </div>
                     ))}
                   </div>

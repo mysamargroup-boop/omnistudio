@@ -26,16 +26,80 @@ async def _execute_openai_image_generate(client, kwargs):
 async def _execute_openai_speech_create(client, **kwargs):
     return await client.audio.speech.create(**kwargs)
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(3),
+    retry=retry_if_exception_type((httpx.ConnectTimeout, httpx.ReadTimeout, httpx.NetworkError)),
+    reraise=True
+)
+async def _execute_openai_chat_create(client, **kwargs):
+    return await client.chat.completions.create(**kwargs)
+
+def get_openai_key() -> str:
+    """Retrieve OpenAI API key from settings or database with transparent fallback."""
+    key = (settings.OPENAI_API_KEY or "").strip()
+    if not key:
+        try:
+            from database import db_get_all_settings
+            st = db_get_all_settings()
+            key = (st.get("openai_api_key") or st.get("OPENAI_API_KEY") or "").strip()
+        except Exception:
+            pass
+    return key
+
+async def generate_openai_chat(
+    messages: List[Dict[str, Any]],
+    model: str = "gpt-4o",
+    temperature: float = 0.7,
+    response_format: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Generate structured response via OpenAI Chat API with fallback from gpt-4o to gpt-4o-mini."""
+    key = get_openai_key()
+    if not key:
+        return {"success": False, "error": "OpenAI API Key not configured"}
+
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=key)
+
+    candidate_models = [model]
+    if model != "gpt-4o-mini":
+        candidate_models.append("gpt-4o-mini")
+
+    last_error = None
+    for cand in candidate_models:
+        try:
+            kwargs: Dict[str, Any] = {
+                "model": cand,
+                "messages": messages,
+                "temperature": temperature,
+            }
+            if response_format:
+                kwargs["response_format"] = response_format
+            res = await _execute_openai_chat_create(client, **kwargs)
+            text = res.choices[0].message.content.strip()
+            return {
+                "success": True,
+                "text": text,
+                "model": cand
+            }
+        except Exception as e:
+            last_error = e
+            logger.warning("OpenAI model %s chat call failed: %s", cand, e)
+
+    return {"success": False, "error": str(last_error)}
+
 async def generate_openai_image(
     prompt: str,
-    model: str = "gpt-image-1-mini",
+    model: str = "dall-e-3",
     size: str = "1024x1024",
-    quality: str = "standard",
+    quality: str = "hd",
     style: str = "vivid",
-    filename_hint: Optional[str] = None
+    filename_hint: Optional[str] = None,
+    aspect_ratio: Optional[str] = None
 ) -> dict:
-    """Generate image via OpenAI Image API (GPT-image-1-mini / GPT-image-1 / DALL-E 3) and save to local vault"""
-    if not settings.OPENAI_API_KEY:
+    """Generate image via OpenAI Image API (DALL-E 3 HD advance model / GPT-image) and save to local vault"""
+    key = get_openai_key()
+    if not key:
         return {
             "success": False,
             "error_type": "KEY_MISSING",
@@ -47,16 +111,23 @@ async def generate_openai_image(
     try:
         import base64
         from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        client = AsyncOpenAI(api_key=key)
         
-        # Determine candidate models to try
-        # OpenAI image models: dall-e-3 is the official production flagship
-        if model in ["dall-e-3", "openai", "gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5"]:
+        # Calculate aspect ratio size for DALL-E 3 HD
+        if aspect_ratio == "16:9":
+            size = "1792x1024"
+        elif aspect_ratio == "9:16":
+            size = "1024x1792"
+        elif aspect_ratio == "1:1":
+            size = "1024x1024"
+
+        # Determine candidate models to try: Flagship DALL-E 3 HD first
+        if model in ["dall-e-3", "openai", "gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5", "auto"]:
             candidate_models = ["dall-e-3", "dall-e-2"]
         elif model in ["dall-e-2"]:
             candidate_models = ["dall-e-2", "dall-e-3"]
         else:
-            candidate_models = ["dall-e-3", "dall-e-2"]
+            candidate_models = [model, "dall-e-3", "dall-e-2"]
         
         response = None
         used_model = None

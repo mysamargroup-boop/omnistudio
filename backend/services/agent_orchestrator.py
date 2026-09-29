@@ -107,6 +107,7 @@ class PipelineContext(BaseModel):
     skill_id: Optional[str] = None
     reference_image: Optional[str] = None
     error_message: Optional[str] = None
+    preserve_user_scenes: bool = False
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
     def add_log(self, agent_name: str, message: str, cost_usd: float = 0, cost_inr: float = 0):
