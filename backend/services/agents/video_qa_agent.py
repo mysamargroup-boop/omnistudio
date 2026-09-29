@@ -1,10 +1,10 @@
-﻿import logging
+import logging
 import asyncio
 import uuid
 import base64
 from pathlib import Path
 from services.agent_orchestrator import BaseAgent, PipelineContext, AgentResult
-from services.ffmpeg_service import get_video_duration
+from services.ffmpeg_service import get_media_duration
 from services.gemini_service import get_gemini_key
 from services.replicate_service import generate_seedance_video
 from config import settings
@@ -17,7 +17,7 @@ async def extract_qa_frames(video_path: Path) -> list[Path]:
     """Extracts 3 frames (start, middle, end) from a video for QA analysis."""
     frames = []
     try:
-        duration = await get_video_duration(video_path)
+        duration = await get_media_duration(str(video_path))
         if duration <= 0:
             return frames
 
