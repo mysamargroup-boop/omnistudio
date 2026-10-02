@@ -104,12 +104,12 @@ class ImageGeneratorAgent(BaseAgent):
             used_model_name = ""
 
             if wants_google_imagen:
-                # 1. User asked for Google Imagen: Try Google Imagen / Gemini Image
+                # 1. User asked for Google Imagen: Try Google Imagen / Gemini Image (Gemini 3 Pro Image)
                 if get_gemini_key():
                     try:
                         res = await generate_gemini_image(
                             prompt=prompt_to_use,
-                            model="gemini-2.5-flash-image",
+                            model="gemini-3-pro-image",
                             filename_hint=f"scene_{scene.index}",
                             reference_image_path=ref_img_path,
                             aspect_ratio=context.aspect_ratio
@@ -119,17 +119,18 @@ class ImageGeneratorAgent(BaseAgent):
                             if src_path != local_path:
                                 shutil.copyfile(str(src_path), str(local_path))
                             generated = True
-                            used_model_name = "Google Imagen 3"
+                            used_model_name = res.get("model") or "Google Imagen 3"
                     except Exception as e:
                         logger.warning("Google Imagen generation failed for scene %s: %s", scene.index, e)
 
                 # Fallback to OpenAI if Google Imagen failed
                 if not generated and get_openai_key():
                     try:
+                        openai_m = context.image_model if context.image_model and context.image_model != "auto" else "gpt-image-2"
                         res = await generate_openai_image(
                             prompt=prompt_to_use,
-                            model="dall-e-3",
-                            quality="hd",
+                            model=openai_m,
+                            quality="high",
                             aspect_ratio=context.aspect_ratio,
                             filename_hint=f"scene_{scene.index}"
                         )
@@ -138,18 +139,19 @@ class ImageGeneratorAgent(BaseAgent):
                             if src_path != local_path:
                                 shutil.copyfile(str(src_path), str(local_path))
                             generated = True
-                            used_model_name = "OpenAI DALL-E 3 HD (Fallback)"
+                            used_model_name = f"OpenAI {res.get('model', 'GPT Image')} (Fallback)"
                     except Exception as oe:
                         logger.warning("OpenAI image fallback failed: %s", oe)
 
             else:
-                # 1. BY DEFAULT: Use OpenAI GPT Image Model (DALL-E 3 HD Advance Model)
+                # 1. BY DEFAULT: Use OpenAI GPT Image Model (gpt-image-2 Advance Model)
                 if get_openai_key():
                     try:
+                        openai_m = context.image_model if context.image_model and context.image_model != "auto" else "gpt-image-2"
                         res = await generate_openai_image(
                             prompt=prompt_to_use,
-                            model="dall-e-3",
-                            quality="hd",
+                            model=openai_m,
+                            quality="high",
                             aspect_ratio=context.aspect_ratio,
                             filename_hint=f"scene_{scene.index}"
                         )
@@ -158,16 +160,16 @@ class ImageGeneratorAgent(BaseAgent):
                             if src_path != local_path:
                                 shutil.copyfile(str(src_path), str(local_path))
                             generated = True
-                            used_model_name = "OpenAI GPT Image (DALL-E 3 HD)"
+                            used_model_name = f"OpenAI {res.get('model', 'GPT Image 2')}"
                     except Exception as oe:
-                        logger.warning("OpenAI DALL-E 3 HD generation failed for scene %s: %s", scene.index, oe)
+                        logger.warning("OpenAI generation failed for scene %s: %s", scene.index, oe)
 
-                # Fallback to Google Imagen if OpenAI failed or key not configured
+                # Fallback to Google Imagen 3 Pro if OpenAI failed or key not configured
                 if not generated and get_gemini_key():
                     try:
                         res = await generate_gemini_image(
                             prompt=prompt_to_use,
-                            model="gemini-2.5-flash-image",
+                            model="gemini-3-pro-image",
                             filename_hint=f"scene_{scene.index}",
                             reference_image_path=ref_img_path,
                             aspect_ratio=context.aspect_ratio
@@ -177,7 +179,7 @@ class ImageGeneratorAgent(BaseAgent):
                             if src_path != local_path:
                                 shutil.copyfile(str(src_path), str(local_path))
                             generated = True
-                            used_model_name = "Google Imagen 3 (Fallback)"
+                            used_model_name = res.get("model") or "Google Imagen 3 (Fallback)"
                     except Exception as e:
                         logger.warning("Google Imagen fallback failed for scene %s: %s", scene.index, e)
 

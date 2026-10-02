@@ -171,10 +171,14 @@ async def execute_pipeline_core(req: PipelineRequest, progress_callback=None) ->
 
         if req.image_model in ["imagen_3", "gemini_flash_image", "google_gemini"]:
             from services.gemini_service import generate_gemini_image
-            img_result = await generate_gemini_image(visual)
+            target_gem = "gemini-3-pro-image" if req.image_model in ["imagen_3", "google_gemini"] else "gemini-3.1-flash-image"
+            img_result = await generate_gemini_image(visual, model=target_gem, aspect_ratio=req.aspect_ratio)
         else:
             img_result = await generate_openai_image(
-                prompt=visual, model=req.image_model, size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024"
+                prompt=visual,
+                model=req.image_model or "gpt-image-2",
+                quality="high",
+                aspect_ratio=req.aspect_ratio
             )
 
         if not img_result.get("success") or not img_result.get("local_path"):
@@ -617,26 +621,32 @@ async def generate_storyboard_images_endpoint(req: StoryboardGenerateRequest):
 
         # Check model preference
         if model_to_use in ["gemini_flash_image", "imagen_3", "google_gemini"] and get_gemini_key():
+            target_gem = "gemini-3-pro-image" if model_to_use in ["imagen_3", "google_gemini"] else "gemini-3.1-flash-image"
             img_res = await generate_gemini_image(
                 clean_prompt,
+                model=target_gem,
                 filename_hint=f"storyboard_scene_{scene.scene_number}",
-                reference_image_path=ref_path_str
+                reference_image_path=ref_path_str,
+                aspect_ratio=aspect
             )
         elif settings.OPENAI_API_KEY:
             size_map = {"16:9": "1792x1024", "9:16": "1024x1792", "1:1": "1024x1024"}
             chosen_size = size_map.get(aspect, "1792x1024")
             img_res = await generate_openai_image(
                 prompt=clean_prompt,
-                model="gpt-image-2" if "gpt" in model_to_use else "dall-e-3",
+                model=model_to_use if "gpt" in model_to_use else "gpt-image-2",
                 size=chosen_size,
-                quality="hd",
-                filename_hint=f"storyboard_scene_{scene.scene_number}"
+                quality="high",
+                filename_hint=f"storyboard_scene_{scene.scene_number}",
+                aspect_ratio=aspect
             )
         elif get_gemini_key():
             img_res = await generate_gemini_image(
                 clean_prompt,
+                model="gemini-3-pro-image",
                 filename_hint=f"storyboard_scene_{scene.scene_number}",
-                reference_image_path=ref_path_str
+                reference_image_path=ref_path_str,
+                aspect_ratio=aspect
             )
         else:
             img_res = {"success": False, "error": "No image diffusion API key configured (Gemini or OpenAI)."}

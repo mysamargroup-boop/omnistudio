@@ -221,11 +221,12 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
             try:
                 res = await generate_openai_image(
                     prompt=var_prompt,
-                    model=req.model,
-                    size="1792x1024" if req.aspect_ratio == "16:9" else "1024x1024",
-                    quality="hd" if req.quality in ["hd", "ultra"] else "standard",
+                    model=req.model if req.model and req.model not in ["neural_variation", "auto"] else "gpt-image-2",
+                    size="1792x1024" if req.aspect_ratio == "16:9" else ("1024x1792" if req.aspect_ratio == "9:16" else "1024x1024"),
+                    quality="high" if req.quality in ["hd", "ultra"] else "standard",
                     style="vivid",
-                    filename_hint=f"{user_prompt} var {i+1}"
+                    filename_hint=f"{user_prompt} var {i+1}",
+                    aspect_ratio=req.aspect_ratio
                 )
                 if res.get("success"):
                     return {
@@ -245,8 +246,10 @@ async def generate_image_variations(req: ImageVariationsRequest, request: Reques
             try:
                 res = await generate_gemini_image(
                     prompt=var_prompt,
+                    model="gemini-3-pro-image",
                     filename_hint=f"{user_prompt} var {i+1}",
-                    reference_image_path=str(ref_path)
+                    reference_image_path=str(ref_path),
+                    aspect_ratio=req.aspect_ratio
                 )
                 if res.get("success"):
                     return {
@@ -385,42 +388,66 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
                 "required_key": "GEMINI_API_KEY"
             }
         else:
-            result = await generate_gemini_image(effective_prompt, filename_hint=req.prompt)
+            gem_target = "gemini-3-pro-image" if req.model in ["imagen_3", "google_gemini"] else "gemini-3.1-flash-image"
+            result = await generate_gemini_image(
+                effective_prompt,
+                model=gem_target,
+                filename_hint=req.prompt,
+                aspect_ratio=req.aspect_ratio
+            )
     elif req.model in ["dall-e-3", "dall-e-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5", "gpt-image-2", "openai"]:
         result = await generate_openai_image(
-            prompt=effective_prompt, model=req.model, size=req.size,
-            quality=openai_quality, style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural",
-            filename_hint=req.prompt
+            prompt=effective_prompt,
+            model=req.model,
+            size=req.size,
+            quality=openai_quality,
+            style="vivid" if req.style in ["cinematic", "cyberpunk"] else "natural",
+            filename_hint=req.prompt,
+            aspect_ratio=req.aspect_ratio
         )
         if not result.get("success"):
             from services.gemini_service import get_gemini_key, generate_gemini_image
             if get_gemini_key():
-                logger.info("OpenAI generation failed (%s), auto-falling back to Google Gemini", result.get("error"))
-                gem_res = await generate_gemini_image(effective_prompt, filename_hint=req.prompt)
+                logger.info("OpenAI generation failed (%s), auto-falling back to Google Gemini 3 Pro", result.get("error"))
+                gem_res = await generate_gemini_image(
+                    effective_prompt,
+                    model="gemini-3-pro-image",
+                    filename_hint=req.prompt,
+                    aspect_ratio=req.aspect_ratio
+                )
                 if gem_res.get("success"):
-                    gem_res["model"] = f"{req.model} (Powered by Google Gemini)"
+                    gem_res["model"] = f"{req.model} (Powered by Google Gemini 3 Pro)"
                     result = gem_res
     elif req.model == "omni_diffusion":
         result = {
             "success": False,
             "error_type": "LOCAL_MODEL_UNCONFIGURED",
-            "error": "OmniDiffusion local weights are not installed on this host. Please choose Flux-Schnell (Replicate), Imagen 3 (Google), or DALL-E 3 (OpenAI) with your API key.",
+            "error": "OmniDiffusion local weights are not installed on this host. Please choose Flux-Schnell (Replicate), Imagen 3 (Google), or GPT Image 2 (OpenAI) with your API key.",
             "provider": "local"
         }
     else:
         from services.gemini_service import get_gemini_key, generate_gemini_image
         if get_gemini_key():
-            result = await generate_gemini_image(effective_prompt, filename_hint=req.prompt)
-            if result.get("success"):
-                result["model"] = f"{req.model} (Powered by Google Gemini)"
-        elif settings.OPENAI_API_KEY:
-            result = await generate_openai_image(
-                prompt=effective_prompt, model="dall-e-3", size=req.size,
-                quality=openai_quality, style="vivid",
-                filename_hint=req.prompt
+            result = await generate_gemini_image(
+                effective_prompt,
+                model="gemini-3-pro-image",
+                filename_hint=req.prompt,
+                aspect_ratio=req.aspect_ratio
             )
             if result.get("success"):
-                result["model"] = f"{req.model} (Powered by DALL-E 3)"
+                result["model"] = f"{req.model} (Powered by Google Gemini 3 Pro)"
+        elif settings.OPENAI_API_KEY:
+            result = await generate_openai_image(
+                prompt=effective_prompt,
+                model="gpt-image-2",
+                size=req.size,
+                quality=openai_quality,
+                style="vivid",
+                filename_hint=req.prompt,
+                aspect_ratio=req.aspect_ratio
+            )
+            if result.get("success"):
+                result["model"] = f"{req.model} (Powered by OpenAI)"
         else:
             result = {
                 "success": False,

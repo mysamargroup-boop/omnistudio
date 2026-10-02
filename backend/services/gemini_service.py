@@ -323,7 +323,7 @@ async def generate_veo_video(
 
 async def generate_gemini_image(
     prompt: str,
-    model: str = "gemini-2.5-flash-image",
+    model: str = "gemini-3-pro-image",
     filename_hint: Optional[str] = None,
     reference_image_path: Optional[str] = None,
     aspect_ratio: Optional[str] = None
@@ -354,11 +354,22 @@ async def generate_gemini_image(
         except Exception as ie:
             logger.warning("Failed to encode reference image for Gemini Image generation: %s", ie)
 
-    parts.append({"text": prompt})
+    # In Google AI generateContent API, aspectRatio is not a valid field under generationConfig.
+    # Framing and aspect ratio are specified directly in the prompt for precise composition.
+    final_prompt = prompt
+    if aspect_ratio:
+        if aspect_ratio in ["16:9", "21:9"]:
+            final_prompt = f"{prompt}. 16:9 widescreen composition, cinematic aspect ratio, ultra high resolution masterpiece"
+        elif aspect_ratio in ["9:16", "3:4", "2:3"]:
+            final_prompt = f"{prompt}. 9:16 vertical portrait composition, full length vertical aspect ratio, ultra high resolution masterpiece"
+        elif aspect_ratio == "1:1":
+            final_prompt = f"{prompt}. 1:1 square composition, centered framing, ultra high resolution masterpiece"
+        elif aspect_ratio == "4:3":
+            final_prompt = f"{prompt}. 4:3 classic film composition, balanced framing, ultra high resolution masterpiece"
+
+    parts.append({"text": final_prompt})
     url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
     gen_config: Dict[str, Any] = {"responseModalities": ["IMAGE"]}
-    if aspect_ratio and aspect_ratio in ["16:9", "9:16", "1:1", "4:3", "3:4"]:
-        gen_config["aspectRatio"] = aspect_ratio
     payload = {
         "contents": [{"parts": parts}],
         "generationConfig": gen_config
@@ -380,12 +391,13 @@ async def generate_gemini_image(
                 local_path = settings.IMAGES_PATH / filename
                 with open(local_path, "wb") as f:
                     f.write(base64.b64decode(b64))
+                model_label = "Google Imagen 3 (Gemini 3 Pro Image)" if "3-pro" in model else f"Google Gemini ({model})"
                 return {
                     "success": True,
                     "filename": filename,
                     "url": f"/outputs/images/{filename}",
                     "local_path": str(local_path),
-                    "model": "Google Gemini 2.5 Flash Image"
+                    "model": model_label
                 }
         return {"success": False, "error": "No image payload found in Gemini response"}
     except Exception as e:

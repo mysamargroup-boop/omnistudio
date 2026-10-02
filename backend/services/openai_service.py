@@ -113,40 +113,42 @@ async def generate_openai_image(
         from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=key)
         
-        # Calculate aspect ratio size for DALL-E 3 HD
-        if aspect_ratio == "16:9":
-            size = "1792x1024"
-        elif aspect_ratio == "9:16":
-            size = "1024x1792"
-        elif aspect_ratio == "1:1":
-            size = "1024x1024"
-
-        # Determine candidate models to try: Flagship DALL-E 3 HD first
-        if model in ["dall-e-3", "openai", "gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5", "auto"]:
-            candidate_models = ["dall-e-3", "dall-e-2"]
-        elif model in ["dall-e-2"]:
-            candidate_models = ["dall-e-2", "dall-e-3"]
+        # Calculate aspect ratio size for OpenAI image models
+        if aspect_ratio == "16:9" or size == "1792x1024" or aspect_ratio in ["21:9", "4:3"]:
+            target_size = "1792x1024"
+        elif aspect_ratio == "9:16" or size == "1024x1792" or aspect_ratio in ["3:4", "2:3"]:
+            target_size = "1024x1792"
         else:
-            candidate_models = [model, "dall-e-3", "dall-e-2"]
-        
+            target_size = "1024x1024"
+
+        # Determine candidate models to try: prioritize explicitly selected model first
+        preferred = model if model and model != "auto" else "gpt-image-2"
+        all_options = [preferred, "gpt-image-2", "gpt-image-1", "gpt-image-1-mini", "dall-e-3", "dall-e-2"]
+        candidate_models = []
+        for c in all_options:
+            if c and c not in candidate_models:
+                candidate_models.append(c)
+
         response = None
         used_model = None
         last_error = None
-        
+
         for candidate in candidate_models:
             try:
-                # DALL-E 3 supports quality and style; GPT-image-1 family does not take style
                 kwargs = {
                     "model": candidate,
                     "prompt": prompt,
                     "n": 1,
+                    "size": target_size,
                 }
-                if candidate in ["dall-e-3", "dall-e-2"]:
-                    valid_sizes = ["1024x1024", "1792x1024", "1024x1792"]
-                    kwargs["size"] = size if size in valid_sizes else "1024x1024"
-                    if candidate == "dall-e-3":
-                        kwargs["quality"] = quality
-                
+                if candidate.startswith("gpt-image") or candidate == "chatgpt-image-latest":
+                    # gpt-image models support quality: 'high', 'medium', 'low', 'auto'
+                    kwargs["quality"] = "high" if quality in ["ultra", "hd", "high"] else ("medium" if quality in ["standard", "medium"] else "auto")
+                elif candidate == "dall-e-3":
+                    kwargs["quality"] = "hd" if quality in ["ultra", "hd", "high"] else "standard"
+                    if style in ["vivid", "natural"]:
+                        kwargs["style"] = style
+
                 response = await _execute_openai_image_generate(client, kwargs)
                 used_model = candidate
                 break
@@ -154,9 +156,11 @@ async def generate_openai_image(
                 last_error = candidate_err
                 err_str = str(candidate_err).lower()
                 if any(x in err_str for x in ["does not exist", "unknown_parameter", "not found", "unrecognized", "invalid_model", "model"]):
+                    logger.warning("OpenAI model '%s' unavailable, falling back to next candidate: %s", candidate, candidate_err)
                     continue
                 else:
-                    raise candidate_err
+                    logger.warning("OpenAI model '%s' error: %s", candidate, candidate_err)
+                    continue
                     
         if not response:
             raise last_error or Exception("No compatible OpenAI image model found.")
