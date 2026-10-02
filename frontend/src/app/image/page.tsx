@@ -720,7 +720,7 @@ export default function ImageStudioPage() {
     setOpticsPopoverOpen(false);
   };
 
-  const isShiftedLeft = studioMode === "image_variations" || referenceDrawerOpen || refImages.length > 0;
+  const isShiftedLeft = false;
   const isAnyModalOpen = showJewellerySuite || promptVaultOpen || brandKitModalOpen || howItWorksOpen || socialModalOpen || vaultOpen || confirmModalOpen || lightboxOpen;
 
   // Auto-resize prompt textarea so the full prompt is visible without clipping
@@ -964,7 +964,6 @@ export default function ImageStudioPage() {
         setProgress(100);
         setStageTitle("CANVAS DIFFUSION COMPLETE");
         setStatusMessage("Visual canvas synthesized successfully!");
-        setPromptDockCollapsed(true);
         setTelemetryLogs((prev) => [
           ...prev,
           {
@@ -1035,7 +1034,6 @@ export default function ImageStudioPage() {
         setProgress(100);
         setStageTitle("VARIATIONS COMPLETE");
         setStatusMessage(`Successfully generated ${data.total_generated || data.variations?.length || batchSize} variations!`);
-        setPromptDockCollapsed(true);
       }
     } catch (e: any) {
       setVariationsResult({ success: false, error: e.message });
@@ -1105,7 +1103,6 @@ export default function ImageStudioPage() {
         setStageTitle("AGENTIC POSES DELIVERED");
         setStatusMessage(`Successfully created ${res.total_generated} character poses!`);
         setShowAgenticDrawer(false);
-        setPromptDockCollapsed(true);
       } else {
         alert(res?.error || "Failed to generate poses");
       }
@@ -3530,12 +3527,7 @@ export default function ImageStudioPage() {
 
         {/* State D1: Multi-Reference Images & Character Consistency Suite (2-Column Studio Workspace) */}
         {!loading && !loadingVariations && !variationsResult && (studioMode === "image_variations" || ((referenceDrawerOpen || refImages.length > 0) && !result)) && (
-          <div className={cn(
-            "w-full py-1 animate-in fade-in duration-300",
-            isShiftedLeft && !promptDockCollapsed
-              ? "lg:ml-[420px] xl:ml-[450px] lg:w-[calc(100%-420px)] xl:w-[calc(100%-450px)] pr-2 sm:pr-4 pb-4 sm:pb-6"
-              : "w-full max-w-7xl mx-auto px-2 sm:px-4 pb-6 sm:pb-8"
-          )}>
+          <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 pb-6 sm:pb-8 py-1 animate-in fade-in duration-300">
             <div className="bg-white dark:bg-[#0e0e16] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 lg:p-6 shadow-xl space-y-4 sm:space-y-5 text-left mb-3">
               {/* Header Bar */}
               <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3 sm:pb-3.5">
@@ -4398,70 +4390,54 @@ export default function ImageStudioPage() {
         )}
       </div>
 
-      {/* Outside-click backdrop to dismiss any open dock popover */}
-      {studioMode !== "image_editor" && (modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) && (
-        <div className="fixed inset-0 z-[99980] bg-black/10 dark:bg-black/25 backdrop-blur-[0.5px]" onClick={closeAllPopovers} />
-      )}
-
-      {/* Floating Bottom Studio Dock: shifts left in vertical studio card style when Variations or Reference Suite is active; Completely hidden in Image Editor */}
+      {/* Floating Bottom Studio Dock: Completely hidden in Image Editor */}
       {studioMode !== "image_editor" && (
         promptDockCollapsed ? (
           <div
             onClick={() => setPromptDockCollapsed(false)}
             className={cn(
-              "fixed z-40 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group",
-              isShiftedLeft
-                ? cn("bottom-4 sm:bottom-5 right-auto mx-0 left-3 sm:left-4", isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]", "w-auto max-w-sm sm:max-w-md")
-                : cn("bottom-6 right-0 mx-auto w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl", isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"),
+              "fixed bottom-6 right-0 z-50 pointer-events-auto flex justify-center px-4",
+              isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
               isAnyModalOpen && "opacity-0 pointer-events-none invisible"
             )}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
-                Prompt Dock Minimized
-              </span>
-              {prompt.trim() && (
-                <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
-                  • &ldquo;{prompt.slice(0, 45)}...&rdquo;
+            <div className="w-full max-w-xl bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-full shadow-2xl px-5 py-2.5 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition-all duration-300 group">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono font-bold text-zinc-900 dark:text-white truncate">
+                  Prompt Dock Minimized
                 </span>
-              )}
+                {prompt.trim() && (
+                  <span className="text-[11px] font-mono text-zinc-400 truncate hidden sm:inline">
+                    • &ldquo;{prompt.slice(0, 45)}...&rdquo;
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPromptDockCollapsed(false);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors cursor-pointer"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span>Expand Prompt Bar</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setPromptDockCollapsed(false);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-xs font-mono text-zinc-700 dark:text-zinc-300 group-hover:bg-emerald-500 group-hover:text-white transition-colors cursor-pointer"
-            >
-              <ChevronUp className="w-3.5 h-3.5" />
-              <span>Expand Prompt Bar</span>
-            </button>
           </div>
         ) : (
           <div
             ref={dockRef}
             data-lenis-prevent="true"
             className={cn(
-              "fixed z-40 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-xl p-3 sm:p-3.5 transition-all duration-300 pointer-events-auto glass-dock",
-              isShiftedLeft
-                ? cn(
-                    "top-[118px] sm:top-[120px] bottom-2 sm:bottom-3 flex flex-col justify-start gap-2.5 custom-scrollbar",
-                    (modelPopoverOpen || ratioPopoverOpen || qualityPopoverOpen || resolutionPopoverOpen || opticsPopoverOpen) ? "overflow-visible" : "overflow-y-auto",
-                    "right-auto mx-0 left-3 sm:left-4",
-                    isSidebarCollapsed ? "lg:left-[76px]" : "lg:left-[272px]",
-                    "w-[94%] sm:w-[90%] md:w-[380px] lg:w-[410px] xl:w-[440px] max-w-[440px]"
-                  )
-                : cn(
-                    "bottom-6 right-0 mx-auto space-y-2",
-                    dockWidthMode === "compact"
-                      ? "w-[88%] max-w-2xl xl:max-w-3xl"
-                      : dockWidthMode === "full"
-                      ? "w-[96%] max-w-6xl 2xl:max-w-7xl"
-                      : "w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl",
-                    isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
-                  ),
+              "fixed bottom-6 z-50 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-2xl p-3 sm:p-3.5 transition-all duration-300 pointer-events-auto space-y-2 glass-dock right-0 mx-auto",
+              dockWidthMode === "compact"
+                ? "w-[88%] max-w-2xl xl:max-w-3xl"
+                : dockWidthMode === "full"
+                ? "w-[96%] max-w-6xl 2xl:max-w-7xl"
+                : "w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl",
+              isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
               (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40",
               isAnyModalOpen && "opacity-0 pointer-events-none invisible"
             )}
@@ -4772,9 +4748,6 @@ export default function ImageStudioPage() {
                   type="button"
                   onClick={() => {
                     setReferenceDrawerOpen((p) => !p);
-                    if (!referenceDrawerOpen && studioMode !== "image_variations") {
-                      setStudioMode("image_variations");
-                    }
                   }}
                   className={cn(
                     "p-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer flex items-center gap-1",
