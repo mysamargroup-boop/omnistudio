@@ -50,16 +50,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Copy docker-compose to VPS
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.HOSTINGER_VPS_HOST }}
-          username: ${{ secrets.HOSTINGER_VPS_USER }}
-          password: ${{ secrets.HOSTINGER_VPS_PASSWORD }}
-          port: 22
-          source: "docker-compose.yml"
-          target: "/home/omnistudio"
-
       - name: Deploy via SSH using Secure GHCR
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -67,13 +57,18 @@ jobs:
           username: ${{ secrets.HOSTINGER_VPS_USER }}
           password: ${{ secrets.HOSTINGER_VPS_PASSWORD }}
           port: 22
+          timeout: 60s
           command_timeout: 30m
           script_stop: true
           script: |
             echo "Logging into GHCR on VPS securely..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
+            mkdir -p /home/omnistudio
             cd /home/omnistudio
+            
+            echo "Syncing latest docker-compose.yml..."
+            curl -fsSL https://raw.githubusercontent.com/mysamargroup-boop/omnistudio/main/docker-compose.yml -o docker-compose.yml
             
             echo "Pulling latest securely-built images from GHCR..."
             docker compose pull
