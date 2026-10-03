@@ -51,6 +51,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deploy via SSH using Secure GHCR
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOSTINGER_VPS_HOST }}

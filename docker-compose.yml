@@ -94,6 +94,16 @@ services:
     networks:
       - omnistudio-network
 
+  # Watchtower for automatic continuous deployment from GHCR (updates within 60s of git push)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 60 --cleanup
+
+
 networks:
   omnistudio-network:
     name: omnistudio-network
