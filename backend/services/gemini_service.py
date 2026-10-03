@@ -7,13 +7,61 @@ import asyncio
 import uuid
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Type, Union
 from config import settings
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
+try:
+    from google import genai
+    from google.genai import types, errors
+    try:
+        from google.genai.models import AsyncModels, Models
+        AsyncModels._logged_afc_warning = True
+        Models._logged_afc_warning = True
+    except Exception:
+        pass
+    GENAI_SDK_AVAILABLE = True
+except ImportError:
+    GENAI_SDK_AVAILABLE = False
+    genai = None
+    types = None
+    errors = None
+
 logger = logging.getLogger("omnistudio.gemini")
+logging.getLogger("google.genai").setLevel(logging.ERROR)
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
+
+# Model aliases mapping deprecated or generic identifiers to active production Google AI models
+MODEL_ALIASES: Dict[str, str] = {
+    # Flash / standard models (gemini-2.5-flash deprecated by Google, replaced by gemini-3.8-flash)
+    "gemini-2.5-flash": "gemini-3.8-flash",
+    "gemini-2.0-flash": "gemini-3.8-flash",
+    "gemini-1.5-flash": "gemini-3.8-flash",
+    "gemini-flash": "gemini-3.8-flash",
+    "gemini-flash-latest": "gemini-3.8-flash",
+    "auto": "gemini-3.8-flash",
+    
+    # Pro / reasoning models
+    "gemini-2.5-pro": "gemini-3.1-pro-preview",
+    "gemini-2.0-pro": "gemini-3.1-pro-preview",
+    "gemini-1.5-pro": "gemini-3.1-pro-preview",
+    "gemini-pro": "gemini-3.1-pro-preview",
+    
+    # Image generation models
+    "gemini-3-pro-image": "gemini-2.5-flash-image",
+    "gemini-flash-image": "gemini-2.5-flash-image",
+    "gemini_flash_image": "gemini-2.5-flash-image",
+    "imagen-3": "gemini-2.5-flash-image",
+    "imagen": "gemini-2.5-flash-image",
+}
+
+def resolve_model_name(model_name: Optional[str], default: str = "gemini-3.8-flash") -> str:
+    """Resolve deprecated or alias model strings to active, supported Google GenAI models"""
+    if not model_name:
+        return default
+    clean = model_name.strip()
+    return MODEL_ALIASES.get(clean.lower(), clean)
 
 @retry(
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -36,33 +84,148 @@ def get_gemini_key() -> str:
             pass
     return key
 
-async def generate_gemini_text(prompt: str, model: str = "gemini-2.5-flash") -> Dict[str, Any]:
+def get_gemini_client(api_key: Optional[str] = None) -> Optional[Any]:
+    """Get initialized google-genai Client using configured API key"""
+    if not GENAI_SDK_AVAILABLE:
+        return None
+    key = api_key or get_gemini_key()
+    if not key:
+        return None
+    try:
+        return genai.Client(api_key=key)
+    except Exception as e:
+        logger.error("Failed to initialize google.genai Client: %s", e)
+        return None
+
+async def generate_gemini_text(
+    prompt: str,
+    model: str = "gemini-3.8-flash",
+    system_instruction: Optional[str] = None,
+    temperature: Optional[float] = None
+) -> Dict[str, Any]:
     key = get_gemini_key()
     if not key:
         return {"success": False, "error": "GEMINI_API_KEY not configured"}
 
-    url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
-    payload = {
+    target_model = resolve_model_name(model, default="gemini-3.8-flash")
+    client = get_gemini_client(api_key=key)
+
+    if client:
+        try:
+            config = None
+            if system_instruction or temperature is not None:
+                config_kwargs: Dict[str, Any] = {}
+                if system_instruction:
+                    config_kwargs["system_instruction"] = system_instruction
+                if temperature is not None:
+                    config_kwargs["temperature"] = temperature
+                config = types.GenerateContentConfig(**config_kwargs)
+
+            resp = await client.aio.models.generate_content(
+                model=target_model,
+                contents=prompt,
+                config=config
+            )
+            text = resp.text or ""
+            return {"success": True, "text": text, "model": target_model}
+        except Exception as e:
+            logger.warning("SDK generate_gemini_text failed, trying REST fallback: %s", e)
+
+    # REST Fallback
+    url = f"{GEMINI_API_URL}/models/{target_model}:generateContent?key={key}"
+    payload: Dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
+    if system_instruction:
+        payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
     try:
         r = _safe_gemini_post(url, payload, timeout=25)
         if r.status_code == 200:
             data = r.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]
-            return {"success": True, "text": text, "model": model}
+            return {"success": True, "text": text, "model": target_model}
         else:
             return {"success": False, "status_code": r.status_code, "error": r.text}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def generate_gemini_vision_text(prompt: str, image_path: Optional[str] = None, model: str = "gemini-2.5-flash") -> Dict[str, Any]:
+async def generate_gemini_structured(
+    prompt: str,
+    response_schema: Any,
+    model: str = "gemini-3.8-flash",
+    system_instruction: Optional[str] = None
+) -> Dict[str, Any]:
+    """Generate strictly structured Pydantic object using official Google GenAI schema enforcement"""
+    key = get_gemini_key()
+    if not key:
+        return {"success": False, "error": "GEMINI_API_KEY not configured"}
+
+    target_model = resolve_model_name(model, default="gemini-3.8-flash")
+    client = get_gemini_client(api_key=key)
+
+    if not client:
+        return {"success": False, "error": "google-genai SDK not initialized"}
+
+    try:
+        config_kwargs: Dict[str, Any] = {
+            "response_mime_type": "application/json",
+            "response_schema": response_schema
+        }
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
+
+        resp = await client.aio.models.generate_content(
+            model=target_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(**config_kwargs)
+        )
+        return {
+            "success": True,
+            "data": resp.parsed,
+            "text": resp.text,
+            "model": target_model
+        }
+    except Exception as e:
+        logger.error("generate_gemini_structured failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+async def generate_gemini_vision_text(
+    prompt: str,
+    image_path: Optional[str] = None,
+    model: str = "gemini-3.8-flash"
+) -> Dict[str, Any]:
     """Generate text/analysis using Gemini Vision with optional image input"""
     key = get_gemini_key()
     if not key:
         return {"success": False, "error": "GEMINI_API_KEY not configured"}
 
+    target_model = resolve_model_name(model, default="gemini-3.8-flash")
+    client = get_gemini_client(api_key=key)
+
+    if client:
+        try:
+            contents: list = []
+            if image_path and Path(image_path).exists():
+                try:
+                    with open(image_path, "rb") as f:
+                        img_bytes = f.read()
+                    ext = Path(image_path).suffix.lower()
+                    mime = "image/png" if "png" in ext else ("image/webp" if "webp" in ext else "image/jpeg")
+                    contents.append(types.Part.from_bytes(data=img_bytes, mime_type=mime))
+                except Exception as ie:
+                    logger.warning("Failed to read image for Gemini Vision: %s", ie)
+
+            contents.append(prompt)
+            resp = await client.aio.models.generate_content(
+                model=target_model,
+                contents=contents
+            )
+            return {"success": True, "text": resp.text or "", "model": target_model}
+        except Exception as e:
+            logger.warning("SDK generate_gemini_vision_text failed, trying REST fallback: %s", e)
+
+    # REST Fallback
     parts = []
     if image_path and Path(image_path).exists():
         try:
@@ -80,7 +243,7 @@ async def generate_gemini_vision_text(prompt: str, image_path: Optional[str] = N
             logger.warning("Failed to read image for Gemini Vision: %s", ie)
 
     parts.append({"text": prompt})
-    url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
+    url = f"{GEMINI_API_URL}/models/{target_model}:generateContent?key={key}"
     payload = {
         "contents": [{"parts": parts}]
     }
@@ -92,7 +255,7 @@ async def generate_gemini_vision_text(prompt: str, image_path: Optional[str] = N
             candidates = data.get("candidates", [])
             if candidates and candidates[0].get("content", {}).get("parts"):
                 text = candidates[0]["content"]["parts"][0].get("text", "")
-                return {"success": True, "text": text, "model": model}
+                return {"success": True, "text": text, "model": target_model}
             return {"success": False, "error": "No text content in Gemini response"}
         else:
             return {"success": False, "status_code": r.status_code, "error": r.text}
@@ -331,21 +494,86 @@ async def generate_veo_video(
 
 async def generate_gemini_image(
     prompt: str,
-    model: str = "gemini-3-pro-image",
+    model: str = "gemini-2.5-flash-image",
     filename_hint: Optional[str] = None,
     reference_image_path: Optional[str] = None,
     aspect_ratio: Optional[str] = None
 ) -> Dict[str, Any]:
     """Generate image via Google Gemini multimodal generation with active billing key, supporting reference images"""
-    import base64
-    import uuid
-    from pathlib import Path
     from services.prompt_utils import generate_image_filename
     
     key = get_gemini_key()
     if not key:
         return {"success": False, "error": "GEMINI_API_KEY not configured"}
 
+    target_model = resolve_model_name(model, default="gemini-2.5-flash-image")
+
+    # Framing and aspect ratio are specified directly in the prompt for precise composition
+    final_prompt = prompt
+    if aspect_ratio:
+        if aspect_ratio in ["16:9", "21:9"]:
+            final_prompt = f"{prompt}. 16:9 widescreen composition, cinematic aspect ratio, ultra high resolution masterpiece"
+        elif aspect_ratio in ["9:16", "3:4", "2:3"]:
+            final_prompt = f"{prompt}. 9:16 vertical portrait composition, full length vertical aspect ratio, ultra high resolution masterpiece"
+        elif aspect_ratio == "1:1":
+            final_prompt = f"{prompt}. 1:1 square composition, centered framing, ultra high resolution masterpiece"
+        elif aspect_ratio == "4:3":
+            final_prompt = f"{prompt}. 4:3 classic film composition, balanced framing, ultra high resolution masterpiece"
+
+    client = get_gemini_client(api_key=key)
+    if client:
+        try:
+            contents: list = []
+            if reference_image_path and Path(reference_image_path).exists():
+                try:
+                    with open(reference_image_path, "rb") as f:
+                        ref_bytes = f.read()
+                    ext = Path(reference_image_path).suffix.lower()
+                    ref_mime = "image/png" if "png" in ext else ("image/webp" if "webp" in ext else "image/jpeg")
+                    contents.append(types.Part.from_bytes(data=ref_bytes, mime_type=ref_mime))
+                except Exception as ie:
+                    logger.warning("Failed to encode reference image: %s", ie)
+
+            contents.append(final_prompt)
+            resp = await client.aio.models.generate_content(
+                model=target_model,
+                contents=contents,
+                config=types.GenerateContentConfig(response_modalities=["IMAGE"])
+            )
+            
+            candidates = resp.candidates or []
+            if candidates and candidates[0].content and candidates[0].content.parts:
+                for part in candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.data:
+                        raw_data = part.inline_data.data
+                        img_bytes = raw_data if isinstance(raw_data, bytes) else base64.b64decode(raw_data)
+                        mime = part.inline_data.mime_type or "image/png"
+                        ext = ".png" if "png" in mime else ".jpg"
+                        filename = generate_image_filename(filename_hint or prompt, ext=ext)
+                        local_path = settings.IMAGES_PATH / filename
+                        with open(local_path, "wb") as f:
+                            f.write(img_bytes)
+
+                        # Guarantee exact requested aspect ratio (e.g. 16:9, 9:16, 1:1, 4:3, 21:9)
+                        if aspect_ratio:
+                            try:
+                                from services.aspect_ratio_service import conform_image_aspect_ratio
+                                conform_image_aspect_ratio(local_path, aspect_ratio)
+                            except Exception as cf_err:
+                                logger.warning("Gemini image aspect ratio conformance warning: %s", cf_err)
+
+                        model_label = f"Google Imagen 3 ({target_model})"
+                        return {
+                            "success": True,
+                            "filename": filename,
+                            "url": f"/outputs/images/{filename}",
+                            "local_path": str(local_path),
+                            "model": model_label
+                        }
+        except Exception as e:
+            logger.warning("SDK generate_gemini_image failed, falling back to REST: %s", e)
+
+    # REST Fallback
     parts = []
     if reference_image_path and Path(reference_image_path).exists():
         try:
@@ -362,25 +590,11 @@ async def generate_gemini_image(
         except Exception as ie:
             logger.warning("Failed to encode reference image for Gemini Image generation: %s", ie)
 
-    # In Google AI generateContent API, aspectRatio is not a valid field under generationConfig.
-    # Framing and aspect ratio are specified directly in the prompt for precise composition.
-    final_prompt = prompt
-    if aspect_ratio:
-        if aspect_ratio in ["16:9", "21:9"]:
-            final_prompt = f"{prompt}. 16:9 widescreen composition, cinematic aspect ratio, ultra high resolution masterpiece"
-        elif aspect_ratio in ["9:16", "3:4", "2:3"]:
-            final_prompt = f"{prompt}. 9:16 vertical portrait composition, full length vertical aspect ratio, ultra high resolution masterpiece"
-        elif aspect_ratio == "1:1":
-            final_prompt = f"{prompt}. 1:1 square composition, centered framing, ultra high resolution masterpiece"
-        elif aspect_ratio == "4:3":
-            final_prompt = f"{prompt}. 4:3 classic film composition, balanced framing, ultra high resolution masterpiece"
-
     parts.append({"text": final_prompt})
-    url = f"{GEMINI_API_URL}/models/{model}:generateContent?key={key}"
-    gen_config: Dict[str, Any] = {"responseModalities": ["IMAGE"]}
+    url = f"{GEMINI_API_URL}/models/{target_model}:generateContent?key={key}"
     payload = {
         "contents": [{"parts": parts}],
-        "generationConfig": gen_config
+        "generationConfig": {"responseModalities": ["IMAGE"]}
     }
 
     try:
@@ -389,8 +603,8 @@ async def generate_gemini_image(
             return {"success": False, "status_code": r.status_code, "error": r.text}
         
         data = r.json()
-        parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-        for p in parts:
+        cand_parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        for p in cand_parts:
             if "inlineData" in p:
                 b64 = p["inlineData"]["data"]
                 mime = p["inlineData"].get("mimeType", "image/png")
@@ -400,7 +614,6 @@ async def generate_gemini_image(
                 with open(local_path, "wb") as f:
                     f.write(base64.b64decode(b64))
 
-                # Guarantee exact requested aspect ratio (e.g. 16:9, 9:16, 1:1, 4:3, 21:9)
                 if aspect_ratio:
                     try:
                         from services.aspect_ratio_service import conform_image_aspect_ratio
@@ -408,7 +621,7 @@ async def generate_gemini_image(
                     except Exception as cf_err:
                         logger.warning("Gemini image aspect ratio conformance warning: %s", cf_err)
 
-                model_label = "Google Imagen 3 (Gemini 3 Pro Image)" if "3-pro" in model else f"Google Gemini ({model})"
+                model_label = f"Google Imagen 3 ({target_model})"
                 return {
                     "success": True,
                     "filename": filename,
@@ -419,4 +632,3 @@ async def generate_gemini_image(
         return {"success": False, "error": "No image payload found in Gemini response"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
