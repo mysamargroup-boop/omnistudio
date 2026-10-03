@@ -493,6 +493,22 @@ async def get_all_assets(
     return cached
 
 
+@router.get("/count")
+async def get_asset_count():
+    """Ultra-fast asset count for sidebar telemetry without reading metadata or sorting."""
+    total = 0
+    for path_dir in DIR_MAP.values():
+        if path_dir and path_dir.exists():
+            try:
+                with os.scandir(str(path_dir)) as it:
+                    for entry in it:
+                        if entry.is_file() and not entry.name.startswith("."):
+                            total += 1
+            except Exception:
+                pass
+    return {"total": total}
+
+
 @router.get("/prompt/{filename}")
 async def get_asset_prompt(filename: str):
     """Retrieve the generation prompt for an asset if it was generated on this platform"""

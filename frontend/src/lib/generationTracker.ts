@@ -21,9 +21,9 @@ export function getActiveJobs(): ActiveJob[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const jobs: ActiveJob[] = JSON.parse(raw);
-    // Filter out stale jobs older than 4 minutes (prevents ghost jobs hanging sidebar)
+    // Filter out stale jobs older than 90 seconds (prevents ghost jobs hanging sidebar)
     const now = Date.now();
-    const maxAgeMs = 4 * 60 * 1000;
+    const maxAgeMs = 90 * 1000;
     const valid = jobs.filter((j) => now - j.startTime < maxAgeMs && j.status === "running");
     if (valid.length !== jobs.length) {
       try {
@@ -34,6 +34,15 @@ export function getActiveJobs(): ActiveJob[] {
   } catch {
     return [];
   }
+}
+
+export function clearTabProcessing(path: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getActiveJobs();
+    const updated = current.filter((j) => j.path !== path);
+    saveJobs(updated);
+  } catch {}
 }
 
 export function clearAllActiveJobs() {

@@ -50,24 +50,25 @@ export default function NavigationProgress() {
         }
 
         setIsNavigating(true);
-        setProgress(25);
+        setProgress(30);
 
-        // Gradually advance progress while waiting for chunk
-        const t1 = setTimeout(() => setProgress(60), 120);
-        const t2 = setTimeout(() => setProgress(85), 380);
+        // Smoothly advance progress bar while waiting for route chunk
+        const t1 = setTimeout(() => setProgress(55), 180);
+        const t2 = setTimeout(() => setProgress(75), 450);
+        const t3 = setTimeout(() => setProgress(88), 1100);
+        const t4 = setTimeout(() => setProgress(94), 2500);
 
-        // Safety fallback: auto-complete if route doesn't fire route change within 2.2s
+        // Safety timeout: Only if route is completely aborted/stuck after 15s, quietly reset without fake 100%
         const tSafety = setTimeout(() => {
-          setProgress(100);
-          setTimeout(() => {
-            setIsNavigating(false);
-            setProgress(0);
-          }, 250);
-        }, 2200);
+          setIsNavigating(false);
+          setProgress(0);
+        }, 15000);
 
         return () => {
           clearTimeout(t1);
           clearTimeout(t2);
+          clearTimeout(t3);
+          clearTimeout(t4);
           clearTimeout(tSafety);
         };
       }

@@ -56,12 +56,15 @@ import {
 } from "lucide-react";
 import { api, getMediaUrl, ImageMetadataInspection } from "@/lib/api";
 import { formatBytes, cn } from "@/lib/utils";
-import DeleteConfirmModal, { DeleteModalItem } from "@/components/ui/DeleteConfirmModal";
+import dynamic from "next/dynamic";
+import type { DeleteModalItem } from "@/components/ui/DeleteConfirmModal";
 import LazyImage from "@/components/ui/LazyImage";
-import ShareModal from "@/components/ui/ShareModal";
-import CreateCollectionModal from "@/components/ui/CreateCollectionModal";
-import VideoEditorModal from "@/components/video/VideoEditorModal";
 import Spinner from "@/components/ui/Spinner";
+
+const DeleteConfirmModal = dynamic(() => import("@/components/ui/DeleteConfirmModal"), { ssr: false });
+const ShareModal = dynamic(() => import("@/components/ui/ShareModal"), { ssr: false });
+const CreateCollectionModal = dynamic(() => import("@/components/ui/CreateCollectionModal"), { ssr: false });
+const VideoEditorModal = dynamic(() => import("@/components/video/VideoEditorModal"), { ssr: false });
 
 type Tab = "all" | "favorites" | "browser_ram" | "final" | "videos" | "images" | "audio" | "trash";
 type SortOption = "date_desc" | "date_asc" | "size_desc" | "size_asc" | "name_asc" | "name_desc";
@@ -267,13 +270,37 @@ export default function VaultPage() {
   const [filterType, setFilterType] = useState<FilterMediaType>("all");
   const [filterDate, setFilterDate] = useState<FilterDateRange>("all");
   const [openDropdown, setOpenDropdown] = useState<"sort" | "date" | "type" | null>(null);
-  const [assets, setAssets] = useState<any>(null);
+  const [assets, setAssets] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("omnistudio_vault_cache");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
   const [trashAssets, setTrashAssets] = useState<any>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("omnistudio_vault_favorites");
+        if (cached) return new Set(JSON.parse(cached));
+      } catch {}
+    }
+    return new Set();
+  });
   const [collections, setCollections] = useState<any[]>([]);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [collectionFilenames, setCollectionFilenames] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return !sessionStorage.getItem("omnistudio_vault_cache");
+      } catch {}
+    }
+    return true;
+  });
+  const [isRevalidating, setIsRevalidating] = useState<boolean>(false);
   const [visibleCount, setVisibleCount] = useState(48);
 
   useEffect(() => {
@@ -549,11 +576,16 @@ export default function VaultPage() {
   }, []);
 
   const loadData = async (forceReloadAll: boolean = false) => {
-    setLoading(true);
+    if (!assets) {
+      setLoading(true);
+    } else {
+      setIsRevalidating(true);
+    }
     loadBrowserMemoryAssets();
     // Safety timer: Never leave user stuck on "Synchronizing Asset Vault" for > 3.5 seconds
     const safetyTimer = setTimeout(() => {
       setLoading(false);
+      setIsRevalidating(false);
     }, 3500);
     try {
       // Lazy loading optimization: Only fetch active assets and favorites initially.
@@ -569,9 +601,17 @@ export default function VaultPage() {
       const favRes = results[1];
       const trashRes = shouldLoadTrash ? results[2] : null;
 
-      if (allRes.status === "fulfilled") setAssets(allRes.value);
+      if (allRes.status === "fulfilled" && allRes.value) {
+        setAssets(allRes.value);
+        try {
+          sessionStorage.setItem("omnistudio_vault_cache", JSON.stringify(allRes.value));
+        } catch {}
+      }
       if (favRes.status === "fulfilled" && favRes.value?.favorites) {
         setFavorites(new Set(favRes.value.favorites));
+        try {
+          sessionStorage.setItem("omnistudio_vault_favorites", JSON.stringify(favRes.value.favorites));
+        } catch {}
       }
       if (trashRes && trashRes.status === "fulfilled") {
         setTrashAssets(trashRes.value);
@@ -581,6 +621,7 @@ export default function VaultPage() {
     } finally {
       clearTimeout(safetyTimer);
       setLoading(false);
+      setIsRevalidating(false);
     }
   };
 
@@ -1377,11 +1418,11 @@ export default function VaultPage() {
 
           <button
             onClick={() => loadData(true)}
-            disabled={loading}
+            disabled={loading || isRevalidating}
             className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-            title="Refresh Vault & Storage"
+            title={isRevalidating ? "Synchronizing with server..." : "Refresh Vault & Storage"}
           >
-            {loading ? <Spinner size="xs" variant="emerald" /> : <RefreshCw className="h-4 w-4" />}
+            {loading || isRevalidating ? <Spinner size="xs" variant="emerald" /> : <RefreshCw className="h-4 w-4" />}
           </button>
         </div>
       </div>
@@ -1791,8 +1832,8 @@ export default function VaultPage() {
         </div>
       )}
 
-      {/* Loading Skeleton Animation when vault is syncing or opening */}
-      {loading && (
+      {/* Loading Skeleton Animation when vault is syncing or opening for the first time without cached data */}
+      {loading && !assets && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
             <div className="flex items-center gap-2.5">
@@ -1843,7 +1884,7 @@ export default function VaultPage() {
       )}
 
       {/* Stable Media Display with True Masonry Layout & Smooth Faded Image Transitions & Marquee Lasso Selection */}
-      {!loading && (
+      {(!loading || assets) && (
         <div
           onMouseDown={handleGalleryMouseDown}
           className="relative min-h-[500px] select-none pb-28"

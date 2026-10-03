@@ -133,15 +133,11 @@ export default function Sidebar() {
     try {
       const [hData, aData] = await Promise.allSettled([
         api.health(),
-        api.getAllAssets(0, 1),
+        api.getAssetCount(),
       ]);
       if (hData.status === "fulfilled") setHealth(hData.value);
       if (aData.status === "fulfilled" && aData.value) {
-        const val = aData.value;
-        const total = typeof val.total === "number"
-          ? val.total
-          : (val.images?.length || 0) + (val.videos?.length || 0) + (val.audio?.length || 0) + (val.final?.length || 0);
-        setAssetCount(total);
+        setAssetCount(typeof aData.value.total === "number" ? aData.value.total : null);
       }
     } catch {}
     setIsRefreshing(false);
@@ -319,7 +315,7 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    prefetch={true}
+                    prefetch={false}
                     title={isDesktopCollapsed ? `${item.label} ${isJobProcessing ? "(PROCESSING)" : item.badge ? `(${item.badge})` : ""}` : undefined}
                     onClick={() => {
                       if (pathname !== item.href) {

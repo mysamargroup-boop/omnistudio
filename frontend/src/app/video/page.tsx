@@ -68,20 +68,23 @@ import {
 import { api, getMediaUrl, getDownloadUrl, VideoMetadataInspection } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
-import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
+import dynamic from "next/dynamic";
+import type { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
-import HowItWorksModal from "@/components/ui/HowItWorksModal";
 import LazyImage from "@/components/ui/LazyImage";
 import CharacterStudioModal, { CharacterData, ARCHETYPES } from "@/components/video/CharacterStudioModal";
 import CharacterSheetModal from "@/components/character/CharacterSheetModal";
 import { getActiveCharacter, getStoredCharacters, setActiveCharacter as setStoredActiveCharacter, fetchActiveCharacterAsync } from "@/lib/characters";
 import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
-import VideoEditorModal from "@/components/video/VideoEditorModal";
-import PrecisionVideoEditor from "@/components/video/PrecisionVideoEditor";
-import BrandKitModal from "@/components/brand/BrandKitModal";
-import AudioMusicLibraryModal from "@/components/audio/AudioMusicLibraryModal";
-import PromptVaultModal from "@/components/prompt/PromptVaultModal";
 import Dropdown, { DropdownOption } from "@/components/ui/Dropdown";
+
+const GenerationConfirmModal = dynamic(() => import("@/components/ui/GenerationConfirmModal"), { ssr: false });
+const HowItWorksModal = dynamic(() => import("@/components/ui/HowItWorksModal"), { ssr: false });
+const VideoEditorModal = dynamic(() => import("@/components/video/VideoEditorModal"), { ssr: false });
+const PrecisionVideoEditor = dynamic(() => import("@/components/video/PrecisionVideoEditor"), { ssr: false });
+const BrandKitModal = dynamic(() => import("@/components/brand/BrandKitModal"), { ssr: false });
+const AudioMusicLibraryModal = dynamic(() => import("@/components/audio/AudioMusicLibraryModal"), { ssr: false });
+const PromptVaultModal = dynamic(() => import("@/components/prompt/PromptVaultModal"), { ssr: false });
 
 const VIDEO_CAMERA_OPTIONS: DropdownOption[] = [
   { value: "sony_fx3", label: "Sony FX3 Cinema Line (ILME-FX3)", badge: "Cinema" },

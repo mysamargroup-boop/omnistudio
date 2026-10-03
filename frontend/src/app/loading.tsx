@@ -11,10 +11,10 @@ export default function Loading() {
 
         <div className="space-y-1">
           <h3 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 font-heading">
-            Loading Workspace Space
+            Loading Workspace
           </h3>
           <p className="text-xs text-zinc-500 font-mono">
-            Synchronizing AI engines & assets...
+            Preparing studio environment...
           </p>
         </div>
 

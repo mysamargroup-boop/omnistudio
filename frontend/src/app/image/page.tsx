@@ -56,17 +56,20 @@ import {
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
-import GenerationConfirmModal, { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
+import dynamic from "next/dynamic";
+import type { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
-import HowItWorksModal from "@/components/ui/HowItWorksModal";
-import BrandKitModal from "@/components/brand/BrandKitModal";
 import BeforeAfterSlider from "@/components/ui/BeforeAfterSlider";
-import SocialRepurposerModal from "@/components/social/SocialRepurposerModal";
-import JewellerySuiteModal from "@/components/studio/JewellerySuiteModal";
 import MentionReferencePopover, { MentionCandidate } from "@/components/studio/MentionReferencePopover";
-import PromptVaultModal from "@/components/prompt/PromptVaultModal";
 import LazyImage from "@/components/ui/LazyImage";
 import { getActiveCharacter, CharacterData, setActiveCharacter } from "@/lib/characters";
+
+const GenerationConfirmModal = dynamic(() => import("@/components/ui/GenerationConfirmModal"), { ssr: false });
+const HowItWorksModal = dynamic(() => import("@/components/ui/HowItWorksModal"), { ssr: false });
+const BrandKitModal = dynamic(() => import("@/components/brand/BrandKitModal"), { ssr: false });
+const SocialRepurposerModal = dynamic(() => import("@/components/social/SocialRepurposerModal"), { ssr: false });
+const JewellerySuiteModal = dynamic(() => import("@/components/studio/JewellerySuiteModal"), { ssr: false });
+const PromptVaultModal = dynamic(() => import("@/components/prompt/PromptVaultModal"), { ssr: false });
 
 interface ModelOption {
   value: string;

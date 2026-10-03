@@ -515,6 +515,7 @@ export const api = {
     const qs = params.toString();
     return fetchApi<any>(`/api/assets/all${qs ? `?${qs}` : ""}`);
   },
+  getAssetCount: () => fetchApi<{ total: number }>("/api/assets/count"),
   getVaultImages: () => fetchApi<any>("/api/assets/images"),
   getVaultVideos: () => fetchApi<any>("/api/assets/videos"),
   getVaultAudios: () => fetchApi<any>("/api/assets/audio"),
