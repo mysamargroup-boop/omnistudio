@@ -4918,19 +4918,15 @@ export default function ImageStudioPage() {
                         <button
                           key={m.value}
                           type="button"
-                          disabled={isInactive}
                           onClick={() => {
-                            if (!isInactive) {
-                              setModel(m.value);
-                              setModelPopoverOpen(false);
-                            }
+                            setModel(m.value);
+                            setModelPopoverOpen(false);
                           }}
                           className={cn(
-                            "w-full flex items-start justify-between p-2 rounded-xl text-left transition-all font-jakarta",
-                            isInactive ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
-                            isSelected && !isInactive
+                            "w-full flex items-start justify-between p-2 rounded-xl text-left transition-all font-jakarta cursor-pointer",
+                            isSelected
                               ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20"
-                              : (!isInactive && "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent")
+                              : "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent"
                           )}
                         >
                           <div className="space-y-0.5 min-w-0 pr-2">
@@ -4959,7 +4955,7 @@ export default function ImageStudioPage() {
                               {isInactive ? "API Key required in Settings to activate" : m.description}
                             </p>
                           </div>
-                          {isSelected && !isInactive && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
                         </button>
                       );
                     })}

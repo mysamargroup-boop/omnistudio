@@ -3472,7 +3472,7 @@ function VideoStudioContent() {
                       <div
                         data-popover-content="true"
                         data-lenis-prevent="true"
-                        className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
+                        className="absolute bottom-full left-0 mb-2 w-80 sm:w-96 max-w-[calc(100vw-24px)] rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-2.5"
                       >
                         <div className="relative">
                           <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
@@ -3508,19 +3508,15 @@ function VideoStudioContent() {
                               <button
                                 key={m.value}
                                 type="button"
-                                disabled={isInactive}
                                 onClick={() => {
-                                  if (!isInactive) {
-                                    setModel(m.value);
-                                    setModelPopoverOpen(false);
-                                  }
+                                  setModel(m.value);
+                                  setModelPopoverOpen(false);
                                 }}
                                 className={cn(
-                                  "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all font-jakarta",
-                                  isInactive ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
-                                  isSelected && !isInactive
+                                  "w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all font-jakarta cursor-pointer",
+                                  isSelected
                                     ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20"
-                                    : (!isInactive && "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent")
+                                    : "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent"
                                 )}
                               >
                                 <div className="space-y-0.5 min-w-0 pr-2">
@@ -3541,7 +3537,7 @@ function VideoStudioContent() {
                                     {isInactive ? "API Key required in Settings to activate" : m.description}
                                   </p>
                                 </div>
-                                {isSelected && !isInactive && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-1" />}
+                                {isSelected && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-1" />}
                               </button>
                             );
                           })}
@@ -3575,7 +3571,7 @@ function VideoStudioContent() {
                       <div
                         data-popover-content="true"
                         data-lenis-prevent="true"
-                        className="absolute bottom-full left-0 mb-2 w-56 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
+                        className="absolute bottom-full left-0 mb-2 w-56 max-w-[calc(100vw-24px)] rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
                       >
                         <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1 font-semibold">
                           Aspect Ratio
@@ -3637,7 +3633,7 @@ function VideoStudioContent() {
                       <div
                         data-popover-content="true"
                         data-lenis-prevent="true"
-                        className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
+                        className="absolute bottom-full left-0 mb-2 w-64 max-w-[calc(100vw-24px)] rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2 z-50 animate-slide-up space-y-1"
                       >
                         <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1 font-semibold">
                           Camera Motion
@@ -3702,7 +3698,7 @@ function VideoStudioContent() {
                       <div
                         data-popover-content="true"
                         data-lenis-prevent="true"
-                        className="absolute bottom-full left-0 mb-2 w-60 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
+                        className="absolute bottom-full left-0 mb-2 w-60 max-w-[calc(100vw-24px)] rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
                       >
                         <div>
                           <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase mb-1.5 font-semibold">
@@ -3790,7 +3786,7 @@ function VideoStudioContent() {
                       <div
                         data-popover-content="true"
                         data-lenis-prevent="true"
-                        className="absolute bottom-full left-0 mb-2 w-60 rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
+                        className="absolute bottom-full left-0 mb-2 w-60 max-w-[calc(100vw-24px)] rounded-2xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-3 z-50 animate-slide-up space-y-3"
                       >
                         <div>
                           <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase mb-1.5 font-semibold">
