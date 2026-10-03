@@ -140,6 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
+            // Instantly unblock UI so refresh is instantaneous (<50ms)
+            setLoading(false);
           }
         }
         try { localStorage.removeItem("omnistudio_pin_session"); } catch { /* migration */ }
@@ -148,14 +150,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("Failed to read local pin session", e);
     }
 
+    // Fast fallback timer: never let external auth check block the workstation for more than 1.5s
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
+
     // 1. Initial active Supabase session check
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      clearTimeout(safetyTimer);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       if (currentSession?.access_token) saveBackendToken(currentSession.access_token);
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id, currentSession.user.email);
       }
+      setLoading(false);
+    }).catch(() => {
+      clearTimeout(safetyTimer);
       setLoading(false);
     });
 

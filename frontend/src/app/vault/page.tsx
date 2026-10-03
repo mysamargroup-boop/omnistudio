@@ -551,6 +551,10 @@ export default function VaultPage() {
   const loadData = async (forceReloadAll: boolean = false) => {
     setLoading(true);
     loadBrowserMemoryAssets();
+    // Safety timer: Never leave user stuck on "Synchronizing Asset Vault" for > 3.5 seconds
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 3500);
     try {
       // Lazy loading optimization: Only fetch active assets and favorites initially.
       // Trash assets are loaded on-demand when on the trash tab or when forced.
@@ -574,8 +578,10 @@ export default function VaultPage() {
       }
     } catch (e) {
       console.error("Failed to load vault assets", e);
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Lazy-load trash when switching to the trash tab if not already loaded
@@ -1370,7 +1376,7 @@ export default function VaultPage() {
           </div>
 
           <button
-            onClick={loadData}
+            onClick={() => loadData(true)}
             disabled={loading}
             className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
             title="Refresh Vault & Storage"

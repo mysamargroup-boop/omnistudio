@@ -629,6 +629,13 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
             result["motion_intensity"] = motion_intensity
             result["loop"] = req.loop
             result["seed"] = req.seed
+            # Guarantee exact aspect ratio conformance
+            if result.get("local_path") and req.aspect_ratio:
+                try:
+                    from services.aspect_ratio_service import conform_video_aspect_ratio
+                    await asyncio.to_thread(conform_video_aspect_ratio, result["local_path"], req.aspect_ratio)
+                except Exception as cf_err:
+                    logger.warning("Video aspect ratio conformance warning: %s", cf_err)
 
             # Sync asset to Cloudflare R2 and Supabase Cloud
             if result.get("local_path"):
@@ -865,6 +872,14 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
     result["motion_intensity"] = motion_intensity
     result["loop"] = req.loop
     result["seed"] = req.seed
+
+    # Guarantee exact aspect ratio conformance
+    if result.get("local_path") and req.aspect_ratio:
+        try:
+            from services.aspect_ratio_service import conform_video_aspect_ratio
+            await asyncio.to_thread(conform_video_aspect_ratio, result["local_path"], req.aspect_ratio)
+        except Exception as cf_err:
+            logger.warning("Video aspect ratio conformance warning: %s", cf_err)
 
     # Sync asset to Cloudflare R2 and Supabase Cloud
     if result.get("local_path"):

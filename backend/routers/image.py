@@ -466,6 +466,13 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
         result["cfg_scale"] = req.cfg_scale
         result["sampling_steps"] = req.sampling_steps
         result["seed"] = (req.seed or 42) + seed_offset if req.seed is not None else None
+        # Guarantee exact aspect ratio conformance (e.g. 16:9, 9:16, 1:1, 4:3, 21:9)
+        if result.get("local_path") and req.aspect_ratio:
+            try:
+                from services.aspect_ratio_service import conform_image_aspect_ratio
+                conform_image_aspect_ratio(result["local_path"], req.aspect_ratio)
+            except Exception as cf_err:
+                logger.warning("Image aspect ratio conformance warning: %s", cf_err)
 
         # Sync asset to Cloudflare R2 and Supabase Cloud
         if result.get("local_path"):

@@ -65,23 +65,46 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   if (!isFormData && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
-  if (!res.ok) {
-    let msg = res.statusText;
-    try {
-      const errJson = await res.json();
-      if (errJson && errJson.detail) {
-        msg = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
-      } else if (errJson && errJson.error) {
-        msg = errJson.error;
-      }
-    } catch (_) {}
-    throw new Error(msg);
+
+  // Provide intelligent default timeout: 15s for data queries, 180s for heavy AI generation
+  const isHeavyAiRoute = path.includes("/generate") || path.includes("/pipeline") || path.includes("/agent") || path.includes("/edit");
+  const defaultTimeoutMs = isHeavyAiRoute ? 180000 : 15000;
+  
+  let signal = options?.signal;
+  let timeoutId: any = undefined;
+  if (!signal && typeof AbortController !== "undefined") {
+    const controller = new AbortController();
+    signal = controller.signal;
+    timeoutId = setTimeout(() => controller.abort(), defaultTimeoutMs);
   }
-  return res.json();
+
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      signal,
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.detail) {
+          msg = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+        } else if (errJson && errJson.error) {
+          msg = errJson.error;
+        }
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error(`Request to ${cleanPath} timed out after ${defaultTimeoutMs / 1000}s`);
+    }
+    throw err;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T> {
@@ -89,26 +112,45 @@ async function fetchApiFormData<T>(path: string, formData: FormData): Promise<T>
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${cleanPath}`;
   const authHeaders = getAuthHeaders();
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      ...authHeaders,
-    },
-    body: formData,
-  });
-  if (!res.ok) {
-    let msg = res.statusText;
-    try {
-      const errJson = await res.json();
-      if (errJson && errJson.detail) {
-        msg = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
-      } else if (errJson && errJson.error) {
-        msg = errJson.error;
-      }
-    } catch (_) {}
-    throw new Error(msg);
+
+  let signal: AbortSignal | undefined;
+  let timeoutId: any = undefined;
+  if (typeof AbortController !== "undefined") {
+    const controller = new AbortController();
+    signal = controller.signal;
+    timeoutId = setTimeout(() => controller.abort(), 120000);
   }
-  return res.json();
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+      },
+      body: formData,
+      signal,
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.detail) {
+          msg = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+        } else if (errJson && errJson.error) {
+          msg = errJson.error;
+        }
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return res.json();
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error(`Upload to ${cleanPath} timed out after 120s`);
+    }
+    throw err;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 export function uploadWithProgress<T = any>(

@@ -194,6 +194,14 @@ class ImageGeneratorAgent(BaseAgent):
                 )
                 used_model_name = "Cinematic Card Fallback"
 
+            # Guarantee strict aspect ratio adherence (e.g. 16:9, 9:16, 1:1, 4:3, 21:9)
+            if local_path.exists() and context.aspect_ratio:
+                try:
+                    from services.aspect_ratio_service import conform_image_aspect_ratio
+                    conform_image_aspect_ratio(local_path, context.aspect_ratio)
+                except Exception as cf_err:
+                    logger.warning("Scene image aspect ratio conformance warning: %s", cf_err)
+
             # Assign web-accessible URL
             scene.image_path = web_url
 

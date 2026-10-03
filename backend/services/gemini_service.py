@@ -308,6 +308,14 @@ async def generate_veo_video(
         except Exception as trim_err:
             logger.warning("Veo post-process duration check error: %s", trim_err)
 
+        # Conform video to exact requested aspect ratio (e.g. 4:3, 21:9, 1:1, 9:16, 16:9)
+        if aspect_ratio and local_path.exists():
+            try:
+                from services.aspect_ratio_service import conform_video_aspect_ratio
+                await asyncio.to_thread(conform_video_aspect_ratio, local_path, aspect_ratio)
+            except Exception as cf_err:
+                logger.warning("Veo video aspect ratio conformance warning: %s", cf_err)
+
         return {
             "success": True,
             "filename": filename,
@@ -391,6 +399,15 @@ async def generate_gemini_image(
                 local_path = settings.IMAGES_PATH / filename
                 with open(local_path, "wb") as f:
                     f.write(base64.b64decode(b64))
+
+                # Guarantee exact requested aspect ratio (e.g. 16:9, 9:16, 1:1, 4:3, 21:9)
+                if aspect_ratio:
+                    try:
+                        from services.aspect_ratio_service import conform_image_aspect_ratio
+                        conform_image_aspect_ratio(local_path, aspect_ratio)
+                    except Exception as cf_err:
+                        logger.warning("Gemini image aspect ratio conformance warning: %s", cf_err)
+
                 model_label = "Google Imagen 3 (Gemini 3 Pro Image)" if "3-pro" in model else f"Google Gemini ({model})"
                 return {
                     "success": True,

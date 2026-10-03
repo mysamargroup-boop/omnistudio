@@ -428,7 +428,7 @@ import time
 
 _ASSETS_CACHE: dict = {}
 _ASSETS_CACHE_TIMESTAMP: float = 0
-_CACHE_TTL_SECONDS: float = 30.0
+_CACHE_TTL_SECONDS: float = 120.0
 
 def invalidate_assets_cache():
     global _ASSETS_CACHE_TIMESTAMP, _PROMPT_MAP_CACHE_TIMESTAMP

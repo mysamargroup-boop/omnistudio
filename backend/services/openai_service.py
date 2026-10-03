@@ -185,6 +185,14 @@ async def generate_openai_image(
             raise Exception("OpenAI API did not return image data or URL.")
             
         revised_prompt = getattr(item, "revised_prompt", prompt)
+
+        # Conform image to exact mathematical aspect ratio requested (e.g. 4:3, 3:4, 21:9, 16:9, 9:16, 1:1)
+        if aspect_ratio:
+            try:
+                from services.aspect_ratio_service import conform_image_aspect_ratio
+                conform_image_aspect_ratio(local_path, aspect_ratio)
+            except Exception as cf_err:
+                logger.warning("OpenAI image aspect conformance error: %s", cf_err)
                     
         return {
             "success": True,

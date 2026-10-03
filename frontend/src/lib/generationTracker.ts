@@ -21,13 +21,27 @@ export function getActiveJobs(): ActiveJob[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const jobs: ActiveJob[] = JSON.parse(raw);
-    // Filter out stale jobs older than 6 hours
+    // Filter out stale jobs older than 10 minutes (prevents ghost jobs hanging sidebar forever)
     const now = Date.now();
-    const valid = jobs.filter((j) => now - j.startTime < 6 * 60 * 60 * 1000 && j.status === "running");
+    const maxAgeMs = 10 * 60 * 1000;
+    const valid = jobs.filter((j) => now - j.startTime < maxAgeMs && j.status === "running");
+    if (valid.length !== jobs.length) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+      } catch {}
+    }
     return valid;
   } catch {
     return [];
   }
+}
+
+export function clearAllActiveJobs() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent(EVENT_KEY, { detail: [] }));
+  } catch {}
 }
 
 function saveJobs(jobs: ActiveJob[]) {

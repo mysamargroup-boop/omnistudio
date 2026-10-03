@@ -72,14 +72,40 @@ def image_to_video_motion(
     loop: bool = False,
     quality: str = "balanced",
     motion_intensity: float = 1.0,
+    aspect_ratio: Optional[str] = None,
     **kwargs
 ) -> Path:
     """
     Transform a static image into a cinematic animated video clip using FFmpeg filtergraphs.
+    Guarantees strict aspect ratio adherence (16:9, 9:16, 1:1, 4:3, 21:9) matching input or user request.
     Enforces strict timeout (180s) and validates ALL numeric parameters to prevent filter injection.
     """
     if motion_type not in SAFE_MOTION_TYPES:
         motion_type = "zoom_in"
+
+    # Dynamic aspect ratio resolution
+    from services.aspect_ratio_service import STANDARD_VIDEO_RESOLUTIONS
+    if aspect_ratio and aspect_ratio in STANDARD_VIDEO_RESOLUTIONS:
+        width, height = STANDARD_VIDEO_RESOLUTIONS[aspect_ratio]
+    elif (width == 1280 and height == 720) and Path(image_path).exists():
+        # Defaults provided without explicit override: inspect input image dimensions
+        try:
+            from PIL import Image
+            with Image.open(image_path) as im:
+                iw, ih = im.size
+                if ih > iw * 1.15:
+                    # Vertical / portrait image -> 9:16 vertical video
+                    width, height = STANDARD_VIDEO_RESOLUTIONS.get("9:16", (1080, 1920))
+                elif abs(iw - ih) / max(iw, ih) < 0.1:
+                    # Square image -> 1:1 square video
+                    width, height = STANDARD_VIDEO_RESOLUTIONS.get("1:1", (1080, 1080))
+                elif iw > ih * 2.0:
+                    # Ultrawide image -> 21:9 video
+                    width, height = STANDARD_VIDEO_RESOLUTIONS.get("21:9", (2560, 1080))
+                elif abs(iw / ih - 4 / 3) < 0.1:
+                    width, height = STANDARD_VIDEO_RESOLUTIONS.get("4:3", (1440, 1080))
+        except Exception as e:
+            logger.debug("Failed to read image size for aspect ratio detection: %s", e)
 
     try:
         duration = float(duration)
@@ -93,6 +119,9 @@ def image_to_video_motion(
     fps = min(max(fps, 1), 120)
     width = min(max(width, 160), 7680)
     height = min(max(height, 120), 4320)
+    # Ensure width and height are even numbers
+    width = width if width % 2 == 0 else width - 1
+    height = height if height % 2 == 0 else height - 1
     safe_crf = str(min(max(int(crf) if str(crf).isdigit() else 18, 0), 51))
     safe_preset = preset if preset in {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"} else "fast"
 
@@ -103,16 +132,18 @@ def image_to_video_motion(
     pan_step = round(1.5 * intensity, 3)
     tilt_step = round(1.2 * intensity, 3)
 
+    # Pre-scale filter so zoompan receives the exact target canvas aspect ratio
+    pre_scale = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1"
     motion_filters = {
-        "none": f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
-        "zoom_in": f"zoompan=z='min(zoom+{z_step},1.5)':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
-        "zoom_out": f"zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-{z_step}))':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
-        "pan_left": f"zoompan=z=1.15:x='if(lte(on,-1),(itld-1)*0.75,max(0,x-{pan_step}))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
-        "pan_right": f"zoompan=z=1.15:x='if(lte(on,1),0,min(iw-iw/zoom,x+{pan_step}))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
-        "tilt_up": f"zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,-1),0,max(0,y-{tilt_step}))':d={total_frames}:s={width}x{height}:fps={fps}",
-        "tilt_down": f"zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,1),0,min(ih-ih/zoom,y+{tilt_step}))':d={total_frames}:s={width}x{height}:fps={fps}",
-        "orbit": f"zoompan=z='1.1+{round(0.05 * intensity, 3)}*sin(on/20)':x='(iw-iw/zoom)/2+sin(on/30)*{round(20 * intensity, 1)}':y='(ih-ih/zoom)/2+cos(on/30)*{round(15 * intensity, 1)}':d={total_frames}:s={width}x{height}:fps={fps}",
-        "subtle": f"zoompan=z='1.05+{round(0.02 * intensity, 3)}*sin(on/25)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d={total_frames}:s={width}x{height}:fps={fps}",
+        "none": f"{pre_scale}",
+        "zoom_in": f"{pre_scale},zoompan=z='min(zoom+{z_step},1.5)':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
+        "zoom_out": f"{pre_scale},zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-{z_step}))':d={total_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}",
+        "pan_left": f"{pre_scale},zoompan=z=1.15:x='if(lte(on,-1),(itld-1)*0.75,max(0,x-{pan_step}))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
+        "pan_right": f"{pre_scale},zoompan=z=1.15:x='if(lte(on,1),0,min(iw-iw/zoom,x+{pan_step}))':y='ih/2-(ih/zoom/2)':d={total_frames}:s={width}x{height}:fps={fps}",
+        "tilt_up": f"{pre_scale},zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,-1),0,max(0,y-{tilt_step}))':d={total_frames}:s={width}x{height}:fps={fps}",
+        "tilt_down": f"{pre_scale},zoompan=z=1.15:x='iw/2-(iw/zoom/2)':y='if(lte(on,1),0,min(ih-ih/zoom,y+{tilt_step}))':d={total_frames}:s={width}x{height}:fps={fps}",
+        "orbit": f"{pre_scale},zoompan=z='1.1+{round(0.05 * intensity, 3)}*sin(on/20)':x='(iw-iw/zoom)/2+sin(on/30)*{round(20 * intensity, 1)}':y='(ih-ih/zoom)/2+cos(on/30)*{round(15 * intensity, 1)}':d={total_frames}:s={width}x{height}:fps={fps}",
+        "subtle": f"{pre_scale},zoompan=z='1.05+{round(0.02 * intensity, 3)}*sin(on/25)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d={total_frames}:s={width}x{height}:fps={fps}",
     }
     
     vf = motion_filters.get(motion_type, motion_filters["none"])

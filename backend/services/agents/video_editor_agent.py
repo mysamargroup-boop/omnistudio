@@ -75,7 +75,8 @@ class VideoEditorAgent(BaseAgent):
                             image_path=img_cand,
                             output_path=tmp_scene_vid,
                             duration=target_duration,
-                            motion_type=scene.motion_type or "zoom_in"
+                            motion_type=scene.motion_type or "zoom_in",
+                            aspect_ratio=context.aspect_ratio
                         )
                         if tmp_scene_vid.exists() and tmp_scene_vid.stat().st_size > 1000:
                             scene_vid_path = tmp_scene_vid
@@ -116,6 +117,13 @@ class VideoEditorAgent(BaseAgent):
                     await asyncio.to_thread(shutil.copyfile, str(scene_video_paths[0]), str(output_path))
 
         if output_path.exists() and output_path.stat().st_size > 1000:
+            if context.aspect_ratio:
+                try:
+                    from services.aspect_ratio_service import conform_video_aspect_ratio
+                    await asyncio.to_thread(conform_video_aspect_ratio, output_path, context.aspect_ratio)
+                except Exception as cf_err:
+                    logger.warning("Master video aspect conformance error: %s", cf_err)
+
             context.master_video_path = web_url
             try:
                 db_save_asset(

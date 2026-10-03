@@ -133,7 +133,7 @@ export default function Sidebar() {
     try {
       const [hData, aData] = await Promise.allSettled([
         api.health(),
-        api.getAllAssets(),
+        api.getAllAssets(0, 1),
       ]);
       if (hData.status === "fulfilled") setHealth(hData.value);
       if (aData.status === "fulfilled" && aData.value) {
@@ -149,7 +149,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 30000);
+    const interval = setInterval(fetchTelemetry, 60000);
     return () => clearInterval(interval);
   }, []);
 
