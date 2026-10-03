@@ -644,16 +644,20 @@ function PipelineContent() {
             setRunning(false);
             setLaunchError(ctx.error_message || "Agent pipeline execution was interrupted or encountered an error.");
             setShowDebugTelemetry(true);
+            completeActiveJob(activeId);
+            try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
           } else {
             completeActiveJob(activeId);
             try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
           }
 
         } else {
+          completeActiveJob(activeId);
           try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
         }
       } catch (e) {
         console.warn("Failed to reconnect to active pipeline:", e);
+        if (activeId) completeActiveJob(activeId);
         try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
       }
     })();
@@ -738,6 +742,7 @@ function PipelineContent() {
     // Keep user in steady focus without disruptive viewport jumps
 
     abortRef.current = new AbortController();
+    let pId: string | null = null;
 
     try {
       // 1. Start agent pipeline on backend
@@ -766,11 +771,12 @@ function PipelineContent() {
         throw new Error(startRes?.error || "Failed to initialize pipeline");
       }
 
-      const pId = startRes.pipeline_id;
-      setPipelineId(pId);
+      const validId: string = startRes.pipeline_id;
+      pId = validId;
+      setPipelineId(validId);
       try {
-        localStorage.setItem("omnistudio_pipeline_active_id", pId);
-        startActiveJob(pId, "pipeline", "/pipeline", `22-Agent Pipeline: ${effectiveTopic.slice(0, 32)}...`, {
+        localStorage.setItem("omnistudio_pipeline_active_id", validId);
+        startActiveJob(validId, "pipeline", "/pipeline", `22-Agent Pipeline: ${effectiveTopic.slice(0, 32)}...`, {
           prompt: effectiveTopic,
           scenes,
           style,
@@ -779,7 +785,7 @@ function PipelineContent() {
 
       // 2. Stream real-time SSE progress (throttled to prevent scroll lag)
       await api.streamAgentPipeline(
-        pId,
+        validId,
         handleSSEEvent,
         abortRef.current.signal
       );
@@ -795,6 +801,10 @@ function PipelineContent() {
             type: "error",
           },
         ]);
+        if (pId) {
+          completeActiveJob(pId);
+          try { localStorage.removeItem("omnistudio_pipeline_active_id"); } catch {}
+        }
       }
     } finally {
       setRunning(false);

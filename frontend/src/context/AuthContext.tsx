@@ -62,27 +62,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const saveBackendToken = useCallback((token: string | null) => {
     if (typeof window === "undefined") return;
-    const store = getSessionStore();
-    if (token) store.setItem(BACKEND_JWT_KEY, token);
-    else store.removeItem(BACKEND_JWT_KEY);
-    try { localStorage.removeItem(BACKEND_JWT_KEY); } catch { /* ignore migration cleanup errors */ }
-  }, [getSessionStore, BACKEND_JWT_KEY]);
+    try {
+      if (token) {
+        sessionStorage.setItem(BACKEND_JWT_KEY, token);
+        localStorage.setItem(BACKEND_JWT_KEY, token);
+      } else {
+        sessionStorage.removeItem(BACKEND_JWT_KEY);
+        localStorage.removeItem(BACKEND_JWT_KEY);
+      }
+    } catch {}
+  }, [BACKEND_JWT_KEY]);
 
   const getBackendToken = useCallback(() => {
     if (typeof window === "undefined") return null;
-    const store = getSessionStore();
-    const token = store.getItem(BACKEND_JWT_KEY);
-    if (token && typeof token === "string" && token.length > 40) return token;
     try {
-      const legacy = localStorage.getItem(BACKEND_JWT_KEY);
-      if (legacy && typeof legacy === "string" && legacy.length > 40) {
-        store.setItem(BACKEND_JWT_KEY, legacy);
-        localStorage.removeItem(BACKEND_JWT_KEY);
-        return legacy;
-      }
-    } catch { /* ignore */ }
+      const token = sessionStorage.getItem(BACKEND_JWT_KEY) || localStorage.getItem(BACKEND_JWT_KEY);
+      if (token && typeof token === "string" && token.length > 20) return token;
+    } catch {}
     return null;
-  }, [getSessionStore, BACKEND_JWT_KEY]);
+  }, [BACKEND_JWT_KEY]);
 
   const fetchProfile = useCallback(async (userId: string, userEmail?: string) => {
     try {
@@ -122,13 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 0. A PIN session is valid only while its server-issued token is present.
     try {
       if (typeof window !== "undefined") {
-        const store = getSessionStore();
-        const savedPinSession = store.getItem(PIN_SESSION_KEY);
+        const savedPinSession = sessionStorage.getItem(PIN_SESSION_KEY) || localStorage.getItem(PIN_SESSION_KEY);
         const backendToken = getBackendToken();
         if (savedPinSession && backendToken) {
           const parsed = JSON.parse(savedPinSession);
           const tokenAge = Date.now() - (parsed?.timestamp || 0);
-          const maxAgeHours = 12;
+          const maxAgeHours = 48;
           if (parsed?.authenticated && tokenAge < maxAgeHours * 60 * 60 * 1000) {
             setIsPinAuthenticated(true);
             setProfile((prev) => prev || {
@@ -140,11 +137,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
-            // Instantly unblock UI so refresh is instantaneous (<50ms)
+            // Instantly unblock UI so refresh is instantaneous (<5ms)
             setLoading(false);
           }
         }
-        try { localStorage.removeItem("omnistudio_pin_session"); } catch { /* migration */ }
       }
     } catch (e) {
       console.warn("Failed to read local pin session", e);
@@ -269,9 +265,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: "Authentication token was not issued." };
       }
       saveBackendToken(result.access_token);
-      const store = getSessionStore();
-      store.setItem(PIN_SESSION_KEY, JSON.stringify({ authenticated: true, timestamp: Date.now() }));
-      try { localStorage.removeItem("omnistudio_pin_session"); } catch { /* migration */ }
+      const sessionData = JSON.stringify({ authenticated: true, timestamp: Date.now() });
+      try {
+        sessionStorage.setItem(PIN_SESSION_KEY, sessionData);
+        localStorage.setItem(PIN_SESSION_KEY, sessionData);
+      } catch {}
       setIsPinAuthenticated(true);
       setProfile({
         id: "pin-samar-master",
@@ -292,11 +290,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       if (typeof window !== "undefined") {
-        const store = getSessionStore();
-        store.removeItem(PIN_SESSION_KEY);
-        store.removeItem(BACKEND_JWT_KEY);
-        localStorage.removeItem("omnistudio_pin_session");
-        localStorage.removeItem("omnistudio_backend_jwt");
+        sessionStorage.removeItem(PIN_SESSION_KEY);
+        sessionStorage.removeItem(BACKEND_JWT_KEY);
+        localStorage.removeItem(PIN_SESSION_KEY);
+        localStorage.removeItem(BACKEND_JWT_KEY);
       }
     } catch (e) {
       console.warn("Failed to remove pin session", e);

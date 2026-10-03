@@ -809,14 +809,16 @@ class Export4KRequest(BaseModel):
     media_type: str = "videos"
 
 @router.post("/export-4k")
-@limiter.limit("10/minute")
+@limiter.limit("20/minute")
 async def export_4k_video(request: Request, req: Export4KRequest):
     """
-    Upscale and export video to true 4K Ultra HD (3840x2160 for 16:9, or 2160x3840 for 9:16)
-    using high-fidelity Lanczos resampling filter with FFmpeg.
+    Upscale and export video or image to true 4K Ultra HD (preserving exact aspect ratio: 16:9, 9:16, 1:1, 4:3, 21:9)
+    using high-fidelity Lanczos resampling.
     Caches the 4K version so subsequent downloads are instantaneous.
     """
     import subprocess
+    from PIL import Image
+
     clean_name = sanitize_filename(req.filename)
     source_file = None
     target_dir = DIR_MAP.get(req.media_type, settings.VIDEOS_PATH)
@@ -824,20 +826,54 @@ async def export_4k_video(request: Request, req: Export4KRequest):
     if cand.exists():
         source_file = cand
     else:
-        for d in [settings.VIDEOS_PATH, settings.FINAL_PATH]:
+        for d in [settings.VIDEOS_PATH, settings.FINAL_PATH, settings.IMAGES_PATH]:
             c = d / clean_name
             if c.exists():
                 source_file = c
                 break
 
     if not source_file or not source_file.exists():
-        raise HTTPException(status_code=404, detail="Original video file not found")
+        raise HTTPException(status_code=404, detail="Original asset file not found")
 
+    ext = source_file.suffix.lower()
+    is_image = ext in [".png", ".jpg", ".jpeg", ".webp"]
+
+    if is_image:
+        output_4k_name = f"4k_{clean_name}"
+        output_4k_path = settings.IMAGES_PATH / output_4k_name
+        if not output_4k_path.exists() or output_4k_path.stat().st_size < 1000:
+            def _upscale_image():
+                with Image.open(source_file) as im:
+                    orig_w, orig_h = im.size
+                    if orig_w >= orig_h:
+                        target_h = 2160
+                        target_w = int(round(2160 * (orig_w / orig_h)))
+                    else:
+                        target_w = 2160
+                        target_h = int(round(2160 * (orig_h / orig_w)))
+                    target_w = target_w if target_w % 2 == 0 else target_w + 1
+                    target_h = target_h if target_h % 2 == 0 else target_h + 1
+                    upscaled = im.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                    fmt = im.format or ("PNG" if ext == ".png" else "JPEG")
+                    if fmt.upper() in ["JPEG", "JPG"]:
+                        upscaled.save(output_4k_path, format=fmt, quality=95, optimize=True)
+                    else:
+                        upscaled.save(output_4k_path, format=fmt)
+            await asyncio.to_thread(_upscale_image)
+
+        return {
+            "success": True,
+            "filename": output_4k_name,
+            "url": f"/outputs/images/{output_4k_name}"
+        }
+
+    # For Videos:
     output_4k_name = f"4k_{clean_name}"
     output_4k_path = settings.VIDEOS_PATH / output_4k_name
 
     if not output_4k_path.exists() or output_4k_path.stat().st_size < 1000:
-        is_portrait = False
+        target_w, target_h = 3840, 2160
+        has_audio = False
         try:
             probe_cmd = [
                 "ffprobe", "-v", "error",
@@ -850,12 +886,33 @@ async def export_4k_video(request: Request, req: Export4KRequest):
             dims = probe_res.stdout.strip().split("x")
             if len(dims) == 2:
                 w, h = int(dims[0]), int(dims[1])
-                is_portrait = h > w
+                if w > 0 and h > 0:
+                    if w >= h:
+                        target_h = 2160
+                        target_w = int(round(2160 * (w / h)))
+                    else:
+                        target_w = 2160
+                        target_h = int(round(2160 * (h / w)))
+                    target_w = target_w if target_w % 2 == 0 else target_w + 1
+                    target_h = target_h if target_h % 2 == 0 else target_h + 1
         except Exception:
-            is_portrait = False
+            target_w, target_h = 3840, 2160
 
-        target_w, target_h = (2160, 3840) if is_portrait else (3840, 2160)
-        scale_filter = f"scale={target_w}:{target_h}:flags=lanczos"
+        # Check for audio stream
+        try:
+            audio_probe = [
+                "ffprobe", "-v", "error",
+                "-select_streams", "a:0",
+                "-show_entries", "stream=codec_type",
+                "-of", "csv=p=0",
+                str(source_file)
+            ]
+            a_res = await asyncio.to_thread(subprocess.run, audio_probe, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            has_audio = "audio" in a_res.stdout.lower()
+        except Exception:
+            has_audio = False
+
+        scale_filter = f"scale={target_w}:{target_h}:flags=lanczos,setsar=1"
         ffmpeg_cmd = [
             "ffmpeg", "-y",
             "-i", str(source_file),
@@ -863,10 +920,14 @@ async def export_4k_video(request: Request, req: Export4KRequest):
             "-c:v", "libx264",
             "-preset", "fast",
             "-crf", "16",
-            "-c:a", "copy",
             "-pix_fmt", "yuv420p",
-            str(output_4k_path)
         ]
+        if has_audio:
+            ffmpeg_cmd.extend(["-c:a", "copy"])
+        else:
+            ffmpeg_cmd.extend(["-an"])
+        ffmpeg_cmd.extend(["-movflags", "+faststart", str(output_4k_path)])
+
         res = await asyncio.to_thread(subprocess.run, ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=180)
         if res.returncode != 0:
             raise HTTPException(status_code=500, detail=f"4K FFmpeg upscale failed: {res.stderr[:200]}")

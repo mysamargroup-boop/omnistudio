@@ -3438,7 +3438,7 @@ function VideoStudioContent() {
                       : "Describe the desired motion synthesis (type @ to tag images)..."
                   }
                   rows={3}
-                  className="w-full bg-transparent border-0 p-1.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-0 resize-none font-sans min-h-[85px] max-h-56 leading-relaxed overflow-y-auto custom-scrollbar"
+                  className="w-full bg-transparent border-0 p-1.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-0 resize-none font-sans min-h-[85px] max-h-56 leading-relaxed overflow-y-auto custom-scrollbar select-text cursor-text relative z-10"
                 />
               </div>
 

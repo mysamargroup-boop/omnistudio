@@ -21,9 +21,9 @@ export function getActiveJobs(): ActiveJob[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const jobs: ActiveJob[] = JSON.parse(raw);
-    // Filter out stale jobs older than 10 minutes (prevents ghost jobs hanging sidebar forever)
+    // Filter out stale jobs older than 4 minutes (prevents ghost jobs hanging sidebar)
     const now = Date.now();
-    const maxAgeMs = 10 * 60 * 1000;
+    const maxAgeMs = 4 * 60 * 1000;
     const valid = jobs.filter((j) => now - j.startTime < maxAgeMs && j.status === "running");
     if (valid.length !== jobs.length) {
       try {

@@ -4428,20 +4428,25 @@ export default function ImageStudioPage() {
           </div>
         ) : (
           <div
-            ref={dockRef}
-            data-lenis-prevent="true"
             className={cn(
-              "fixed bottom-6 z-50 bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-2xl p-3 sm:p-3.5 transition-all duration-300 pointer-events-auto space-y-2 glass-dock right-0 mx-auto",
-              dockWidthMode === "compact"
-                ? "w-[88%] max-w-2xl xl:max-w-3xl"
-                : dockWidthMode === "full"
-                ? "w-[96%] max-w-6xl 2xl:max-w-7xl"
-                : "w-[92%] max-w-3xl xl:max-w-4xl 2xl:max-w-5xl",
+              "fixed bottom-6 right-0 z-50 pointer-events-none flex justify-center px-3 sm:px-4",
               isSidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64",
-              (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40",
-              isAnyModalOpen && "opacity-0 pointer-events-none invisible"
+              isAnyModalOpen && "opacity-0 invisible"
             )}
           >
+            <div
+              ref={dockRef}
+              data-lenis-prevent="true"
+              className={cn(
+                "pointer-events-auto bg-white/95 dark:bg-[#111118]/95 backdrop-blur-2xl border border-black/[0.1] dark:border-white/[0.1] rounded-2xl shadow-2xl p-3 sm:p-3.5 transition-[opacity,box-shadow,border-color] duration-200 space-y-2 glass-dock w-full",
+                dockWidthMode === "compact"
+                  ? "max-w-2xl xl:max-w-3xl"
+                  : dockWidthMode === "full"
+                  ? "max-w-6xl 2xl:max-w-7xl"
+                  : "max-w-3xl xl:max-w-4xl 2xl:max-w-5xl",
+                (loading || loadingVariations) && "lightning-border-active ring-2 ring-emerald-500/40"
+              )}
+            >
           <div className="shrink-0 flex items-center justify-between pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06]">
             <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
               {(loading || loadingVariations) && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
@@ -4569,13 +4574,21 @@ export default function ImageStudioPage() {
           </div>
 
           {/* Row 1: Professional Studio Prompt Input Bar */}
-          <div className={cn(
-            "relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-2.5 space-y-2",
-            isShiftedLeft ? "flex-1 min-h-[120px] flex flex-col justify-between" : "shrink-0",
-            enhancingPrompt
-              ? "border-violet-500/60 ring-2 ring-violet-500/30 shadow-[0_0_22px_rgba(139,92,246,0.25)] dark:bg-violet-950/15"
-              : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
-          )}>
+          <div
+            onClick={(e) => {
+              const target = e.target as HTMLElement;
+              if (!target.closest("button") && !target.closest("input") && !target.closest("[data-popover-content]")) {
+                promptTextareaRef.current?.focus();
+              }
+            }}
+            className={cn(
+              "relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-2.5 space-y-2 cursor-text",
+              isShiftedLeft ? "flex-1 min-h-[120px] flex flex-col justify-between" : "shrink-0",
+              enhancingPrompt
+                ? "border-violet-500/60 ring-2 ring-violet-500/30 shadow-[0_0_22px_rgba(139,92,246,0.25)] dark:bg-violet-950/15"
+                : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
+            )}
+          >
             {/* Embedded Badged Labels for Tagged References (INSIDE PROMPT BOX) */}
             {refImages.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-black/[0.06] dark:border-white/[0.06] w-full">
@@ -4679,7 +4692,7 @@ export default function ImageStudioPage() {
                     : "Describe modifications or style directives (type @ to tag from Vault or upload)..."
                 }
                 className={cn(
-                  "w-full bg-transparent border-none px-1.5 py-2 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none leading-relaxed overflow-y-auto custom-scrollbar",
+                  "w-full bg-transparent border-none px-1.5 py-2 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none font-jakarta resize-none leading-relaxed overflow-y-auto custom-scrollbar select-text cursor-text relative z-10",
                   isShiftedLeft ? "flex-1 min-h-[80px]" : "min-h-[56px] max-h-48"
                 )}
               />
@@ -5276,6 +5289,7 @@ export default function ImageStudioPage() {
           </div>
         </div>
       </div>
+    </div>
     )
   )}
 

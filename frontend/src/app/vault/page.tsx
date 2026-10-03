@@ -2137,7 +2137,7 @@ export default function VaultPage() {
                     {/* Flyout Submenu: Opens to the left (side) of the 3-dots dropdown */}
                     {downloadMenuKey === file.filename && (
                       <div
-                        className="absolute right-full top-0 mr-1.5 w-52 bg-[#121216]/98 backdrop-blur-2xl border border-white/15 rounded-2xl p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.85)] space-y-0.5 z-[150] animate-in fade-in zoom-in-95 duration-150 text-zinc-200"
+                        className="absolute right-full top-0 mr-1.5 w-52 bg-[#121216]/98 backdrop-blur-2xl border border-white/15 rounded-2xl p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.85)] space-y-0.5 z-[150] animate-in fade-in zoom-in-95 duration-150 text-zinc-200 before:content-[''] before:absolute before:-right-3 before:top-0 before:bottom-0 before:w-3"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="px-2.5 py-1 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between border-b border-white/5 mb-1">
