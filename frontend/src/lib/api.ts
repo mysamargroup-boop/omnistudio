@@ -68,7 +68,8 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 
   // Provide intelligent default timeout: 15s for data queries, 180s for heavy AI generation and 4K exports
   const isHeavyAiRoute = path.includes("/generate") || path.includes("/pipeline") || path.includes("/agent") || path.includes("/edit") || path.includes("/export-4k") || path.includes("/upscale") || path.includes("/render") || path.includes("/morph");
-  const defaultTimeoutMs = isHeavyAiRoute ? 180000 : 15000;
+  const isAssetRoute = path.includes("/assets");
+  const defaultTimeoutMs = isHeavyAiRoute ? 180000 : isAssetRoute ? 30000 : 15000;
   
   let signal = options?.signal;
   let timeoutId: any = undefined;

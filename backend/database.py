@@ -98,6 +98,12 @@ def init_database():
         try:
             with db_session() as conn:
                 cur = conn.cursor()
+                # Enable WAL mode for better concurrency
+                cur.execute("PRAGMA journal_mode=WAL")
+                cur.execute("PRAGMA synchronous=NORMAL")
+                cur.execute("PRAGMA cache_size=-64000")  # 64MB cache
+                cur.execute("PRAGMA temp_store=MEMORY")
+                
                 cur.executescript("""
                 CREATE TABLE IF NOT EXISTS projects (
                     id TEXT PRIMARY KEY,
@@ -326,6 +332,18 @@ def init_database():
                         cur.execute("ALTER TABLE generations ADD COLUMN error_message TEXT")
                 except Exception as mig_e:
                     db_logger.warning("[SQLite Migration Warning] %s", mig_e)
+
+                # Performance indexes for asset vault queries
+                try:
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_assets_filename ON assets(filename)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(asset_type)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_assets_created ON assets(created_at)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_generations_prompt_output ON generations(prompt, output_url)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_generations_created ON generations(created_at)")
+                    cur.execute("CREATE INDEX IF NOT EXISTS idx_generations_service ON generations(service_type)")
+                    db_logger.info("Performance indexes created/verified")
+                except Exception as idx_e:
+                    db_logger.warning("[SQLite Index Warning] %s", idx_e)
 
                 conn.commit()
             return {"success": True, "provider": "Local SQLite", "status": "initialized"}

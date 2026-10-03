@@ -40,6 +40,7 @@ LONG_TIMEOUT_ROUTES = (
     "/api/metadata/clean_upload",
     "/api/metadata/inject",
     "/api/metadata/clean",
+    "/api/assets/all",
 )
 
 UPLOAD_TIMEOUT_ROUTES = (

@@ -1,7 +1,7 @@
 import os
 import shutil
 import asyncio
-from fastapi import APIRouter, Query, HTTPException, Request
+from fastapi import APIRouter, Query, HTTPException, Request, Response
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional, List
@@ -131,7 +131,7 @@ assets_logger = logging.getLogger("omnistudio.assets")
 
 _PROMPT_MAP_CACHE: dict = {}
 _PROMPT_MAP_CACHE_TIMESTAMP: float = 0.0
-_PROMPT_MAP_CACHE_TTL: float = 60.0
+_PROMPT_MAP_CACHE_TTL: float = 120.0
 
 def invalidate_prompt_map_cache():
     global _PROMPT_MAP_CACHE_TIMESTAMP
@@ -204,7 +204,7 @@ def get_assets_prompt_map() -> dict[str, str]:
     _PROMPT_MAP_CACHE_TIMESTAMP = now
     return prompt_map
 
-def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None, limit: int = 1500) -> list[dict]:
+def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None, limit: int = 200) -> list[dict]:
     """
     High-performance directory scanner using os.scandir with cached stats.
     Avoids separate stat calls and construction of Path objects for faster traversal.
@@ -428,7 +428,7 @@ import time
 
 _ASSETS_CACHE: dict = {}
 _ASSETS_CACHE_TIMESTAMP: float = 0
-_CACHE_TTL_SECONDS: float = 120.0
+_CACHE_TTL_SECONDS: float = 300.0
 
 def invalidate_assets_cache():
     global _ASSETS_CACHE_TIMESTAMP, _PROMPT_MAP_CACHE_TIMESTAMP
@@ -477,8 +477,9 @@ async def get_all_assets(
         _ASSETS_CACHE = cached
         _ASSETS_CACHE_TIMESTAMP = now
 
+    response_data = {}
     if limit is not None:
-        return {
+        response_data = {
             "images": cached["images"][offset:offset + limit],
             "videos": cached["videos"][offset:offset + limit],
             "audio": cached["audio"][offset:offset + limit],
@@ -489,8 +490,18 @@ async def get_all_assets(
             "trash_count": cached["trash_count"],
             "trash_bytes": cached["trash_bytes"]
         }
+    else:
+        response_data = cached
 
-    return cached
+    import json
+    return Response(
+        content=json.dumps(response_data),
+        media_type="application/json",
+        headers={
+            "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+            "ETag": f'"{int(_ASSETS_CACHE_TIMESTAMP)}"'
+        }
+    )
 
 
 @router.get("/count")

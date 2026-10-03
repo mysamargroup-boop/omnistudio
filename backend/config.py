@@ -102,6 +102,8 @@ class Settings(BaseSettings):
             "http://31.97.231.218",
             "https://vid.flairloop.com",
             "http://vid.flairloop.com",
+            "https://www.vid.flairloop.com",
+            "http://www.vid.flairloop.com",
             "https://31-97-231-218.sslip.io",
             "http://31-97-231-218.sslip.io",
         ]
