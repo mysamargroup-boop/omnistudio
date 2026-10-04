@@ -32,6 +32,7 @@ services:
       - R2_PUBLIC_DOMAIN=${R2_PUBLIC_DOMAIN}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - FAL_KEY=${FAL_KEY}
     volumes:
       # Mount outputs directory so videos, images, and database persist on the host
       - ./backend/outputs:/app/outputs

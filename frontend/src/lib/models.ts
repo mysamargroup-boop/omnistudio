@@ -1,4 +1,4 @@
-﻿// Standardized AI Models Registry across all OmniStudio AI Studios & Pipelines
+// Standardized AI Models Registry across all OmniStudio AI Studios & Pipelines
 
 export interface ModelDefinition {
   id: string;
@@ -201,7 +201,6 @@ export const VIDEO_MODELS: ModelDefinition[] = [
     isFree: true,
     pricePerUnit: 0.00,
   },
-]
   {
     id: "kling_2.0",
     value: "fal-ai/kling-video/v1.2/pro/text-to-video",
@@ -241,7 +240,7 @@ export const VIDEO_MODELS: ModelDefinition[] = [
     isFree: false,
     pricePerUnit: 0.40,
   },
-;
+];
 
 export const VOICE_MODELS: ModelDefinition[] = [
   {
