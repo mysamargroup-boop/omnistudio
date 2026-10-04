@@ -342,16 +342,27 @@ class VideoGeneratorAgent(BaseAgent):
 
                     if not veo_res.get("success"):
                         err = veo_res.get("error", "Unknown error")
-                        logger.error("Extension segment %d failed: %s", segment_idx, err)
-                        # If first segment fails, it's a real error
+                        logger.warning("Extension segment %d failed: %s. Attempting fallback.", segment_idx, err)
                         if segment_idx == 0:
-                            return AgentResult(
-                                success=False,
-                                error=f"{model_display_name} Error on Scene {scene.index} segment {segment_idx}: {err}"
-                            )
-                        # If extension segment fails, use what we have
-                        logger.warning("Extension segment %d failed, using %d segments collected so far.", segment_idx, len(segment_clips))
-                        break
+                            fallback_img = current_ref_image or (Path(scene.image_path) if scene.image_path else None)
+                            if fallback_img and Path(fallback_img).exists():
+                                from services.replicate_service import generate_video_from_image
+                                veo_res = await generate_video_from_image(
+                                    image_path=str(fallback_img),
+                                    motion_type=scene.camera_direction or "zoom_in",
+                                    duration=float(seg_dur),
+                                    fps=24,
+                                    quality="balanced"
+                                )
+                            if not veo_res.get("success"):
+                                return AgentResult(
+                                    success=False,
+                                    error=f"{model_display_name} Error on Scene {scene.index} segment {segment_idx}: {err}"
+                                )
+                        else:
+                            # If extension segment fails, use what we have
+                            logger.warning("Extension segment %d failed, using %d segments collected so far.", segment_idx, len(segment_clips))
+                            break
 
                     # Copy generated video to our segment path
                     if veo_res.get("local_path") and Path(veo_res["local_path"]).exists():
@@ -437,11 +448,23 @@ class VideoGeneratorAgent(BaseAgent):
 
                 if not veo_res.get("success"):
                     err_msg = veo_res.get("error") or f"Unknown {model_display_name} API error"
-                    logger.error("%s failed: %s", model_display_name, err_msg)
-                    return AgentResult(
-                        success=False,
-                        error=f"{model_display_name} Video Generation Error on Scene {scene.index}: {err_msg}"
-                    )
+                    logger.warning("%s failed: %s. Attempting graceful fallback to FFmpeg Cinematic Motion Engine...", model_display_name, err_msg)
+                    context.add_log(self.name, f"Cloud {model_display_name} video failed: {err_msg}. Gracefully falling back to local FFmpeg camera motion.")
+                    fallback_img = primary_ref or (Path(scene.image_path) if scene.image_path else None)
+                    if fallback_img and Path(fallback_img).exists():
+                        from services.replicate_service import generate_video_from_image
+                        veo_res = await generate_video_from_image(
+                            image_path=str(fallback_img),
+                            motion_type=scene.camera_direction or "zoom_in",
+                            duration=float(dur),
+                            fps=24,
+                            quality="balanced"
+                        )
+                    if not veo_res.get("success"):
+                        return AgentResult(
+                            success=False,
+                            error=f"{model_display_name} Video Generation Error on Scene {scene.index}: {err_msg}"
+                        )
 
                 if veo_res.get("local_path") and Path(veo_res["local_path"]).exists():
                     src_v = Path(veo_res["local_path"])

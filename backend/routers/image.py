@@ -159,6 +159,38 @@ def resolve_image_path(p: str) -> Optional[Path]:
         except Exception:
             return None
 
+def _conform_image_resolution(local_path: str, resolution_str: Optional[str]):
+    if not local_path or not resolution_str:
+        return
+    res_map = {
+        "720p": 1280,
+        "1080p": 1920,
+        "2k": 2560,
+        "4k": 3840,
+        "8k": 7680
+    }
+    target_long = res_map.get(str(resolution_str).lower().strip())
+    if not target_long:
+        return
+    try:
+        from PIL import Image
+        p = Path(local_path)
+        if not p.exists():
+            return
+        with Image.open(p) as img:
+            w, h = img.size
+            current_long = max(w, h)
+            if abs(current_long - target_long) > 10:
+                scale = target_long / current_long
+                new_w = int(round(w * scale))
+                new_h = int(round(h * scale))
+                resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                resized.save(p, quality=95, optimize=True)
+                logger.info(f"Conformed image {p.name} to {resolution_str} ({new_w}x{new_h})")
+    except Exception as e:
+        logger.warning(f"Resolution conformance error: {e}")
+
+
 @router.post("/upload-reference")
 @limiter.limit("20/minute")
 async def upload_reference_image(request: Request, file: UploadFile = File(...)):
@@ -487,6 +519,13 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
                 conform_image_aspect_ratio(result["local_path"], req.aspect_ratio)
             except Exception as cf_err:
                 logger.warning("Image aspect ratio conformance warning: %s", cf_err)
+
+        # Guarantee exact resolution scaling (720p, 1080p, 2k, 4k, 8k) via LANCZOS
+        if result.get("local_path") and req.resolution:
+            try:
+                _conform_image_resolution(result["local_path"], req.resolution)
+            except Exception as res_err:
+                logger.warning("Image resolution conformance warning: %s", res_err)
 
         # Sync asset to Cloudflare R2 and Supabase Cloud
         if result.get("local_path"):
