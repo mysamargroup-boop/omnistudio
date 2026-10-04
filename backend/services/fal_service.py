@@ -115,19 +115,26 @@ async def generate_fal_video(
     try:
         # Build arguments based on model
         arguments = {"prompt": prompt}
+        target_endpoint = model
         
-        if "luma" in model:
+        if "seedance" in model.lower():
+            if image_url:
+                target_endpoint = "fal-ai/bytedance/seedance-2.5/image-to-video"
+                arguments["image_url"] = image_url
+            else:
+                target_endpoint = "fal-ai/bytedance/seedance-2.5/text-to-video"
+            arguments["aspect_ratio"] = aspect_ratio
+        elif "luma" in model:
             if image_url: arguments["image_url"] = image_url
             arguments["aspect_ratio"] = aspect_ratio
         elif "minimax" in model:
-            # minimax text-to-video doesn't support image_url yet typically, but check fal docs
-            pass
+            if image_url: arguments["image_url"] = image_url
         elif "kling" in model:
             if image_url: arguments["image_url"] = image_url
             arguments["aspect_ratio"] = aspect_ratio
 
         handler = await fal_client.submit_async(
-            model,
+            target_endpoint,
             arguments=arguments,
         )
         result = await handler.get()

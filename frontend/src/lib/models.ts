@@ -240,6 +240,19 @@ export const VIDEO_MODELS: ModelDefinition[] = [
     isFree: false,
     pricePerUnit: 0.40,
   },
+  {
+    id: "seedance_2_5",
+    value: "fal-ai/bytedance/seedance-2.5",
+    name: "ByteDance Seedance 2.5",
+    label: "ByteDance Seedance 2.5 (FAL)",
+    provider: "ByteDance / fal.ai",
+    badge: "CINEMATIC",
+    description: "Multi-shot cinematic coherence & native audio sync",
+    category: "Cloud SOTA",
+    iconType: "custom",
+    isFree: false,
+    pricePerUnit: 0.35,
+  },
 ];
 
 export const VOICE_MODELS: ModelDefinition[] = [

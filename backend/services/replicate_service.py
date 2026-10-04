@@ -145,15 +145,32 @@ async def generate_seedance_video(
     filename = generate_image_filename(f"seedance_{prompt[:20]}", ext=".mp4")
     local_path = settings.VIDEOS_PATH / filename
     
+    # Check FAL_KEY first (Primary provider for Seedance 2.5)
+    if settings.FAL_KEY:
+        from services.fal_service import generate_fal_video
+        fal_img_url = None
+        if image_path:
+            import fal_client
+            try:
+                fal_img_url = await fal_client.upload_file_async(str(image_path))
+            except Exception as up_err:
+                logger.warning(f"Failed to upload image to FAL for Seedance: {up_err}")
+        return await generate_fal_video(
+            prompt=prompt,
+            aspect_ratio=aspect_ratio,
+            image_url=fal_img_url,
+            model="fal-ai/bytedance/seedance-2.5"
+        )
+
     if not settings.REPLICATE_API_TOKEN:
         return {
             "success": False,
             "error_type": "KEY_MISSING",
-            "error": "Replicate API Token is missing. Please configure REPLICATE_API_TOKEN in Settings to generate Seedance videos.",
-            "provider": "replicate",
-            "required_key": "REPLICATE_API_TOKEN"
+            "error": "FAL_KEY or REPLICATE_API_TOKEN is missing. Please configure FAL_KEY in Settings to generate Seedance videos.",
+            "provider": "fal",
+            "required_key": "FAL_KEY"
         }
-        
+
     try:
         # Assuming an open or custom Seedance deployment on Replicate
         # We will use the standard Replicate predictions endpoint

@@ -639,8 +639,7 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
                 err = veo_res.get("error") or "Google Veo failed to generate video."
                 return record_failure(f"Google Veo Error: {err}")
             
-            result = veo_res
-        elif "fal-ai" in req.model.lower():
+        elif "fal-ai" in req.model.lower() or "seedance" in req.model.lower():
             from services.fal_service import generate_fal_video
             fal_res = await generate_fal_video(
                 prompt=effective_prompt,
@@ -870,7 +869,7 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
         except Exception as e:
             logger.error("VEO generation failed: %s", e)
             return record_failure(f"Google Veo Error: {str(e)}")
-    elif "fal-ai" in req.model.lower():
+    elif "fal-ai" in req.model.lower() or "seedance" in req.model.lower():
         from services.fal_service import generate_fal_video
         
         # Upload the local image to a temporary URL or pass path if fal client supports it.

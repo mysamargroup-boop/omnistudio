@@ -237,8 +237,8 @@ class VideoGeneratorAgent(BaseAgent):
 
         # Validate API keys and handle fallback
         if "seedance" in target_model:
-            if not settings.REPLICATE_API_TOKEN:
-                logger.warning("Seedance selected but REPLICATE_API_TOKEN missing. Falling back to Omni Flash.")
+            if not getattr(settings, "FAL_KEY", None) and not settings.REPLICATE_API_TOKEN:
+                logger.warning("Seedance selected but FAL_KEY or REPLICATE_API_TOKEN missing. Falling back to Omni Flash.")
                 target_model = "omni_flash"
                 max_clip_sec = MODEL_MAX_CLIP.get(target_model, 10)
                 cost_per_sec = MODEL_COST_PER_SEC.get(target_model, 0.20)
