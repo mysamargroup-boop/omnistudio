@@ -49,6 +49,11 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=https://vid.flairloop.com
+            NEXT_PUBLIC_STUDIO_PASSCODE=7391
+            NEXT_PUBLIC_SUPABASE_URL=https://lsttnpynhwtpkzfbfntf.supabase.co
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzdHRucHluaHd0cGt6ZmJmbnRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NTg3NTgsImV4cCI6MjEwNDQzNDc1OH0.BltQVtk0-IKKKZAVdD6grkiFcT6_ikXUsHr9BHpZUqM
 
       - name: Deploy via SSH using Secure GHCR
         continue-on-error: true
