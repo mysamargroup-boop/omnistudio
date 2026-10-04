@@ -480,7 +480,8 @@ function PipelineContent() {
       }
 
       const currentState = event.state as string;
-      const pausedAfter = event.paused_after_state || (currentState === "paused" ? (choreographedScenes.some((s: any) => s.image_path) ? "generating_images" : "scripting") : null);
+      const eventScenes: any[] = Array.isArray(event.scenes) ? event.scenes : [];
+      const pausedAfter = event.paused_after_state || (currentState === "paused" ? (eventScenes.some((s: any) => s?.image_path) ? "generating_images" : "scripting") : null);
 
       if (currentState === "failed") {
         setLaunchError(event.error_message || "Agent execution encountered an error");
@@ -815,33 +816,43 @@ function PipelineContent() {
   const handleApproveStep = async () => {
     if (!pipelineId) return;
     setApprovingStep(true);
+    abortRef.current = new AbortController();
     try {
       await api.approveAgentStep(pipelineId);
       setApprovalModalOpen(false);
       setRunning(true);
       startActiveJob(pipelineId, "pipeline", "/pipeline", `22-Agent Pipeline: ${topic.slice(0, 32)}...`);
-      await api.streamAgentPipeline(pipelineId, handleSSEEvent);
+      await api.streamAgentPipeline(pipelineId, handleSSEEvent, abortRef.current.signal);
     } catch (e: any) {
-      console.error("Failed to approve step:", e);
+      if (e?.name !== "AbortError") {
+        console.error("Failed to approve step:", e);
+        setLaunchError(e?.message || "Failed to approve step");
+      }
     } finally {
       setApprovingStep(false);
       setRunning(false);
+      abortRef.current = null;
     }
   };
 
   const handleRejectStep = async () => {
     if (!pipelineId) return;
+    abortRef.current = new AbortController();
     try {
       const feedback = directorialNotes.trim() || "Directorial revision: enhance camera movement, contrast and detail";
       setApprovalModalOpen(false);
       setRunning(true);
       await api.rejectAgentStep(pipelineId, feedback);
       startActiveJob(pipelineId, "pipeline", "/pipeline", `22-Agent Pipeline: ${topic.slice(0, 32)}...`);
-      await api.streamAgentPipeline(pipelineId, handleSSEEvent);
+      await api.streamAgentPipeline(pipelineId, handleSSEEvent, abortRef.current.signal);
     } catch (e: any) {
-      console.error("Failed to reject step:", e);
+      if (e?.name !== "AbortError") {
+        console.error("Failed to reject step:", e);
+        setLaunchError(e?.message || "Failed to send revision");
+      }
     } finally {
       setRunning(false);
+      abortRef.current = null;
     }
   };
 
@@ -991,18 +1002,18 @@ function PipelineContent() {
       {/* Subtle Ambient Accent */}
       <div className={cn(
         "absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none",
-        mode === "autonomous" ? "bg-emerald-500/[0.03]" : "bg-violet-500/[0.03]"
+        mode === "autonomous" ? "bg-emerald-500/[0.03]" : "bg-sky-500/[0.03]"
       )} />
 
       {/* Section Header */}
       <div className="flex items-center justify-between font-mono pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <span className={cn("w-2 h-2 rounded-full", mode === "autonomous" ? "bg-emerald-500" : "bg-violet-500")} />
+          <span className={cn("w-2 h-2 rounded-full", mode === "autonomous" ? "bg-emerald-500" : "bg-sky-500")} />
           <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">
             {mode === "autonomous" ? "01 • AUTONOMOUS CREATIVE DIRECTIVE" : "01 • DIRECTORIAL CREATIVE DIRECTIVE"}
           </span>
         </div>
-        <span className={cn("text-[10px] font-bold", mode === "autonomous" ? "text-emerald-600 dark:text-emerald-400" : "text-violet-600 dark:text-violet-400")}>
+        <span className={cn("text-[10px] font-bold", mode === "autonomous" ? "text-emerald-600 dark:text-emerald-400" : "text-sky-600 dark:text-sky-400")}>
           {mode === "autonomous" ? "Autonomous 22-agent execution" : "Directorial review popups enabled"}
         </span>
       </div>
@@ -1065,7 +1076,7 @@ function PipelineContent() {
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse"
                   : mode === "autonomous"
                   ? "bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 disabled:opacity-40"
-                  : "bg-violet-500/10 hover:bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30 disabled:opacity-40"
+                  : "bg-sky-500/10 hover:bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30 disabled:opacity-40"
               )}
             >
               <Wand2 className={cn("w-3 h-3", enhancing && "animate-spin")} />
@@ -1140,23 +1151,23 @@ function PipelineContent() {
         <div className="flex flex-wrap items-center gap-2 mt-1.5">
           {/* Character Lock Selector / Badge */}
           {selectedCharacter ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/30 text-[10px] font-mono animate-in fade-in">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[10px] font-mono animate-in fade-in">
               {selectedCharacter.imageUrl || selectedCharacter.image_url ? (
                 <img
                   src={getMediaUrl(selectedCharacter.imageUrl || selectedCharacter.image_url)}
                   alt={selectedCharacter.name}
-                  className="w-6 h-6 rounded-lg object-cover border border-violet-500/30"
+                  className="w-6 h-6 rounded-lg object-cover border border-sky-500/30"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-lg bg-violet-600 text-white flex items-center justify-center font-bold text-[10px]">
+                <div className="w-6 h-6 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-[10px]">
                   {selectedCharacter.name.charAt(0)}
                 </div>
               )}
               <div className="flex items-center gap-1.5">
-                <span className="text-violet-600 dark:text-violet-400 font-bold">
+                <span className="text-sky-600 dark:text-sky-400 font-bold">
                   Lock: {selectedCharacter.name}
                 </span>
-                <span className="text-[8px] px-1 py-0.5 rounded bg-violet-500/15 text-violet-600 dark:text-violet-300 uppercase tracking-wider font-bold">
+                <span className="text-[8px] px-1 py-0.5 rounded bg-sky-500/15 text-sky-600 dark:text-sky-300 uppercase tracking-wider font-bold">
                   100% Continuity
                 </span>
               </div>
@@ -1174,9 +1185,9 @@ function PipelineContent() {
               <button
                 type="button"
                 onClick={() => setShowCharacterSelector(!showCharacterSelector)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-600 dark:text-zinc-300 hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-[10px] font-mono text-zinc-600 dark:text-zinc-300 hover:border-sky-500/40 hover:text-sky-600 dark:hover:text-sky-400 transition-all cursor-pointer"
               >
-                <UserCheck className="w-3.5 h-3.5 text-violet-500" />
+                <UserCheck className="w-3.5 h-3.5 text-sky-500" />
                 <span>+ Character Lock</span>
               </button>
 
@@ -1211,7 +1222,7 @@ function PipelineContent() {
                             const img = char.imageUrl || char.image_url;
                             if (img) setReferenceImage(img);
                           }}
-                          className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-500/10 text-left transition-colors cursor-pointer group"
+                          className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-500/10 text-left transition-colors cursor-pointer group"
                         >
                           {char.imageUrl || char.image_url ? (
                             <img
@@ -1225,14 +1236,14 @@ function PipelineContent() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate group-hover:text-violet-600 dark:group-hover:text-violet-400">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate group-hover:text-sky-600 dark:group-hover:text-sky-400">
                               {char.name}
                             </span>
                             <span className="text-[9px] text-zinc-400 dark:text-zinc-500 truncate block">
                               {char.tagline || char.prompt || "Locked Face & Outfit"}
                             </span>
                           </div>
-                          <Lock className="w-3 h-3 text-zinc-400 group-hover:text-violet-500 shrink-0" />
+                          <Lock className="w-3 h-3 text-zinc-400 group-hover:text-sky-500 shrink-0" />
                         </button>
                       ))
                     )}
@@ -1570,21 +1581,21 @@ function PipelineContent() {
               searchable
             />
             {selectedCharacter && (
-              <div className="p-2.5 rounded-xl bg-violet-500/[0.05] border border-violet-500/20 text-[10px] space-y-1 text-zinc-700 dark:text-zinc-300 animate-in fade-in duration-150">
-                <div className="font-bold text-violet-600 dark:text-violet-400 flex items-center justify-between">
+              <div className="p-2.5 rounded-xl bg-sky-500/[0.05] border border-sky-500/20 text-[10px] space-y-1 text-zinc-700 dark:text-zinc-300 animate-in fade-in duration-150">
+                <div className="font-bold text-sky-600 dark:text-sky-400 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {selectedCharacter.imageUrl || selectedCharacter.image_url ? (
                       <img
                         src={getMediaUrl(selectedCharacter.imageUrl || selectedCharacter.image_url)}
                         alt=""
-                        className="w-5 h-5 rounded-md object-cover border border-violet-500/30"
+                        className="w-5 h-5 rounded-md object-cover border border-sky-500/30"
                       />
                     ) : (
                       <UserCheck className="w-3.5 h-3.5" />
                     )}
                     <span>{selectedCharacter.name}</span>
                   </div>
-                  <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-violet-500/15 text-violet-600 dark:text-violet-300 font-bold">
+                  <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-sky-500/15 text-sky-600 dark:text-sky-300 font-bold">
                     100% IDENTITY LOCK
                   </span>
                 </div>
@@ -1620,12 +1631,12 @@ function PipelineContent() {
                 className={cn(
                   "py-1.5 px-2 rounded-lg text-left transition-all cursor-pointer",
                   voiceProvider === "sarvam"
-                    ? "bg-violet-600 text-white dark:bg-violet-500 font-bold shadow-xs"
+                    ? "bg-sky-600 text-white dark:bg-sky-500 font-bold shadow-xs"
                     : "bg-white dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-600 dark:text-zinc-400"
                 )}
               >
                 <span className="text-[11px] block font-bold">Sarvam</span>
-                <span className="text-[8px] font-mono text-violet-400 dark:text-violet-300 block">Hindi</span>
+                <span className="text-[8px] font-mono text-sky-400 dark:text-sky-300 block">Hindi</span>
               </button>
               <button
                 type="button"
@@ -1828,7 +1839,7 @@ function PipelineContent() {
       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-black/[0.06] dark:border-white/[0.06]">
         <div className="flex items-center gap-3 font-mono text-xs text-zinc-500">
           <span className="flex items-center gap-1.5">
-            <Clock className={cn("w-3.5 h-3.5", mode === "autonomous" ? "text-emerald-500" : "text-violet-500")} />
+            <Clock className={cn("w-3.5 h-3.5", mode === "autonomous" ? "text-emerald-500" : "text-sky-500")} />
             ~{Math.ceil(estimatedTimeSec / 60)}min
           </span>
           <span>•</span>
@@ -1860,7 +1871,7 @@ function PipelineContent() {
               "px-8 py-3.5 rounded-2xl font-heading font-extrabold text-sm tracking-tight flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-50 text-white",
               mode === "autonomous"
                 ? "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400"
-                : "bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400"
+                : "bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400"
             )}
           >
             {running ? (
@@ -1958,13 +1969,13 @@ function PipelineContent() {
           >
           {/* Formulated Project Brief Card (If Created by Director) */}
           {projectBrief && (
-            <div className="p-4 rounded-2xl bg-violet-500/[0.04] border border-violet-500/20 space-y-2">
+            <div className="p-4 rounded-2xl bg-sky-500/[0.04] border border-sky-500/20 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
                   Creative Director Project Brief Formulated
                 </span>
                 {projectBrief.genre && (
-                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold">
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold">
                     {projectBrief.genre}
                   </span>
                 )}
@@ -1975,7 +1986,7 @@ function PipelineContent() {
                 <div><span className="text-zinc-400">Target:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.target_audience || "Global"}</strong></div>
                 <div><span className="text-zinc-400">Diffusion:</span> <strong className="text-zinc-900 dark:text-zinc-100 block truncate">{projectBrief.diffusion_model || projectBrief.visual_style || style}</strong></div>
                 <div><span className="text-zinc-400">Video Engine:</span> <strong className="text-emerald-600 dark:text-emerald-400 block truncate">{projectBrief.video_model || "Omni Video Model"}</strong></div>
-                <div><span className="text-zinc-400">Protagonist:</span> <strong className="text-violet-600 dark:text-violet-400 block truncate">{selectedCharacter ? `Locked: ${selectedCharacter.name}` : (projectBrief.character_name || "Autonomous")}</strong></div>
+                <div><span className="text-zinc-400">Protagonist:</span> <strong className="text-sky-600 dark:text-sky-400 block truncate">{selectedCharacter ? `Locked: ${selectedCharacter.name}` : (projectBrief.character_name || "Autonomous")}</strong></div>
               </div>
             </div>
           )}
@@ -2007,6 +2018,7 @@ function PipelineContent() {
               onToggle={() => setExpandedAgent(null)}
               onApprove={handleApproveStep}
               onReject={handleRejectStep}
+              onRegenerate={handleResumePipeline}
               mode={agentMode}
             />
           )}
@@ -2317,7 +2329,7 @@ function PipelineContent() {
         {/* Top Action Bar */}
         <div className="flex items-center gap-2 text-xs font-mono">
           <div className="px-3 py-1.5 rounded-xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-            <span className={cn("w-2 h-2 rounded-full", agentMode === "autonomous" ? "bg-emerald-500" : "bg-violet-500")} />
+            <span className={cn("w-2 h-2 rounded-full", agentMode === "autonomous" ? "bg-emerald-500" : "bg-sky-500")} />
             <span className="font-bold uppercase text-[11px]">
               {agentMode === "autonomous" ? "Autonomous Tab Active" : "Directorial Gates Active"}
             </span>
@@ -2388,18 +2400,18 @@ function PipelineContent() {
           className={cn(
             "p-5 rounded-3xl border text-left transition-all cursor-pointer relative overflow-hidden group",
             agentMode === "assisted"
-              ? "bg-violet-500/[0.04] border-violet-500/40 ring-1 ring-violet-500/30 shadow-md"
+              ? "bg-sky-500/[0.04] border-sky-500/40 ring-1 ring-sky-500/30 shadow-md"
               : "bg-white dark:bg-[#0d0d14] border-black/[0.08] dark:border-white/[0.08] hover:border-zinc-400 dark:hover:border-zinc-600"
           )}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Sliders className={cn("w-4 h-4", agentMode === "assisted" ? "text-violet-500" : "text-zinc-400")} />
+              <Sliders className={cn("w-4 h-4", agentMode === "assisted" ? "text-sky-500" : "text-zinc-400")} />
               <span className="text-xs font-heading font-extrabold uppercase tracking-wider text-zinc-900 dark:text-white">
                 Directorial Review Mode
               </span>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold">
               Milestone Popups
             </span>
           </div>
@@ -2460,7 +2472,7 @@ function PipelineContent() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                   <Sliders className="w-4 h-4" />
                 </div>
                 <div>
@@ -2585,7 +2597,7 @@ function PipelineContent() {
                 value={directorialNotes}
                 onChange={(e) => setDirectorialNotes(e.target.value)}
                 placeholder="E.g. Slow down camera movement in scene 2, make lighting more dramatic..."
-                className="w-full bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500 font-jakarta"
+                className="w-full bg-zinc-50 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-sky-500 font-jakarta"
               />
             </div>
 

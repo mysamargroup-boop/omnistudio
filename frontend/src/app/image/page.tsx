@@ -142,6 +142,7 @@ const LENSES = [
 ];
 
 const APERTURES = [
+  { id: "None", label: "None (Auto)" },
   { id: "f/1.2", label: "f/1.2 Ultra Bokeh" },
   { id: "f/2.8", label: "f/2.8 Portrait" },
   { id: "f/8", label: "f/8 Landscape" },
@@ -149,12 +150,31 @@ const APERTURES = [
 ];
 
 const LIGHTING_PRESETS = [
+  { id: "None", label: "None", desc: "Follow prompt" },
   { id: "Golden Hour Sunlight", label: "Golden Hour", desc: "Warm Low-Angle Sun" },
   { id: "Volumetric God Rays", label: "God Rays", desc: "Hazy Atmospheric Beams" },
   { id: "Studio Softbox Lighting", label: "Studio Softbox", desc: "Clean Diffused Fashion" },
   { id: "Cyberpunk Neon Lighting", label: "Cyberpunk Neon", desc: "Dual-Tone Blue & Magenta" },
   { id: "Moody Low-Key Chiaroscuro", label: "Chiaroscuro", desc: "High Contrast Rim Light" },
 ];
+
+const FILM_STOCKS = [
+
+  { id: "None", label: "None" },
+
+  { id: "Kodak Portra 400", label: "Portra 400" },
+
+  { id: "Kodak Vision3 500T", label: "Vision3 500T" },
+
+  { id: "Fujifilm Pro 400H", label: "Fuji 400H" },
+
+  { id: "Ilford HP5 black and white", label: "Ilford HP5 B&W" },
+
+  { id: "CineStill 800T", label: "CineStill 800T" },
+
+];
+
+
 
 const INSPIRATION_PROMPTS = [
   {
@@ -200,10 +220,10 @@ export default function ImageStudioPage() {
   const [quality, setQuality] = useState("hd");
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [resolution, setResolution] = useState("2k");
-  const [lens, setLens] = useState("35mm Prime");
-  const [aperture, setAperture] = useState("f/1.2");
-  const [lighting, setLighting] = useState("Golden Hour Sunlight");
-  const [filmStock, setFilmStock] = useState("Kodak Portra 400");
+  const [lens, setLens] = useState("Auto");
+  const [aperture, setAperture] = useState("None");
+  const [lighting, setLighting] = useState("None");
+  const [filmStock, setFilmStock] = useState("None");
   const [cfgScale, setCfgScale] = useState(7.5);
   const [samplingSteps, setSamplingSteps] = useState(30);
   const [seed, setSeed] = useState("");
@@ -534,10 +554,10 @@ export default function ImageStudioPage() {
         quality: "hd",
         aspectRatio: "16:9",
         resolution: "2k",
-        lens: "35mm Prime",
-        aperture: "f/1.2",
-        lighting: "Golden Hour Sunlight",
-        filmStock: "Kodak Portra 400",
+        lens: "Auto",
+        aperture: "None",
+        lighting: "None",
+        filmStock: "None",
         cfgScale: 7.5,
         samplingSteps: 30,
         imageCount: 1,
@@ -871,7 +891,7 @@ export default function ImageStudioPage() {
       if (elapsed === 2) {
         setProgress(50);
         setStageTitle("02 • Neural Cloud Diffusion");
-        setStatusMessage(`Rendering scene with optics (${lens || "35mm"}, ${aperture || "f/1.4"})...`);
+        setStatusMessage(`Rendering scene with optics (${lens && lens !== "Auto" ? lens : "Auto lens"}, ${aperture && aperture !== "None" ? aperture : "Auto aperture"})...`);
         setTelemetryLogs((prev) => [
           ...prev,
           { timestamp: new Date().toTimeString().split(" ")[0], message: `Applying lighting & style: ${lighting || "Natural Studio"} • ${filmStock || "Cinematic"}` },
@@ -951,10 +971,10 @@ export default function ImageStudioPage() {
         quality,
         style: "cinematic",
         enhance_prompt: false,
-        lens,
-        aperture,
-        lighting,
-        film_stock: filmStock,
+        lens: lens !== "Auto" ? lens : undefined,
+        aperture: aperture !== "None" ? aperture : undefined,
+        lighting: lighting !== "None" ? lighting : undefined,
+        film_stock: filmStock !== "None" ? filmStock : undefined,
         cfg_scale: cfgScale,
         sampling_steps: samplingSteps,
         seed: seed ? parseInt(seed, 10) : undefined,
@@ -1704,10 +1724,10 @@ export default function ImageStudioPage() {
             <button
               type="button"
               onClick={() => openVaultPicker("editor")}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-violet-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0d0d14] text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-sky-500/40 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
               title="Pick from Vault"
             >
-              <FolderArchive className="w-3.5 h-3.5 text-violet-500" />
+              <FolderArchive className="w-3.5 h-3.5 text-sky-500" />
               <span>From Vault</span>
             </button>
             <button
@@ -1793,11 +1813,11 @@ export default function ImageStudioPage() {
                       className={cn(
                         "relative rounded-xl overflow-hidden aspect-square w-16 h-16 border-2 transition-all cursor-pointer shrink-0 shadow-sm",
                         selectedImageIndex === idx
-                          ? "border-violet-500 ring-2 ring-violet-500/20 scale-105"
-                          : "border-black/[0.08] dark:border-white/[0.08] opacity-70 hover:opacity-100 hover:border-violet-400/50"
+                          ? "border-sky-500 ring-2 ring-sky-500/20 scale-105"
+                          : "border-black/[0.08] dark:border-white/[0.08] opacity-70 hover:opacity-100 hover:border-sky-400/50"
                       )}
                     >
-                      <img src={getMediaUrl(img.url)} alt={`Variation ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={getMediaUrl(img.url, 256)} alt={`Variation ${idx + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       <span className="absolute bottom-0.5 right-1 text-[8px] font-mono bg-black/80 text-white px-1 rounded">
                         #{idx + 1}
                       </span>
@@ -1814,6 +1834,7 @@ export default function ImageStudioPage() {
                 <img
                   src={getMediaUrl(currentDisplayImage.url)}
                   alt={prompt || "Master Generated Image"}
+                  decoding="async"
                   onLoad={() => setImageLoaded(true)}
                   className={cn(
                     "max-h-[700px] w-auto max-w-full object-contain rounded-2xl transition-all duration-500 shadow-2xl",
@@ -1836,7 +1857,7 @@ export default function ImageStudioPage() {
                     )}
                   </span>
                   {result.simulated && (
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30">
                       SIMULATED
                     </span>
                   )}
@@ -1872,7 +1893,7 @@ export default function ImageStudioPage() {
                   <button
                     type="button"
                     onClick={() => setLightboxOpen(true)}
-                    className="p-2 rounded-full bg-white/90 dark:bg-black/70 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md transition-colors cursor-pointer shadow-sm hover:scale-105"
+                    className="p-2 rounded-full bg-white/90 dark:bg-black/70 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.15] backdrop-blur-md transition-colors cursor-pointer shadow-sm "
                     title="Fullscreen Zoom"
                   >
                     <ZoomIn className="w-4 h-4" />
@@ -1890,7 +1911,7 @@ export default function ImageStudioPage() {
                       setPromptDockCollapsed(true);
                       window.dispatchEvent(new CustomEvent("omnistudio:collapse-sidebar"));
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 "
                     title="Open in Precision Image Editor"
                   >
                     <Sliders className="w-3.5 h-3.5 text-emerald-500" />
@@ -1902,7 +1923,7 @@ export default function ImageStudioPage() {
                     <button
                       type="button"
                       onClick={() => setAnimateMenuOpen((p) => !p)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-heading font-bold shadow-md shadow-violet-500/25 cursor-pointer transition-all hover:scale-105 whitespace-nowrap shrink-0"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-sky-600 via-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-heading font-bold shadow-md shadow-sky-500/25 cursor-pointer transition-all whitespace-nowrap shrink-0"
                       title="Animate Image: Video Studio or All-In-One Pipeline"
                     >
                       <Film className="w-3.5 h-3.5" />
@@ -1921,13 +1942,13 @@ export default function ImageStudioPage() {
                             setAnimateMenuOpen(false);
                             router.push(`/video?first_frame=${encodeURIComponent(currentDisplayImage.url)}&motion=zoom_in`);
                           }}
-                          className="w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors cursor-pointer group"
+                          className="w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors cursor-pointer group"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
                             <Film className="w-4 h-4" />
                           </div>
                           <div>
-                            <span className="text-xs font-bold font-heading text-zinc-900 dark:text-white block group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                            <span className="text-xs font-bold font-heading text-zinc-900 dark:text-white block group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
                               Animate in Video Studio
                             </span>
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight block">
@@ -1964,7 +1985,7 @@ export default function ImageStudioPage() {
                     type="button"
                     onClick={() => setShowMetadataInspector((p) => !p)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-mono border backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105",
+                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-mono border backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 ",
                       showMetadataInspector
                         ? "bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20"
                         : "bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border-black/[0.08] dark:border-white/[0.2]"
@@ -1981,7 +2002,7 @@ export default function ImageStudioPage() {
                       setSocialMediaUrl(currentDisplayImage.url);
                       setSocialModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 "
                     title="1-Click Multi-Platform Social Media Repurposer"
                   >
                     <Share2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -1991,7 +2012,7 @@ export default function ImageStudioPage() {
                   <button
                     type="button"
                     onClick={handleCopyPrompt}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 hover:scale-105"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white text-xs font-mono border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 "
                     title="Copy Prompt"
                   >
                     {copiedPrompt ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -2002,7 +2023,7 @@ export default function ImageStudioPage() {
                     type="button"
                     onClick={() => handleDirectDownload(currentDisplayImage.url, currentDisplayImage.filename)}
                     disabled={downloadingMaster}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold shadow-md shadow-emerald-500/25 cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 hover:scale-105 disabled:opacity-60"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-heading font-bold shadow-md shadow-emerald-500/25 cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 disabled:opacity-60"
                     title="Direct Download Master Image"
                   >
                     {downloadingMaster ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
@@ -2064,7 +2085,7 @@ export default function ImageStudioPage() {
                       <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-white flex items-center gap-2">
                         <span>AI Metadata & Provenance Inspector (Python Engine)</span>
                         {inspectedMetadata?.detected_generator && (
-                          <span className="text-[10px] px-2 py-0.2 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                          <span className="text-[10px] px-2 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
                             {inspectedMetadata.detected_generator}
                           </span>
                         )}
@@ -2191,8 +2212,8 @@ export default function ImageStudioPage() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {variationsResult.variations?.map((v: any, idx: number) => (
-                <div key={idx} className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#0d0d14] shadow-sm overflow-hidden group relative flex flex-col justify-between hover:border-violet-500/30 transition-colors">
-                  <img src={getMediaUrl(v.url)} alt={v.description} className="w-full aspect-square object-cover" />
+                <div key={idx} className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-[#0d0d14] shadow-sm overflow-hidden group relative flex flex-col justify-between hover:border-sky-500/30 transition-colors">
+                  <img src={getMediaUrl(v.url, 256)} alt={v.description} loading="lazy" decoding="async" className="w-full aspect-square object-cover" />
                   <div className="p-2.5 border-t border-black/[0.06] dark:border-white/[0.06]">
                     <p className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 line-clamp-1">{v.description}</p>
                     <div className="mt-2 flex items-center gap-1.5">
@@ -2207,7 +2228,7 @@ export default function ImageStudioPage() {
                       <button
                         type="button"
                         onClick={() => router.push(`/video?first_frame=${encodeURIComponent(v.url)}&motion=zoom_in`)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-1 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
                         title="Animate this variation in Video Studio"
                       >
                         <Film className="w-3 h-3" />
@@ -2227,7 +2248,7 @@ export default function ImageStudioPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.06] dark:border-white/[0.06] pb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-mono tracking-widest text-violet-500 uppercase font-bold flex items-center gap-1">
+                  <span className="text-[10px] font-mono tracking-widest text-sky-500 uppercase font-bold flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     AGENTIC CHARACTER CONSISTENCY GALLERY
                   </span>
@@ -2284,7 +2305,7 @@ export default function ImageStudioPage() {
               {agenticResults.results?.map((pose: any, idx: number) => (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0e0e16] shadow-sm overflow-hidden flex flex-col justify-between hover:border-violet-500/40 transition-all group"
+                  className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-[#0e0e16] shadow-sm overflow-hidden flex flex-col justify-between hover:border-sky-500/40 transition-all group"
                 >
                   <div className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-900">
                     <img
@@ -2296,7 +2317,7 @@ export default function ImageStudioPage() {
                       Shot {pose.pose_id || idx + 1}
                     </div>
                     {pose.framing && (
-                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-violet-600/80 text-white text-[10px] font-mono font-bold backdrop-blur-xs">
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-sky-600/80 text-white text-[10px] font-mono font-bold backdrop-blur-xs">
                         {pose.framing}
                       </div>
                     )}
@@ -2336,7 +2357,7 @@ export default function ImageStudioPage() {
                       <button
                         type="button"
                         onClick={() => router.push(`/pipeline?input_image=${encodeURIComponent(pose.url)}`)}
-                        className="flex items-center justify-center gap-1 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
                         title="Build full video story in Auto Pipeline"
                       >
                         <Layers className="w-3 h-3" />
@@ -2433,7 +2454,7 @@ export default function ImageStudioPage() {
                         setSocialMediaUrl(editorImageUrl);
                         setSocialModalOpen(true);
                       }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-105"
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-white/90 dark:bg-black/80 hover:bg-white dark:hover:bg-black text-zinc-800 dark:text-white border border-black/[0.08] dark:border-white/[0.2] backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer shadow-sm "
                       title="1-Click Multi-Platform Social Media Repurposer"
                     >
                       <Share2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -2600,7 +2621,7 @@ export default function ImageStudioPage() {
                   {/* Tab 0: AI Editing Tools (Background Removal, Relighting, Face Restore, AI Expand) */}
                   {editorActiveTab === "ai_tools" && (
                     <div className="space-y-4 animate-in fade-in duration-150">
-                      <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-500/10 via-fuchsia-500/10 to-pink-500/10 border border-indigo-500/20">
+                      <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-500/10 via-sky-500/10 to-pink-500/10 border border-indigo-500/20">
                         <div className="flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                           <p className="text-xs font-semibold text-zinc-900 dark:text-white">
@@ -2778,7 +2799,7 @@ export default function ImageStudioPage() {
                       <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50/50 dark:bg-white/[0.02] space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Wand2 className="w-4 h-4 text-violet-500" />
+                            <Wand2 className="w-4 h-4 text-sky-500" />
                             <div>
                               <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Face & Texture Restoration</h4>
                               <p className="text-[10px] text-zinc-500">Sharpen micro-textures and facial features</p>
@@ -2789,7 +2810,7 @@ export default function ImageStudioPage() {
                           type="button"
                           onClick={handleAiFaceRestore}
                           disabled={processingFaceRestore || !editorImageUrl}
-                          className="w-full py-2 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                          className="w-full py-2 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
                         >
                           {processingFaceRestore ? (
                             <>
@@ -2988,7 +3009,7 @@ export default function ImageStudioPage() {
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs font-mono text-zinc-600 dark:text-zinc-400">
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-fuchsia-400" />
+                              <span className="w-2 h-2 rounded-full bg-sky-400" />
                               Tint (Green / Magenta)
                             </span>
                             <span className="font-bold">
@@ -3001,7 +3022,7 @@ export default function ImageStudioPage() {
                             max="100"
                             value={editorTint}
                             onChange={(e) => setEditorTint(Number(e.target.value))}
-                            className="w-full accent-fuchsia-500 cursor-pointer"
+                            className="w-full accent-sky-500 cursor-pointer"
                           />
                           <div className="flex justify-between text-[9px] font-mono text-zinc-400">
                             <span>Green (-100)</span>
@@ -3026,7 +3047,7 @@ export default function ImageStudioPage() {
                             className="w-full accent-indigo-500 cursor-pointer"
                           />
                           {/* Visual Rainbow Spectrum Strip */}
-                          <div className="h-2 rounded-full w-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-cyan-400 via-blue-500 via-purple-500 to-red-500 opacity-85" />
+                          <div className="h-2 rounded-full w-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-cyan-400 via-blue-500 via-sky-500 to-red-500 opacity-85" />
                         </div>
 
                         {/* Saturation Vibrance Slider in HSL */}
@@ -3517,7 +3538,7 @@ export default function ImageStudioPage() {
                         onClick={() => openVaultPicker("editor")}
                         className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 font-semibold text-xs border border-black/10 dark:border-white/10 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                       >
-                        <FolderArchive className="w-4 h-4 text-violet-400" />
+                        <FolderArchive className="w-4 h-4 text-sky-400" />
                         <span>Pick from Vault</span>
                       </button>
                     </div>
@@ -3535,7 +3556,7 @@ export default function ImageStudioPage() {
               {/* Header Bar */}
               <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.06] pb-3 sm:pb-3.5">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-500/20 shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-500/20 shrink-0">
                     <ImagePlus className="w-4 h-4" />
                   </div>
                   <div>
@@ -3604,14 +3625,14 @@ export default function ImageStudioPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-mono uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                        <Upload className="w-3.5 h-3.5 text-violet-500" />
+                        <Upload className="w-3.5 h-3.5 text-sky-500" />
                         <span>Reference Images ({refImages.length})</span>
                       </span>
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => openVaultPicker("reference")}
-                          className="text-[10px] font-mono text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1 cursor-pointer transition-colors px-2 py-0.5 rounded-lg border border-violet-500/20 bg-violet-500/10 hover:bg-violet-500/20 font-medium"
+                          className="text-[10px] font-mono text-sky-600 dark:text-sky-400 hover:text-sky-500 flex items-center gap-1 cursor-pointer transition-colors px-2 py-0.5 rounded-lg border border-sky-500/20 bg-sky-500/10 hover:bg-sky-500/20 font-medium"
                           title="Pick reference from Vault"
                         >
                           <FolderArchive className="w-3 h-3" />
@@ -3641,7 +3662,7 @@ export default function ImageStudioPage() {
                         }
                       }}
                       onClick={() => multiRefFileInputRef.current?.click()}
-                      className="rounded-xl border-2 border-dashed border-violet-200 dark:border-violet-500/30 hover:border-violet-500 bg-violet-50/40 dark:bg-violet-500/[0.03] hover:bg-violet-50/70 dark:hover:bg-violet-500/[0.06] py-3.5 px-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3 group"
+                      className="rounded-xl border-2 border-dashed border-sky-200 dark:border-sky-500/30 hover:border-sky-500 bg-sky-50/40 dark:bg-sky-500/[0.03] hover:bg-sky-50/70 dark:hover:bg-sky-500/[0.06] py-3.5 px-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3 group"
                     >
                       <input
                         ref={multiRefFileInputRef}
@@ -3657,14 +3678,14 @@ export default function ImageStudioPage() {
                         }}
                       />
                       {uploadingMultiRef ? (
-                        <Loader2 className="w-4 h-4 text-violet-600 animate-spin shrink-0" />
+                        <Loader2 className="w-4 h-4 text-sky-600 animate-spin shrink-0" />
                       ) : (
-                        <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform shrink-0">
                           <Upload className="w-3.5 h-3.5" />
                         </div>
                       )}
                       <div className="text-left leading-tight">
-                        <p className="text-xs font-bold text-violet-700 dark:text-violet-300 font-heading">
+                        <p className="text-xs font-bold text-sky-700 dark:text-sky-300 font-heading">
                           {uploadingMultiRef ? `Uploading... ${multiRefUploadProgress}%` : "Drop References or Tap to Upload"}
                         </p>
                         <p className="text-[10px] text-zinc-400 font-mono">
@@ -3690,7 +3711,7 @@ export default function ImageStudioPage() {
                                   e.stopPropagation();
                                   removeRefImage(idx);
                                 }}
-                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:text-rose-500 shadow-xs flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:text-rose-500 shadow-xs flex items-center justify-center transition-transform cursor-pointer"
                                 title="Remove image"
                               >
                                 <X className="w-2.5 h-2.5" />
@@ -4367,7 +4388,7 @@ export default function ImageStudioPage() {
             <div className="space-y-1.5 max-w-md sm:max-w-lg mx-auto">
               <h1 className="text-base sm:text-lg font-bold font-heading tracking-tight text-zinc-950 dark:text-white uppercase">
                 START CREATING WITH{" "}
-                <span className="text-violet-600 dark:text-violet-400 underline decoration-violet-500/30">
+                <span className="text-sky-600 dark:text-sky-400 underline decoration-sky-500/30">
                   {activeModel.label}
                 </span>
               </h1>
@@ -4383,7 +4404,7 @@ export default function ImageStudioPage() {
                   key={idx}
                   type="button"
                   onClick={() => setPrompt(item.prompt)}
-                  className="flex items-center px-2.5 py-1 rounded-full bg-white dark:bg-[#111118] hover:bg-violet-50 dark:hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-300 border border-black/[0.06] dark:border-white/[0.06] hover:border-violet-200 dark:hover:border-violet-500/30 text-[10px] sm:text-[11px] font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer font-medium shadow-xs whitespace-nowrap"
+                  className="flex items-center px-2.5 py-1 rounded-full bg-white dark:bg-[#111118] hover:bg-sky-50 dark:hover:bg-sky-500/10 hover:text-sky-700 dark:hover:text-sky-300 border border-black/[0.06] dark:border-white/[0.06] hover:border-sky-200 dark:hover:border-sky-500/30 text-[10px] sm:text-[11px] font-jakarta text-zinc-700 dark:text-zinc-300 transition-all cursor-pointer font-medium shadow-xs whitespace-nowrap"
                 >
                   <span>{item.title}</span>
                 </button>
@@ -4588,7 +4609,7 @@ export default function ImageStudioPage() {
               "relative flex flex-col rounded-2xl bg-zinc-50 dark:bg-white/[0.04] border transition-all p-2.5 space-y-2 cursor-text",
               isShiftedLeft ? "flex-1 min-h-[120px] flex flex-col justify-between" : "shrink-0",
               enhancingPrompt
-                ? "border-violet-500/60 ring-2 ring-violet-500/30 shadow-[0_0_22px_rgba(139,92,246,0.25)] dark:bg-violet-950/15"
+                ? "border-sky-500/60 ring-2 ring-sky-500/30 shadow-[0_0_22px_rgba(14, 165, 233,0.25)] dark:bg-sky-950/15"
                 : "border-black/[0.08] dark:border-white/[0.08] focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/20"
             )}
           >
@@ -4711,12 +4732,12 @@ export default function ImageStudioPage() {
                   className={cn(
                     "relative px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-all cursor-pointer flex items-center gap-1.5 select-none",
                     enhancingPrompt
-                      ? "magic-pulse-active bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 text-white border-violet-400/80 shadow-[0_0_15px_rgba(168,85,247,0.6)]"
-                      : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 border-black/[0.08] dark:border-white/[0.08] hover:border-violet-500/30 disabled:opacity-30 hover:shadow-xs"
+                      ? "bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-500 text-white border-cyan-400/80 magic-pulse-active"
+                      : "bg-white/80 dark:bg-white/[0.04] text-zinc-500 hover:text-cyan-600 dark:hover:text-cyan-400 border-black/[0.08] dark:border-white/[0.08] hover:border-cyan-500/30 hover:shadow-[0_0_8px_rgba(6,182,212,0.15)] disabled:opacity-30 hover:shadow-xs"
                   )}
                   title="Improve Prompt with AI Copilot (GPT-4o-mini & Gemini)"
                 >
-                  <Wand2 className={cn("w-3.5 h-3.5 transition-all duration-300", enhancingPrompt ? "scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.95)] animate-pulse text-white" : "")} />
+                  <Wand2 className={cn("w-3.5 h-3.5 transition-all duration-300", enhancingPrompt ? "text-white animate-spin [animation-duration:2s]" : "")} />
                   <span className="text-[10px] font-semibold">{enhancingPrompt ? "Enhancing..." : "Enhance"}</span>
                 </button>
 
@@ -4803,7 +4824,7 @@ export default function ImageStudioPage() {
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
               placeholder="Negative prompt (e.g. blurry, extra fingers, low quality, artifacts, watermark)..."
-              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/30 transition-all"
+              className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-mono focus:border-sky-500/50 focus:ring-2 focus:ring-sky-500/30 transition-all"
             />
           </div>
         )}
@@ -4814,7 +4835,7 @@ export default function ImageStudioPage() {
             <span className="text-[10px] font-mono text-zinc-500 uppercase shrink-0">REF:</span>
             {refImageUrl ? (
               <div className="flex items-center gap-1.5 shrink-0">
-                <img src={getMediaUrl(refImageUrl)} alt="Ref" className="w-7 h-7 rounded-md object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs" />
+                <img src={getMediaUrl(refImageUrl, 64)} alt="Ref" loading="lazy" decoding="async" className="w-7 h-7 rounded-md object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs" />
                 <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 truncate max-w-[100px]">
                   {refImageUrl.split("/").pop()?.slice(0, 16)}
                 </span>
@@ -4829,7 +4850,7 @@ export default function ImageStudioPage() {
               <button
                 type="button"
                 onClick={() => openVaultPicker("reference")}
-                className="p-1.5 rounded-lg bg-white dark:bg-[#16161f] border border-black/[0.08] dark:border-white/[0.08] text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-500/30 cursor-pointer transition-colors shadow-xs"
+                className="p-1.5 rounded-lg bg-white dark:bg-[#16161f] border border-black/[0.08] dark:border-white/[0.08] text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:border-sky-200 dark:hover:border-sky-500/30 cursor-pointer transition-colors shadow-xs"
                 title="Pick from Vault"
               >
                 <FolderArchive className="w-3.5 h-3.5" />
@@ -4869,11 +4890,11 @@ export default function ImageStudioPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-heading font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-2xs",
                   modelPopoverOpen 
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300" 
+                    ? "bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/20 text-sky-700 dark:text-sky-300" 
                     : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-900 dark:text-white"
                 )}
               >
-                <Sparkle className={cn("w-3 h-3", modelPopoverOpen ? "text-violet-500" : "text-emerald-500")} />
+                <Sparkle className={cn("w-3 h-3", modelPopoverOpen ? "text-sky-500" : "text-emerald-500")} />
                 <span>{activeModel.label}</span>
                 <ChevronUp className={cn("w-3 h-3 text-zinc-400 transition-transform", modelPopoverOpen && "rotate-180")} />
               </button>
@@ -4893,13 +4914,13 @@ export default function ImageStudioPage() {
                       value={modelSearchQuery}
                       onChange={(e) => setModelSearchQuery(e.target.value)}
                       placeholder="Search models..."
-                      className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-7 pr-2.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
+                      className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl pl-7 pr-2.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none font-jakarta focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/50 transition-all"
                     />
                   </div>
 
                   <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase px-1 font-semibold flex items-center justify-between">
                     <div className="flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-violet-500" />
+                      <Sparkles className="w-3 h-3 text-sky-500" />
                       <span>Featured Models</span>
                     </div>
                     <span className="text-[9px] text-zinc-400 font-normal font-mono">
@@ -4928,7 +4949,7 @@ export default function ImageStudioPage() {
                           className={cn(
                             "w-full flex items-start justify-between p-2 rounded-xl text-left transition-all font-jakarta cursor-pointer",
                             isSelected
-                              ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/20"
+                              ? "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/20"
                               : "hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 border border-transparent"
                           )}
                         >
@@ -4958,7 +4979,7 @@ export default function ImageStudioPage() {
                               {isInactive ? "API Key required in Settings to activate" : m.description}
                             </p>
                           </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 mt-1" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0 mt-1" />}
                         </button>
                       );
                     })}
@@ -5139,67 +5160,59 @@ export default function ImageStudioPage() {
                 className={cn(
                   "hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-2xs",
                   opticsPopoverOpen
-                    ? "bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300"
+                    ? "bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/20 text-sky-700 dark:text-sky-300"
                     : "bg-white dark:bg-[#16161f] hover:bg-zinc-50 dark:hover:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.08] text-zinc-800 dark:text-zinc-200"
                 )}
                 title="Camera Optics & Lens"
               >
-                <Camera className={cn("w-2.5 h-2.5", opticsPopoverOpen ? "text-violet-500" : "text-zinc-400")} />
+                <Camera className={cn("w-2.5 h-2.5", opticsPopoverOpen ? "text-sky-500" : "text-zinc-400")} />
                 <span>{lens.split(" ")[0] || "Optics"}</span>
               </button>
 
               {opticsPopoverOpen && (
                 <div
                   data-popover-content="true"
-                  className="absolute bottom-full left-0 mb-2 w-64 max-w-[calc(100vw-24px)] rounded-xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2.5 z-[99999] space-y-2 font-mono text-xs animate-slide-up"
+                  className="absolute bottom-full left-0 mb-2 w-72 max-w-[calc(100vw-24px)] max-h-[60vh] overflow-y-auto rounded-xl bg-white dark:bg-[#111118] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl p-2.5 z-[99999] space-y-2 font-mono text-xs animate-slide-up"
                 >
-                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
-                    Focal Length & Lens
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {LENSES.map((l) => (
-                      <button
-                        key={l.id}
-                        type="button"
-                        onClick={() => {
-                          setLens(l.id);
-                          setOpticsPopoverOpen(false);
-                        }}
-                        className={cn(
-                          "p-1.5 rounded-lg text-left border text-[10.5px] transition-colors cursor-pointer",
-                          lens === l.id
-                            ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
-                            : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
-                        )}
-                      >
-                        {l.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider pt-1.5 border-t border-black/[0.06] dark:border-white/[0.06]">
-                    Aperture Depth of Field
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {APERTURES.map((ap) => (
-                      <button
-                        key={ap.id}
-                        type="button"
-                        onClick={() => {
-                          setAperture(ap.id);
-                          setOpticsPopoverOpen(false);
-                        }}
-                        className={cn(
-                          "p-1.5 rounded-lg text-center border text-[10.5px] transition-colors cursor-pointer",
-                          aperture === ap.id
-                            ? "bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/20 font-bold"
-                            : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
-                        )}
-                      >
-                        {ap.label}
-                      </button>
-                    ))}
-                  </div>
+                  {([
+                    { title: "Focal Length & Lens", items: LENSES.map((l) => ({ id: l.id, label: l.label })), value: lens, set: setLens },
+                    { title: "Aperture Depth of Field", items: APERTURES.map((a) => ({ id: a.id, label: a.label })), value: aperture, set: setAperture },
+                    { title: "Lighting", items: LIGHTING_PRESETS.map((l) => ({ id: l.id, label: l.label })), value: lighting, set: setLighting },
+                    { title: "Film Stock / Color Grade", items: FILM_STOCKS.map((f) => ({ id: f.id, label: f.label })), value: filmStock, set: setFilmStock },
+                  ] as const).map((section, sIdx) => (
+                    <div key={section.title} className="space-y-1.5">
+                      <div className={cn(
+                        "text-[10px] font-mono text-zinc-500 uppercase tracking-wider",
+                        sIdx > 0 && "pt-1.5 border-t border-black/[0.06] dark:border-white/[0.06]"
+                      )}>
+                        {section.title}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {section.items.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => section.set(item.id)}
+                            className={cn(
+                              "p-1.5 rounded-lg text-left border text-[10.5px] transition-colors cursor-pointer",
+                              section.value === item.id
+                                ? "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/20 font-bold"
+                                : "border-black/[0.06] dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/[0.04]"
+                            )}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setOpticsPopoverOpen(false)}
+                    className="w-full mt-1 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[10.5px] font-bold cursor-pointer"
+                  >
+                    Done
+                  </button>
                 </div>
               )}
             </div>
@@ -5209,7 +5222,7 @@ export default function ImageStudioPage() {
               <button
                 type="button"
                 onClick={handleBatchDecrement}
-                className="px-1 py-0.5 hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer transition-colors"
+                className="px-1 py-0.5 hover:text-sky-600 dark:hover:text-sky-400 cursor-pointer transition-colors"
                 title="Decrease Batch"
               >
                 <Minus className="w-2.5 h-2.5" />
@@ -5218,7 +5231,7 @@ export default function ImageStudioPage() {
               <button
                 type="button"
                 onClick={handleBatchIncrement}
-                className="px-1 py-0.5 hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer transition-colors"
+                className="px-1 py-0.5 hover:text-sky-600 dark:hover:text-sky-400 cursor-pointer transition-colors"
                 title="Increase Batch"
               >
                 <Plus className="w-2.5 h-2.5" />
@@ -5320,8 +5333,8 @@ export default function ImageStudioPage() {
           >
             <div className="p-4 sm:p-5 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/30">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-5 h-5 text-violet-500" />
+                <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-sky-500" />
                 </div>
                 <div>
                   <h3 className="font-heading font-bold text-sm sm:text-base text-zinc-950 dark:text-white">
@@ -5342,8 +5355,8 @@ export default function ImageStudioPage() {
             </div>
 
             {agenticPlan.persona_anchor && (
-              <div className="px-5 py-3 bg-violet-500/5 border-b border-violet-500/10">
-                <span className="text-[10px] font-mono tracking-wider text-violet-500 uppercase font-bold block mb-1">
+              <div className="px-5 py-3 bg-sky-500/5 border-b border-sky-500/10">
+                <span className="text-[10px] font-mono tracking-wider text-sky-500 uppercase font-bold block mb-1">
                   IMMUTABLE PERSONA ANCHOR (FACE & IDENTITY LOCK)
                 </span>
                 <p className="text-xs text-zinc-700 dark:text-zinc-300 font-sans leading-relaxed">
@@ -5358,7 +5371,7 @@ export default function ImageStudioPage() {
                   key={idx}
                   className="p-3.5 rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.02] flex items-start gap-3"
                 >
-                  <div className="w-7 h-7 rounded-xl bg-violet-600/10 text-violet-600 dark:text-violet-400 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7 rounded-xl bg-sky-600/10 text-sky-600 dark:text-sky-400 font-mono text-xs font-bold flex items-center justify-center shrink-0">
                     {pose.pose_id || idx + 1}
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
@@ -5402,7 +5415,7 @@ export default function ImageStudioPage() {
                   handleExecuteAgenticPoses();
                 }}
                 disabled={isGeneratingAgentic}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-extrabold shadow-md shadow-violet-600/20 transition-all cursor-pointer active:scale-95"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-heading font-extrabold shadow-md shadow-sky-600/20 transition-all cursor-pointer active:scale-95"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Execute Agentic Generation</span>
@@ -5425,15 +5438,15 @@ export default function ImageStudioPage() {
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/30">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 shadow-xs">
-                  <FolderArchive className="h-5 w-5 text-violet-500" />
+                <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <FolderArchive className="h-5 w-5 text-sky-500" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-heading font-bold text-sm sm:text-base text-zinc-950 dark:text-white truncate">
                       Select {vaultPickerTarget === "editor" ? "Canvas Image" : "Reference Image"} from Vault
                     </h3>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 font-bold shrink-0">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold shrink-0">
                       {vaultImages.filter((img: any) => {
                         const name = typeof img === "string" ? img : (img.filename || "");
                         return !vaultSearch.trim() || name.toLowerCase().includes(vaultSearch.toLowerCase());
@@ -5463,7 +5476,7 @@ export default function ImageStudioPage() {
                   value={vaultSearch}
                   onChange={(e) => setVaultSearch(e.target.value)}
                   placeholder="Search assets by filename..."
-                  className="w-full pl-9 pr-8 py-2 text-xs font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+                  className="w-full pl-9 pr-8 py-2 text-xs font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                 />
                 {vaultSearch && (
                   <button
@@ -5481,7 +5494,7 @@ export default function ImageStudioPage() {
             <div className="p-4 sm:p-5 overflow-y-auto flex-1 custom-scrollbar min-h-[250px]">
               {loadingVault ? (
                 <div className="py-20 text-center text-xs text-zinc-500 font-mono flex flex-col items-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+                  <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
                   <span>Loading Asset Vault library...</span>
                 </div>
               ) : vaultImages.length === 0 ? (
@@ -5521,7 +5534,7 @@ export default function ImageStudioPage() {
                             }
                             setVaultOpen(false);
                           }}
-                          className="rounded-2xl overflow-hidden aspect-square border border-zinc-200 dark:border-zinc-800 hover:border-violet-500 hover:ring-2 hover:ring-violet-500/20 cursor-pointer transition-colors duration-150 relative group bg-zinc-950 select-none flex flex-col"
+                          className="rounded-2xl overflow-hidden aspect-square border border-zinc-200 dark:border-zinc-800 hover:border-sky-500 hover:ring-2 hover:ring-sky-500/20 cursor-pointer transition-colors duration-150 relative group bg-zinc-950 select-none flex flex-col"
                         >
                           <LazyImage 
                             src={getMediaUrl(itemUrl)} 
@@ -5532,7 +5545,7 @@ export default function ImageStudioPage() {
                           
                           {/* Hover Overlay with 1-Click Select Badge (Solid, zero scale drift) */}
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center p-2 backdrop-blur-[1px]">
-                            <span className="px-3 py-1.5 rounded-xl bg-violet-600 text-white text-[11px] font-heading font-bold shadow-md flex items-center gap-1.5">
+                            <span className="px-3 py-1.5 rounded-xl bg-sky-600 text-white text-[11px] font-heading font-bold shadow-md flex items-center gap-1.5">
                               <Check className="w-3.5 h-3.5" />
                               <span>Select Image</span>
                             </span>
@@ -5554,7 +5567,7 @@ export default function ImageStudioPage() {
             {/* Modal Footer */}
             <div className="p-3.5 sm:p-4 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center justify-between flex-wrap gap-2 text-xs font-mono text-zinc-500">
               <span className="text-[11px] flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-violet-500" />
+                <Check className="w-3.5 h-3.5 text-sky-500" />
                 <span>Selected asset will load into current session</span>
               </span>
               <button

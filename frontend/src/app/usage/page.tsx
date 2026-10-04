@@ -247,7 +247,7 @@ export default function UsagePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafa] dark:bg-[#06060a] text-zinc-900 dark:text-zinc-100 font-jakarta pb-24 pt-4 selection:bg-violet-500/30">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#06060a] text-zinc-900 dark:text-zinc-100 font-jakarta pb-24 pt-4 selection:bg-sky-500/30">
       
       <div className="relative z-10 max-w-[1700px] w-full mx-auto px-4 sm:px-6 lg:px-10 space-y-8">
         {/* Header Bar */}
@@ -270,7 +270,7 @@ export default function UsagePage() {
                 className={cn(
                   'px-3 py-1.5 text-xs font-mono font-semibold rounded-lg transition-all cursor-pointer',
                   currency === 'INR'
-                    ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm'
+                    ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
                 )}
               >
@@ -281,7 +281,7 @@ export default function UsagePage() {
                 className={cn(
                   'px-3 py-1.5 text-xs font-mono font-semibold rounded-lg transition-all cursor-pointer',
                   currency === 'USD'
-                    ? 'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 shadow-sm'
+                    ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 shadow-sm'
                     : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
                 )}
               >
@@ -331,10 +331,10 @@ export default function UsagePage() {
                   : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
               )}
             >
-              <Share2 className={cn("w-3.5 h-3.5", dashboardMode === 'social' ? "text-white" : "text-violet-500")} />
+              <Share2 className={cn("w-3.5 h-3.5", dashboardMode === 'social' ? "text-white" : "text-sky-500")} />
               <span>Social Publishing Performance</span>
               {socialAnalytics?.views ? (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-violet-500/20 text-violet-600 dark:text-violet-400 font-bold">
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-sky-500/20 text-sky-600 dark:text-sky-400 font-bold">
                   {socialAnalytics.views.toLocaleString()} Views
                 </span>
               ) : null}
@@ -347,7 +347,7 @@ export default function UsagePage() {
                 type="button"
                 onClick={() => fetchSocialData()}
                 disabled={loadingSocial}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-mono font-bold transition-all cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-mono font-bold transition-all cursor-pointer shadow-xs"
               >
                 <RefreshCw className={cn("w-3.5 h-3.5", loadingSocial && "animate-spin")} />
                 <span>{loadingSocial ? 'Syncing...' : 'Sync Social Stats'}</span>
@@ -412,7 +412,7 @@ export default function UsagePage() {
               {summary ? summary.total_generations : 0}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] font-mono mt-2.5 whitespace-nowrap overflow-x-auto custom-scrollbar">
-              <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/20 font-bold whitespace-nowrap shrink-0">
+              <span className="px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/20 font-bold whitespace-nowrap shrink-0">
                 Img: {summary?.by_service?.image?.count || 0}
               </span>
               <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 font-bold whitespace-nowrap shrink-0">
@@ -718,7 +718,7 @@ export default function UsagePage() {
                           {/* Service & Provider */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              {item.service_type === 'image' && <ImageIcon className="h-4 w-4 text-violet-500" />}
+                              {item.service_type === 'image' && <ImageIcon className="h-4 w-4 text-sky-500" />}
                               {item.service_type === 'video' && <Video className="h-4 w-4 text-blue-500" />}
                               {item.service_type === 'voice' && <Mic className="h-4 w-4 text-emerald-500" />}
                               {item.service_type === 'pipeline' && <Layers className="h-4 w-4 text-amber-500" />}
@@ -740,7 +740,7 @@ export default function UsagePage() {
                           <td className="py-3.5 px-4 max-w-xl">
                             <div
                               onClick={() => setSelectedPromptModal(item.full_prompt || item.prompt)}
-                              className="text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-violet-600 dark:hover:text-violet-400 transition-colors font-medium"
+                              className="text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-colors font-medium"
                               title="Click to view full prompt"
                             >
                               "{item.prompt || 'No prompt specified'}"
@@ -796,7 +796,7 @@ export default function UsagePage() {
                                 href={getMediaUrl(item.output_url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
                               >
                                 <span>Inspect</span>
                                 <ExternalLink className="h-3 w-3" />
@@ -875,7 +875,7 @@ export default function UsagePage() {
                               'px-2.5 py-1 rounded-md text-[10px] font-bold border',
                               rc.provider.includes('Google') && 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
                               rc.provider.includes('OpenAI') && 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
-                              rc.provider.includes('Replicate') && 'bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/20',
+                              rc.provider.includes('Replicate') && 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-500/20',
                               rc.provider.includes('Eleven') && 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
                               rc.provider.includes('Local') && 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-900 dark:text-zinc-100 border-black/[0.08] dark:border-white/[0.08] font-extrabold'
                             )}
@@ -913,7 +913,7 @@ export default function UsagePage() {
                           {isZero ? (
                             <span className="text-emerald-600 dark:text-emerald-400">₹0.00 (FREE)</span>
                           ) : (
-                            <span className="text-violet-600 dark:text-violet-400">₹{rc.cost_inr.toFixed(2)}</span>
+                            <span className="text-sky-600 dark:text-sky-400">₹{rc.cost_inr.toFixed(2)}</span>
                           )}
                         </td>
 
@@ -932,7 +932,7 @@ export default function UsagePage() {
                               href={rc.official_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors inline-flex items-center gap-1 font-semibold"
+                              className="text-[11px] text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors inline-flex items-center gap-1 font-semibold"
                             >
                               <span>Official Docs</span>
                               <ExternalLink className="h-2.5 w-2.5" />
@@ -949,8 +949,8 @@ export default function UsagePage() {
             {/* Smart Spending Strategy Callouts */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               <div className="bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] rounded-2xl p-5 space-y-3 shadow-sm">
-                <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 font-mono text-xs font-bold uppercase tracking-wider">
-                  <div className="p-1.5 rounded-lg bg-violet-50 dark:bg-violet-500/10">
+                <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-bold uppercase tracking-wider">
+                  <div className="p-1.5 rounded-lg bg-sky-50 dark:bg-sky-500/10">
                     <Sparkles className="h-4 w-4" />
                   </div>
                   Tip 1: Image Generation
@@ -995,10 +995,10 @@ export default function UsagePage() {
             {/* Top KPI Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
               {/* Card 1: Total Views */}
-              <div className="bg-gradient-to-br from-violet-500/[0.04] via-white dark:via-[#0d0d14] to-transparent border border-zinc-200/80 dark:border-white/[0.08] hover:border-violet-500/40 rounded-2xl p-4 sm:p-5 relative overflow-hidden transition-all duration-200 shadow-xs hover:shadow-md">
+              <div className="bg-gradient-to-br from-sky-500/[0.04] via-white dark:via-[#0d0d14] to-transparent border border-zinc-200/80 dark:border-white/[0.08] hover:border-sky-500/40 rounded-2xl p-4 sm:p-5 relative overflow-hidden transition-all duration-200 shadow-xs hover:shadow-md">
                 <div className="flex items-center justify-between text-zinc-500 text-xs font-mono mb-2">
                   <span className="flex items-center gap-1.5 uppercase tracking-wider font-semibold text-zinc-800 dark:text-zinc-200">
-                    <span className="p-1.5 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                    <span className="p-1.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
                       <Eye className="h-3.5 w-3.5" />
                     </span>
                     Total Views
@@ -1117,7 +1117,7 @@ export default function UsagePage() {
                 </div>
                 <Link
                   href="/publish"
-                  className="flex items-center gap-1 text-xs font-mono font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                  className="flex items-center gap-1 text-xs font-mono font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
                 >
                   <span>Open Publish Studio</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -1294,7 +1294,7 @@ export default function UsagePage() {
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-black/10 dark:border-white/10 overflow-hidden flex items-center justify-center shrink-0">
                                 {p.media_url?.endsWith(".mp4") ? (
-                                  <Video className="w-4 h-4 text-violet-400" />
+                                  <Video className="w-4 h-4 text-sky-400" />
                                 ) : (
                                   <ImageIcon className="w-4 h-4 text-emerald-400" />
                                 )}
@@ -1364,7 +1364,7 @@ export default function UsagePage() {
             {/* AI Smart Timing Signals & Recommendations */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.06] space-y-3 shadow-xs">
-                <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 font-mono text-xs font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-mono text-xs font-bold uppercase tracking-wider">
                   <Sparkles className="w-4 h-4" />
                   <span>AI Optimal Posting Schedule</span>
                 </div>
@@ -1409,7 +1409,7 @@ export default function UsagePage() {
 
                 <Link
                   href="/publish"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-md active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-md active:scale-95"
                 >
                   <span>Create & Schedule New Post in Publish Studio</span>
                   <ArrowRight className="w-4 h-4" />

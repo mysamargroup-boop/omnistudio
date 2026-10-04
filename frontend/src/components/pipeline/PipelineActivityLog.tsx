@@ -17,7 +17,7 @@ interface ActivityLogEntry {
 
 const AGENT_COLORS: Record<string, string> = {
   // Department 1: Editorial & Direction
-  creative_director: "text-violet-400",
+  creative_director: "text-sky-400",
   script_writer: "text-blue-400",
   storyboard_planner: "text-cyan-400",
   research_agent: "text-amber-400",
@@ -27,14 +27,14 @@ const AGENT_COLORS: Record<string, string> = {
   prompt_engineer: "text-emerald-400",
   image_generator: "text-amber-400",
   quality_control: "text-teal-400",
-  thumbnail_agent: "text-fuchsia-400",
+  thumbnail_agent: "text-sky-400",
 
   // Department 3: Cinematics & Sound
   video_planner: "text-red-400",
   video_generator: "text-pink-400",
   video_qa: "text-indigo-400",
   voice_director: "text-indigo-400",
-  soundtrack_agent: "text-purple-400",
+  soundtrack_agent: "text-sky-400",
 
   // Department 4: Mastering & Distribution
   video_editor: "text-teal-400",

@@ -41,10 +41,10 @@ const variantColorMap = {
     dot: "bg-cyan-400",
   },
   violet: {
-    track: "text-violet-500/20 dark:text-violet-400/20",
-    arc: "text-violet-500 dark:text-violet-400",
-    glow: "bg-violet-500/25",
-    dot: "bg-violet-400",
+    track: "text-sky-500/20 dark:text-sky-400/20",
+    arc: "text-sky-500 dark:text-sky-400",
+    glow: "bg-sky-500/25",
+    dot: "bg-sky-400",
   },
   white: {
     track: "text-white/20",

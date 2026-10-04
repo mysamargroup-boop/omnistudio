@@ -279,7 +279,7 @@ export default function CharacterStudioPage() {
                 const urlParam = activeChar.imageUrl ? `&ref_image=${encodeURIComponent(activeChar.imageUrl)}` : '';
                 router.push(`/image?character_id=${encodeURIComponent(activeChar.id)}&character_name=${encodeURIComponent(activeChar.name)}${urlParam}`);
               }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm shadow-violet-600/20"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm shadow-sky-600/20"
               title="Generate 10 Consistent Poses with this Character in Image Studio"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -671,7 +671,7 @@ export default function CharacterStudioPage() {
                     if (char.imageUrl) params.set("ref_image", char.imageUrl);
                     router.push(`/image?${params.toString()}`);
                   }}
-                  className="p-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 transition-colors cursor-pointer"
                   title="Generate 10 Consistent Poses in Image Studio"
                 >
                   <Sparkles className="w-3.5 h-3.5" />

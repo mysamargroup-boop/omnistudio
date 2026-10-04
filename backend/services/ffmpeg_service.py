@@ -122,6 +122,19 @@ def image_to_video_motion(
     # Ensure width and height are even numbers
     width = width if width % 2 == 0 else width - 1
     height = height if height % 2 == 0 else height - 1
+    # Map Quality selector -> encoder settings (only when caller kept default crf/preset)
+    _QUALITY_PROFILES = {
+        "draft": ("28", "veryfast"),
+        "balanced": ("20", "fast"),
+        "cinema": ("15", "slow"),
+    }
+    _q = str(quality or "").strip().lower()
+    if _q in _QUALITY_PROFILES:
+        _q_crf, _q_preset = _QUALITY_PROFILES[_q]
+        if str(crf) == "18":
+            crf = _q_crf
+        if preset == "fast":
+            preset = _q_preset
     safe_crf = str(min(max(int(crf) if str(crf).isdigit() else 18, 0), 51))
     safe_preset = preset if preset in {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"} else "fast"
 

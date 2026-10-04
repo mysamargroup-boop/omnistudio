@@ -589,6 +589,23 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
     if req.dutch_roll is not None:
         optical_directives.append(f"dutch roll {req.dutch_roll}°")
 
+    # Camera Motion selector -> natural-language directive for generative engines (Veo etc.)
+    _motion_key = (getattr(req, "motion_type", "") or "").strip().lower()
+    _MOTION_DIRECTIVES = {
+        "zoom_in": "slow cinematic dolly push-in camera move",
+        "zoom_out": "slow cinematic dolly pull-out camera move",
+        "pan_left": "smooth horizontal camera pan to the left",
+        "pan_right": "smooth horizontal camera pan to the right",
+        "tilt_up": "smooth camera tilt upward",
+        "tilt_down": "smooth camera tilt downward",
+        "orbit": "orbital arc camera move around the subject with parallax",
+        "subtle": "subtle organic handheld camera float",
+        "none": "locked-off static camera, no camera movement",
+        "static": "locked-off static camera, no camera movement",
+    }
+    if _motion_key in _MOTION_DIRECTIVES and not any(k in (req.model or "").lower() for k in ["ffmpeg"]):
+        optical_directives.append(_MOTION_DIRECTIVES[_motion_key])
+
     base_p = (req.prompt or "").strip()
     if optical_directives and base_p:
         effective_prompt = f"{base_p}, {', '.join(optical_directives)}"
@@ -623,6 +640,19 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
                 return record_failure(f"Google Veo Error: {err}")
             
             result = veo_res
+        elif "fal-ai" in req.model.lower():
+            from services.fal_service import generate_fal_video
+            fal_res = await generate_fal_video(
+                prompt=effective_prompt,
+                aspect_ratio=req.aspect_ratio,
+                image_url=None,
+                model=req.model
+            )
+            if not fal_res.get("success") or not fal_res.get("local_path"):
+                err = fal_res.get("error") or "FAL API failed to generate video."
+                return record_failure(f"FAL Video Error: {err}")
+            
+            result = fal_res
             result["mode"] = "text_to_video"
             result["resolution"] = f"{w}x{h}"
             result["quality"] = req.quality
@@ -840,14 +870,37 @@ async def _execute_generate_video(req: VideoRequest) -> Dict[str, Any]:
         except Exception as e:
             logger.error("VEO generation failed: %s", e)
             return record_failure(f"Google Veo Error: {str(e)}")
+    elif "fal-ai" in req.model.lower():
+        from services.fal_service import generate_fal_video
+        
+        # Upload the local image to a temporary URL or pass path if fal client supports it.
+        # Since fal expects a URL, we need to pass a public URL, or upload to R2 and pass that.
+        # But wait, our get_media_url generates a public URL, we can use that! Or since this is local...
+        # Wait, if fal client supports `fal_client.upload`, we should use it. Let's upload using fal_client!
+        import fal_client
+        try:
+            image_url = await fal_client.upload_file_async(str(start_resolved))
+        except Exception as upload_err:
+            return record_failure(f"FAL Image Upload Error: {upload_err}")
+            
+        fal_res = await generate_fal_video(
+            prompt=effective_prompt or f"Cinematic motion on {Path(start_img).name}",
+            aspect_ratio=req.aspect_ratio,
+            image_url=image_url,
+            model=req.model
+        )
+        if not fal_res.get("success") or not fal_res.get("local_path"):
+            err = fal_res.get("error") or "FAL API failed to generate video."
+            return record_failure(f"FAL Video Error: {err}")
+        
+        result = fal_res
     elif req.model == "ffmpeg_local" or "ffmpeg" in req.model.lower() or "local" in req.model.lower():
-        # Video Animation Fix: If motion is static/none, upgrade to cinematic motion so an animated video is always rendered
-        effective_motion = req.motion_type
-        if effective_motion in ("none", "static", ""):
-            if base_p and len(base_p) > 2:
-                effective_motion = "zoom_in"  # Cinematic Dolly
-            else:
-                effective_motion = "subtle"   # Cinematic drift
+        # Respect explicit "none"/"static" (locked-off camera). Auto-pick only when no motion was sent.
+        effective_motion = (req.motion_type or "").strip().lower()
+        if effective_motion == "static":
+            effective_motion = "none"
+        if not effective_motion:
+            effective_motion = "zoom_in" if (base_p and len(base_p) > 2) else "subtle"
         result = await generate_video_from_image(
             image_path=str(start_resolved),
             motion_type=effective_motion if effective_motion != "orbit" else "orbit",

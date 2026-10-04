@@ -277,7 +277,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
                 className="p-4 rounded-xl bg-zinc-50 dark:bg-[#111118] border border-black/[0.06] dark:border-white/[0.06] space-y-1.5 shadow-sm"
               >
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-violet-500 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-sky-500 shrink-0" />
                   <h4 className="text-xs font-heading font-bold text-zinc-950 dark:text-white">
                     {h.name}
                   </h4>
@@ -320,7 +320,7 @@ export default function HowItWorksModal({ isOpen, onClose, initialStep = 1 }: Ho
                 className={cn(
                   "w-2 h-2 rounded-full transition-all cursor-pointer",
                   currentStep === s.id
-                    ? "w-6 bg-violet-500"
+                    ? "w-6 bg-sky-500"
                     : "bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400"
                 )}
                 aria-label={`Go to step ${s.id}`}

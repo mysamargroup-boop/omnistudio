@@ -17,7 +17,7 @@ async def extract_qa_frames(video_path: Path) -> list[Path]:
     """Extracts 3 frames (start, middle, end) from a video for QA analysis."""
     frames = []
     try:
-        duration = await get_media_duration(str(video_path))
+        duration = await asyncio.to_thread(get_media_duration, str(video_path))
         if duration <= 0:
             return frames
 

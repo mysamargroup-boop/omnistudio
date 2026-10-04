@@ -1824,7 +1824,7 @@ export default function MetadataCleanerStudio({
                   <div className="space-y-4">
                     {metadata.rights_and_creator && Object.keys(metadata.rights_and_creator).length > 0 ? (
                       <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#060a12] border border-zinc-200 dark:border-white/10 space-y-3">
-                        <span className="text-xs font-bold font-mono text-purple-700 dark:text-purple-400 uppercase">
+                        <span className="text-xs font-bold font-mono text-sky-700 dark:text-sky-400 uppercase">
                           Copyright & Attribution
                         </span>
                         <div className="space-y-2 text-xs font-mono">

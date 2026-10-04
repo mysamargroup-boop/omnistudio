@@ -314,10 +314,11 @@ function HistoryVideoCard({
         <video
           ref={videoRef}
           src={getMediaUrl(video.url)}
+          poster={getMediaUrl(video.url, 256)}
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="none"
           className="w-full h-full object-cover"
         />
 
@@ -2580,7 +2581,7 @@ function VideoStudioContent() {
                         <button
                           type="button"
                           onClick={() => openVaultPicker("start")}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold shadow-xs transition-all hover:scale-105 cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold shadow-xs transition-all cursor-pointer"
                         >
                           <FolderArchive className="h-3.5 w-3.5 text-emerald-500" />
                           <span>Select from Vault</span>
@@ -2677,7 +2678,7 @@ function VideoStudioContent() {
                               e.stopPropagation();
                               openVaultPicker("start");
                             }}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-bold transition-all shadow-xs hover:scale-105 cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-bold transition-all shadow-xs cursor-pointer"
                           >
                             <FolderArchive className="w-3.5 h-3.5 text-emerald-500" />
                             <span>Vault</span>
@@ -2714,7 +2715,7 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => openVaultPicker("start")}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer"
                           >
                             <FolderArchive className="w-3 h-3 text-emerald-500" />
                             <span>Vault</span>
@@ -2771,7 +2772,7 @@ function VideoStudioContent() {
                           <button
                             type="button"
                             onClick={() => openVaultPicker("end")}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30 text-[10px] font-mono font-bold transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30 text-[10px] font-mono font-bold transition-all shadow-2xs cursor-pointer"
                           >
                             <FolderArchive className="w-3 h-3 text-teal-500" />
                             <span>Vault</span>
@@ -2986,7 +2987,7 @@ function VideoStudioContent() {
                       {sourceVideoUrl ? (
                         <div className="space-y-2">
                           <div className="relative rounded-xl overflow-hidden min-h-[160px] max-h-[260px] border border-zinc-200 dark:border-zinc-800 bg-black flex items-center justify-center p-1.5">
-                            <video src={getMediaUrl(sourceVideoUrl)} controls className="max-h-[240px] w-auto max-w-full object-contain mx-auto rounded-lg" />
+                            <video src={getMediaUrl(sourceVideoUrl)} preload="metadata" controls className="max-h-[240px] w-auto max-w-full object-contain mx-auto rounded-lg" />
                             <button
                               type="button"
                               onClick={() => {
@@ -3333,11 +3334,7 @@ function VideoStudioContent() {
                         className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-medium shadow-xs hover:bg-emerald-500/20 transition-all group select-none animate-in fade-in zoom-in-95 duration-150"
                       >
                         <div className="relative w-5 h-5 rounded-full overflow-hidden bg-black shrink-0 border border-emerald-500/40">
-                          {asset.type === "video" ? (
-                            <video src={getMediaUrl(asset.url)} className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={getMediaUrl(asset.url)} alt={asset.tag} className="w-full h-full object-cover" />
-                          )}
+                          <img src={getMediaUrl(asset.url, 64)} alt={asset.tag} className="w-full h-full object-cover" />
                         </div>
                         <span className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400">@{asset.tag}</span>
                         <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
@@ -3858,12 +3855,12 @@ function VideoStudioContent() {
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-semibold cursor-pointer shadow-2xs transition-all active:scale-95 select-none shrink-0",
                       enhancingPrompt
-                        ? "magic-pulse-active bg-gradient-to-r from-violet-600 via-fuchsia-500 to-indigo-600 text-white border-violet-400/80 shadow-[0_0_12px_rgba(168,85,247,0.5)]"
-                        : "bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300"
+                        ? "bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-500 text-white border-cyan-400/80 magic-pulse-active"
+                        : "bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300"
                     )}
                     title="1-Click AI Prompt Enhancer"
                   >
-                    <Wand2 className={cn("h-3 w-3 transition-all", enhancingPrompt ? "scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.9)] animate-pulse text-white" : "text-purple-600 dark:text-purple-400")} />
+                    <Wand2 className={cn("h-3 w-3 transition-all", enhancingPrompt ? "text-white animate-spin [animation-duration:2s]" : "text-cyan-600 dark:text-cyan-400")} />
                     <span>{enhancingPrompt ? "Enhancing..." : "Improve Prompt"}</span>
                   </button>
 
@@ -3990,12 +3987,12 @@ function VideoStudioContent() {
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border shadow-2xs active:scale-95 select-none shrink-0",
                       selectedBgmTrack
-                        ? "bg-violet-500/15 border-violet-500/30 text-violet-700 dark:text-violet-300 font-bold"
+                        ? "bg-sky-500/15 border-sky-500/30 text-sky-700 dark:text-sky-300 font-bold"
                         : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                     )}
                     title="Attach background music or SFX from royalty-free library"
                   >
-                    <Music className="h-3 w-3 text-violet-500 shrink-0" />
+                    <Music className="h-3 w-3 text-sky-500 shrink-0" />
                     <span className="truncate max-w-[80px]">{selectedBgmTrack ? selectedBgmTrack.title : "Audio / BGM"}</span>
                     {selectedBgmTrack && (
                       <span

@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
       <div className="max-w-sm w-full p-8 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-2xl text-center space-y-4">
-        <div className="w-12 h-12 mx-auto rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400">
+        <div className="w-12 h-12 mx-auto rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
         <div className="space-y-1">

@@ -373,10 +373,24 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
         effective_prompt = f"{composed_prompt}. [Avoid: {neg_clean}]"
 
     if req.model.startswith("flux"):
-        result = await generate_flux_image(
-            prompt=composed_prompt, aspect_ratio=req.aspect_ratio, model=req.model,
-            filename_hint=req.prompt
-        )
+        from config import settings
+        if settings.FAL_KEY:
+            from services.fal_service import generate_fal_image
+            # Map frontend flux names to FAL endpoint
+            fal_model = "fal-ai/flux/schnell"
+            if "pro" in req.model.lower(): fal_model = "fal-ai/flux-pro"
+            elif "dev" in req.model.lower(): fal_model = "fal-ai/flux/dev"
+            
+            result = await generate_fal_image(
+                prompt=composed_prompt, aspect_ratio=req.aspect_ratio, model=fal_model,
+                filename_hint=req.prompt
+            )
+        else:
+            from services.replicate_service import generate_flux_image
+            result = await generate_flux_image(
+                prompt=composed_prompt, aspect_ratio=req.aspect_ratio, model=req.model,
+                filename_hint=req.prompt
+            )
     elif req.model in ["imagen_3", "gemini_flash_image", "google_gemini"]:
         from services.gemini_service import get_gemini_key, generate_gemini_image
         if not get_gemini_key():
@@ -502,13 +516,16 @@ def _handle_bg_task_error(task: asyncio.Task):
 
 async def _execute_generate_image(req: ImageRequest) -> Dict[str, Any]:
     modifiers = []
-    if req.lens:
+    _UNSET = {"", "none", "auto", "null", "undefined"}
+    def _is_set(v) -> bool:
+        return bool(v) and str(v).strip().lower() not in _UNSET
+    if _is_set(req.lens):
         modifiers.append(f"shot on {req.lens}")
-    if req.aperture:
-        modifiers.append(f"{req.aperture} shallow depth of field")
-    if req.lighting:
+    if _is_set(req.aperture):
+        modifiers.append(f"{req.aperture} aperture depth of field")
+    if _is_set(req.lighting):
         modifiers.append(f"{req.lighting} lighting")
-    if req.film_stock:
+    if _is_set(req.film_stock):
         modifiers.append(f"{req.film_stock} color grading")
     if req.quality == "ultra":
         modifiers.append("8k master photography, raw detail, ultra-sharp focus")

@@ -79,8 +79,8 @@ const STUDIO_TABS: TabConfig[] = [
     icon: ImageIcon,
     badge: "DIFFUSION 8K",
     description: "Neural diffusion, character consistency locks & jewellery presets",
-    color: "text-violet-500",
-    activeColor: "bg-violet-600 text-white shadow-violet-500/20",
+    color: "text-sky-500",
+    activeColor: "bg-sky-600 text-white shadow-sky-500/20",
   },
   {
     id: "voice",

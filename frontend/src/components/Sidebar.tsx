@@ -223,7 +223,7 @@ export default function Sidebar() {
                 window.dispatchEvent(new CustomEvent("omnistudio:expand-sidebar"));
               }}
               title="Expand Sidebar"
-              className="hover:scale-105 transition-transform cursor-pointer"
+              className="transition-transform cursor-pointer"
             >
               <OmniLogo size={28} />
             </button>
@@ -272,7 +272,7 @@ export default function Sidebar() {
             className={cn(
               "flex items-center justify-center transition-all font-heading font-bold text-xs tracking-tight active:scale-98 cursor-pointer",
               isDesktopCollapsed
-                ? "w-9 h-9 mx-auto rounded-full p-0 bg-transparent hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-400 hover:scale-110 shadow-none border-0"
+                ? "w-9 h-9 mx-auto rounded-full p-0 bg-transparent hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-400 shadow-none border-0"
                 : "w-full py-2 px-3 gap-2 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-950 rounded-xl shadow-sm"
             )}
           >

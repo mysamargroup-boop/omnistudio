@@ -86,7 +86,7 @@ export default function ShareModal({ isOpen, onClose, asset }: ShareModalProps) 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
               <Share2 className="w-4 h-4" />
             </div>
             <div>

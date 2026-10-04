@@ -127,7 +127,7 @@ const STYLE_PRESETS = [
     label: "Cinematic Documentary",
     desc: "Natural window lighting, 50mm eye-level portrait, authentic storytelling",
     icon: Clapperboard,
-    color: "from-purple-500/20 to-violet-500/20 text-purple-500 border-purple-500/30",
+    color: "from-sky-500/20 to-sky-500/20 text-sky-500 border-sky-500/30",
   },
 ];
 
@@ -1197,7 +1197,7 @@ export default function ApifyIntelligenceSuite({ onTransferToStudio }: ApifyInte
                     prompt: screenplay.scenes?.[0]?.prompt || screenplay.full_studio_prompt,
                   })
                 }
-                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-heading font-extrabold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-violet-500/20 cursor-pointer transition-all"
+                className="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-heading font-extrabold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-sky-500/20 cursor-pointer transition-all"
               >
                 <ImageIcon className="w-3.5 h-3.5" />
                 <span>Send to Image Studio</span>

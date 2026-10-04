@@ -8,7 +8,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-zinc-900 dark:text-zinc-100 flex flex-col items-center justify-center p-6 font-jakarta relative overflow-hidden">
       {/* Ambient background glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-violet-600/10 dark:bg-violet-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-sky-600/10 dark:bg-sky-500/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-xl w-full text-center space-y-6 relative z-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] text-[11px] font-mono text-zinc-500 uppercase tracking-widest">
@@ -28,16 +28,16 @@ export default function NotFound() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4 text-left">
           <Link
             href="/studio"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-violet-500/40 transition-all group shadow-xs cursor-pointer"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-sky-500/40 transition-all group shadow-xs cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-violet-500 mb-2 group-hover:scale-110 transition-transform" />
+            <Sparkles className="w-4 h-4 text-sky-500 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-bold text-zinc-900 dark:text-white font-heading">Studio Pro</div>
             <div className="text-[10px] text-zinc-500 font-mono">All-in-one suite</div>
           </Link>
 
           <Link
             href="/pipeline"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-violet-500/40 transition-all group shadow-xs cursor-pointer"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-sky-500/40 transition-all group shadow-xs cursor-pointer"
           >
             <Cpu className="w-4 h-4 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-bold text-zinc-900 dark:text-white font-heading">Auto Pipeline</div>
@@ -46,7 +46,7 @@ export default function NotFound() {
 
           <Link
             href="/video"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-violet-500/40 transition-all group shadow-xs cursor-pointer"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-sky-500/40 transition-all group shadow-xs cursor-pointer"
           >
             <Video className="w-4 h-4 text-cyan-500 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-bold text-zinc-900 dark:text-white font-heading">Video Studio</div>
@@ -55,7 +55,7 @@ export default function NotFound() {
 
           <Link
             href="/image"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-violet-500/40 transition-all group shadow-xs cursor-pointer"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-sky-500/40 transition-all group shadow-xs cursor-pointer"
           >
             <ImageIcon className="w-4 h-4 text-amber-500 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-bold text-zinc-900 dark:text-white font-heading">Image Studio</div>
@@ -64,7 +64,7 @@ export default function NotFound() {
 
           <Link
             href="/voice"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-violet-500/40 transition-all group shadow-xs cursor-pointer"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-sky-500/40 transition-all group shadow-xs cursor-pointer"
           >
             <Mic className="w-4 h-4 text-rose-500 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-bold text-zinc-900 dark:text-white font-heading">Voice Studio</div>
@@ -73,7 +73,7 @@ export default function NotFound() {
 
           <Link
             href="/vault"
-            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-violet-500/40 transition-all group shadow-xs cursor-pointer"
+            className="p-3.5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] hover:border-sky-500/40 transition-all group shadow-xs cursor-pointer"
           >
             <FolderArchive className="w-4 h-4 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
             <div className="text-xs font-bold text-zinc-900 dark:text-white font-heading">Asset Vault</div>

@@ -43,7 +43,7 @@ const PLATFORM_FORMATS: PlatformFormat[] = [
     aspect: "9:16",
     resolution: "1080 x 1920",
     platform: "TikTok",
-    iconColor: "text-fuchsia-500",
+    iconColor: "text-sky-500",
     recommendedFor: "Vertical Stories, Reels & Shorts"
   },
   {

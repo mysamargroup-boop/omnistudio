@@ -204,7 +204,7 @@ def get_assets_prompt_map() -> dict[str, str]:
     _PROMPT_MAP_CACHE_TIMESTAMP = now
     return prompt_map
 
-def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None, limit: int = 200) -> list[dict]:
+def scan_directory(dir_path: Path, media_type: str, is_trash: bool = False, prompt_map: Optional[dict] = None, limit: int = 1000) -> list[dict]:
     """
     High-performance directory scanner using os.scandir with cached stats.
     Avoids separate stat calls and construction of Path objects for faster traversal.

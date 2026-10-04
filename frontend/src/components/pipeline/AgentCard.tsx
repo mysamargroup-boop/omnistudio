@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { cn } from "@/lib/utils";
+import { getMediaUrl } from "@/lib/api";
 import {
   Loader2,
   CheckCircle2,
@@ -126,10 +127,10 @@ function AgentCardComponent({
           {agentId === "creative_director" && output && (
             <div className="space-y-3">
               <div className="flex items-center justify-between font-mono text-xs pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
-                <span className="font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">
+                <span className="font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
                   Directorial Concept & Architecture Decisions
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold font-mono">
                   {output.genre || "Cinematic Master"}
                 </span>
               </div>
@@ -263,7 +264,7 @@ function AgentCardComponent({
                   <div key={idx} className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-black/[0.06] dark:border-white/[0.06] space-y-1.5">
                     <div className="aspect-video rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 relative group">
                       {scene.image_path ? (
-                        <img src={scene.image_path} alt={scene.title || `Scene ${idx + 1}`} className="w-full h-full object-cover" />
+                        <img src={getMediaUrl(scene.image_path)} alt={scene.title || `Scene ${idx + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-400 font-mono">
                           Generating Visual...

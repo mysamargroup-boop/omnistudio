@@ -659,7 +659,7 @@ export default function DashboardPage() {
 
       {/* HERO COMMAND CENTER: POSITIVE PROMPT MATRIX & DIRECTOR RIG CONTROLS (Cinematic Gradient Border) */}
       <section className={cn(
-        "relative rounded-3xl p-[1.5px] bg-gradient-to-r from-emerald-500/50 via-cyan-500/40 to-violet-500/50 shadow-2xl shadow-emerald-500/10 group transition-all duration-300",
+        "relative rounded-3xl p-[1.5px] bg-gradient-to-r from-emerald-500/50 via-cyan-500/40 to-sky-500/50 shadow-2xl shadow-emerald-500/10 group transition-all duration-300",
         isExecutingShot && "lightning-border-active ring-2 ring-emerald-500/40"
       )}>
         {/* Inner Dark Glass Director Deck */}
@@ -668,7 +668,7 @@ export default function DashboardPage() {
           <div className="absolute top-3 left-3 w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-500/50 pointer-events-none" />
           <div className="absolute top-3 right-3 w-3.5 h-3.5 border-t-2 border-r-2 border-cyan-500/50 pointer-events-none" />
           <div className="absolute bottom-3 left-3 w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-500/50 pointer-events-none" />
-          <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b-2 border-r-2 border-violet-500/50 pointer-events-none" />
+          <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b-2 border-r-2 border-sky-500/50 pointer-events-none" />
 
           {/* Radial Ambient Glow */}
           <div className="absolute -top-24 -right-24 w-80 h-80 bg-gradient-to-br from-emerald-500/10 via-cyan-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -777,7 +777,7 @@ export default function DashboardPage() {
                 <span className="font-bold block">Lighting (:1.2 - :1.5)</span>
                 <span>Chiaroscuro & rim light</span>
               </div>
-              <div className="p-1.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-800 dark:text-purple-300">
+              <div className="p-1.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-800 dark:text-sky-300">
                 <span className="font-bold block">Grade (:1.1 - :1.3)</span>
                 <span>Film stocks & color tone</span>
               </div>
@@ -831,8 +831,8 @@ export default function DashboardPage() {
                     ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/40 shadow-xs ring-1 ring-amber-500/30"
                     : "hover:border-amber-500/30 text-zinc-600 dark:text-zinc-400",
                   grade: isSelected
-                    ? "bg-purple-500/20 text-purple-800 dark:text-purple-200 border-purple-500/40 shadow-xs ring-1 ring-purple-500/30"
-                    : "hover:border-purple-500/30 text-zinc-600 dark:text-zinc-400",
+                    ? "bg-sky-500/20 text-sky-800 dark:text-sky-200 border-sky-500/40 shadow-xs ring-1 ring-sky-500/30"
+                    : "hover:border-sky-500/30 text-zinc-600 dark:text-zinc-400",
                 }[tok.category] || "text-zinc-600 dark:text-zinc-400";
 
                 return (
@@ -986,14 +986,14 @@ export default function DashboardPage() {
       </section>
 
       {/* CINEMATIC STORYBOARD SEQUENCE STRIP (Hollywood NLE Film Reel Deck with Gradient Border) */}
-      <section className="relative rounded-3xl p-[1.5px] bg-gradient-to-r from-violet-500/40 via-emerald-500/40 to-cyan-500/40 shadow-2xl shadow-cyan-500/10 group text-left">
+      <section className="relative rounded-3xl p-[1.5px] bg-gradient-to-r from-sky-500/40 via-emerald-500/40 to-cyan-500/40 shadow-2xl shadow-cyan-500/10 group text-left">
         {/* Inner Hollywood NLE Deck */}
         <div className="relative rounded-[23px] bg-white/95 dark:bg-[#0c0c14]/95 backdrop-blur-2xl p-4 sm:p-5 space-y-4 overflow-hidden">
           {/* Viewfinder Reticle Corner Accents */}
-          <div className="absolute top-3 left-3 w-3.5 h-3.5 border-t-2 border-l-2 border-violet-500/50 pointer-events-none" />
+          <div className="absolute top-3 left-3 w-3.5 h-3.5 border-t-2 border-l-2 border-sky-500/50 pointer-events-none" />
           <div className="absolute top-3 right-3 w-3.5 h-3.5 border-t-2 border-r-2 border-cyan-500/50 pointer-events-none" />
           <div className="absolute bottom-3 left-3 w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-500/50 pointer-events-none" />
-          <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b-2 border-r-2 border-violet-500/50 pointer-events-none" />
+          <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b-2 border-r-2 border-sky-500/50 pointer-events-none" />
 
           {/* Top Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black/[0.08] dark:border-[#202026] pb-3.5 gap-3">
@@ -1407,7 +1407,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-sans font-bold text-zinc-950 dark:text-[#F7F7F6] group-hover:text-violet-600 dark:group-hover:text-white transition-colors">
+                    <h3 className="text-sm font-sans font-bold text-zinc-950 dark:text-[#F7F7F6] group-hover:text-sky-600 dark:group-hover:text-white transition-colors">
                       {card.title}
                     </h3>
                     <p className="text-[11px] font-mono text-zinc-500 mt-0.5">
@@ -1435,7 +1435,7 @@ export default function DashboardPage() {
                 {/* Footer Telemetry & CTA */}
                 <div className="pt-3 border-t border-black/[0.06] dark:border-[#2A2A2D] flex items-center justify-between text-[10px] font-mono">
                   <span className="text-zinc-500 truncate max-w-[140px]">{card.telemetry}</span>
-                  <span className="text-zinc-800 dark:text-zinc-200 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-violet-600 dark:group-hover:text-white transition-colors">
+                  <span className="text-zinc-800 dark:text-zinc-200 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-sky-600 dark:group-hover:text-white transition-colors">
                     <span>{card.cta}</span>
                     <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </span>
@@ -1572,7 +1572,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={(e) => handleToggleFavorite(e, asset.filename)}
-                        className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                        className="p-1 transition-transform cursor-pointer"
                         title={isFav ? "Remove Favorite" : "Favorite"}
                       >
                         <Heart
@@ -1590,7 +1590,7 @@ export default function DashboardPage() {
                           setActiveMenuKey(isMenuOpen ? null : asset.filename);
                         }}
                         className={cn(
-                          "p-1 hover:scale-110 transition-transform cursor-pointer",
+                          "p-1 transition-transform cursor-pointer",
                           isMenuOpen ? "text-white" : "text-white/80 hover:text-white"
                         )}
                         title="More Options"
@@ -1917,7 +1917,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => handleLaunchVideoWithRig()}
-                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
+                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
                 >
                   <span>Launch Video Studio</span>
                   <ArrowRight className="w-3.5 h-3.5" />

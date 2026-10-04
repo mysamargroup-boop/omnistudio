@@ -133,7 +133,7 @@ export default function JewellerySuiteModal({
                 onClick={onOpenVault}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-300 text-xs font-mono cursor-pointer transition-colors shadow-xs"
               >
-                <FolderArchive className="w-3.5 h-3.5 text-violet-500" />
+                <FolderArchive className="w-3.5 h-3.5 text-sky-500" />
                 <span>From Vault</span>
               </button>
             )}

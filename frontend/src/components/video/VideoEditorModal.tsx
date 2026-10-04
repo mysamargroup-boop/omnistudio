@@ -1272,9 +1272,9 @@ export default function VideoEditorModal({
                           min={0} max={5} step={0.1}
                           value={videoFadeIn}
                           onChange={(e) => setVideoFadeIn(parseFloat(e.target.value))}
-                          className="w-full accent-violet-500"
+                          className="w-full accent-sky-500"
                         />
-                        <span className="text-[10px] font-mono text-violet-400">{videoFadeIn}s</span>
+                        <span className="text-[10px] font-mono text-sky-400">{videoFadeIn}s</span>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-mono text-zinc-500">Fade Out (sec)</label>
@@ -1283,9 +1283,9 @@ export default function VideoEditorModal({
                           min={0} max={5} step={0.1}
                           value={videoFadeOut}
                           onChange={(e) => setVideoFadeOut(parseFloat(e.target.value))}
-                          className="w-full accent-violet-500"
+                          className="w-full accent-sky-500"
                         />
-                        <span className="text-[10px] font-mono text-violet-400">{videoFadeOut}s</span>
+                        <span className="text-[10px] font-mono text-sky-400">{videoFadeOut}s</span>
                       </div>
                     </div>
 
@@ -1298,9 +1298,9 @@ export default function VideoEditorModal({
                           min={0} max={5} step={0.1}
                           value={audioFadeIn}
                           onChange={(e) => setAudioFadeIn(parseFloat(e.target.value))}
-                          className="w-full accent-violet-500"
+                          className="w-full accent-sky-500"
                         />
-                        <span className="text-[10px] font-mono text-violet-400">{audioFadeIn}s</span>
+                        <span className="text-[10px] font-mono text-sky-400">{audioFadeIn}s</span>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-mono text-zinc-500">Fade Out (sec)</label>
@@ -1309,9 +1309,9 @@ export default function VideoEditorModal({
                           min={0} max={5} step={0.1}
                           value={audioFadeOut}
                           onChange={(e) => setAudioFadeOut(parseFloat(e.target.value))}
-                          className="w-full accent-violet-500"
+                          className="w-full accent-sky-500"
                         />
-                        <span className="text-[10px] font-mono text-violet-400">{audioFadeOut}s</span>
+                        <span className="text-[10px] font-mono text-sky-400">{audioFadeOut}s</span>
                       </div>
                     </div>
                   </div>
@@ -1324,7 +1324,7 @@ export default function VideoEditorModal({
                       placeholder="Vault image path (e.g. /outputs/images/logo.png)"
                       value={watermarkPath}
                       onChange={(e) => setWatermarkPath(e.target.value)}
-                      className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:border-violet-400"
+                      className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:border-sky-400"
                     />
                     <p className="text-[9px] text-zinc-500 font-mono">Use an image from your Vault as a watermark overlay.</p>
                   </div>

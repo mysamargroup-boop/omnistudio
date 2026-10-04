@@ -357,7 +357,7 @@ export default function PromptLibraryPage() {
               <button
                 type="button"
                 onClick={() => handleSendToImage(builtCustomPrompt, "9:16")}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-mono bg-violet-500/15 hover:bg-violet-500/25 text-violet-600 dark:text-violet-400 border border-violet-500/30 font-bold transition-all cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-mono bg-sky-500/15 hover:bg-sky-500/25 text-sky-600 dark:text-sky-400 border border-sky-500/30 font-bold transition-all cursor-pointer"
               >
                 <ImageIcon className="w-3.5 h-3.5" />
                 <span>Image Studio</span>
@@ -564,7 +564,7 @@ export default function PromptLibraryPage() {
                     type="button"
                     onClick={() => handleSendToImage(resolvedPrompt, item.recommendedRatio)}
                     title="Open in Image Studio"
-                    className="p-1.5 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-500/30 transition-all cursor-pointer"
+                    className="p-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/30 transition-all cursor-pointer"
                   >
                     <ImageIcon className="w-3.5 h-3.5" />
                   </button>

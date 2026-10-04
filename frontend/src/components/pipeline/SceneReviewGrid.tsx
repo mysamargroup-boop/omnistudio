@@ -223,7 +223,7 @@ function SceneReviewGridComponent({
                   )}
                   {hasAudio && (
                     <div
-                      className="w-5 h-5 rounded-md bg-violet-500/90 flex items-center justify-center shadow-xs"
+                      className="w-5 h-5 rounded-md bg-sky-500/90 flex items-center justify-center shadow-xs"
                       title="Voice Track Available"
                     >
                       <Mic className="w-3 h-3 text-white" />
@@ -355,7 +355,7 @@ function SceneReviewGridComponent({
               <button
                 type="button"
                 onClick={() => setLightboxIndex(null)}
-                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 hover:text-white transition-all cursor-pointer border border-rose-500/40 flex items-center gap-1.5 text-xs font-mono font-bold shadow-md hover:scale-105 active:scale-95"
+                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 hover:text-white transition-all cursor-pointer border border-rose-500/40 flex items-center gap-1.5 text-xs font-mono font-bold shadow-md active:scale-95"
                 title="Close Lightbox (Esc)"
               >
                 <X className="w-4 h-4 text-rose-400" />
@@ -376,7 +376,7 @@ function SceneReviewGridComponent({
                 onClick={() =>
                   setLightboxIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : scenes.length - 1))
                 }
-                className="absolute left-2 sm:left-6 z-10 p-3 rounded-2xl bg-black/60 hover:bg-black/90 text-white border border-white/20 transition-all hover:scale-110 cursor-pointer shadow-xl backdrop-blur-md"
+                className="absolute left-2 sm:left-6 z-10 p-3 rounded-2xl bg-black/60 hover:bg-black/90 text-white border border-white/20 transition-all cursor-pointer shadow-xl backdrop-blur-md"
                 title="Previous Scene (Left Arrow)"
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -416,7 +416,7 @@ function SceneReviewGridComponent({
                 onClick={() =>
                   setLightboxIndex((prev) => (prev !== null && prev < scenes.length - 1 ? prev + 1 : 0))
                 }
-                className="absolute right-2 sm:right-6 z-10 p-3 rounded-2xl bg-black/60 hover:bg-black/90 text-white border border-white/20 transition-all hover:scale-110 cursor-pointer shadow-xl backdrop-blur-md"
+                className="absolute right-2 sm:right-6 z-10 p-3 rounded-2xl bg-black/60 hover:bg-black/90 text-white border border-white/20 transition-all cursor-pointer shadow-xl backdrop-blur-md"
                 title="Next Scene (Right Arrow)"
               >
                 <ChevronRight className="w-6 h-6" />

@@ -700,7 +700,7 @@ export default function VoiceStudioPage() {
               <div className="flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-medium">Source Audio/Video</label>
-                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-300 dark:border-white/[0.1] hover:border-violet-400 dark:hover:border-violet-400 rounded-xl transition-colors cursor-pointer bg-zinc-50/50 dark:bg-white/[0.02] p-2">
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-300 dark:border-white/[0.1] hover:border-sky-400 dark:hover:border-sky-400 rounded-xl transition-colors cursor-pointer bg-zinc-50/50 dark:bg-white/[0.02] p-2">
                     <Upload size={18} className="text-zinc-400 mb-1" />
                     <span className="text-xs text-zinc-600 dark:text-zinc-300 font-medium">Click to upload or drag and drop</span>
                     <span className="text-[10px] text-zinc-400 font-mono">MP3, WAV, MP4 up to 50MB</span>
@@ -708,7 +708,7 @@ export default function VoiceStudioPage() {
                   </label>
                   {uploadFile && (
                     <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-white/[0.04] p-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08]">
-                      <Music size={14} className="text-violet-500" />
+                      <Music size={14} className="text-sky-500" />
                       <span className="truncate flex-1 font-mono">{uploadFile.name}</span>
                       <Check size={14} className="text-green-500" />
                     </div>
@@ -730,7 +730,7 @@ export default function VoiceStudioPage() {
                     type="checkbox" 
                     checked={vcIsVideo}
                     onChange={(e) => setVcIsVideo(e.target.checked)}
-                    className="w-4 h-4 text-violet-600 bg-zinc-50 border-zinc-300 rounded focus:ring-violet-500/30"
+                    className="w-4 h-4 text-sky-600 bg-zinc-50 border-zinc-300 rounded focus:ring-sky-500/30"
                   />
                   <div className="flex flex-col">
                     <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100 font-heading">Input is video file</span>
@@ -774,7 +774,7 @@ export default function VoiceStudioPage() {
                     value={transText}
                     onChange={(e) => setTransText(e.target.value)}
                     placeholder="Enter text to translate and dub..."
-                    className="w-full min-h-[100px] h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs font-jakarta focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none transition-all leading-relaxed"
+                    className="w-full min-h-[100px] h-28 bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl p-3 text-xs font-jakarta focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/50 resize-none transition-all leading-relaxed"
                   />
                 </div>
 
@@ -796,7 +796,7 @@ export default function VoiceStudioPage() {
                     value={videoPath}
                     onChange={(e) => setVideoPath(e.target.value)}
                     placeholder="/path/to/local/video.mp4"
-                    className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/30 font-mono transition-all"
+                    className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500/30 font-mono transition-all"
                   />
                 </div>
 
@@ -887,7 +887,7 @@ export default function VoiceStudioPage() {
                     </div>
                   )}
                   
-                  <div className="relative group/play cursor-pointer w-24 h-24 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-2xl transition-transform hover:scale-105 active:scale-95" onClick={togglePlayback}>
+                  <div className="relative group/play cursor-pointer w-24 h-24 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 flex items-center justify-center shadow-2xl transition-transform active:scale-95" onClick={togglePlayback}>
                     <div className={cn(
                       "absolute inset-0 rounded-full border-2 border-zinc-400 dark:border-zinc-600 opacity-30",
                       isPlaying && "animate-ping"

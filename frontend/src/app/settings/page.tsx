@@ -60,6 +60,7 @@ export default function SettingsPage() {
     GEMINI_API_KEY: "",
     SARVAM_API_KEY: "",
     ANTHROPIC_API_KEY: "",
+    FAL_KEY: "",
     DATABASE_URL: "",
     R2_ACCOUNT_ID: "",
     R2_ACCESS_KEY_ID: "",
@@ -714,7 +715,11 @@ export default function SettingsPage() {
         setTimeout(() => setSaved(false), 4000);
         await fetchStatus();
       }
-    } catch {}
+    } catch (err: any) {
+      if (typeof window !== "undefined") {
+        window.alert(`API keys save failed: ${err?.message || "Unknown error"}. Check admin passcode / backend connection.`);
+      }
+    }
     setSaving(false);
   };
 
@@ -730,6 +735,12 @@ export default function SettingsPage() {
       label: "Google Gemini API Key",
       desc: "Powers Google Imagen 3 diffusion, Google Veo video, and multimodal analysis.",
       statusKey: "gemini",
+    },
+    {
+      key: "FAL_KEY",
+      label: "Fal.ai API Key (Optional)",
+      desc: "Fal.ai serverless inference for Flux, Kling, Seedance, Minimax and other image/video models. Get it at fal.ai/dashboard/keys.",
+      statusKey: "fal",
     },
     {
       key: "ELEVENLABS_API_KEY",
@@ -1213,10 +1224,10 @@ export default function SettingsPage() {
                 : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.04]"
             )}
           >
-            <History className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+            <History className="h-3.5 w-3.5 text-sky-500 shrink-0" />
             <span>Version History</span>
             {checkpoints.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-violet-500/20 text-violet-600 dark:text-violet-400 font-bold">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/20 text-sky-600 dark:text-sky-400 font-bold">
                 {checkpoints.length}
               </span>
             )}
@@ -1303,7 +1314,7 @@ export default function SettingsPage() {
               <div className="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider font-mono">NVMe Storage</span>
-                  <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400">
+                  <span className="text-[10px] font-mono font-bold text-sky-600 dark:text-sky-400">
                     {systemMetrics?.disk?.percent || 18.2}%
                   </span>
                 </div>
@@ -1317,7 +1328,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-purple-500 h-full rounded-full transition-all duration-500"
+                    className="bg-sky-500 h-full rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(systemMetrics?.disk?.percent || 18.2, 100)}%` }}
                   />
                 </div>
@@ -2542,7 +2553,7 @@ export default function SettingsPage() {
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95"
                   title="Undo to previous version checkpoint"
                 >
-                  <Undo2 className="w-3.5 h-3.5 text-violet-500" />
+                  <Undo2 className="w-3.5 h-3.5 text-sky-500" />
                   <span>Undo</span>
                 </button>
 
@@ -2554,7 +2565,7 @@ export default function SettingsPage() {
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer shadow-xs active:scale-95"
                   title="Redo to next version checkpoint"
                 >
-                  <Redo2 className="w-3.5 h-3.5 text-violet-500" />
+                  <Redo2 className="w-3.5 h-3.5 text-sky-500" />
                   <span>Redo</span>
                 </button>
 
@@ -2562,7 +2573,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowSnapshotModal(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-heading font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Take Snapshot</span>
@@ -2630,7 +2641,7 @@ export default function SettingsPage() {
                   placeholder="Search prompts, versions, seeds, or tags..."
                   value={checkpointSearch}
                   onChange={(e) => setCheckpointSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-zinc-100/80 dark:bg-zinc-900/80 border border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                  className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-zinc-100/80 dark:bg-zinc-900/80 border border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-all"
                 />
                 {checkpointSearch && (
                   <button
@@ -2659,7 +2670,7 @@ export default function SettingsPage() {
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer whitespace-nowrap shrink-0",
                       checkpointFilter === f.id
-                        ? "bg-violet-600 text-white font-bold shadow-xs"
+                        ? "bg-sky-600 text-white font-bold shadow-xs"
                         : "bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200/70 dark:hover:bg-white/[0.08]"
                     )}
                   >
@@ -2673,7 +2684,7 @@ export default function SettingsPage() {
             <div className="pt-2 space-y-4">
               {loadingCheckpoints ? (
                 <div className="py-16 text-center space-y-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-violet-500 mx-auto" />
+                  <Loader2 className="w-6 h-6 animate-spin text-sky-500 mx-auto" />
                   <p className="text-xs font-mono text-zinc-400">Loading temporal checkpoints...</p>
                 </div>
               ) : filteredCheckpoints.length === 0 ? (
@@ -2688,14 +2699,14 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowSnapshotModal(true)}
-                    className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-heading font-bold transition-all cursor-pointer"
+                    className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-heading font-bold transition-all cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Create First Snapshot</span>
                   </button>
                 </div>
               ) : (
-                <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-[2px] before:bg-gradient-to-b before:from-violet-500 before:via-zinc-300 dark:before:via-zinc-800 before:to-transparent">
+                <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-[2px] before:bg-gradient-to-b before:from-sky-500 before:via-zinc-300 dark:before:via-zinc-800 before:to-transparent">
                   {filteredCheckpoints.slice(0, visibleCheckpointsCount).map((cp, idx) => {
                     const isActive = historyPointer === idx;
                     return (
@@ -2704,7 +2715,7 @@ export default function SettingsPage() {
                         className={cn(
                           "relative rounded-2xl p-5 border transition-all duration-200 group",
                           isActive
-                            ? "bg-violet-500/[0.03] dark:bg-violet-500/[0.05] border-violet-500/40 shadow-sm ring-1 ring-violet-500/20"
+                            ? "bg-sky-500/[0.03] dark:bg-sky-500/[0.05] border-sky-500/40 shadow-sm ring-1 ring-sky-500/20"
                             : "bg-white dark:bg-zinc-950/60 border-black/[0.06] dark:border-white/[0.06] hover:border-black/15 dark:hover:border-white/15"
                         )}
                       >
@@ -2713,7 +2724,7 @@ export default function SettingsPage() {
                           className={cn(
                             "absolute -left-[27px] sm:-left-[35px] top-6 w-3.5 h-3.5 rounded-full border-2 transition-all",
                             isActive
-                              ? "bg-violet-600 border-white dark:border-zinc-950 ring-4 ring-violet-500/30 animate-pulse"
+                              ? "bg-sky-600 border-white dark:border-zinc-950 ring-4 ring-sky-500/30 animate-pulse"
                               : "bg-zinc-300 dark:bg-zinc-700 border-white dark:border-zinc-900"
                           )}
                         />
@@ -2726,7 +2737,7 @@ export default function SettingsPage() {
                               className={cn(
                                 "px-2.5 py-0.5 rounded-md text-xs font-mono font-extrabold tracking-wide",
                                 isActive
-                                  ? "bg-violet-600 text-white"
+                                  ? "bg-sky-600 text-white"
                                   : "bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"
                               )}
                             >
@@ -2843,7 +2854,7 @@ export default function SettingsPage() {
                                 className={cn(
                                   "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shadow-xs",
                                   isActive
-                                    ? "bg-violet-600 text-white hover:bg-violet-700"
+                                    ? "bg-sky-600 text-white hover:bg-sky-700"
                                     : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-black/[0.06] dark:border-white/[0.06]"
                                 )}
                               >
@@ -2898,7 +2909,7 @@ export default function SettingsPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <h3 className="text-base font-heading font-bold text-zinc-950 dark:text-white">
@@ -2924,7 +2935,7 @@ export default function SettingsPage() {
                   placeholder="e.g. Scene 3 Director Approval Cut v2.6"
                   value={newSnapshotTitle}
                   onChange={(e) => setNewSnapshotTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
                   autoFocus
                 />
               </div>
@@ -2938,7 +2949,7 @@ export default function SettingsPage() {
                   placeholder="Record lighting choices, camera focal lengths, or revision notes for this checkpoint..."
                   value={newSnapshotNotes}
                   onChange={(e) => setNewSnapshotNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/40 resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-black/[0.08] dark:border-white/[0.08] text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 resize-none"
                 />
               </div>
             </div>
@@ -2955,7 +2966,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={handleCreateSnapshot}
                 disabled={!newSnapshotTitle.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-heading font-bold disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-heading font-bold disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer shadow-sm"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Save Checkpoint</span>

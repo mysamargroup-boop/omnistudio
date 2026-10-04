@@ -216,7 +216,7 @@ export default function JewelleryPromptSuite({
               onClick={onOpenVault}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono cursor-pointer transition-colors shadow-xs"
             >
-              <FolderArchive className="w-3 h-3 text-violet-500" />
+              <FolderArchive className="w-3 h-3 text-sky-500" />
               <span>From Vault</span>
             </button>
           )}

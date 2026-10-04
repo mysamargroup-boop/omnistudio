@@ -1155,7 +1155,7 @@ function PublishStudioContent() {
                   <div className="flex items-center justify-between">
                     <div>
                       <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                        {mediaType === "video" ? <Video className="w-4 h-4 text-violet-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-emerald-500 shrink-0" />}
+                        {mediaType === "video" ? <Video className="w-4 h-4 text-sky-500 shrink-0" /> : <ImageIcon className="w-4 h-4 text-emerald-500 shrink-0" />}
                         <span>Broadcast Creative Asset</span>
                       </label>
                       <p className="text-[11px] text-zinc-400 mt-0.5">
@@ -1180,7 +1180,7 @@ function PublishStudioContent() {
                         onClick={() => setMediaType("video")}
                         className={cn(
                           "px-3 py-1 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0",
-                          mediaType === "video" ? "bg-white dark:bg-zinc-950 text-violet-600 dark:text-violet-400 shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                          mediaType === "video" ? "bg-white dark:bg-zinc-950 text-sky-600 dark:text-sky-400 shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                         )}
                       >
                         <Video className="w-3.5 h-3.5 shrink-0" />
@@ -1245,7 +1245,7 @@ function PublishStudioContent() {
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
-                              mediaType === "video" ? "bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/30" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                              mediaType === "video" ? "bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
                             )}>
                               {mediaType === "video" ? "Video Creative" : "Image Creative"}
                             </span>
@@ -1377,7 +1377,7 @@ function PublishStudioContent() {
                                 )}
                                 <span className={cn(
                                   "absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 rounded",
-                                  asset.media_type === "video" ? "bg-violet-600 text-white" : "bg-emerald-600 text-white"
+                                  asset.media_type === "video" ? "bg-sky-600 text-white" : "bg-emerald-600 text-white"
                                 )}>
                                   {asset.media_type === "video" ? "VID" : "IMG"}
                                 </span>
@@ -1876,7 +1876,7 @@ function PublishStudioContent() {
                       className={cn(
                         "flex-1 py-1.5 px-3 rounded-lg text-xs font-mono font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap",
                         instagramFormat === "feed"
-                          ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs font-bold"
+                          ? "bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-xs font-bold"
                           : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                       )}
                     >
@@ -2641,7 +2641,7 @@ function PublishStudioContent() {
                               <div
                                 key={pid}
                                 title={meta?.name || pid}
-                                className="hover:scale-110 transition-transform cursor-pointer"
+                                className="transition-transform cursor-pointer"
                               >
                                 <SocialIcon platform={pid} size={22} className="w-5.5 h-5.5 rounded-md shadow-xs" />
                               </div>
@@ -3310,13 +3310,13 @@ function PublishStudioContent() {
             {/* Top Toolbar: Mode Switch & Platform Presets */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-violet-500/20">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-sky-600 to-sky-600 text-white flex items-center justify-center shadow-md shadow-sky-500/20">
                   <ImageIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-sm sm:text-base font-heading font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
                     <span>Multi-Platform Thumbnail & Cover Studio</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold uppercase border border-violet-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold uppercase border border-sky-500/20">
                       BATCH SIZES
                     </span>
                   </h2>
@@ -3367,7 +3367,7 @@ function PublishStudioContent() {
                     value={thumbTitle}
                     onChange={(e) => setThumbTitle(e.target.value)}
                     placeholder="Enter punchy headline text..."
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                   />
                 </div>
 
@@ -3382,7 +3382,7 @@ function PublishStudioContent() {
                         <button
                           type="button"
                           onClick={() => setSelectedThumbFormats(THUMBNAIL_PLATFORMS.map(p => p.id))}
-                          className="text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                          className="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
                         >
                           All (6)
                         </button>
@@ -3390,7 +3390,7 @@ function PublishStudioContent() {
                         <button
                           type="button"
                           onClick={() => setSelectedThumbFormats(["youtube_16_9", "tiktok_shorts_9_16", "instagram_square"])}
-                          className="text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 hover:underline cursor-pointer"
+                          className="text-zinc-500 hover:text-sky-600 dark:hover:text-sky-400 hover:underline cursor-pointer"
                         >
                           Top 3
                         </button>
@@ -3416,7 +3416,7 @@ function PublishStudioContent() {
                             className={cn(
                               "p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer",
                               isSelected
-                                ? "border-violet-500/80 bg-violet-500/10 text-zinc-950 dark:text-white ring-1 ring-violet-500/30"
+                                ? "border-sky-500/80 bg-sky-500/10 text-zinc-950 dark:text-white ring-1 ring-sky-500/30"
                                 : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-700"
                             )}
                           >
@@ -3430,7 +3430,7 @@ function PublishStudioContent() {
                             </div>
                             <span className={cn(
                               "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold shrink-0",
-                              isSelected ? "bg-violet-600 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+                              isSelected ? "bg-sky-600 text-white" : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
                             )}>
                               {plat.badge}
                             </span>
@@ -3537,7 +3537,7 @@ function PublishStudioContent() {
                       {batchThumbResults.map((item) => (
                         <div
                           key={item.format}
-                          className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 p-3 space-y-2.5 flex flex-col justify-between shadow-xs hover:border-violet-500/40 transition-all"
+                          className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 p-3 space-y-2.5 flex flex-col justify-between shadow-xs hover:border-sky-500/40 transition-all"
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-heading font-bold text-zinc-900 dark:text-white">
@@ -3613,7 +3613,7 @@ function PublishStudioContent() {
                       </div>
                     ) : (
                       <div className="text-center text-zinc-400 space-y-2">
-                        <ImageIcon className="w-12 h-12 mx-auto opacity-40 text-violet-500" />
+                        <ImageIcon className="w-12 h-12 mx-auto opacity-40 text-sky-500" />
                         <div className="text-xs font-heading font-bold text-zinc-700 dark:text-zinc-300">
                           {thumbMode === "multi"
                             ? "Ready to render Multi-Platform Cover Pack"
@@ -4584,7 +4584,7 @@ function PublishStudioContent() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-zinc-900 dark:text-zinc-100 font-heading">{v.topic}</span>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20 shrink-0">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 shrink-0">
                           {v.format}
                         </span>
                       </div>
@@ -4954,7 +4954,7 @@ function PublishStudioContent() {
                     onClick={() => setVaultTab("videos")}
                     className={cn(
                       "px-3 py-1 rounded-lg font-medium transition cursor-pointer text-xs flex items-center gap-1 whitespace-nowrap shrink-0",
-                      vaultTab === "videos" ? "bg-white dark:bg-zinc-950 text-violet-600 dark:text-violet-400 font-bold shadow-xs" : "text-zinc-500"
+                      vaultTab === "videos" ? "bg-white dark:bg-zinc-950 text-sky-600 dark:text-sky-400 font-bold shadow-xs" : "text-zinc-500"
                     )}
                   >
                     <Video className="w-3 h-3 shrink-0" />
@@ -5041,7 +5041,7 @@ function PublishStudioContent() {
                               <span className={cn(
                                 "absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider backdrop-blur-xs",
                                 asset.media_type === "video" 
-                                  ? "bg-violet-600/90 text-white" 
+                                  ? "bg-sky-600/90 text-white" 
                                   : "bg-emerald-600/90 text-white"
                               )}>
                                 {asset.media_type === "video" ? "Video" : "Image"}

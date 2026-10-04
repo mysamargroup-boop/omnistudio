@@ -443,7 +443,7 @@ export default function AudioMusicLibraryModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between p-5 border-b border-black/[0.06] dark:border-white/[0.06] bg-zinc-50/50 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
               <Music className="w-5 h-5" />
             </div>
             <div>
@@ -489,7 +489,7 @@ export default function AudioMusicLibraryModal({
                   : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
               )}
             >
-              <Disc3 className="w-3.5 h-3.5 text-violet-500" />
+              <Disc3 className="w-3.5 h-3.5 text-sky-500" />
               <span>Background Music (BGM)</span>
             </button>
 
@@ -541,7 +541,7 @@ export default function AudioMusicLibraryModal({
               placeholder="Search genres, mood, title..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </div>
         </div>
@@ -557,7 +557,7 @@ export default function AudioMusicLibraryModal({
               className={cn(
                 "px-2.5 py-1 rounded-md text-[11px] font-mono transition-all cursor-pointer whitespace-nowrap shrink-0",
                 selectedGenre === g
-                  ? "bg-violet-600 text-white font-bold"
+                  ? "bg-sky-600 text-white font-bold"
                   : "bg-zinc-100 dark:bg-white/[0.03] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-white/[0.06]"
               )}
             >
@@ -579,7 +579,7 @@ export default function AudioMusicLibraryModal({
                   Import your own background score, voice notes, or Foley MP3/WAV tracks.
                 </p>
               </div>
-              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-mono font-bold transition-all cursor-pointer">
+              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-mono font-bold transition-all cursor-pointer">
                 <Upload className="w-3.5 h-3.5" />
                 <span>Upload Audio File</span>
                 <input
@@ -603,7 +603,7 @@ export default function AudioMusicLibraryModal({
                 className={cn(
                   "p-3.5 rounded-2xl border transition-all duration-150 flex items-center justify-between gap-3 group cursor-pointer",
                   isSelected
-                    ? "bg-violet-500/[0.04] dark:bg-violet-500/[0.07] border-violet-500/40 ring-1 ring-violet-500/20 shadow-xs"
+                    ? "bg-sky-500/[0.04] dark:bg-sky-500/[0.07] border-sky-500/40 ring-1 ring-sky-500/20 shadow-xs"
                     : "bg-white dark:bg-white/[0.02] border-black/[0.05] dark:border-white/[0.05] hover:border-black/15 dark:hover:border-white/15"
                 )}
               >
@@ -618,7 +618,7 @@ export default function AudioMusicLibraryModal({
                     className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-xs",
                       isPlaying
-                        ? "bg-violet-600 text-white animate-pulse"
+                        ? "bg-sky-600 text-white animate-pulse"
                         : "bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-zinc-800 dark:text-zinc-200 group-hover:scale-105"
                     )}
                   >
@@ -641,7 +641,7 @@ export default function AudioMusicLibraryModal({
                     <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 mt-0.5">
                       <span>{track.artist}</span>
                       <span>•</span>
-                      <span className="text-violet-600 dark:text-violet-400 font-semibold">{track.mood}</span>
+                      <span className="text-sky-600 dark:text-sky-400 font-semibold">{track.mood}</span>
                       {track.bpm && (
                         <>
                           <span>•</span>
@@ -662,9 +662,9 @@ export default function AudioMusicLibraryModal({
                         className={cn(
                           "w-1 rounded-full transition-all duration-200",
                           isPlaying
-                            ? "bg-violet-500 animate-pulse"
+                            ? "bg-sky-500 animate-pulse"
                             : isSelected
-                            ? "bg-violet-400/50"
+                            ? "bg-sky-400/50"
                             : "bg-zinc-300 dark:bg-zinc-700"
                         )}
                       />
@@ -695,7 +695,7 @@ export default function AudioMusicLibraryModal({
                     className={cn(
                       "px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs",
                       isSelected
-                        ? "bg-violet-600 text-white hover:bg-violet-700"
+                        ? "bg-sky-600 text-white hover:bg-sky-700"
                         : "bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] text-zinc-700 dark:text-zinc-300"
                     )}
                   >
@@ -712,7 +712,7 @@ export default function AudioMusicLibraryModal({
         <div className="p-4 sm:p-5 border-t border-black/[0.06] dark:border-white/[0.06] bg-zinc-50 dark:bg-[#0e0e18] flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Active Track Status */}
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
               <Headphones className="w-4 h-4" />
             </div>
             <div className="truncate">
@@ -740,7 +740,7 @@ export default function AudioMusicLibraryModal({
                   setVolume(val);
                   if (audioRef.current) audioRef.current.volume = Math.min(1.0, val);
                 }}
-                className="w-20 accent-violet-600 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg"
+                className="w-20 accent-sky-600 cursor-pointer h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg"
                 title={`Track Volume: ${Math.round(volume * 100)}%`}
               />
               <span className="text-[10px] font-mono text-zinc-400 w-7">
@@ -754,7 +754,7 @@ export default function AudioMusicLibraryModal({
               className={cn(
                 "p-2 rounded-xl text-xs font-mono transition-all cursor-pointer flex items-center gap-1",
                 loopEnabled
-                  ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold border border-violet-500/20"
+                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20"
                   : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
               )}
               title={loopEnabled ? "Audio Looping Enabled" : "Looping Disabled"}
@@ -779,7 +779,7 @@ export default function AudioMusicLibraryModal({
               type="button"
               onClick={handleConfirmSelect}
               disabled={!selectedTrack}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-heading font-bold disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer shadow-md active:scale-95"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-heading font-bold disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer shadow-md active:scale-95"
             >
               <Check className="w-4 h-4" />
               <span>Use This Track</span>

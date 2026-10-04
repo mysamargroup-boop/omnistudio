@@ -129,7 +129,7 @@ export default function GenerationConfirmModal({
             'h-1.5 w-full bg-gradient-to-r',
             isFree
               ? 'from-emerald-500 via-teal-400 to-cyan-500'
-              : 'from-violet-600 via-indigo-500 to-cyan-400'
+              : 'from-sky-600 via-indigo-500 to-cyan-400'
           )}
         />
 
@@ -138,7 +138,7 @@ export default function GenerationConfirmModal({
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-9 h-9 rounded-xl flex items-center justify-center border shadow-xs",
-              isFree ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" : "bg-violet-500/15 border-violet-500/30 text-violet-400"
+              isFree ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" : "bg-sky-500/15 border-sky-500/30 text-sky-400"
             )}>
               <ServiceIcon className="h-5 w-5" />
             </div>
@@ -201,7 +201,7 @@ export default function GenerationConfirmModal({
                     'text-[9px] font-mono px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border shadow-xs',
                     isFree
                       ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
-                      : 'bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-500/30'
+                      : 'bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30'
                   )}
                 >
                   {isFree ? 'Zero Spend' : 'Direct BYOK'}

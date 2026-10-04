@@ -36,7 +36,7 @@ export default function PrivacyPolicyPage() {
         {/* Core Principles */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-5 rounded-2xl bg-white dark:bg-[#0d0d14] border border-black/[0.06] dark:border-white/[0.08] space-y-2 shadow-xs">
-            <Lock className="w-5 h-5 text-violet-500" />
+            <Lock className="w-5 h-5 text-sky-500" />
             <h3 className="text-sm font-bold font-heading text-zinc-900 dark:text-white">Zero Cloud Snooping</h3>
             <p className="text-xs text-zinc-500 leading-relaxed">
               Your API keys and generated media are stored directly in your private database (Supabase Cloud / SQLite) and Cloudflare R2 bucket.

@@ -226,7 +226,7 @@ export default function CharacterSheetModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-mono transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50">
+            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-mono transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50">
               <Upload className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload Sheet"}</span>
               <input
@@ -327,7 +327,7 @@ export default function CharacterSheetModal({
               </div>
 
               <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
-                <label className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-heading font-bold shadow-lg shadow-violet-600/25 transition-all cursor-pointer active:scale-95">
+                <label className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-heading font-bold shadow-lg shadow-sky-600/25 transition-all cursor-pointer active:scale-95">
                   <Upload className="w-4 h-4" />
                   <span>{uploading ? "Uploading Sheet..." : "Upload Turnaround Sheet"}</span>
                   <input
@@ -372,7 +372,7 @@ export default function CharacterSheetModal({
                     />
                     <div className="absolute top-3 right-3 flex items-center gap-2">
                       <label className="p-2 rounded-xl bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-mono transition-colors cursor-pointer" title="Upload Replacement Turnaround Sheet">
-                        <Upload className="w-3.5 h-3.5 text-violet-400" />
+                        <Upload className="w-3.5 h-3.5 text-sky-400" />
                         <input
                           type="file"
                           accept="image/*"

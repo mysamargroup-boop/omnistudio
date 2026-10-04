@@ -156,9 +156,9 @@ const VaultCardMedia = React.memo(function VaultCardMedia({
             </span>
           </div>
         </div>
-      ) : isImage ? (
+      ) : (isImage || isVideo) ? (
         <img
-          src={getMediaUrl(file.url)}
+          src={getMediaUrl(file.url, 256)}
           alt={file.filename}
           loading="lazy"
           decoding="async"
@@ -170,7 +170,7 @@ const VaultCardMedia = React.memo(function VaultCardMedia({
             const img = e.currentTarget;
             if (img.naturalWidth && img.naturalHeight) {
               const r = img.naturalWidth / img.naturalHeight;
-              let lbl = "IMG";
+              let lbl = isVideo ? "VIDEO" : "IMG";
               if (r >= 1.6) lbl = "16:9";
               else if (r <= 0.65) lbl = "9:16";
               else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
@@ -185,41 +185,6 @@ const VaultCardMedia = React.memo(function VaultCardMedia({
             loaded ? "opacity-100 scale-100 filter-none" : "opacity-0 scale-[1.02] blur-xs"
           )}
         />
-      ) : isVideo ? (
-        <div className="relative w-full h-full flex items-center justify-center">
-          <video
-            src={getMediaUrl(file.url).includes("#") ? getMediaUrl(file.url) : `${getMediaUrl(file.url)}#t=0.1`}
-            playsInline
-            loop
-            muted
-            preload="metadata"
-            onError={() => {
-              setError(true);
-              setLoaded(true);
-            }}
-            onLoadedData={() => {
-              setLoaded(true);
-            }}
-            onLoadedMetadata={(e) => {
-              setLoaded(true);
-              const v = e.currentTarget;
-              if (v.videoWidth && v.videoHeight) {
-                const r = v.videoWidth / v.videoHeight;
-                let lbl = "VIDEO";
-                if (r >= 1.6) lbl = "16:9";
-                else if (r <= 0.65) lbl = "9:16";
-                else if (r >= 0.95 && r <= 1.05) lbl = "1:1";
-                else if (r > 0.65 && r < 0.95) lbl = "4:5";
-                else lbl = `${v.videoWidth}×${v.videoHeight}`;
-                setAspectLabel(lbl);
-              }
-            }}
-            className={cn(
-              "w-full h-auto block object-cover group-hover:scale-[1.02] transition-all duration-500 ease-out pointer-events-none will-change-[opacity,transform]",
-              loaded ? "opacity-100 scale-100" : "opacity-0 scale-[1.02]"
-            )}
-          />
-        </div>
       ) : null}
 
       {isAudio && (
@@ -1525,7 +1490,7 @@ export default function VaultPage() {
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer select-none",
                 openDropdown === "sort"
-                  ? "bg-zinc-200 dark:bg-zinc-800 border-violet-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-violet-500/30"
+                  ? "bg-zinc-200 dark:bg-zinc-800 border-sky-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-sky-500/30"
                   : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-zinc-800/80"
               )}
             >
@@ -1537,7 +1502,7 @@ export default function VaultPage() {
               <ChevronDown
                 className={cn(
                   "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
-                  openDropdown === "sort" && "rotate-180 text-violet-500"
+                  openDropdown === "sort" && "rotate-180 text-sky-500"
                 )}
               />
             </button>
@@ -1560,12 +1525,12 @@ export default function VaultPage() {
                       className={cn(
                         "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer",
                         isSelected
-                          ? "bg-violet-600/10 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300 font-semibold"
+                          ? "bg-sky-600/10 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300 font-semibold"
                           : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5"
                       )}
                     >
                       <span>{opt.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />}
                     </button>
                   );
                 })}
@@ -1581,7 +1546,7 @@ export default function VaultPage() {
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer select-none",
                 openDropdown === "date"
-                  ? "bg-zinc-200 dark:bg-zinc-800 border-violet-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-violet-500/30"
+                  ? "bg-zinc-200 dark:bg-zinc-800 border-sky-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-sky-500/30"
                   : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-zinc-800/80"
               )}
             >
@@ -1592,7 +1557,7 @@ export default function VaultPage() {
               <ChevronDown
                 className={cn(
                   "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
-                  openDropdown === "date" && "rotate-180 text-violet-500"
+                  openDropdown === "date" && "rotate-180 text-sky-500"
                 )}
               />
             </button>
@@ -1615,12 +1580,12 @@ export default function VaultPage() {
                       className={cn(
                         "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer",
                         isSelected
-                          ? "bg-violet-600/10 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300 font-semibold"
+                          ? "bg-sky-600/10 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300 font-semibold"
                           : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5"
                       )}
                     >
                       <span>{opt.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />}
                     </button>
                   );
                 })}
@@ -1637,7 +1602,7 @@ export default function VaultPage() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono transition-all cursor-pointer select-none",
                   openDropdown === "type"
-                    ? "bg-zinc-200 dark:bg-zinc-800 border-violet-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-violet-500/30"
+                    ? "bg-zinc-200 dark:bg-zinc-800 border-sky-500/50 text-zinc-950 dark:text-white shadow-sm ring-1 ring-sky-500/30"
                     : "bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/70 dark:hover:bg-zinc-800/80"
                 )}
               >
@@ -1648,7 +1613,7 @@ export default function VaultPage() {
                 <ChevronDown
                   className={cn(
                     "w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0",
-                    openDropdown === "type" && "rotate-180 text-violet-500"
+                    openDropdown === "type" && "rotate-180 text-sky-500"
                   )}
                 />
               </button>
@@ -1671,12 +1636,12 @@ export default function VaultPage() {
                         className={cn(
                           "flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-mono text-left transition-all cursor-pointer",
                           isSelected
-                            ? "bg-violet-600/10 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300 font-semibold"
+                            ? "bg-sky-600/10 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300 font-semibold"
                             : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5"
                         )}
                       >
                         <span>{opt.label}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />}
                       </button>
                     );
                   })}
@@ -1965,7 +1930,7 @@ export default function VaultPage() {
                   selected
                     ? "bg-emerald-500 text-white ring-2 ring-white/90 scale-105 opacity-100 shadow-emerald-500/40"
                     : cn(
-                        "bg-black/40 backdrop-blur-md border-2 border-white/70 hover:border-white hover:bg-black/60 hover:scale-110",
+                        "bg-black/40 backdrop-blur-md border-2 border-white/70 hover:border-white hover:bg-black/60 ",
                         selectedKeys.size > 0 ? "opacity-90" : "opacity-0 group-hover:opacity-100"
                       )
                 )}
@@ -1994,7 +1959,7 @@ export default function VaultPage() {
                   <button
                     type="button"
                     onClick={(e) => handleToggleFavorite(e, file.filename)}
-                    className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                    className="p-1 transition-transform cursor-pointer"
                     title={favorites.has(file.filename) ? "Remove Favorite" : "Favorite"}
                   >
                     <Heart
@@ -2019,7 +1984,7 @@ export default function VaultPage() {
                     }
                   }}
                   className={cn(
-                    "p-1 hover:scale-110 transition-transform cursor-pointer",
+                    "p-1 transition-transform cursor-pointer",
                     isMenuOpen ? "text-white" : "text-white/80 hover:text-white"
                   )}
                   title="More Options"
@@ -2403,7 +2368,7 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setVisibleCount((prev) => prev + 48)}
-            className="px-6 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs font-semibold shadow-lg border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95"
+            className="px-6 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs font-semibold shadow-lg border border-white/10 transition-all cursor-pointer active:scale-95"
           >
             Load More Assets ({activeFiles.length - visibleCount} remaining)
           </button>
@@ -2650,7 +2615,7 @@ export default function VaultPage() {
                       setImgNaturalSize(null);
                       setLightboxLoading(true);
                     }}
-                    className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                    className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-2xl"
                     title="Previous Media (Left Arrow)"
                   >
                     <ChevronLeft className="w-6 h-6" />
@@ -2750,7 +2715,7 @@ export default function VaultPage() {
                       setImgNaturalSize(null);
                       setLightboxLoading(true);
                     }}
-                    className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all hover:scale-105 cursor-pointer shadow-2xl"
+                    className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/70 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-2xl"
                     title="Next Media (Right Arrow)"
                   >
                     <ChevronRight className="w-6 h-6" />
@@ -3270,7 +3235,7 @@ export default function VaultPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-violet-500" />
+                <Edit3 className="w-4 h-4 text-sky-500" />
                 <h3 className="text-base font-bold font-heading text-zinc-950 dark:text-white">Rename Asset</h3>
               </div>
               <button
@@ -3292,7 +3257,7 @@ export default function VaultPage() {
                 value={renameNewName}
                 onChange={(e) => setRenameNewName(e.target.value)}
                 placeholder="New filename..."
-                className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/10 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-zinc-950 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                className="w-full bg-zinc-50 dark:bg-white/[0.04] border border-black/10 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-zinc-950 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500/40"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleRename();

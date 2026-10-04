@@ -17,6 +17,8 @@ class KeysUpdateRequest(BaseModel):
     REPLICATE_API_TOKEN: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     SARVAM_API_KEY: Optional[str] = None
+    FAL_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
     DATABASE_URL: Optional[str] = None
     R2_ACCOUNT_ID: Optional[str] = None
     R2_ACCESS_KEY_ID: Optional[str] = None
@@ -100,6 +102,7 @@ async def get_keys(request: Request):
 
     KEY_NAMES = [
         "OPENAI_API_KEY", "ELEVENLABS_API_KEY", "REPLICATE_API_TOKEN", "GEMINI_API_KEY",
+        "SARVAM_API_KEY", "FAL_KEY", "ANTHROPIC_API_KEY",
         "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_DOMAIN", "DATABASE_URL",
         # Social Media API Keys
         "META_ACCESS_TOKEN", "META_APP_ID", "META_APP_SECRET", "INSTAGRAM_ACCOUNT_ID", "FACEBOOK_PAGE_ID",

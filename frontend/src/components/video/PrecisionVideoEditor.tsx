@@ -1091,8 +1091,8 @@ export default function PrecisionVideoEditor({
                     </span>
                   )}
                   {keyframes.length > 0 && (
-                    <span className="px-1.5 py-0.2 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 text-[10px] flex items-center gap-1 font-bold">
-                      <Diamond className="w-2.5 h-2.5 fill-violet-400 text-violet-400" />
+                    <span className="px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px] flex items-center gap-1 font-bold">
+                      <Diamond className="w-2.5 h-2.5 fill-sky-400 text-sky-400" />
                       <span>{keyframes.length} KF</span>
                     </span>
                   )}
@@ -1213,7 +1213,7 @@ export default function PrecisionVideoEditor({
                     "w-16 h-16 rounded-2xl flex items-center justify-center mb-3 transition-transform cursor-pointer shadow-lg",
                     isDraggingMain
                       ? "bg-emerald-500 text-black animate-bounce"
-                      : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:scale-105 shadow-emerald-500/5"
+                      : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-emerald-500/5"
                   )}
                 >
                   <Upload className="w-7 h-7" />
@@ -1257,7 +1257,7 @@ export default function PrecisionVideoEditor({
           <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-4 gap-1 p-1.5 bg-[#09090e] border-b border-zinc-800 overflow-x-auto no-scrollbar flex-shrink-0">
             {[
               { id: "trim", label: "Trim & Cut", icon: Scissors, accent: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
-              { id: "keyframes", label: "Keyframe", icon: Diamond, accent: "text-violet-400 bg-violet-500/10 border-violet-500/30", badge: keyframes.length > 0 ? `${keyframes.length}` : "PRO" },
+              { id: "keyframes", label: "Keyframe", icon: Diamond, accent: "text-sky-400 bg-sky-500/10 border-sky-500/30", badge: keyframes.length > 0 ? `${keyframes.length}` : "PRO" },
               { id: "speed", label: "Speed", icon: Gauge, accent: "text-amber-400 bg-amber-500/10 border-amber-500/30" },
               { id: "aspect", label: "Aspect", icon: Crop, accent: "text-sky-400 bg-sky-500/10 border-sky-500/30" },
               { id: "color", label: "Color", icon: Palette, accent: "text-rose-400 bg-rose-500/10 border-rose-500/30" },
@@ -1266,7 +1266,7 @@ export default function PrecisionVideoEditor({
               { id: "ai_audio", label: "AI Audio", icon: Mic, accent: "text-teal-400 bg-teal-500/10 border-teal-500/30" },
               { id: "ai_ads", label: "AI Ads", icon: Clapperboard, accent: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30" },
               { id: "overlay", label: "Overlay", icon: Type, accent: "text-orange-400 bg-orange-500/10 border-orange-500/30" },
-              { id: "chroma", label: "BG Remove", icon: Pipette, accent: "text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30" },
+              { id: "chroma", label: "BG Remove", icon: Pipette, accent: "text-sky-400 bg-sky-500/10 border-sky-500/30" },
               { id: "concat", label: "Merge", icon: Film, accent: "text-zinc-300 bg-zinc-800 border-zinc-700" },
               { id: "export", label: "Export", icon: Share2, accent: "text-emerald-300 bg-emerald-900/30 border-emerald-500/40" },
             ].map((tab) => {
@@ -1294,7 +1294,7 @@ export default function PrecisionVideoEditor({
                   </div>
                   <span className="truncate max-w-[65px]">{tab.label}</span>
                   {tab.badge && (
-                    <span className="absolute top-0.5 right-0.5 text-[7px] font-extrabold px-1 py-0.2 rounded-full bg-violet-500/30 text-violet-300 border border-violet-500/40">
+                    <span className="absolute top-0.5 right-0.5 text-[7px] font-extrabold px-1 py-0.2 rounded-full bg-sky-500/30 text-sky-300 border border-sky-500/40">
                       {tab.badge}
                     </span>
                   )}
@@ -1310,7 +1310,7 @@ export default function PrecisionVideoEditor({
               <div className="space-y-3 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold uppercase text-white flex items-center gap-1.5">
-                    <Diamond className="w-3.5 h-3.5 text-violet-400 fill-violet-400/20" />
+                    <Diamond className="w-3.5 h-3.5 text-sky-400 fill-sky-400/20" />
                     Keyframe Motion & Transform
                   </span>
                   <span className="text-[10px] font-mono text-zinc-500">
@@ -1329,7 +1329,7 @@ export default function PrecisionVideoEditor({
                     <button
                       type="button"
                       onClick={addOrUpdateKeyframeAtPlayhead}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-mono font-bold shadow-md shadow-violet-600/20 transition-all cursor-pointer active:scale-95"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-mono font-bold shadow-md shadow-sky-600/20 transition-all cursor-pointer active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{activeOrNearestKeyframe ? "Update Keyframe" : "+ Add Keyframe"}</span>
@@ -1339,8 +1339,8 @@ export default function PrecisionVideoEditor({
                   {activeOrNearestKeyframe ? (
                     <div className="space-y-3 pt-2.5 border-t border-zinc-800">
                       <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-violet-400 font-bold flex items-center gap-1">
-                          <Diamond className="w-3 h-3 fill-violet-400" /> Keyframe @ {activeOrNearestKeyframe.time.toFixed(2)}s
+                        <span className="text-sky-400 font-bold flex items-center gap-1">
+                          <Diamond className="w-3 h-3 fill-sky-400" /> Keyframe @ {activeOrNearestKeyframe.time.toFixed(2)}s
                         </span>
                         <button
                           type="button"
@@ -1364,7 +1364,7 @@ export default function PrecisionVideoEditor({
                           step="0.05"
                           value={activeOrNearestKeyframe.scale}
                           onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "scale", parseFloat(e.target.value))}
-                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                          className="w-full accent-sky-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
                         />
                       </div>
 
@@ -1381,7 +1381,7 @@ export default function PrecisionVideoEditor({
                           step="1"
                           value={activeOrNearestKeyframe.positionX}
                           onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "positionX", parseInt(e.target.value))}
-                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                          className="w-full accent-sky-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
                         />
                       </div>
 
@@ -1398,7 +1398,7 @@ export default function PrecisionVideoEditor({
                           step="1"
                           value={activeOrNearestKeyframe.positionY}
                           onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "positionY", parseInt(e.target.value))}
-                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                          className="w-full accent-sky-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
                         />
                       </div>
 
@@ -1415,7 +1415,7 @@ export default function PrecisionVideoEditor({
                           step="1"
                           value={activeOrNearestKeyframe.rotation}
                           onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "rotation", parseInt(e.target.value))}
-                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                          className="w-full accent-sky-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
                         />
                       </div>
 
@@ -1432,7 +1432,7 @@ export default function PrecisionVideoEditor({
                           step="0.05"
                           value={activeOrNearestKeyframe.opacity}
                           onChange={(e) => updateKeyframeProperty(activeOrNearestKeyframe.id, "opacity", parseFloat(e.target.value))}
-                          className="w-full accent-violet-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
+                          className="w-full accent-sky-500 cursor-pointer h-1.5 bg-zinc-800 rounded"
                         />
                       </div>
                     </div>
@@ -1461,11 +1461,11 @@ export default function PrecisionVideoEditor({
                           className={cn(
                             "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer border",
                             Math.abs(currentTime - kf.time) < 0.1
-                              ? "bg-violet-500/20 text-violet-300 border-violet-500/50 shadow-xs"
+                              ? "bg-sky-500/20 text-sky-300 border-sky-500/50 shadow-xs"
                               : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
                           )}
                         >
-                          <Diamond className="w-2.5 h-2.5 fill-violet-400 text-violet-400" />
+                          <Diamond className="w-2.5 h-2.5 fill-sky-400 text-sky-400" />
                           <span>{kf.time.toFixed(2)}s</span>
                           <span className="text-[8px] text-zinc-500">({kf.scale.toFixed(1)}x)</span>
                         </button>
@@ -1948,13 +1948,13 @@ export default function PrecisionVideoEditor({
                     className={cn(
                       "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer font-semibold",
                       audioModeTab === "library"
-                        ? "bg-zinc-800 text-violet-400 border border-zinc-700/60 shadow-xs"
+                        ? "bg-zinc-800 text-sky-400 border border-zinc-700/60 shadow-xs"
                         : "text-zinc-400 hover:text-zinc-200"
                     )}
                   >
-                    <Music className="w-3.5 h-3.5 text-violet-400" />
+                    <Music className="w-3.5 h-3.5 text-sky-400" />
                     <span>BGM & SFX</span>
-                    <span className="px-1.5 py-0.2 rounded text-[9px] bg-violet-500/20 text-violet-300 font-bold">CC0</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] bg-sky-500/20 text-sky-300 font-bold">CC0</span>
                   </button>
                   <button
                     type="button"
@@ -2210,9 +2210,9 @@ export default function PrecisionVideoEditor({
                             <button
                               type="button"
                               onClick={() => setAudioLibraryModalOpen(true)}
-                              className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-violet-950/30 hover:bg-violet-900/40 border border-violet-500/30 text-[11px] font-mono text-violet-300 hover:text-violet-200 transition-colors cursor-pointer"
+                              className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-sky-950/30 hover:bg-sky-900/40 border border-sky-500/30 text-[11px] font-mono text-sky-300 hover:text-sky-200 transition-colors cursor-pointer"
                             >
-                              <Music className="w-3 h-3 text-violet-400" />
+                              <Music className="w-3 h-3 text-sky-400" />
                               <span>BGM Suite</span>
                             </button>
                             <button
@@ -2236,7 +2236,7 @@ export default function PrecisionVideoEditor({
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                          <Music className="w-3.5 h-3.5 text-violet-400" />
+                          <Music className="w-3.5 h-3.5 text-sky-400" />
                           Royalty-Free Audio Library
                         </span>
                         <p className="text-[10px] font-mono text-zinc-400 mt-0.5">
@@ -2246,7 +2246,7 @@ export default function PrecisionVideoEditor({
                       <button
                         type="button"
                         onClick={() => setAudioLibraryModalOpen(true)}
-                        className="px-2.5 py-1 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-mono font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+                        className="px-2.5 py-1 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-mono font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
                       >
                         <Sparkles className="w-3 h-3" />
                         <span>Open Full Suite</span>
@@ -2265,7 +2265,7 @@ export default function PrecisionVideoEditor({
                             className={cn(
                               "p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2.5",
                               isAttached
-                                ? "bg-violet-500/10 border-violet-500/40 ring-1 ring-violet-500/20"
+                                ? "bg-sky-500/10 border-sky-500/40 ring-1 ring-sky-500/20"
                                 : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
                             )}
                           >
@@ -2287,7 +2287,7 @@ export default function PrecisionVideoEditor({
                                 className={cn(
                                   "w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0",
                                   isPreviewing
-                                    ? "bg-violet-600 text-white animate-pulse"
+                                    ? "bg-sky-600 text-white animate-pulse"
                                     : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
                                 )}
                               >
@@ -2303,7 +2303,7 @@ export default function PrecisionVideoEditor({
                                   {track.title}
                                 </p>
                                 <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-400">
-                                  <span className="text-violet-400">{track.genre}</span>
+                                  <span className="text-sky-400">{track.genre}</span>
                                   <span>•</span>
                                   <span>{track.duration}</span>
                                 </div>
@@ -2322,7 +2322,7 @@ export default function PrecisionVideoEditor({
                                 "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1",
                                 isAttached
                                   ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                                  : "bg-zinc-800 hover:bg-violet-600 text-zinc-300 hover:text-white"
+                                  : "bg-zinc-800 hover:bg-sky-600 text-zinc-300 hover:text-white"
                               )}
                             >
                               {isAttached ? (
@@ -2353,7 +2353,7 @@ export default function PrecisionVideoEditor({
                       <button
                         type="button"
                         onClick={() => setAudioLibraryModalOpen(true)}
-                        className="text-violet-400 hover:text-violet-300 font-bold underline cursor-pointer"
+                        className="text-sky-400 hover:text-sky-300 font-bold underline cursor-pointer"
                       >
                         Browse All 100+ Sounds →
                       </button>
@@ -2900,10 +2900,10 @@ export default function PrecisionVideoEditor({
             <button
               type="button"
               onClick={addOrUpdateKeyframeAtPlayhead}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-500/30 bg-violet-950/40 hover:bg-violet-900/50 text-violet-300 hover:text-white transition-all cursor-pointer text-[11px] shadow-xs"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-sky-500/30 bg-sky-950/40 hover:bg-sky-900/50 text-sky-300 hover:text-white transition-all cursor-pointer text-[11px] shadow-xs"
               title="Add Keyframe at Playhead"
             >
-              <Diamond className="w-3 h-3 fill-violet-400 text-violet-400" />
+              <Diamond className="w-3 h-3 fill-sky-400 text-sky-400" />
               <span>+ Keyframe</span>
             </button>
           </div>
@@ -2952,7 +2952,7 @@ export default function PrecisionVideoEditor({
                 <span>V1 Video</span>
               </div>
               {keyframes.length > 0 && (
-                <span className="text-[8px] font-bold text-violet-400 bg-violet-500/15 px-1 rounded">
+                <span className="text-[8px] font-bold text-sky-400 bg-sky-500/15 px-1 rounded">
                   {keyframes.length}◆
                 </span>
               )}
@@ -3063,8 +3063,8 @@ export default function PrecisionVideoEditor({
                     <div className={cn(
                       "w-3 h-3 rotate-45 border transition-transform group-hover:scale-125",
                       selectedKeyframeId === kf.id || Math.abs(currentTime - kf.time) < 0.1
-                        ? "bg-violet-400 border-white shadow-md shadow-violet-500/50 scale-110"
-                        : "bg-violet-600 border-violet-300/80"
+                        ? "bg-sky-400 border-white shadow-md shadow-sky-500/50 scale-110"
+                        : "bg-sky-600 border-sky-300/80"
                     )} />
                   </div>
                 ))}

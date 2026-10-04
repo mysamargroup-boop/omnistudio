@@ -640,7 +640,7 @@ export function BrandKitPanel({ onSaved, className, isEmbedded = false }: BrandK
                   key={c.label}
                   type="button"
                   onClick={() => copyHex(c.hex)}
-                  className="group relative w-7 h-7 rounded-full border-2 border-zinc-900 shadow-md cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
+                  className="group relative w-7 h-7 rounded-full border-2 border-zinc-900 shadow-md cursor-pointer transition-transform flex items-center justify-center"
                   style={{ backgroundColor: c.hex }}
                   title={`Click to copy ${c.label}: ${c.hex}`}
                 >

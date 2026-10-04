@@ -21,7 +21,7 @@ export default function TermsOfServicePage() {
         </div>
 
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono text-violet-600 dark:text-violet-400 uppercase tracking-widest font-semibold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-widest font-semibold">
             <FileText className="w-3 h-3" />
             <span>STUDIO USAGE RIGHTS & TERMS</span>
           </div>

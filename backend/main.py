@@ -172,7 +172,7 @@ async def serve_trash_output(media_type: str, filename: str, download: Optional[
 
 
 @app.get("/outputs/{media_type}/{filename:path}", dependencies=api_security)
-async def serve_output(media_type: str, filename: str, download: Optional[bool] = Query(False)):
+async def serve_output(media_type: str, filename: str, download: Optional[bool] = Query(False), w: Optional[int] = Query(None, ge=16, le=2048)):
     if media_type == "trash":
         raise HTTPException(status_code=400, detail="Use /outputs/trash/<type>/<filename> for trash assets")
     try:
@@ -196,6 +196,21 @@ async def serve_output(media_type: str, filename: str, download: Optional[bool] 
                 raise e
         else:
             raise e
+
+    if w and not download:
+        import asyncio
+        from services.thumbnail_service import get_thumbnail
+        thumb = await asyncio.to_thread(get_thumbnail, path, w)
+        if thumb is not None:
+            return FileResponse(
+                thumb,
+                media_type="image/webp",
+                headers={
+                    # Thumbnail filename is content-hashed (mtime+size), so it is safe to cache aggressively
+                    "Cache-Control": "public, max-age=2592000, immutable",
+                    "Referrer-Policy": "no-referrer",
+                },
+            )
 
     # Allow browser caching for media assets (1 day, stale-while-revalidate 7 days) and byte-range streaming for videos
     headers = {

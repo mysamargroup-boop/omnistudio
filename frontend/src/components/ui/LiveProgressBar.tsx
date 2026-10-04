@@ -267,7 +267,7 @@ export default function LiveProgressBar({
             <div className="mt-2 p-3.5 rounded-xl bg-zinc-950 dark:bg-[#06060a] border border-black/[0.1] dark:border-white/[0.06] max-h-36 overflow-y-auto space-y-1.5 font-mono text-[11px] text-zinc-400 animate-in fade-in duration-150 custom-scrollbar">
               {logs.map((log, index) => (
                 <div key={index} className="flex items-start gap-2">
-                  <span className="text-violet-400 shrink-0">[{log.timestamp}]</span>
+                  <span className="text-sky-400 shrink-0">[{log.timestamp}]</span>
                   <span className="text-zinc-200">{log.message}</span>
                 </div>
               ))}

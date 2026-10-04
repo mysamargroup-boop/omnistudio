@@ -85,7 +85,7 @@ export default function HowItWorksPage() {
 
         {/* Hero */}
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono text-violet-600 dark:text-violet-400 uppercase tracking-widest font-semibold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] font-mono text-sky-600 dark:text-sky-400 uppercase tracking-widest font-semibold">
             <Sparkles className="w-3 h-3" />
             <span>AUTONOMOUS WORKFLOW BREAKDOWN</span>
           </div>
@@ -111,11 +111,11 @@ export default function HowItWorksPage() {
                   "p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-2 shadow-xs",
                   isSelected
                     ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 border-transparent shadow-md scale-[1.02]"
-                    : "bg-white dark:bg-[#0d0d14] border-black/[0.06] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 hover:border-violet-500/30"
+                    : "bg-white dark:bg-[#0d0d14] border-black/[0.06] dark:border-white/[0.08] text-zinc-600 dark:text-zinc-400 hover:border-sky-500/30"
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <span className={cn("text-[11px] font-mono font-bold", isSelected ? "opacity-90" : "text-violet-500")}>
+                  <span className={cn("text-[11px] font-mono font-bold", isSelected ? "opacity-90" : "text-sky-500")}>
                     {s.step}
                   </span>
                   <Icon className="w-4 h-4 opacity-80" />
@@ -137,7 +137,7 @@ export default function HowItWorksPage() {
             <div className="p-8 rounded-3xl bg-white dark:bg-[#0d0d14] border border-black/[0.08] dark:border-white/[0.08] shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.04] dark:border-white/[0.04] pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-lg font-mono">
+                  <div className="h-12 w-12 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-lg font-mono">
                     {current.step}
                   </div>
                   <div>
@@ -169,7 +169,7 @@ export default function HowItWorksPage() {
                 <button
                   type="button"
                   onClick={() => setActiveStep((prev) => (prev < WORKFLOW_STEPS.length - 1 ? prev + 1 : 0))}
-                  className="text-xs font-mono text-violet-600 dark:text-violet-400 font-bold hover:underline transition-colors cursor-pointer flex items-center gap-1"
+                  className="text-xs font-mono text-sky-600 dark:text-sky-400 font-bold hover:underline transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <span>NEXT PHASE</span>
                   <ArrowRight className="w-3.5 h-3.5" />

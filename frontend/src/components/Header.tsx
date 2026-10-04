@@ -328,7 +328,7 @@ export default function Header() {
               onClick={() => setActiveDropdown(null)}
               className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] transition-colors group cursor-pointer"
             >
-              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-violet-500/15 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+              <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-sky-500/15 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
                 <LayoutDashboard className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">

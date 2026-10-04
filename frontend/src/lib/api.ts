@@ -207,7 +207,7 @@ export function uploadWithProgress<T = any>(
   });
 }
 
-export function getMediaUrl(path: string): string {
+export function getMediaUrl(path: string, w?: number): string {
   if (!path) return "";
 
   // If path is a Cloudflare R2 URL, route through backend proxy so it never fails with 401
@@ -215,7 +215,9 @@ export function getMediaUrl(path: string): string {
     const filename = path.split("/").pop();
     const typeFolder = path.includes("/videos/") ? "videos" : path.includes("/audio/") ? "audio" : "images";
     const base = getApiBase();
-    return `${base}/outputs/${typeFolder}/${filename}`;
+    let url = `${base}/outputs/${typeFolder}/${filename}`;
+    if (w) url += `?w=${w}`;
+    return url;
   }
 
   if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:") || path.startsWith("data:")) return path;
@@ -224,9 +226,14 @@ export function getMediaUrl(path: string): string {
   const token = getBackendToken() || "";
   // Native image/video/audio tags cannot attach Authorization headers. The
   // backend accepts this query token only for authenticated output requests.
-  return token && cleanPath.startsWith("/outputs/")
-    ? `${base}${cleanPath}?access_token=${encodeURIComponent(token)}`
-    : `${base}${cleanPath}`;
+  
+  let url = `${base}${cleanPath}`;
+  const params = new URLSearchParams();
+  if (token && cleanPath.startsWith("/outputs/")) params.append("access_token", token);
+  if (w) params.append("w", w.toString());
+  
+  const qs = params.toString();
+  return qs ? `${url}?${qs}` : url;
 }
 
 export function getDownloadUrl(path: string): string {
