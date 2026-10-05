@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Image as ImageIcon,
@@ -212,7 +212,32 @@ export default function ImageStudioPage() {
   const [showAgenticDrawer, setShowAgenticDrawer] = useState(false);
 
   // Studio Mode: 'text_to_image' | 'image_variations' | 'image_editor'
-  const [studioMode, setStudioMode] = useState<"text_to_image" | "image_variations" | "image_editor">("text_to_image");
+  const [studioMode, setStudioModeState] = useState<"text_to_image" | "image_variations" | "image_editor">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const m = params.get("mode");
+        if (m === "image_editor" || m === "image_variations" || m === "text_to_image") return m;
+        const saved = sessionStorage.getItem("omnistudio_image_mode");
+        if (saved === "image_editor" || saved === "image_variations" || saved === "text_to_image") return saved as any;
+      } catch {}
+    }
+    return "text_to_image";
+  });
+
+  const setStudioMode = useCallback((mode: "text_to_image" | "image_variations" | "image_editor") => {
+    setStudioModeState(mode);
+    try {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("omnistudio_image_mode", mode);
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("mode") !== mode) {
+          url.searchParams.set("mode", mode);
+          window.history.replaceState(null, "", url.toString());
+        }
+      }
+    } catch {}
+  }, []);
 
   // Core Prompt & Settings
   const [prompt, setPrompt] = useState("");
@@ -714,6 +739,18 @@ export default function ImageStudioPage() {
         setEditorImageUrl(sEditorImg);
         setOriginalEditorImageUrl(sEditorImg);
       }
+    } else if (sMode === "image_variations") {
+      setStudioMode("image_variations");
+    } else if (sMode === "text_to_image") {
+      setStudioMode("text_to_image");
+    } else {
+      try {
+        const saved = sessionStorage.getItem("omnistudio_image_mode");
+        if (saved === "image_editor" || saved === "image_variations" || saved === "text_to_image") {
+          setStudioMode(saved as any);
+          if (saved === "image_editor") setPromptDockCollapsed(true);
+        }
+      } catch {}
     }
 
     return () => {

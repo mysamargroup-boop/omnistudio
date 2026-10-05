@@ -174,6 +174,13 @@ const VIDEO_MODELS: VideoModelOption[] = [
     category: "Cloud SOTA",
   },
   {
+    value: "fal-ai/bytedance/seedance-2.5",
+    label: "ByteDance Seedance 2.5 (Fal.ai)",
+    description: "SOTA Cinematic Multi-Shot & High Dynamic Character Choreography via Fal.ai",
+    badge: "FAL SOTA",
+    category: "Featured Cloud",
+  },
+  {
     value: "seedance_v1",
     label: "ByteDance Seedance 1.0",
     description: "High-Fidelity Character & Dance Choreography",

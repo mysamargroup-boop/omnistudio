@@ -85,27 +85,34 @@ const AI_AUDIO_KEYWORDS = [
 ];
 
 /**
- * Searches a Uint8Array for a substring in ASCII
+ * Searches a Uint8Array for a substring in ASCII with high performance
  */
 function findAsciiSequence(data: Uint8Array, needle: string): number {
-  const needleBytes = new TextEncoder().encode(needle.toLowerCase());
-  const len = needleBytes.length;
-  if (len === 0 || data.length < len) return -1;
+  if (!data || data.length === 0 || !needle) return -1;
+  const needleLower = needle.toLowerCase();
+  try {
+    // Fast native decoding & Boyer-Moore C++ indexOf in V8
+    const text = new TextDecoder("utf-8", { fatal: false }).decode(data).toLowerCase();
+    return text.indexOf(needleLower);
+  } catch {
+    const needleBytes = new TextEncoder().encode(needleLower);
+    const len = needleBytes.length;
+    if (len === 0 || data.length < len) return -1;
 
-  for (let i = 0; i <= data.length - len; i++) {
-    let match = true;
-    for (let j = 0; j < len; j++) {
-      let b = data[i + j];
-      // convert uppercase ASCII to lowercase
-      if (b >= 65 && b <= 90) b += 32;
-      if (b !== needleBytes[j]) {
-        match = false;
-        break;
+    for (let i = 0; i <= data.length - len; i++) {
+      let match = true;
+      for (let j = 0; j < len; j++) {
+        let b = data[i + j];
+        if (b >= 65 && b <= 90) b += 32;
+        if (b !== needleBytes[j]) {
+          match = false;
+          break;
+        }
       }
+      if (match) return i;
     }
-    if (match) return i;
+    return -1;
   }
-  return -1;
 }
 
 /**

@@ -393,19 +393,22 @@ export default function MetadataCleanerStudio({
         if (file) {
           res = await api.inspectUploadedVideo(file, zeroDiskMode);
         } else if (url || path) {
-          res = await api.inspectVideoMetadata({ url, path });
+          const cleanFilename = (path || url)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
+          res = await api.inspectVideoMetadata({ url, path, filename: cleanFilename });
         }
       } else if (isAud) {
         if (file) {
           res = await api.inspectUploadedAudio(file, zeroDiskMode);
         } else if (url || path) {
-          res = await api.inspectAudioMetadata({ url, path });
+          const cleanFilename = (path || url)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
+          res = await api.inspectAudioMetadata({ url, path, filename: cleanFilename });
         }
       } else {
         if (file) {
           res = await api.inspectUploadedImage(file, zeroDiskMode);
         } else if (url || path) {
-          res = await api.inspectMetadata({ url, path });
+          const cleanFilename = (path || url)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
+          res = await api.inspectMetadata({ url, path, filename: cleanFilename });
         }
       }
 
@@ -705,9 +708,11 @@ export default function MetadataCleanerStudio({
             gpsPreset === "custom" ? { lat: customLat, lon: customLon, name: customCityName } : undefined
           );
         } else if (previewUrl || sourcePath) {
+          const cleanFn = (sourcePath || previewUrl)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
           res = await api.injectMetadata({
             url: previewUrl || undefined,
             path: sourcePath || undefined,
+            filename: cleanFn,
             camera_preset: cameraPreset,
             gps_preset: gpsPreset !== "none" && gpsPreset !== "custom" ? gpsPreset : undefined,
             custom_gps: gpsPreset === "custom" ? { lat: customLat, lon: customLon, name: customCityName } : undefined,
@@ -723,9 +728,11 @@ export default function MetadataCleanerStudio({
         if (selectedFile) {
           res = await api.cleanUploadedVideo(selectedFile, stealthMode, !zeroDiskMode);
         } else if (previewUrl || sourcePath) {
+          const cleanFn = (sourcePath || previewUrl)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
           res = await api.cleanVideoMetadata({
             url: previewUrl || undefined,
             path: sourcePath || undefined,
+            filename: cleanFn,
             stealth_mode: stealthMode,
           });
         } else {
@@ -737,9 +744,11 @@ export default function MetadataCleanerStudio({
         if (selectedFile) {
           res = await api.cleanUploadedAudio(selectedFile, stealthMode, !zeroDiskMode);
         } else if (previewUrl || sourcePath) {
+          const cleanFn = (sourcePath || previewUrl)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
           res = await api.cleanAudioMetadata({
             url: previewUrl || undefined,
             path: sourcePath || undefined,
+            filename: cleanFn,
             stealth_mode: stealthMode,
           });
         } else {
@@ -751,9 +760,11 @@ export default function MetadataCleanerStudio({
         if (selectedFile) {
           res = await api.cleanUploadedImage(selectedFile, stealthMode, quality, !zeroDiskMode);
         } else if (previewUrl || sourcePath) {
+          const cleanFn = (sourcePath || previewUrl)?.replace(/\\/g, "/").split("/").pop()?.split("?")[0];
           res = await api.cleanMetadata({
             url: previewUrl || undefined,
             path: sourcePath || undefined,
+            filename: cleanFn,
             stealth_mode: stealthMode,
             quality: quality,
           });

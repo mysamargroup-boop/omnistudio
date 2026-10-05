@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
 from pathlib import Path
+import asyncio
 import os
 import uuid
 import logging
@@ -82,34 +83,41 @@ def is_audio_path(path: Path) -> bool:
 
 
 def _resolve_target_media_path(req_url: Optional[str], req_path: Optional[str], req_filename: Optional[str]) -> Path:
-    """Helper to safely resolve an image, video, or audio file from URL, path, or filename."""
-    candidate = req_path or req_url or req_filename
-    if not candidate:
+    """Helper to safely resolve an image, video, or audio file from URL, path, or filename across platforms."""
+    candidates = [c for c in [req_filename, req_path, req_url] if c and str(c).strip()]
+    if not candidates:
         raise HTTPException(status_code=400, detail="Media path, URL, or filename is required.")
 
-    # Check direct path
-    try:
-        cand_path = Path(candidate)
-        if cand_path.is_absolute() and cand_path.exists():
-            return cand_path
-    except Exception:
-        pass
-
-    # Try resolving across allowed directories
-    for cat in ["videos", "images", "audio", "final", "brand_kit", "publish"]:
-        try:
-            resolved = safe_resolve_output_path(candidate, cat, must_exist=True)
-            if resolved and resolved.exists():
-                return resolved
-        except Exception:
+    for candidate in candidates:
+        cand_str = str(candidate).strip()
+        cand_clean = cand_str.split("?")[0].split("#")[0].strip()
+        if not cand_clean:
             continue
 
-    # Also check settings directories directly
-    clean_cand_name = Path(candidate).name
-    for base_dir in [settings.VIDEOS_PATH, settings.IMAGES_PATH, settings.AUDIO_PATH, settings.FINAL_PATH]:
-        p = base_dir / clean_cand_name
-        if p.exists():
-            return p
+        # 1. Direct path check
+        try:
+            cand_path = Path(cand_clean)
+            if cand_path.is_absolute() and cand_path.exists() and cand_path.is_file():
+                return cand_path
+        except Exception:
+            pass
+
+        # 2. Try resolving across allowed directories via safe_resolve_output_path
+        for cat in ["videos", "images", "audio", "final", "brand_kit", "publish"]:
+            try:
+                resolved = safe_resolve_output_path(cand_clean, cat, must_exist=True)
+                if resolved and resolved.exists() and resolved.is_file():
+                    return resolved
+            except Exception:
+                continue
+
+        # 3. Clean filename across settings directories (handles Windows \ and Linux /)
+        clean_cand_name = cand_clean.replace("\\", "/").split("/")[-1].strip()
+        if clean_cand_name:
+            for base_dir in [settings.VIDEOS_PATH, settings.IMAGES_PATH, settings.AUDIO_PATH, settings.FINAL_PATH]:
+                p = base_dir / clean_cand_name
+                if p.exists() and p.is_file():
+                    return p
 
     raise HTTPException(status_code=404, detail="Media file not found in studio storage.")
 
@@ -120,25 +128,26 @@ async def inspect_metadata(req: MetadataInspectRequest, request: Request):
     """
     Inspect metadata, EXIF tags, PNG text chunks, or container atoms,
     and scan for C2PA / SynthID / AI signatures in images, videos, and audio.
+    Runs non-blocking in threadpool to keep Uvicorn asyncio loop responsive.
     """
     target_path = _resolve_target_media_path(req.url, req.path, req.filename)
 
     if is_video_path(target_path):
-        result = extract_video_metadata(str(target_path))
+        result = await asyncio.to_thread(extract_video_metadata, str(target_path))
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to inspect video metadata."))
         result["media_type"] = "video"
         result["url"] = f"/outputs/videos/{target_path.name}"
         return result
     elif is_audio_path(target_path):
-        result = extract_audio_metadata(str(target_path))
+        result = await asyncio.to_thread(extract_audio_metadata, str(target_path))
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to inspect audio metadata."))
         result["media_type"] = "audio"
         result["url"] = f"/outputs/audio/{target_path.name}"
         return result
     else:
-        result = extract_image_metadata(str(target_path))
+        result = await asyncio.to_thread(extract_image_metadata, str(target_path))
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to inspect image metadata."))
         result["media_type"] = "image"
@@ -175,7 +184,7 @@ async def inspect_uploaded_media(
                 tmp_path = Path(tmp.name)
 
             try:
-                result = extract_video_metadata(str(tmp_path))
+                result = await asyncio.to_thread(extract_video_metadata, str(tmp_path))
                 result["media_type"] = "video"
                 result["filename"] = clean_orig
                 result["saved_to_disk"] = False
@@ -196,7 +205,7 @@ async def inspect_uploaded_media(
             with open(target_path, "wb") as f:
                 f.write(content)
 
-            result = extract_video_metadata(str(target_path))
+            result = await asyncio.to_thread(extract_video_metadata, str(target_path))
             result["media_type"] = "video"
             result["saved_to_disk"] = True
             result["ephemeral"] = False
@@ -214,7 +223,7 @@ async def inspect_uploaded_media(
                 tmp_path = Path(tmp.name)
 
             try:
-                result = extract_image_metadata(str(tmp_path))
+                result = await asyncio.to_thread(extract_image_metadata, str(tmp_path))
                 result["media_type"] = "image"
                 result["filename"] = clean_orig
                 result["saved_to_disk"] = False
@@ -235,7 +244,7 @@ async def inspect_uploaded_media(
             with open(target_path, "wb") as f:
                 f.write(content)
 
-            result = extract_image_metadata(str(target_path))
+            result = await asyncio.to_thread(extract_image_metadata, str(target_path))
             result["media_type"] = "image"
             result["saved_to_disk"] = True
             result["ephemeral"] = False
@@ -256,7 +265,7 @@ async def inspect_uploaded_media(
                 tmp_path = Path(tmp.name)
 
             try:
-                result = extract_audio_metadata(str(tmp_path))
+                result = await asyncio.to_thread(extract_audio_metadata, str(tmp_path))
                 result["media_type"] = "audio"
                 result["filename"] = clean_orig
                 result["saved_to_disk"] = False
@@ -277,7 +286,7 @@ async def inspect_uploaded_media(
             with open(target_path, "wb") as f:
                 f.write(content)
 
-            result = extract_audio_metadata(str(target_path))
+            result = await asyncio.to_thread(extract_audio_metadata, str(target_path))
             result["media_type"] = "audio"
             result["saved_to_disk"] = True
             result["ephemeral"] = False
@@ -302,11 +311,12 @@ async def clean_metadata(req: MetadataCleanRequest, request: Request):
     target_path = _resolve_target_media_path(req.url, req.path, req.filename)
 
     if is_video_path(target_path):
-        pre_meta = extract_video_metadata(str(target_path))
+        pre_meta = await asyncio.to_thread(extract_video_metadata, str(target_path))
         clean_filename = f"{target_path.stem}_clean_{uuid.uuid4().hex[:4]}{target_path.suffix}"
         output_path = settings.VIDEOS_PATH / clean_filename
 
-        clean_res = clean_video_lossless(
+        clean_res = await asyncio.to_thread(
+            clean_video_lossless,
             str(target_path),
             str(output_path),
             stealth_mode=bool(req.stealth_mode),
@@ -357,11 +367,12 @@ async def clean_metadata(req: MetadataCleanRequest, request: Request):
         }
 
     elif is_audio_path(target_path):
-        pre_meta = extract_audio_metadata(str(target_path))
+        pre_meta = await asyncio.to_thread(extract_audio_metadata, str(target_path))
         clean_filename = f"{target_path.stem}_clean_{uuid.uuid4().hex[:4]}{target_path.suffix}"
         output_path = settings.AUDIO_PATH / clean_filename
 
-        clean_res = clean_audio_lossless(
+        clean_res = await asyncio.to_thread(
+            clean_audio_lossless,
             str(target_path),
             str(output_path),
             stealth_mode=bool(req.stealth_mode),
@@ -413,11 +424,12 @@ async def clean_metadata(req: MetadataCleanRequest, request: Request):
 
     else:
         # Image cleaning flow
-        pre_meta = extract_image_metadata(str(target_path))
+        pre_meta = await asyncio.to_thread(extract_image_metadata, str(target_path))
         clean_filename = f"{target_path.stem}_clean_{uuid.uuid4().hex[:4]}{target_path.suffix}"
         output_path = settings.IMAGES_PATH / clean_filename
 
-        clean_res = clean_image_lossless(
+        clean_res = await asyncio.to_thread(
+            clean_image_lossless,
             str(target_path),
             str(output_path),
             stealth_mode=bool(req.stealth_mode),
@@ -499,13 +511,14 @@ async def clean_uploaded_media(
         with open(orig_path, "wb") as f:
             f.write(content)
 
-        pre_meta = extract_video_metadata(str(orig_path))
+        pre_meta = await asyncio.to_thread(extract_video_metadata, str(orig_path))
 
         clean_filename = f"clean_{uuid.uuid4().hex[:6]}_{Path(clean_orig).stem}{ext}"
         clean_path = settings.VIDEOS_PATH / clean_filename
 
         try:
-            clean_res = clean_video_lossless(
+            clean_res = await asyncio.to_thread(
+                clean_video_lossless,
                 str(orig_path),
                 str(clean_path),
                 stealth_mode=stealth_mode,
@@ -571,13 +584,14 @@ async def clean_uploaded_media(
         with open(orig_path, "wb") as f:
             f.write(content)
 
-        pre_meta = extract_image_metadata(str(orig_path))
+        pre_meta = await asyncio.to_thread(extract_image_metadata, str(orig_path))
 
         clean_filename = f"clean_{uuid.uuid4().hex[:6]}_{Path(clean_orig).stem}{ext}"
         clean_path = settings.IMAGES_PATH / clean_filename
 
         try:
-            clean_res = clean_image_lossless(
+            clean_res = await asyncio.to_thread(
+                clean_image_lossless,
                 str(orig_path),
                 str(clean_path),
                 stealth_mode=stealth_mode,
@@ -640,13 +654,14 @@ async def clean_uploaded_media(
         with open(orig_path, "wb") as f:
             f.write(content)
 
-        pre_meta = extract_audio_metadata(str(orig_path))
+        pre_meta = await asyncio.to_thread(extract_audio_metadata, str(orig_path))
 
         clean_filename = f"clean_{uuid.uuid4().hex[:6]}_{Path(clean_orig).stem}{ext}"
         clean_path = settings.AUDIO_PATH / clean_filename
 
         try:
-            clean_res = clean_audio_lossless(
+            clean_res = await asyncio.to_thread(
+                clean_audio_lossless,
                 str(orig_path),
                 str(clean_path),
                 stealth_mode=stealth_mode,
@@ -710,7 +725,7 @@ async def clean_uploaded_media(
 async def inspect_video_endpoint(req: MetadataInspectRequest, request: Request):
     """Inspect video file metadata directly."""
     target_path = _resolve_target_media_path(req.url, req.path, req.filename)
-    res = extract_video_metadata(str(target_path))
+    res = await asyncio.to_thread(extract_video_metadata, str(target_path))
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to inspect video."))
     res["media_type"] = "video"
@@ -742,7 +757,7 @@ async def clean_video_upload_endpoint(
 async def inspect_audio_endpoint(req: MetadataInspectRequest, request: Request):
     """Inspect audio file metadata directly."""
     target_path = _resolve_target_media_path(req.url, req.path, req.filename)
-    res = extract_audio_metadata(str(target_path))
+    res = await asyncio.to_thread(extract_audio_metadata, str(target_path))
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to inspect audio."))
     res["media_type"] = "audio"

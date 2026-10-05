@@ -34,9 +34,15 @@ async def verify_pin(req: PinVerifyRequest):
     
     # Constant-time comparison
     if hmac.compare_digest(req.pin.encode("utf-8"), expected.encode("utf-8")):
+        from auth import create_studio_jwt
+        try:
+            token = create_studio_jwt()
+        except Exception:
+            token = expected
         return {
             "success": True,
-            "token": expected,
+            "access_token": token,
+            "token": token,
             "message": "Passcode approved"
         }
     

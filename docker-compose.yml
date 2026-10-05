@@ -104,7 +104,7 @@ services:
       - DOCKER_API_VERSION=1.44
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 60 --cleanup
+    command: --interval 300 --cleanup omnistudio-omni-backend-1 omnistudio-omni-frontend-1
 
 
 

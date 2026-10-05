@@ -261,10 +261,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (!response.ok) return { success: false, error: "Invalid Studio Passcode. Access denied." };
       const result = await response.json();
-      if (!result.access_token || typeof result.access_token !== "string" || result.access_token.length < 40) {
+      const token = result.access_token || result.token;
+      if (!token || typeof token !== "string" || token.length < 4) {
         return { success: false, error: "Authentication token was not issued." };
       }
-      saveBackendToken(result.access_token);
+      saveBackendToken(token);
       const sessionData = JSON.stringify({ authenticated: true, timestamp: Date.now() });
       try {
         sessionStorage.setItem(PIN_SESSION_KEY, sessionData);
