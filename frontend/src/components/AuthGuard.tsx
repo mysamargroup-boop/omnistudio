@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 import Spinner from "@/components/ui/Spinner";
 import NavigationProgress from "@/components/ui/NavigationProgress";
+import GlobalJobIndicator from "@/components/ui/GlobalJobIndicator";
 import { Suspense } from "react";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -117,6 +118,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           <PageTransition className={pathname === "/video" ? "h-full flex-1 flex flex-col min-h-0 overflow-hidden" : undefined}>{children}</PageTransition>
         </main>
       </div>
+      <GlobalJobIndicator />
     </>
   );
 }

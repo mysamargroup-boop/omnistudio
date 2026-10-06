@@ -56,6 +56,13 @@ import {
 import { api, getMediaUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
+import {
+  startActiveJob,
+  updateActiveJob,
+  completeActiveJob,
+  getLastCompletedJob,
+  dismissCompletedJob,
+} from "@/lib/generationTracker";
 import dynamic from "next/dynamic";
 import type { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
@@ -649,6 +656,21 @@ export default function ImageStudioPage() {
     }
   }, []);
 
+  // Restore completed background job on mount or return to page
+  useEffect(() => {
+    try {
+      const lastJob = getLastCompletedJob("image");
+      if (lastJob && lastJob.data?.result) {
+        setResult(lastJob.data.result);
+        if (lastJob.data.prompt && !prompt) {
+          setPrompt(lastJob.data.prompt);
+        }
+        setStatusMessage("Restored artwork from background generation.");
+        dismissCompletedJob(lastJob.id);
+      }
+    } catch {}
+  }, []);
+
   // Persist draft to localStorage whenever settings or prompt change
   useEffect(() => {
     if (!hasHydrated.current) return;
@@ -921,10 +943,19 @@ export default function ImageStudioPage() {
     ]);
 
     const startTimestamp = Date.now();
+    const jobId = `img_${startTimestamp}`;
+    startActiveJob(jobId, "image", "/image", `Canvas: ${prompt.trim().slice(0, 32)}...`, {
+      prompt: prompt.trim(),
+      model,
+      aspectRatio,
+    });
+
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
       setElapsedSeconds(elapsed);
+      const curProg = Math.min(15 + elapsed * 5, 96);
+      updateActiveJob(jobId, { progress: curProg });
       if (elapsed === 2) {
         setProgress(50);
         setStageTitle("02 • Neural Cloud Diffusion");
@@ -1021,6 +1052,7 @@ export default function ImageStudioPage() {
 
       setResult(data);
       if (data && data.success) {
+        completeActiveJob(jobId, { result: data, prompt: prompt.trim() });
         setProgress(100);
         setStageTitle("CANVAS DIFFUSION COMPLETE");
         setStatusMessage("Visual canvas synthesized successfully!");
@@ -1031,8 +1063,11 @@ export default function ImageStudioPage() {
             message: `Render complete: ${data.filename || (data.images && data.images.length + " variations")}`,
           },
         ]);
+      } else {
+        updateActiveJob(jobId, { status: "failed" });
       }
     } catch (e: any) {
+      updateActiveJob(jobId, { status: "failed" });
       setResult({ success: false, error: e.message });
       setTelemetryLogs((prev) => [
         ...prev,

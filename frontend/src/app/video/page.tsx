@@ -68,6 +68,13 @@ import {
 import { api, getMediaUrl, getDownloadUrl, VideoMetadataInspection } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { loadStudioDraft, saveStudioDraftDebounced } from "@/lib/draftStorage";
+import {
+  startActiveJob,
+  updateActiveJob,
+  completeActiveJob,
+  getLastCompletedJob,
+  dismissCompletedJob,
+} from "@/lib/generationTracker";
 import dynamic from "next/dynamic";
 import type { GenerationConfirmDetails } from "@/components/ui/GenerationConfirmModal";
 import LiveProgressBar, { LogEntry } from "@/components/ui/LiveProgressBar";
@@ -661,6 +668,24 @@ function VideoStudioContent() {
       loadHistoryVideos();
     }
   }, [searchParams]);
+
+  // Restore completed background video on mount or return to page
+  useEffect(() => {
+    try {
+      const lastJob = getLastCompletedJob("video");
+      if (lastJob && lastJob.data?.result) {
+        setResult(lastJob.data.result);
+        if (lastJob.data.result?.url) {
+          setVideoDockCollapsed(true);
+        }
+        if (lastJob.data.prompt && !prompt) {
+          setPrompt(lastJob.data.prompt);
+        }
+        setStatusMessage("Restored synthesized video from background generation.");
+        dismissCompletedJob(lastJob.id);
+      }
+    } catch {}
+  }, []);
 
   // Persist draft to localStorage whenever settings or prompt change
   useEffect(() => {
@@ -1609,6 +1634,8 @@ function VideoStudioContent() {
     if (batchCount > 1) {
       setSidebarOpen(true);
       setSidebarTab("queue");
+      const batchJobMasterId = `batch_vid_${Date.now()}`;
+      startActiveJob(batchJobMasterId, "video", "/video", `Batch Videos (${batchCount} vars)`, { prompt: finalPrompt });
 
       const batchJobs = Array.from({ length: batchCount }, (_, b) => {
         const vIdx = b + 1;
@@ -1639,6 +1666,7 @@ function VideoStudioContent() {
           setStageTitle(`0${vIdx} • Synthesizing Variation ${vIdx} of ${batchCount}`);
           setStatusMessage(`Rendering ${activeModel.label} • Seed: ${vSeed}`);
           setProgress(Math.round(((b) / batchCount) * 100) + 10);
+          updateActiveJob(batchJobMasterId, { progress: Math.round(((b + 1) / batchCount) * 100) });
 
           setRenderJobs((prev) =>
             prev.map((j) => (j.id === currentJob.id ? { ...j, progress: 45, stage: `Rendering Var #${vIdx}` } : j))
@@ -1699,9 +1727,11 @@ function VideoStudioContent() {
         }
 
         setProgress(100);
+        completeActiveJob(batchJobMasterId, { prompt: finalPrompt });
         setStageTitle("BATCH RENDERING COMPLETE");
         setStatusMessage(`Finished generating ${batchCount} video variations!`);
       } catch (err: any) {
+        updateActiveJob(batchJobMasterId, { status: "failed" });
         setStatusMessage(err?.message || "Batch synthesis failed");
         setStageTitle("SYNTHESIS FAILED");
       } finally {
@@ -1727,6 +1757,11 @@ function VideoStudioContent() {
       thumbnailUrl: effectiveStartImage || undefined,
     };
     persistJobs([initialJob, ...renderJobs]);
+    startActiveJob(newJobId, "video", "/video", `Motion: ${finalPrompt.slice(0, 32)}...`, {
+      prompt: finalPrompt,
+      model,
+      duration,
+    });
 
     const startTimestamp = Date.now();
     const expectedSec = model === "ffmpeg_local" ? 8 : (duration > 5 ? 45 : 35);
@@ -1736,6 +1771,7 @@ function VideoStudioContent() {
       setElapsedSeconds(elapsed);
       const curProg = Math.min(95, Math.round((elapsed / expectedSec) * 90) + 5);
       setProgress(curProg);
+      updateActiveJob(newJobId, { progress: curProg });
 
       let curStage = "01 • Initializing Latents & Scene Buffer";
       if (curProg < 25) {
@@ -1798,6 +1834,7 @@ function VideoStudioContent() {
           videoUrl: data.url,
           thumbnailUrl: data.thumbnail_url || initialJob.thumbnailUrl,
         };
+        completeActiveJob(newJobId, { result: data, prompt: finalPrompt });
         setRenderJobs((prev) => {
           const next = prev.map((j) => (j.id === newJobId ? completedJob : j));
           try {
@@ -1806,6 +1843,7 @@ function VideoStudioContent() {
           return next;
         });
       } else {
+        updateActiveJob(newJobId, { status: "failed" });
         const errorMsg = (data && data.error) ? data.error : "Video generation failed or timed out";
         setStageTitle("SYNTHESIS FAILED");
         setStatusMessage(errorMsg);
@@ -1828,6 +1866,7 @@ function VideoStudioContent() {
         });
       }
     } catch (e: any) {
+      updateActiveJob(newJobId, { status: "failed" });
       const errorMsg = e.message || "Synthesis failed";
       setResult({ success: false, error: errorMsg });
       setStageTitle("SYNTHESIS FAILED");
