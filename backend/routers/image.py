@@ -185,7 +185,7 @@ def _conform_image_resolution(local_path: str, resolution_str: Optional[str]):
                 new_w = int(round(w * scale))
                 new_h = int(round(h * scale))
                 resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                resized.save(p, quality=95, optimize=True)
+                resized.save(p, quality=95)
                 logger.info(f"Conformed image {p.name} to {resolution_str} ({new_w}x{new_h})")
     except Exception as e:
         logger.warning(f"Resolution conformance error: {e}")
@@ -516,14 +516,14 @@ async def _generate_single_pass(req: ImageRequest, composed_prompt: str, seed_of
         if result.get("local_path") and req.aspect_ratio:
             try:
                 from services.aspect_ratio_service import conform_image_aspect_ratio
-                conform_image_aspect_ratio(result["local_path"], req.aspect_ratio)
+                await asyncio.to_thread(conform_image_aspect_ratio, result["local_path"], req.aspect_ratio)
             except Exception as cf_err:
                 logger.warning("Image aspect ratio conformance warning: %s", cf_err)
 
         # Guarantee exact resolution scaling (720p, 1080p, 2k, 4k, 8k) via LANCZOS
         if result.get("local_path") and req.resolution:
             try:
-                _conform_image_resolution(result["local_path"], req.resolution)
+                await asyncio.to_thread(_conform_image_resolution, result["local_path"], req.resolution)
             except Exception as res_err:
                 logger.warning("Image resolution conformance warning: %s", res_err)
 
@@ -625,9 +625,16 @@ async def _execute_generate_image(req: ImageRequest) -> Dict[str, Any]:
         # Multi-image generation
         images = []
         last_error = "Batch generation failed"
-        for i in range(batch_count):
-            sub_res = await _generate_single_pass(req, composed_prompt, seed_offset=i)
-            if sub_res.get("success"):
+        batch_results = await asyncio.gather(
+            *[_generate_single_pass(req, composed_prompt, seed_offset=i) for i in range(batch_count)],
+            return_exceptions=True
+        )
+        for sub_res in batch_results:
+            if isinstance(sub_res, Exception):
+                logger.warning("Batch generation sub-pass error: %s", sub_res)
+                last_error = str(sub_res)
+                continue
+            if sub_res and sub_res.get("success"):
                 sub_meta = {}
                 if sub_res.get("local_path"):
                     try:
@@ -643,7 +650,7 @@ async def _execute_generate_image(req: ImageRequest) -> Dict[str, Any]:
                     "metadata": sub_meta
                 })
             else:
-                last_error = sub_res.get("error", "Generation variation error")
+                last_error = (sub_res.get("error") if isinstance(sub_res, dict) else "Generation variation error") or last_error
 
         if not images:
             result = {"success": False, "error": last_error}

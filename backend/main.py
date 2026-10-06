@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from security_logger import audit_log
 from routers import image, video, voice, pipeline, assets, settings as settings_router, analytics, brand_kit, publish, characters, apify, prompts, metadata, skills
 
-from limiter import limiter
+from limiter import limiter, get_real_client_ip
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
@@ -228,12 +228,12 @@ class PinVerificationRequest(BaseModel):
 
 @app.post("/api/auth/verify-pin")
 @app.post("/api/auth/login-passcode")
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def verify_pin(payload: PinVerificationRequest, request: Request):
     if not settings.STUDIO_PASSCODE or not settings.JWT_SECRET:
         raise HTTPException(status_code=503, detail="PIN authentication is not configured")
     if not hmac.compare_digest(payload.pin.strip(), settings.STUDIO_PASSCODE):
-        audit_log("auth.pin_failed", ip=request.client.host if request.client else "unknown")
+        audit_log("auth.pin_failed", ip=get_real_client_ip(request))
         raise HTTPException(status_code=401, detail="Invalid passcode")
     return {"access_token": create_studio_jwt(), "token_type": "bearer", "expires_in": settings.JWT_EXPIRY_HOURS * 3600}
 

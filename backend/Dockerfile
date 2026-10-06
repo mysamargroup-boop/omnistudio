@@ -40,7 +40,7 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
 ENV HOST=0.0.0.0
-ENV WEB_CONCURRENCY=2
+ENV WEB_CONCURRENCY=4
 
 # Healthcheck probe
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -48,6 +48,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-# Launch uvicorn with 2 workers for high concurrency
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Launch uvicorn with 4 workers for multi-user non-blocking concurrency
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--timeout-keep-alive", "30"]
+
 

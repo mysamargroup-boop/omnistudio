@@ -171,9 +171,11 @@ def conform_video_aspect_ratio(video_path: Path | str, target_aspect: str) -> bo
         tmp_out = p.with_name(f"conformed_{p.name}")
         cmd = [
             "ffmpeg", "-y",
+            "-threads", "2",
             "-i", str(p),
             "-vf", f"{crop_filter},setsar=1",
             "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+            "-threads", "2",
             "-c:a", "copy",
             "-movflags", "+faststart",
             str(tmp_out)

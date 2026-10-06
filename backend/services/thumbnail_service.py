@@ -61,8 +61,8 @@ def _extract_video_frame(src: Path, out_jpg: Path) -> bool:
     for seek in ("0.5", "0"):
         try:
             subprocess.run(
-                ["ffmpeg", "-y", "-loglevel", "error", "-ss", seek, "-i", str(src),
-                 "-frames:v", "1", "-q:v", "3", str(out_jpg)],
+                ["ffmpeg", "-y", "-threads", "1", "-loglevel", "error", "-ss", seek, "-i", str(src),
+                 "-frames:v", "1", "-threads", "1", "-q:v", "3", str(out_jpg)],
                 check=True, timeout=20, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
             if out_jpg.exists() and out_jpg.stat().st_size > 0:

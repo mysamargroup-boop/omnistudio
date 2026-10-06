@@ -172,10 +172,12 @@ def image_to_video_motion(
         
     cmd = [
         "ffmpeg", "-y",
+        "-threads", "2",
         "-loop", "1",
         "-i", str(image_path),
         "-vf", vf,
         "-c:v", "libx264",
+        "-threads", "2",
         "-crf", safe_crf,
         "-preset", safe_preset,
         "-t", str(duration),
@@ -190,10 +192,12 @@ def image_to_video_motion(
             logger.warning("FFmpeg zoompan failed, falling back to scale: %s", res.stderr)
             fallback_cmd = [
                 "ffmpeg", "-y",
+                "-threads", "2",
                 "-loop", "1",
                 "-i", str(image_path),
                 "-vf", f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
                 "-c:v", "libx264",
+                "-threads", "2",
                 "-crf", safe_crf,
                 "-preset", safe_preset,
                 "-t", str(duration),
@@ -209,10 +213,12 @@ def image_to_video_motion(
     if loop and temp_clip and temp_clip.exists():
         loop_cmd = [
             "ffmpeg", "-y",
+            "-threads", "2",
             "-i", str(temp_clip),
             "-filter_complex", "[0:v]reverse[r];[0:v][r]concat=n=2:v=1:a=0[outv]",
             "-map", "[outv]",
             "-c:v", "libx264",
+            "-threads", "2",
             "-crf", safe_crf,
             "-preset", safe_preset,
             "-pix_fmt", "yuv420p",
@@ -246,10 +252,12 @@ def merge_audio_video(
     if loop_video_to_match_audio and audio_dur > video_dur:
         cmd = [
             "ffmpeg", "-y",
+            "-threads", "2",
             "-stream_loop", "-1",
             "-i", str(video_path),
             "-i", str(audio_path),
             "-c:v", "libx264",
+            "-threads", "2",
             "-c:a", "aac",
             "-b:a", "192k",
             "-t", str(audio_dur + 0.3),
@@ -260,6 +268,7 @@ def merge_audio_video(
     else:
         cmd = [
             "ffmpeg", "-y",
+            "-threads", "2",
             "-i", str(video_path),
             "-i", str(audio_path),
             "-c:v", "copy",
@@ -294,6 +303,7 @@ def concatenate_videos(video_paths: list[Path | str], output_path: Path | str) -
     try:
         cmd = [
             "ffmpeg", "-y",
+            "-threads", "2",
             "-f", "concat",
             "-safe", "0",
             "-i", str(list_file),
@@ -304,10 +314,12 @@ def concatenate_videos(video_paths: list[Path | str], output_path: Path | str) -
         if res.returncode != 0:
             reencode_cmd = [
                 "ffmpeg", "-y",
+                "-threads", "2",
                 "-f", "concat",
                 "-safe", "0",
                 "-i", str(list_file),
                 "-c:v", "libx264",
+                "-threads", "2",
                 "-c:a", "aac",
                 "-pix_fmt", "yuv420p",
                 str(output_path)
@@ -397,11 +409,13 @@ def keyframe_interpolate_motion(
         xfade_filter = f"[0:v][1:v]xfade=transition={xfade_trans}:duration={fade_duration}:offset={offset},format=yuv420p[v]"
         cmd = [
             "ffmpeg", "-y",
+            "-threads", "2",
             "-i", str(temp_clip1),
             "-i", str(temp_clip2),
             "-filter_complex", xfade_filter,
             "-map", "[v]",
             "-c:v", "libx264",
+            "-threads", "2",
             "-pix_fmt", "yuv420p",
             "-preset", "fast",
             "-t", str(duration),
